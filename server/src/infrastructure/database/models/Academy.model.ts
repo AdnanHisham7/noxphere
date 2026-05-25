@@ -1,3 +1,4 @@
+// src/infrastructure/database/models/Academy.model.ts
 import mongoose, { Schema, Document } from "mongoose";
 import {
   AcademyEntity,
@@ -7,7 +8,6 @@ import {
 export interface AcademyDocument extends Document {
   name: string;
   academyCode: string;
-  managerId: mongoose.Types.ObjectId;
   location: Location;
   ageGroups: string[];
   maxStudents: number;
@@ -35,12 +35,6 @@ const AcademySchema = new Schema<AcademyDocument>(
   {
     name: { type: String, required: true, trim: true },
     academyCode: { type: String, unique: true, index: true },
-    managerId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      index: true,
-    },
     location: { type: LocationSchema, required: true },
     ageGroups: [{ type: String }],
     maxStudents: { type: Number, default: 100 },

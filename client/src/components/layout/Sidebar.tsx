@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   LogOut,
   LucideIcon,
+  Volleyball,
 } from "lucide-react";
 
 interface NavItem {
@@ -24,8 +25,12 @@ interface NavItem {
 
 const navConfig: Record<string, NavItem[]> = {
   super_admin: [
-    { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { path: "/academies", label: "Academies", icon: Building2 },
+    { path: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { path: "/admin/academies", label: "Academies", icon: Building2 },
+  ],
+  manager: [
+    { path: "/manager/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { path: "/manager/students", label: "Squad", icon: Volleyball },
   ],
 };
 
@@ -33,13 +38,12 @@ export const Sidebar: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((s: RootState) => s.auth);
-  const { activeAcademyName, sidebarCollapsed, unreadCount } = useSelector(
-    (s: RootState) => ({
-      activeAcademyName: s.ui.activeAcademyName,
-      sidebarCollapsed: s.ui.sidebarCollapsed,
-      unreadCount: s.notifications.unreadCount,
-    }),
-  );
+  const { sidebarCollapsed, unreadCount } = useSelector((s: RootState) => ({
+    sidebarCollapsed: s.ui.sidebarCollapsed,
+    unreadCount: s.notifications.unreadCount,
+  }));
+
+  const academyName = user?.academyName || "Football";
 
   const navItems = navConfig[user?.role || "manager"] || [];
 
@@ -65,15 +69,15 @@ export const Sidebar: React.FC = () => {
         )}
       >
         <div className="w-8 h-8 bg-volt-400 rounded flex items-center justify-center flex-shrink-0 text-pitch-900 font-bold">
-          {activeAcademyName ? activeAcademyName.charAt(0).toUpperCase() : "FC"}
+          {academyName ? academyName.charAt(0).toUpperCase() : "FC"}
         </div>
         {!sidebarCollapsed && (
           <div className="min-w-0">
             <p className="font-display font-extrabold text-white uppercase tracking-wide text-sm leading-tight truncate">
-              {activeAcademyName || "Football"}
+              {academyName || "Football"}
             </p>
             <p className="font-display text-volt-400 uppercase tracking-widest text-xs">
-              {activeAcademyName ? "Academy" : "Camp"}
+              {academyName ? "Academy" : "Camp"}
             </p>
           </div>
         )}

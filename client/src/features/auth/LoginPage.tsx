@@ -1,19 +1,20 @@
 // src/features/auth/LoginPage.tsx
-import React, { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { toast } from 'react-hot-toast';
-import { useLoginMutation } from '@/store/api/authApi';
-import { setCredentials } from '@/store/slices/authSlice';
-import { RootState } from '@/store';
-import { Button, Input } from '@/components/ui';
+import React, { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-hot-toast";
+import { useLoginMutation } from "@/store/api/authApi";
+import { setCredentials } from "@/store/slices/authSlice";
+import { RootState } from "@/store";
+import { Button, Input } from "@/components/ui";
+import { ROLE_ROUTES } from "@/constants/roleRoutes";
 
 const loginSchema = z.object({
-  email: z.string().email('Invalid email'),
-  password: z.string().min(1, 'Password required'),
+  email: z.string().email("Invalid email"),
+  password: z.string().min(1, "Password required"),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -21,7 +22,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { isAuthenticated } = useSelector((s: RootState) => s.auth);
+  const { isAuthenticated, user } = useSelector((s: RootState) => s.auth);
   const [login, { isLoading }] = useLoginMutation();
 
   const {
@@ -31,8 +32,8 @@ const LoginPage: React.FC = () => {
   } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
 
   useEffect(() => {
-    if (isAuthenticated) navigate('/dashboard', { replace: true });
-  }, [isAuthenticated, navigate]);
+    if (isAuthenticated && user?.role) navigate(ROLE_ROUTES[user.role]);
+  }, [isAuthenticated, user?.role, navigate]);
 
   const onSubmit = async (data: LoginForm) => {
     try {
@@ -44,12 +45,12 @@ const LoginPage: React.FC = () => {
             accessToken: result.data.tokens.accessToken,
             refreshToken: result.data.tokens.refreshToken,
           },
-        })
+        }),
       );
-      toast.success('Welcome back!');
-      navigate('/dashboard');
+      toast.success("Welcome back!");
+      if (user?.role) navigate(ROLE_ROUTES[user.role]);
     } catch (err: any) {
-      toast.error(err?.data?.message || 'Login failed');
+      toast.error(err?.data?.message || "Login failed");
     }
   };
 
@@ -75,7 +76,7 @@ const LoginPage: React.FC = () => {
         {/* Diagonal accent bar */}
         <div
           className="absolute left-0 top-0 w-1 h-full bg-volt-400"
-          style={{ boxShadow: '0 0 40px rgba(204,255,0,0.6)' }}
+          style={{ boxShadow: "0 0 40px rgba(204,255,0,0.6)" }}
         />
 
         {/* Top logo */}
@@ -83,13 +84,22 @@ const LoginPage: React.FC = () => {
           <div className="flex items-center gap-3">
             <div
               className="w-10 h-10 bg-volt-400 flex items-center justify-center"
-              style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+              style={{
+                clipPath:
+                  "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
+              }}
             >
-              <span className="font-display font-900 text-pitch-900 text-base">FC</span>
+              <span className="font-display font-900 text-pitch-900 text-base">
+                FC
+              </span>
             </div>
             <div>
-              <p className="font-display font-900 text-white uppercase text-xl tracking-widest">Football</p>
-              <p className="font-display font-400 text-volt-400 uppercase text-xs tracking-[0.4em]">Camp Platform</p>
+              <p className="font-display font-900 text-white uppercase text-xl tracking-widest">
+                Football
+              </p>
+              <p className="font-display font-400 text-volt-400 uppercase text-xs tracking-[0.4em]">
+                Camp Platform
+              </p>
             </div>
           </div>
         </div>
@@ -98,21 +108,33 @@ const LoginPage: React.FC = () => {
         <div className="relative z-10 space-y-6">
           <div>
             <p className="font-display font-900 text-white text-5xl uppercase leading-none tracking-tight">
-              Manage Your<br />
-              <span className="text-volt-400">Camp.</span><br />
-              Elevate Your<br />
+              Manage Your
+              <br />
+              <span className="text-volt-400">Camp.</span>
+              <br />
+              Elevate Your
+              <br />
               <span className="text-ice-400">Game.</span>
             </p>
           </div>
 
           <p className="text-slate-500 text-sm leading-relaxed max-w-sm">
-            A unified platform for attendance, performance tracking, fees, team coordination, and the Transfer Wall — all in one tactical dashboard.
+            A unified platform for attendance, performance tracking, fees, team
+            coordination, and the Transfer Wall — all in one tactical dashboard.
           </p>
 
           {/* Feature pills */}
           <div className="flex flex-wrap gap-2">
-            {['Real-time Attendance', 'Performance Cards', 'Transfer Wall', 'Fee Management', 'Selection Tracking'].map((f) => (
-              <span key={f} className="pill-gray text-2xs">{f}</span>
+            {[
+              "Real-time Attendance",
+              "Performance Cards",
+              "Transfer Wall",
+              "Fee Management",
+              "Selection Tracking",
+            ].map((f) => (
+              <span key={f} className="pill-gray text-2xs">
+                {f}
+              </span>
             ))}
           </div>
         </div>
@@ -120,13 +142,17 @@ const LoginPage: React.FC = () => {
         {/* Bottom stat bar */}
         <div className="relative z-10 grid grid-cols-3 gap-4">
           {[
-            { val: '5', label: 'User Roles' },
-            { val: '∞', label: 'Players Tracked' },
-            { val: '100%', label: 'Offline Support' },
+            { val: "5", label: "User Roles" },
+            { val: "∞", label: "Players Tracked" },
+            { val: "100%", label: "Offline Support" },
           ].map((s) => (
             <div key={s.label} className="text-center">
-              <p className="font-display font-900 text-2xl text-volt-400">{s.val}</p>
-              <p className="text-2xs text-slate-600 uppercase tracking-wider mt-0.5">{s.label}</p>
+              <p className="font-display font-900 text-2xl text-volt-400">
+                {s.val}
+              </p>
+              <p className="text-2xs text-slate-600 uppercase tracking-wider mt-0.5">
+                {s.label}
+              </p>
             </div>
           ))}
         </div>
@@ -138,16 +164,24 @@ const LoginPage: React.FC = () => {
           {/* Mobile logo */}
           <div className="flex items-center gap-3 lg:hidden">
             <div className="w-8 h-8 bg-volt-400 rounded flex items-center justify-center">
-              <span className="font-display font-900 text-pitch-900 text-sm">FC</span>
+              <span className="font-display font-900 text-pitch-900 text-sm">
+                FC
+              </span>
             </div>
-            <p className="font-display font-extrabold text-white uppercase tracking-widest">Football Camp</p>
+            <p className="font-display font-extrabold text-white uppercase tracking-widest">
+              Football Camp
+            </p>
           </div>
 
           {/* Header */}
           <div>
             <p className="section-title mb-2">Access Portal</p>
-            <h1 className="font-display font-extrabold text-white text-3xl uppercase tracking-tight">Sign In</h1>
-            <p className="text-slate-500 text-sm mt-1">Enter your credentials to continue</p>
+            <h1 className="font-display font-extrabold text-white text-3xl uppercase tracking-tight">
+              Sign In
+            </h1>
+            <p className="text-slate-500 text-sm mt-1">
+              Enter your credentials to continue
+            </p>
           </div>
 
           {/* Form */}
@@ -157,18 +191,21 @@ const LoginPage: React.FC = () => {
               type="email"
               placeholder="coach@footballcamp.com"
               error={errors.email?.message}
-              {...register('email')}
+              {...register("email")}
             />
             <Input
               label="Password"
               type="password"
               placeholder="••••••••"
               error={errors.password?.message}
-              {...register('password')}
+              {...register("password")}
             />
 
             <div className="flex items-center justify-end">
-              <button type="button" className="text-xs text-volt-400 hover:underline">
+              <button
+                type="button"
+                className="text-xs text-volt-400 hover:underline"
+              >
                 Forgot password?
               </button>
             </div>
@@ -180,16 +217,20 @@ const LoginPage: React.FC = () => {
 
           {/* Role indicators */}
           <div className="pt-4 border-t border-white/5">
-            <p className="text-2xs text-slate-600 uppercase tracking-widest mb-3">Available Roles</p>
+            <p className="text-2xs text-slate-600 uppercase tracking-widest mb-3">
+              Available Roles
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { role: 'Super Admin', color: 'text-volt-400' },
-                { role: 'Manager', color: 'text-ice-400' },
-                { role: 'Coach', color: 'text-field-400' },
-                { role: 'Guardian', color: 'text-ember-400' },
+                { role: "Super Admin", color: "text-volt-400" },
+                { role: "Manager", color: "text-ice-400" },
+                { role: "Coach", color: "text-field-400" },
+                { role: "Guardian", color: "text-ember-400" },
               ].map((r) => (
                 <div key={r.role} className="flex items-center gap-2 text-xs">
-                  <span className={`w-1.5 h-1.5 rounded-full bg-current ${r.color}`} />
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full bg-current ${r.color}`}
+                  />
                   <span className="text-slate-500">{r.role}</span>
                 </div>
               ))}

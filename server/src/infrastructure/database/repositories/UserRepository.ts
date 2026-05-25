@@ -1,7 +1,12 @@
 // src/infrastructure/database/repositories/UserRepository.ts
-import { IUserRepository, PaginationOptions, PaginatedResult } from '../../../domain/repositories/IUserRepository';
-import { UserEntity, UserRole } from '../../../domain/entities/User.entity';
-import { UserModel, UserDocument } from '../models/User.model';
+import {
+  IUserRepository,
+  PaginationOptions,
+  PaginatedResult,
+} from "../../../domain/repositories/IUserRepository";
+import { UserEntity, UserRole } from "../../../domain/entities/User.entity";
+import { UserModel, UserDocument } from "../models/User.model";
+import mongoose from 'mongoose';
 
 export class MongoUserRepository implements IUserRepository {
   private toEntity(doc: UserDocument): UserEntity {
@@ -18,7 +23,7 @@ export class MongoUserRepository implements IUserRepository {
       isEmailVerified: doc.isEmailVerified,
       permissions: doc.permissions,
       fcmTokens: doc.fcmTokens,
-      campId: doc.campId?.toString(),
+      academyId: doc.academyId?.toString(),
       lastLoginAt: doc.lastLoginAt,
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
@@ -32,7 +37,7 @@ export class MongoUserRepository implements IUserRepository {
   }
 
   async findByIdWithPassword(id: string): Promise<UserEntity | null> {
-    const doc = await UserModel.findById(id).select('+passwordHash');
+    const doc = await UserModel.findById(id).select("+passwordHash");
     return doc ? this.toEntity(doc) : null;
   }
 
@@ -42,21 +47,26 @@ export class MongoUserRepository implements IUserRepository {
   }
 
   async findByEmailWithPassword(email: string): Promise<UserEntity | null> {
-    const doc = await UserModel.findOne({ email: email.toLowerCase() }).select('+passwordHash');
+    const doc = await UserModel.findOne({ email: email.toLowerCase() }).select(
+      "+passwordHash",
+    );
     return doc ? this.toEntity(doc) : null;
   }
 
   async findByRole(
     role: UserRole,
     campId?: string,
-    options: PaginationOptions = { page: 1, limit: 20 }
+    options: PaginationOptions = { page: 1, limit: 20 },
   ): Promise<PaginatedResult<UserEntity>> {
     const query: Record<string, unknown> = { role, isActive: true };
     if (campId) query.campId = campId;
 
     const skip = (options.page - 1) * options.limit;
     const [docs, total] = await Promise.all([
-      UserModel.find(query).skip(skip).limit(options.limit).sort({ createdAt: -1 }),
+      UserModel.find(query)
+        .skip(skip)
+        .limit(options.limit)
+        .sort({ createdAt: -1 }),
       UserModel.countDocuments(query),
     ]);
 
@@ -69,13 +79,26 @@ export class MongoUserRepository implements IUserRepository {
     };
   }
 
-  async create(user: Omit<UserEntity, 'id' | 'createdAt' | 'updatedAt'>): Promise<UserEntity> {
-    const doc = await UserModel.create(user);
+  async create(
+    user: Omit<UserEntity, "id" | "createdAt" | "updatedAt">,
+  ): Promise<UserEntity> {
+    const doc = await UserModel.create({
+      ...user,
+      academyId: user.academyId
+        ? new mongoose.Types.ObjectId(user.academyId)
+        : undefined,
+    });
     return this.toEntity(doc);
   }
 
-  async update(id: string, updates: Partial<UserEntity>): Promise<UserEntity | null> {
-    const doc = await UserModel.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
+  async update(
+    id: string,
+    updates: Partial<UserEntity>,
+  ): Promise<UserEntity | null> {
+    const doc = await UserModel.findByIdAndUpdate(id, updates, {
+      new: true,
+      runValidators: true,
+    });
     return doc ? this.toEntity(doc) : null;
   }
 
@@ -99,7 +122,9 @@ export class MongoUserRepository implements IUserRepository {
     });
   }
 
-  async bulkCreate(users: Omit<UserEntity, 'id' | 'createdAt' | 'updatedAt'>[]): Promise<UserEntity[]> {
+  async bulkCreate(
+    users: Omit<UserEntity, "id" | "createdAt" | "updatedAt">[],
+  ): Promise<UserEntity[]> {
     const docs = await UserModel.insertMany(users, { ordered: false });
     return docs.map((d) => this.toEntity(d as unknown as UserDocument));
   }

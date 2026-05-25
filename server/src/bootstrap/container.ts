@@ -12,7 +12,7 @@ const userRepository = new MongoUserRepository();
 const academyRepository = new MongoAcademyRepository();
 
 // Use Cases
-const authUseCases = new AuthUseCases(userRepository);
+const authUseCases = new AuthUseCases(userRepository, academyRepository);
 const academyUseCases = new AcademyUseCases(academyRepository, userRepository);
 
 // Controllers

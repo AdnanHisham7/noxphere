@@ -1,3 +1,4 @@
+// src/infrastructure/database/repositories/AcademyRepository.ts
 import {
   IAcademyRepository,
   PaginationOptions,
@@ -8,23 +9,10 @@ import { AcademyModel, AcademyDocument } from "../models/Academy.model";
 
 export class MongoAcademyRepository implements IAcademyRepository {
   private toEntity(doc: AcademyDocument): AcademyEntity {
-    const manager = doc.managerId as any;
-
     return {
       id: doc.id,
       name: doc.name,
       academyCode: doc.academyCode,
-
-      manager:
-        typeof manager === "object" && manager.firstName
-          ? {
-              id: manager._id.toString(),
-              firstName: manager.firstName,
-              lastName: manager.lastName,
-              email: manager.email,
-            }
-          : undefined,
-
       location: doc.location,
       ageGroups: doc.ageGroups,
       maxStudents: doc.maxStudents,
@@ -69,7 +57,6 @@ export class MongoAcademyRepository implements IAcademyRepository {
     const skip = (options.page - 1) * options.limit;
     const [docs, total] = await Promise.all([
       AcademyModel.find(query)
-        .populate("managerId", "firstName lastName email")
         .skip(skip)
         .limit(options.limit)
         .sort({ createdAt: -1 }),

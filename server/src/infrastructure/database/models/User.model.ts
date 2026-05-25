@@ -47,7 +47,7 @@ const UserSchema = new Schema<UserDocument>(
     isEmailVerified: { type: Boolean, default: false },
     permissions: { type: PermissionsSchema, required: true },
     fcmTokens: [{ type: String }],
-    campId: { type: Schema.Types.ObjectId, ref: "Camp", index: true },
+    academyId: { type: Schema.Types.ObjectId, ref: "Academy", index: true }, 
     lastLoginAt: { type: Date },
     deletedAt: { type: Date, index: true },
   },

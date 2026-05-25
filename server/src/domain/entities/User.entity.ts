@@ -25,7 +25,7 @@ export interface UserEntity {
   isEmailVerified: boolean;
   permissions: UserPermissions;
   fcmTokens: string[];
-  campId?: string;
+  academyId?: string;
   lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;

@@ -7,9 +7,10 @@ import { Spinner } from "@/components/ui";
 import { store } from "@/store";
 
 // Layouts and route guards
-import ProtectedRoute from "@/components/layout/ProtectedRoute";
+import ProtectedRoute from "@/components/routing/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
-import RoleProtectedRoute from "@/components/layout/RoleProtectedRoute";
+import RoleProtectedRoute from "@/components/routing/RoleProtectedRoute";
+import RedirectByRole from "@/components/routing/RedirectByRole";
 
 // Lazy loaded pages
 const LoginPage = lazy(() => import("@/features/auth/LoginPage"));
@@ -46,14 +47,29 @@ const App: React.FC = () => (
               <Route
                 element={<RoleProtectedRoute allowedRoles={["super_admin"]} />}
               >
-                <Route path="/dashboard" element={<div>Dashboard</div>} /> 
-                <Route path="/academies" element={<AcademiesManagement />} />
+                <Route path="/admin/dashboard" element={<div>Dashboard</div>} />
+                <Route
+                  path="/admin/academies"
+                  element={<AcademiesManagement />}
+                />
+              </Route>
+
+              {/* Manager + Coach */}
+              <Route
+                element={
+                  <RoleProtectedRoute allowedRoles={["manager", "coach"]} />
+                }
+              >
+                <Route
+                  path="/manager/dashboard"
+                  element={<div>Dashboard</div>}
+                />
               </Route>
             </Route>
           </Route>
 
-          <Route path="/" element={<Navigate to="/login" replace />} />
-
+          <Route path="/" element={<RedirectByRole />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

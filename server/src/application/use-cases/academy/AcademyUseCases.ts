@@ -1,3 +1,4 @@
+// src/application/use-cases/academy/AcademyUseCases.ts
 import { IAcademyRepository } from "../../../domain/repositories/IAcademyRepository";
 import { IUserRepository } from "../../../domain/repositories/IUserRepository";
 import {
@@ -25,55 +26,29 @@ export class AcademyUseCases {
   ) {}
 
   async createAcademy(dto: CreateAcademyDto): Promise<AcademyEntity> {
-    // 1. Check if academy code already exists (if provided)
+    // 1. Check code uniqueness
     if (dto.academyCode) {
       const existing = await this.academyRepository.findByCode(dto.academyCode);
       if (existing) throw new ConflictError("Academy code already exists");
     }
 
-    // 2. Check if manager email already exists
+    // 2. Check manager email uniqueness
     const existingUser = await this.userRepository.findByEmail(
       dto.manager.email,
     );
     if (existingUser)
       throw new ConflictError("Manager email already registered");
 
-    // 3. Create the manager user
-    const passwordHash = await bcrypt.hash(dto.manager.password, 12);
-    const managerUser = await this.userRepository.create({
-      email: dto.manager.email.toLowerCase(),
-      passwordHash,
-      role: "manager" as UserRole,
-      firstName: dto.manager.firstName,
-      lastName: dto.manager.lastName,
-      phone: undefined,
-      isActive: true,
-      isEmailVerified: false,
-      permissions: {
-        canManageUsers: true,
-        canManageCamps: false,
-        canManageFinance: true,
-        canViewReports: true,
-        canManageAttendance: true,
-        canManagePerformance: true,
-        canManageSelection: true,
-        canSendNotifications: true,
-      },
-      fcmTokens: [],
-      campId: undefined, // will be updated later if needed
-    });
-
-    // 4. Generate unique academy code if not provided
+    // 3. Generate academy code if not provided
     let academyCode = dto.academyCode;
     if (!academyCode) {
       academyCode = await this.generateUniqueCode(dto.name);
     }
 
-    // 5. Create academy
+    // 4. Create academy (without managerId)
     const academy = await this.academyRepository.create({
       name: dto.name,
       academyCode,
-      managerId: managerUser.id,
       location: dto.location,
       ageGroups: dto.ageGroups,
       maxStudents: dto.maxStudents,
@@ -82,6 +57,39 @@ export class AcademyUseCases {
       notificationAlertAfterMinutes: dto.notificationAlertAfterMinutes,
       skillParameters: dto.skillParameters,
     });
+
+    // 5. Create manager user with academyId
+    const passwordHash = await bcrypt.hash(dto.manager.password, 12);
+    try {
+      await this.userRepository.create({
+        email: dto.manager.email.toLowerCase(),
+        passwordHash,
+        role: "manager",
+        firstName: dto.manager.firstName,
+        lastName: dto.manager.lastName,
+        phone: undefined,
+        isActive: true,
+        isEmailVerified: false,
+        permissions: {
+          canManageUsers: true,
+          canManageCamps: false,
+          canManageFinance: true,
+          canViewReports: true,
+          canManageAttendance: true,
+          canManagePerformance: true,
+          canManageSelection: true,
+          canSendNotifications: true,
+        },
+        fcmTokens: [],
+        academyId: academy.id, // link to academy
+      });
+    } catch (error) {
+      // Rollback: delete academy if manager creation fails
+      await this.academyRepository.softDelete(academy.id);
+      throw new BadRequestError(
+        "Failed to create manager user, academy rolled back",
+      );
+    }
 
     return academy;
   }

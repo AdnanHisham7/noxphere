@@ -8,7 +8,7 @@ export interface AuthUser {
   firstName: string;
   lastName: string;
   avatar?: string;
-  campId?: string;
+  academyName?: string;
   permissions: Record<string, boolean>;
 }
 
@@ -31,7 +31,11 @@ const getStoredAuth = (): Pick<
       user: JSON.parse(localStorage.getItem("user") || "null"),
     };
   } catch {
-    return { accessToken: null, refreshToken: null, user: null };
+    return {
+      accessToken: null,
+      refreshToken: null,
+      user: null,
+    };
   }
 };
 
@@ -73,6 +77,7 @@ const authSlice = createSlice({
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
+      localStorage.removeItem("academyName");
     },
     updateAccessToken: (state, action: PayloadAction<string>) => {
       state.accessToken = action.payload;
