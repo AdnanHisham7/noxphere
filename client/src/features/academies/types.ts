@@ -1,4 +1,3 @@
-// src/features/academies/types.ts
 export interface Location {
   name: string;
   address: string;
@@ -24,6 +23,7 @@ export interface Academy {
   ageGroups: string[];
   maxStudents: number;
   isActive: boolean;
+  transferWallEnabled: boolean;
   alertBeforeMinutes: number;
   notificationAlertAfterMinutes: number;
   skillParameters: string[];

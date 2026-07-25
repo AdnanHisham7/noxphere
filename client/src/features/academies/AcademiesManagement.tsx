@@ -13,20 +13,20 @@ import {
   Settings,
   X,
   Loader2,
+  Repeat2,
+  Ban,
 } from "lucide-react";
-import { Button, Input, Modal, Badge, StatCard } from "@/components/ui";
+import { Button, Input, Modal, Badge, StatCard } from "../../components/ui";
+import { baseApi } from "../../store/api/baseApi";
 import { academyApi } from "@/store/api/academyApi";
-import {
-  Academy,
-  AcademyConfigPayload,
-  CreateAcademyPayload,
-} from "@/features/academies/types";
+import { Academy, AcademyConfigPayload, CreateAcademyPayload } from "./types";
 
 // Hooks
 const useGetAcademies = academyApi.useGetAcademiesQuery;
 const useCreateAcademy = academyApi.useCreateAcademyMutation;
 const useUpdateAcademyConfig = academyApi.useUpdateAcademyConfigMutation;
 const useToggleAcademyStatus = academyApi.useToggleAcademyStatusMutation;
+const useToggleTransferWall = academyApi.useToggleTransferWallMutation;
 const useDeleteAcademy = academyApi.useDeleteAcademyMutation;
 
 // Helper to get manager full name
@@ -36,6 +36,7 @@ const getManagerName = (academy: Academy): string => {
   return "No Manager Assigned";
 };
 
+// ==================== Component ====================
 const AcademiesManagement: React.FC = () => {
   const [viewMode, setViewMode] = useState<"card" | "table">("table");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -62,6 +63,7 @@ const AcademiesManagement: React.FC = () => {
   const [updateConfig, { isLoading: isUpdatingConfig }] =
     useUpdateAcademyConfig();
   const [toggleStatus, { isLoading: isToggling }] = useToggleAcademyStatus();
+  const [toggleTransferWall, { isLoading: isTogglingTransferWall }] = useToggleTransferWall();
   const [deleteAcademy] = useDeleteAcademy();
 
   const academies = academiesData?.data || [];
@@ -82,6 +84,15 @@ const AcademiesManagement: React.FC = () => {
       toast.success(`Academy ${currentStatus ? "deactivated" : "activated"}`);
     } catch (error: any) {
       toast.error(error?.data?.message || "Failed to toggle status");
+    }
+  };
+
+  const handleToggleTransferWall = async (id: string, currentlyEnabled: boolean) => {
+    try {
+      await toggleTransferWall(id).unwrap();
+      toast.success(`Transfer wall ${currentlyEnabled ? "disabled" : "enabled"}`);
+    } catch (error: any) {
+      toast.error(error?.data?.message || "Failed to toggle transfer wall");
     }
   };
 
@@ -137,7 +148,7 @@ const AcademiesManagement: React.FC = () => {
 
     try {
       await createAcademy(payload).unwrap();
-      toast.success("Academy created successfully");
+      toast.success("Academy created — a default franchise was set up automatically");
       setIsAddModalOpen(false);
       // Reset form
       setNewAcademyForm({
@@ -375,6 +386,26 @@ const AcademiesManagement: React.FC = () => {
                         )}
                       </button>
                       <button
+                        onClick={() =>
+                          handleToggleTransferWall(academy.id, academy.transferWallEnabled)
+                        }
+                        disabled={isTogglingTransferWall}
+                        className={clsx(
+                          "p-2 rounded border transition-all",
+                          academy.transferWallEnabled
+                            ? "border-ice-400/20 text-ice-400 hover:bg-ice-400/10"
+                            : "border-slate-600/30 text-slate-500 hover:bg-white/5",
+                          isTogglingTransferWall && "opacity-50 cursor-not-allowed",
+                        )}
+                        title={academy.transferWallEnabled ? "Disable Transfer Wall" : "Enable Transfer Wall"}
+                      >
+                        {academy.transferWallEnabled ? (
+                          <Repeat2 size={14} />
+                        ) : (
+                          <Ban size={14} />
+                        )}
+                      </button>
+                      <button
                         onClick={() => {
                           setSelectedAcademy(academy);
                           setConfigModalOpen(true);
@@ -424,6 +455,9 @@ const AcademiesManagement: React.FC = () => {
                   {academy.isActive ? "Active" : "Offline"}
                 </Badge>
               </div>
+              {!academy.transferWallEnabled && (
+                <Badge variant="gray" className="mt-2">Transfer Wall Disabled</Badge>
+              )}
               <div className="mt-6 flex gap-2">
                 <Button
                   variant="secondary"
@@ -459,6 +493,22 @@ const AcademiesManagement: React.FC = () => {
                       <Zap size={12} /> Enable
                     </>
                   )}
+                </button>
+                <button
+                  onClick={() =>
+                    handleToggleTransferWall(academy.id, academy.transferWallEnabled)
+                  }
+                  disabled={isTogglingTransferWall}
+                  title={academy.transferWallEnabled ? "Disable Transfer Wall" : "Enable Transfer Wall"}
+                  className={clsx(
+                    "px-3 rounded border transition-all text-xs font-bold uppercase flex items-center gap-2",
+                    academy.transferWallEnabled
+                      ? "border-ice-400/20 text-ice-400 bg-ice-400/5 hover:bg-ice-400/10"
+                      : "border-slate-600/30 text-slate-500 bg-white/5 hover:bg-white/10",
+                    isTogglingTransferWall && "opacity-50 cursor-not-allowed",
+                  )}
+                >
+                  {academy.transferWallEnabled ? <Repeat2 size={12} /> : <Ban size={12} />}
                 </button>
               </div>
             </div>
