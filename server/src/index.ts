@@ -19,6 +19,7 @@ import { AuthUseCases } from "./application/use-cases/auth/AuthUseCases";
 import { logger } from "./shared/utils/logger";
 import { StudentController } from "./interfaces/http/controllers/StudentController";
 import { StudentRepository } from "./infrastructure/database/repositories/StudentRepository";
+import { MongoUserRepository } from "./infrastructure/database/repositories/UserRepository";
 import { StudentUseCases } from "./application/use-cases/student/StudentUseCases";
 import { AcademyController } from "./interfaces/http/controllers/AcademyController";
 import { MongoAcademyRepository } from "./infrastructure/database/repositories/AcademyRepository";
@@ -112,8 +113,6 @@ app.get("/health", (_req, res) => {
 // This is a simplified manual DI bootstrap
 async function bootstrapDI() {
   // Repositories
-  const { MongoUserRepository } =
-    await import("./infrastructure/database/repositories/UserRepository");
   const userRepository = new MongoUserRepository();
   const studentRepository = new StudentRepository();
 
