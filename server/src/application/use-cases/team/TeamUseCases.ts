@@ -1,6 +1,7 @@
 import { TeamModel } from "../../../infrastructure/database/models/Team.model";
 import { StudentModel } from "../../../infrastructure/database/models/Student.model";
-import { NotFoundError } from "../../../shared/errors/AppError";
+import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
+import { NotFoundError, BadRequestError } from "../../../shared/errors/AppError";
 
 export interface CreateTeamInput {
   name: string;
@@ -31,8 +32,19 @@ export class TeamUseCases {
     return team.toJSON();
   }
 
-  async listTeams(franchiseId: string) {
-    const teams = await TeamModel.find({ franchiseId, deletedAt: { $exists: false } })
+  async listTeams(filter: { franchiseId?: string; academyId?: string }) {
+    if (!filter.franchiseId && !filter.academyId) {
+      throw new BadRequestError("franchiseId or academyId is required");
+    }
+    let query: Record<string, unknown> = { deletedAt: { $exists: false } };
+    if (filter.franchiseId) {
+      query.franchiseId = filter.franchiseId;
+    } else {
+      const franchises = await FranchiseModel.find({ academyId: filter.academyId }).select("_id").lean();
+      query.franchiseId = { $in: franchises.map((f) => f._id) };
+    }
+
+    const teams = await TeamModel.find(query)
       .populate("coachId", "firstName lastName")
       .sort({ name: 1 })
       .lean();

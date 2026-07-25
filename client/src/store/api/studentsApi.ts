@@ -109,7 +109,7 @@ export const studentsApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: Student }) => res.data,
       invalidatesTags: [{ type: 'Student', id: 'LIST' }],
     }),
-    updateStudent: builder.mutation<Student, { id: string; data: Partial<CreateStudentBody> }>({
+    updateStudent: builder.mutation<Student, { id: string; data: Omit<Partial<CreateStudentBody>, "teamId"> & { teamId?: string | null } }>({
       query: ({ id, data }) => ({ url: `/students/${id}`, method: 'PUT', body: data }),
       transformResponse: (res: { data: Student }) => res.data,
       invalidatesTags: (_, __, { id }) => [{ type: 'Student', id }, { type: 'Student', id: 'LIST' }],

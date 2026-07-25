@@ -26,6 +26,9 @@ export interface Academy {
   transferWallEnabled: boolean;
   alertBeforeMinutes: number;
   notificationAlertAfterMinutes: number;
+  absentAlertDays: number;
+  dueDateAlertDays: number;
+  feeQrImageUrl?: string;
   skillParameters: string[];
   createdAt: string;
   updatedAt: string;
@@ -39,20 +42,28 @@ export interface CreateAcademyPayload {
   maxStudents: number;
   alertBeforeMinutes: number;
   notificationAlertAfterMinutes: number;
+  absentAlertDays?: number;
+  dueDateAlertDays?: number;
   skillParameters: string[];
   manager: {
     firstName: string;
     lastName: string;
     email: string;
+    phone: string;
     password: string;
   };
 }
 
 export interface AcademyConfigPayload {
+  name?: string;
+  location?: Partial<Location>;
   maxStudents?: number;
   ageGroups?: string[];
   alertBeforeMinutes?: number;
   notificationAlertAfterMinutes?: number;
+  absentAlertDays?: number;
+  dueDateAlertDays?: number;
+  feeQrImageUrl?: string;
   skillParameters?: string[];
   isActive?: boolean;
 }

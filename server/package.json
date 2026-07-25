@@ -1,7 +1,7 @@
 {
-  "name": "noxphere-server",
+  "name": "football-camp-backend",
   "version": "1.0.0",
-  "description": "Noxphere server application",
+  "description": "Football Camp Management Platform - Backend API",
   "main": "dist/index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
@@ -12,6 +12,7 @@
     "seed:admin": "ts-node --transpile-only src/scripts/seedSuperAdmin.ts"
   },
   "dependencies": {
+    "@types/pdfkit": "^0.17.6",
     "bcryptjs": "^2.4.3",
     "bull": "^4.12.2",
     "cloudinary": "^2.10.0",
@@ -31,6 +32,7 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.7",
+    "pdfkit": "^0.19.1",
     "razorpay": "^2.9.2",
     "redis": "^4.6.12",
     "socket.io": "^4.6.1",

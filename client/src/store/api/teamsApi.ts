@@ -42,8 +42,8 @@ export interface CreateTeamBody {
 
 export const teamsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    listTeams: builder.query<Team[], { franchiseId: string }>({
-      query: ({ franchiseId }) => ({ url: "/teams", params: { franchiseId } }),
+    listTeams: builder.query<Team[], { franchiseId?: string; academyId?: string }>({
+      query: (params) => ({ url: "/teams", params }),
       transformResponse: (res: { data: Team[] }) => res.data,
       providesTags: ["Team"],
     }),

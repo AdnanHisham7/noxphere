@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const GuardianInfoSchema = z.object({
   name: z.string().min(1),
-  phone: z.string().min(1),
+  phone: z.string().trim().min(7, "A valid phone number is required").max(20),
   email: z.string().email(),
 });
 
@@ -31,7 +31,9 @@ export const CreateStudentSchema = z.object({
   medicalInfo: MedicalInfoSchema,
 });
 
-export const UpdateStudentSchema = CreateStudentSchema.omit({ email: true, franchiseId: true }).partial();
+export const UpdateStudentSchema = CreateStudentSchema.omit({ email: true, franchiseId: true })
+  .partial()
+  .extend({ teamId: z.string().nullable().optional() });
 
 export const AddPerformanceSchema = z.object({
   sessionDate: z.string().datetime(),

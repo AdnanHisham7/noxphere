@@ -72,7 +72,7 @@ export class AcademyUseCases {
       role: "manager" as UserRole,
       firstName: dto.manager.firstName,
       lastName: dto.manager.lastName,
-      phone: undefined,
+      phone: dto.manager.phone,
       isActive: true,
       isEmailVerified: false,
       permissions: {
@@ -106,6 +106,8 @@ export class AcademyUseCases {
       isActive: true,
       alertBeforeMinutes: dto.alertBeforeMinutes,
       notificationAlertAfterMinutes: dto.notificationAlertAfterMinutes,
+      absentAlertDays: dto.absentAlertDays,
+      dueDateAlertDays: dto.dueDateAlertDays,
       skillParameters: dto.skillParameters,
     });
 
@@ -192,16 +194,23 @@ export class AcademyUseCases {
     if (!academy) throw new NotFoundError("Academy");
 
     // A manager may only edit the academy their own franchise belongs to.
-    // super_admin is unrestricted. This is what makes skillParameters
-    // genuinely "defined by the manager of the academy" rather than only
-    // reachable through the super_admin-only Academies page.
-    // A manager may only edit the academy their own franchise belongs to,
-    // and — since this endpoint is shared with super_admin — only the
-    // skillParameters field, never isActive or anything else the schema
-    // might carry. Whitelisting here (rather than blacklisting isActive)
-    // means a future field added to AcademyConfigSchema doesn't silently
-    // become manager-editable too.
-    let effectiveDto = dto;
+    // super_admin is unrestricted. This is what makes the settings tab —
+    // name, location, age categories, guardian alert-day thresholds, and
+    // skillParameters — genuinely editable by the manager of the academy,
+    // without opening up isActive, maxStudents, or the session-reminder
+    // minute fields, which stay super_admin-only.
+    //
+    // Whitelisting here (rather than blacklisting isActive) means a
+    // future field added to AcademyConfigSchema doesn't silently become
+    // manager-editable too.
+    // Location is a required embedded document — replacing it wholesale
+    // with whatever partial object the client sent would risk wiping
+    // fields the manager didn't touch. Merge onto what's already stored
+    // instead, so a partial edit (e.g. just the address) never corrupts
+    // the rest.
+    const mergedLocation = dto.location ? { ...academy.location, ...dto.location } : undefined;
+
+    let effectiveDto: Partial<AcademyEntity> = { ...dto, location: mergedLocation };
     if (requester && requester.role === "manager") {
       if (!requester.franchiseId) {
         throw new ForbiddenError("Your account isn't linked to a franchise");
@@ -210,7 +219,15 @@ export class AcademyUseCases {
       if (!franchise || franchise.academyId.toString() !== id) {
         throw new ForbiddenError("You can only configure your own academy");
       }
-      effectiveDto = { skillParameters: dto.skillParameters };
+      effectiveDto = {
+        name: dto.name,
+        location: mergedLocation,
+        ageGroups: dto.ageGroups,
+        absentAlertDays: dto.absentAlertDays,
+        dueDateAlertDays: dto.dueDateAlertDays,
+        feeQrImageUrl: dto.feeQrImageUrl,
+        skillParameters: dto.skillParameters,
+      };
     }
 
     const updated = await this.academyRepository.update(id, effectiveDto);

@@ -117,6 +117,7 @@ const AcademiesManagement: React.FC = () => {
       firstName: "",
       lastName: "",
       email: "",
+      phone: "",
       password: "",
     },
   });
@@ -167,7 +168,7 @@ const AcademiesManagement: React.FC = () => {
         notificationAlertAfterMinutes: 15,
         skillParameters:
           "Dribbling, Passing, Shooting, Speed, Tactical Awareness, Attitude",
-        manager: { firstName: "", lastName: "", email: "", password: "" },
+        manager: { firstName: "", lastName: "", email: "", phone: "", password: "" },
       });
     } catch (error: any) {
       toast.error(error?.data?.message || "Failed to create academy");
@@ -587,6 +588,17 @@ const AcademiesManagement: React.FC = () => {
                 setNewAcademyForm({
                   ...newAcademyForm,
                   manager: { ...newAcademyForm.manager, email: e.target.value },
+                })
+              }
+              required
+            />
+            <Input
+              label="Manager Phone"
+              value={newAcademyForm.manager.phone}
+              onChange={(e) =>
+                setNewAcademyForm({
+                  ...newAcademyForm,
+                  manager: { ...newAcademyForm.manager, phone: e.target.value },
                 })
               }
               required

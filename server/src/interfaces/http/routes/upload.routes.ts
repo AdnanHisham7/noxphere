@@ -5,14 +5,22 @@ import { authenticate } from "../middleware/auth.middleware";
 import { config } from "../../../config/app.config";
 import { BadRequestError } from "../../../shared/errors/AppError";
 
-const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const ALLOWED_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: config.cloudinary.maxImageSizeBytes },
   fileFilter: (_req, file, cb) => {
     if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
-      cb(new Error("Only JPEG, PNG, WEBP or GIF images are allowed"));
+      cb(new Error("Only JPEG, PNG, WEBP, GIF images or PDF/Word documents are allowed"));
       return;
     }
     cb(null, true);

@@ -1,7 +1,13 @@
 // src/store/api/uploadApi.ts
 import { baseApi } from "./baseApi";
 
-export type UploadCategory = "player_photo" | "team_logo" | "team_banner";
+export type UploadCategory =
+  | "player_photo"
+  | "team_logo"
+  | "team_banner"
+  | "fee_qr"
+  | "notification_image"
+  | "notification_document";
 
 export interface UploadImageResult {
   url: string;

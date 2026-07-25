@@ -54,8 +54,15 @@ export class ResourceUseCases {
       );
     }
 
+    console.log({
+    name: input.fileName,
+    mime: input.mimeType,
+    size: input.fileSizeBytes,
+    first20: input.fileBuffer.toString("ascii", 0, 20),
+});
+console.log(input.fileBuffer.length, input.fileSizeBytes);
     const uploaded = await this.cloudinaryService.uploadBuffer(input.fileBuffer, "coach_resource", input.fileName);
-
+console.log(uploaded);
     // A manager's own upload is visible to every coach immediately —
     // requiring a manager to "verify" their own upload would be a
     // pointless loop. Coach uploads still need manager sign-off.
@@ -78,9 +85,17 @@ export class ResourceUseCases {
     return toCard(populated);
   }
 
+  /**
+   * Resources are not bound to a franchise — any coach in the academy can
+   * see anything the manager (or another verified coach) uploaded,
+   * regardless of which franchise it was uploaded under. franchiseId is
+   * still recorded on the resource for context/audit but is never used to
+   * restrict visibility.
+   */
   async listForCoach(franchiseId: string, coachId: string) {
+    const academyId = await this.resolveAcademyId(franchiseId);
     const resources = await ResourceModel.find({
-      franchiseId,
+      academyId,
       $or: [{ uploadedBy: coachId }, { verified: true }],
     })
       .populate("uploadedBy", "firstName lastName")
@@ -91,7 +106,7 @@ export class ResourceUseCases {
   async listForManager(franchiseId: string) {
     const academyId = await this.resolveAcademyId(franchiseId);
     const [resources, usage] = await Promise.all([
-      ResourceModel.find({ franchiseId }).populate("uploadedBy", "firstName lastName").sort({ createdAt: -1 }),
+      ResourceModel.find({ academyId }).populate("uploadedBy", "firstName lastName").sort({ createdAt: -1 }),
       this.getAcademyStorageUsage(academyId),
     ]);
     return { data: resources.map(toCard), storage: usage };

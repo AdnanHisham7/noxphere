@@ -49,6 +49,7 @@ const FranchiseManagementPage: React.FC = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [editingFranchise, setEditingFranchise] = useState<Franchise | null>(null);
   const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
+  const [detailsFranchise, setDetailsFranchise] = useState<Franchise | null>(null);
 
   const openSkillModal = (franchise: Franchise) => {
     setEditingFranchise(franchise);
@@ -146,7 +147,16 @@ const FranchiseManagementPage: React.FC = () => {
                   <p className="font-display font-bold text-white truncate">{f.name}</p>
                   <p className="text-2xs text-slate-500 font-mono">{f.franchiseCode}</p>
                 </div>
-                <Badge variant={f.isActive ? "green" : "gray"} size="sm">{f.isActive ? "Active" : "Inactive"}</Badge>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setDetailsFranchise(f)}
+                    className="text-slate-400 hover:text-volt-400 transition-colors"
+                    title="Edit details"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <Badge variant={f.isActive ? "green" : "gray"} size="sm">{f.isActive ? "Active" : "Inactive"}</Badge>
+                </div>
               </div>
               <p className="text-xs text-slate-400">{f.location?.name}</p>
               <div className="flex items-center gap-3 text-2xs text-slate-500">
@@ -216,6 +226,13 @@ const FranchiseManagementPage: React.FC = () => {
           onClose={closeSkillModal}
         />
       )}
+
+      {detailsFranchise && (
+        <FranchiseDetailsModal
+          franchise={detailsFranchise}
+          onClose={() => setDetailsFranchise(null)}
+        />
+      )}
     </div>
   );
 };
@@ -262,6 +279,67 @@ const CreateFranchiseModal: React.FC<{
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
         </div>
       </form>
+    </Modal>
+  );
+};
+
+const FranchiseDetailsModal: React.FC<{
+  franchise: Franchise;
+  onClose: () => void;
+}> = ({ franchise, onClose }) => {
+  const [updateFranchise, { isLoading }] = useUpdateFranchiseMutation();
+  const [name, setName] = useState(franchise.name);
+  const [locationName, setLocationName] = useState(franchise.location?.name ?? "");
+  const [address, setAddress] = useState(franchise.location?.address ?? "");
+  const [latitude, setLatitude] = useState(String(franchise.location?.latitude ?? 0));
+  const [longitude, setLongitude] = useState(String(franchise.location?.longitude ?? 0));
+  const [fieldNumber, setFieldNumber] = useState(franchise.location?.fieldNumber ?? "");
+  const [maxStudents, setMaxStudents] = useState(String(franchise.maxStudents ?? 100));
+
+  const handleSave = async () => {
+    if (!name.trim() || !locationName.trim() || !address.trim()) {
+      toast.error("Fill in all required fields");
+      return;
+    }
+    try {
+      await updateFranchise({
+        id: franchise.id,
+        data: {
+          name: name.trim(),
+          location: {
+            name: locationName.trim(),
+            address: address.trim(),
+            latitude: parseFloat(latitude) || 0,
+            longitude: parseFloat(longitude) || 0,
+            fieldNumber: fieldNumber.trim() || undefined,
+          },
+          maxStudents: parseInt(maxStudents, 10) || franchise.maxStudents,
+        },
+      }).unwrap();
+      toast.success("Franchise details updated");
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Couldn't update franchise — try again");
+    }
+  };
+
+  return (
+    <Modal isOpen onClose={onClose} title={`Edit ${franchise.name}`} size="md">
+      <div className="space-y-4">
+        <Input label="Franchise name" value={name} onChange={(e) => setName(e.target.value)} required />
+        <Input label="Location name" value={locationName} onChange={(e) => setLocationName(e.target.value)} required />
+        <Input label="Address" value={address} onChange={(e) => setAddress(e.target.value)} required />
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Latitude" type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} />
+          <Input label="Longitude" type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} />
+        </div>
+        <Input label="Field number (optional)" value={fieldNumber} onChange={(e) => setFieldNumber(e.target.value)} />
+        <Input label="Max students" type="number" min={1} value={maxStudents} onChange={(e) => setMaxStudents(e.target.value)} />
+        <div className="flex gap-3 pt-2">
+          <Button loading={isLoading} onClick={handleSave} className="flex-1">Save changes</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+        </div>
+      </div>
     </Modal>
   );
 };

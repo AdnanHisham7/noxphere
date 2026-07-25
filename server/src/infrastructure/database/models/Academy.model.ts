@@ -15,6 +15,16 @@ export interface AcademyDocument extends Document {
   transferWallEnabled: boolean;
   alertBeforeMinutes: number;
   notificationAlertAfterMinutes: number;
+  // Guardian alert thresholds — how many consecutive absent days before
+  // an automated alert fires, and how many days before an installment's
+  // due date the reminder goes out. Editable per-academy from the
+  // manager's settings tab.
+  absentAlertDays: number;
+  dueDateAlertDays: number;
+  // The payment QR code image sent as part of the installment-due-soon
+  // WhatsApp alert (see NotificationService.sendFeeDueAlert). Uploaded by
+  // the manager from the Fees page.
+  feeQrImageUrl?: string;
   skillParameters: string[];
   deletedAt?: Date;
   createdAt: Date;
@@ -49,6 +59,9 @@ const AcademySchema = new Schema<AcademyDocument>(
     transferWallEnabled: { type: Boolean, default: true },
     alertBeforeMinutes: { type: Number, default: 60 },
     notificationAlertAfterMinutes: { type: Number, default: 15 },
+    absentAlertDays: { type: Number, default: 5, min: 1 },
+    dueDateAlertDays: { type: Number, default: 3, min: 0 },
+    feeQrImageUrl: { type: String },
     skillParameters: {
       type: [String],
       default: [

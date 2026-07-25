@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { StudentModel } from "../../../infrastructure/database/models/Student.model";
 import { SessionModel } from "../../../infrastructure/database/models/Session.model";
 import { TeamModel } from "../../../infrastructure/database/models/Team.model";
+import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
 
 export class CoachPortalUseCases {
   /** Reads here are scoped to students on a team assigned to the logged-in
@@ -39,6 +40,37 @@ export class CoachPortalUseCases {
       .populate("teamId", "name ageGroup")
       .sort({ firstName: 1 })
       .lean();
+  }
+
+  /**
+   * A coach isn't bound to a single franchise — they can operate in any
+   * franchise of their academy where they've actually been assigned a
+   * team or a session. This derives that list fresh from Team.coachId and
+   * Session.coachId every time (rather than trusting any stored value on
+   * the user), so a reassignment is reflected immediately with no risk of
+   * the switcher showing a franchise the coach no longer has anything in.
+   */
+  async getMyFranchises(coachUserId: string) {
+    const coachObjectId = new mongoose.Types.ObjectId(coachUserId);
+    const [teamFranchiseIds, sessionFranchiseIds] = await Promise.all([
+      TeamModel.find({ coachId: coachObjectId, deletedAt: { $exists: false } })
+        .distinct("franchiseId"),
+      SessionModel.find({ coachId: coachObjectId, deletedAt: { $exists: false } })
+        .distinct("franchiseId"),
+    ]);
+    const franchiseIds = Array.from(
+      new Set([...teamFranchiseIds, ...sessionFranchiseIds].map((id) => id.toString())),
+    );
+    if (franchiseIds.length === 0) return [];
+
+    const franchises = await FranchiseModel.find({ _id: { $in: franchiseIds }, isActive: true })
+      .sort({ name: 1 })
+      .lean();
+    return franchises.map((f) => ({
+      id: f._id.toString(),
+      academyId: f.academyId.toString(),
+      name: f.name,
+    }));
   }
 
   async getMyDashboard(coachUserId: string) {

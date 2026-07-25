@@ -27,6 +27,9 @@ export interface AcademyEntity {
   transferWallEnabled: boolean;
   alertBeforeMinutes: number;
   notificationAlertAfterMinutes: number;
+  absentAlertDays: number;
+  dueDateAlertDays: number;
+  feeQrImageUrl?: string;
   skillParameters: string[];
   deletedAt?: Date;
   createdAt: Date;
@@ -43,5 +46,7 @@ export interface CreateAcademyEntity {
   isActive: boolean;
   alertBeforeMinutes: number;
   notificationAlertAfterMinutes: number;
+  absentAlertDays: number;
+  dueDateAlertDays: number;
   skillParameters: string[];
 }

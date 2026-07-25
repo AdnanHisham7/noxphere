@@ -19,6 +19,7 @@ export class MongoUserRepository implements IUserRepository {
       permissions: doc.permissions,
       fcmTokens: doc.fcmTokens,
       franchiseId: doc.franchiseId?.toString(),
+      academyId: doc.academyId?.toString(),
       lastLoginAt: doc.lastLoginAt,
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
@@ -70,20 +71,44 @@ export class MongoUserRepository implements IUserRepository {
   }
 
   async searchUsers(
-    filters: { roles?: UserRole[]; franchiseId?: string; isActive?: boolean; search?: string },
+    filters: {
+      roles?: UserRole[];
+      franchiseId?: string;
+      academyId?: string;
+      franchiseIds?: string[];
+      isActive?: boolean;
+      search?: string;
+    },
     options: PaginationOptions = { page: 1, limit: 20 }
   ): Promise<PaginatedResult<UserEntity>> {
     const query: Record<string, unknown> = { deletedAt: { $exists: false } };
     if (filters.roles && filters.roles.length > 0) query.role = { $in: filters.roles };
-    if (filters.franchiseId) query.franchiseId = filters.franchiseId;
     if (filters.isActive !== undefined) query.isActive = filters.isActive;
-    if (filters.search) {
-      query.$or = [
-        { firstName: { $regex: filters.search, $options: 'i' } },
-        { lastName: { $regex: filters.search, $options: 'i' } },
-        { email: { $regex: filters.search, $options: 'i' } },
-      ];
+
+    // academyId scoping and free-text search both need an $or clause —
+    // combine them with $and instead of letting the second assignment
+    // silently clobber the first.
+    const andClauses: Record<string, unknown>[] = [];
+    if (filters.academyId) {
+      andClauses.push({
+        $or: [
+          { academyId: filters.academyId },
+          { franchiseId: { $in: filters.franchiseIds ?? [] } },
+        ],
+      });
+    } else if (filters.franchiseId) {
+      query.franchiseId = filters.franchiseId;
     }
+    if (filters.search) {
+      andClauses.push({
+        $or: [
+          { firstName: { $regex: filters.search, $options: 'i' } },
+          { lastName: { $regex: filters.search, $options: 'i' } },
+          { email: { $regex: filters.search, $options: 'i' } },
+        ],
+      });
+    }
+    if (andClauses.length > 0) query.$and = andClauses;
 
     const skip = (options.page - 1) * options.limit;
     const [docs, total] = await Promise.all([

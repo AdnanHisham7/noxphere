@@ -70,6 +70,18 @@ export const config = {
     maxImageSizeBytes: parseInt(process.env.CLOUDINARY_MAX_IMAGE_BYTES || `${5 * 1024 * 1024}`, 10),
   },
 
+  // A single official WhatsApp Business number/account is shared across
+  // every academy on the platform — there is deliberately no per-academy
+  // WhatsApp config anywhere in the codebase. Each outgoing message has
+  // the academy's name woven into its own text so recipients can tell
+  // which academy it's from (see WhatsAppService).
+  whatsapp: {
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
+    accessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
+    apiVersion: process.env.WHATSAPP_API_VERSION || "v20.0",
+    apiBaseUrl: process.env.WHATSAPP_API_BASE_URL || "https://graph.facebook.com",
+  },
+
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000", 10),
     max: parseInt(process.env.RATE_LIMIT_MAX || "100", 10),

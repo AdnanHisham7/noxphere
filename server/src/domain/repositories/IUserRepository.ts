@@ -23,6 +23,13 @@ export interface IUserRepository {
   searchUsers(filters: {
     roles?: UserRole[];
     franchiseId?: string;
+    // When academyId is set, matches users whose academyId equals it OR
+    // whose (legacy) franchiseId falls within franchiseIds — the set of
+    // franchise ids belonging to that academy. This lets an academy-scoped
+    // query find both new-style coaches (academyId set, no franchiseId)
+    // and any older coach record that still only carries a franchiseId.
+    academyId?: string;
+    franchiseIds?: string[];
     isActive?: boolean;
     search?: string;
   }, options?: PaginationOptions): Promise<PaginatedResult<UserEntity>>;

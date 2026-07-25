@@ -15,8 +15,8 @@ import {
   CartesianGrid,
 } from "recharts";
 import { clsx } from "clsx";
-import { Repeat2, Mail } from "lucide-react";
-import { Button, Badge, Avatar, Modal, Skeleton, EmptyState } from "../../components/ui";
+import { Repeat2, Mail, Pencil } from "lucide-react";
+import { Button, Badge, Avatar, Modal, Skeleton, EmptyState, Input } from "../../components/ui";
 import { toast } from "react-hot-toast";
 import { useTransferWallEnabled } from "../../hooks/useTransferWallEnabled";
 import mannequinPng from "../../assets/players/mannequin.png";
@@ -24,7 +24,10 @@ import { PlayerPlaceholder } from "@/components/ui/PlayerPlaceholder";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import QRCode from "react-qr-code";
-import { useGetPlayerCardQuery, useUpdateStudentPhotoMutation } from "../../store/api/studentsApi";
+import { useGetPlayerCardQuery, useUpdateStudentPhotoMutation, useUpdateStudentMutation, type Student } from "../../store/api/studentsApi";
+import { useGetFranchiseByIdQuery } from "../../store/api/franchiseApi";
+import { useListTeamsQuery } from "../../store/api/teamsApi";
+import { academyApi } from "../../store/api/academyApi";
 import { useListPlayerMutation } from "../../store/api/transferApi";
 import { useUploadImageMutation } from "../../store/api/uploadApi";
 import { Camera, Loader2 } from "lucide-react";
@@ -50,6 +53,7 @@ const StudentDetailPage: React.FC = () => {
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState<"overview" | "attendance" | "performance" | "info">("overview");
   const [transferModal, setTransferModal] = useState(false);
+  const [editModal, setEditModal] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -361,6 +365,10 @@ const StudentDetailPage: React.FC = () => {
                   </div>
                 </div>
 
+                <Button size="sm" variant="secondary" icon={<Pencil size={14} />} onClick={() => setEditModal(true)}>
+                  Edit details
+                </Button>
+
                 {student.transferStatus !== "listed" && student.transferStatus !== "sold" && transferWallEnabled && (
                   <Button size="sm" variant="secondary" icon={<Repeat2 size={14} />} onClick={() => setTransferModal(true)}>
                     List on Transfer Wall
@@ -608,6 +616,10 @@ const StudentDetailPage: React.FC = () => {
         listing={listing}
         onSubmit={handleListOnTransfer}
       />
+
+      {editModal && (
+        <EditStudentModal student={student} onClose={() => setEditModal(false)} />
+      )}
     </div>
   );
 };
@@ -674,3 +686,115 @@ const TransferListingModal: React.FC<{
 };
 
 export default StudentDetailPage;
+
+const POSITIONS = ["Goalkeeper", "Defender", "Midfielder", "Forward"];
+
+const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({ student, onClose }) => {
+  const [updateStudent, { isLoading: saving }] = useUpdateStudentMutation();
+  const { data: franchise } = useGetFranchiseByIdQuery(student.franchiseId, { skip: !student.franchiseId });
+  const { data: academy } = academyApi.useGetAcademyByIdQuery(franchise?.academyId ?? "", {
+    skip: !franchise?.academyId,
+  });
+  const categories = academy?.ageGroups ?? [];
+  const { data: teams } = useListTeamsQuery({ franchiseId: student.franchiseId }, { skip: !student.franchiseId });
+
+  const [firstName, setFirstName] = useState(student.firstName);
+  const [lastName, setLastName] = useState(student.lastName);
+  const [ageGroup, setAgeGroup] = useState(student.ageGroup);
+  const [teamId, setTeamId] = useState(student.teamId ?? "");
+  const [position, setPosition] = useState(student.position ?? "");
+  const [jerseyNumber, setJerseyNumber] = useState(student.jerseyNumber ? String(student.jerseyNumber) : "");
+  const [jerseySize, setJerseySize] = useState(student.jerseySize ?? "");
+
+  const handleSave = async () => {
+    if (!firstName.trim() || !lastName.trim()) {
+      toast.error("First and last name are required");
+      return;
+    }
+    if (!ageGroup) {
+      toast.error("Select an age category");
+      return;
+    }
+    try {
+      await updateStudent({
+        id: student.id,
+        data: {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          ageGroup,
+          teamId: teamId || null,
+          position: position || undefined,
+          jerseyNumber: jerseyNumber ? parseInt(jerseyNumber, 10) : undefined,
+          jerseySize: jerseySize || undefined,
+        },
+      }).unwrap();
+      toast.success("Player details updated");
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Couldn't update player — try again");
+    }
+  };
+
+  return (
+    <Modal isOpen onClose={onClose} title={`Edit ${student.firstName} ${student.lastName}`} size="md">
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+          <Input label="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+        </div>
+        <div>
+          <label className="label">Age group</label>
+          <select value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)} className="input !w-full">
+            <option value="" disabled>
+              Select a category
+            </option>
+            {/* Always offer the player's current category even if it was
+                since removed from academy settings, so this can't force a
+                silent blank. */}
+            {(categories.includes(ageGroup) ? categories : [ageGroup, ...categories].filter(Boolean)).map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label">Team</label>
+          <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className="input !w-full">
+            <option value="">No team assigned</option>
+            {(teams ?? []).map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name} ({t.ageGroup})
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label">Position</label>
+          <select value={position} onChange={(e) => setPosition(e.target.value)} className="input !w-full">
+            <option value="">Not set</option>
+            {POSITIONS.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Jersey number"
+            type="number"
+            min={0}
+            value={jerseyNumber}
+            onChange={(e) => setJerseyNumber(e.target.value)}
+          />
+          <Input label="Jersey size" value={jerseySize} onChange={(e) => setJerseySize(e.target.value)} placeholder="e.g. M" />
+        </div>
+        <div className="flex gap-3 pt-2">
+          <Button loading={saving} onClick={handleSave} className="flex-1">Save changes</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};

@@ -3,8 +3,10 @@ import React, { useState } from "react";
 import { clsx } from "clsx";
 import { Wallet, Plus, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { Card, Badge, Button, Input, Modal, Skeleton, EmptyState } from "../../components/ui";
+import { Card, Badge, Button, Input, Modal, Skeleton, EmptyState, ImageUploadField } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
+import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
+import { academyApi } from "../../store/api/academyApi";
 import {
   useListFeesQuery,
   useCreateFeeMutation,
@@ -19,6 +21,44 @@ const STATUS_VARIANT: Record<string, "green" | "red" | "yellow" | "gray"> = {
   partial: "yellow",
   pending: "gray",
   refunded: "gray",
+};
+
+const FeeQrCodeCard: React.FC = () => {
+  const academyId = useCurrentAcademyId();
+  const { data: academy } = academyApi.useGetAcademyByIdQuery(academyId ?? "", { skip: !academyId });
+  const [updateConfig, { isLoading: saving }] = academyApi.useUpdateAcademyConfigMutation();
+
+  if (!academyId) return null;
+
+  const handleChange = async (url: string | undefined) => {
+    try {
+      await updateConfig({ id: academyId, config: { feeQrImageUrl: url } }).unwrap();
+      toast.success(url ? "QR code updated" : "QR code removed");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Couldn't save the QR code — try again");
+    }
+  };
+
+  return (
+    <Card className="mb-6">
+      <h2 className="font-display text-sm font-bold text-white uppercase tracking-wide mb-1">
+        Due-date alert payment QR code
+      </h2>
+      <p className="text-xs text-slate-400 mb-4">
+        Sent as part of the WhatsApp alert guardians get before an installment's due date.
+      </p>
+      <div className="max-w-xs">
+        <ImageUploadField
+          label="Payment QR code"
+          category="fee_qr"
+          value={academy?.feeQrImageUrl}
+          onChange={handleChange}
+          shape="square"
+        />
+      </div>
+      {saving && <p className="text-2xs text-slate-500 mt-2">Saving…</p>}
+    </Card>
+  );
 };
 
 const FeesPage: React.FC = () => {
@@ -78,6 +118,8 @@ const FeesPage: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <FeeQrCodeCard />
 
       {isLoading && (
         <div className="space-y-3">

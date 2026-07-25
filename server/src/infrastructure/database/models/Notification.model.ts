@@ -1,6 +1,9 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-export type NotificationAudience = "all" | "guardians" | "coaches" | "students" | "team";
+// Players are never a notification audience — only their guardians and/or
+// coaches. "team" resolves to that team's roster's guardians plus its
+// coach, still never the players themselves.
+export type NotificationAudience = "guardians" | "coaches" | "both" | "team";
 
 export interface NotificationDocument extends Document {
   franchiseId: mongoose.Types.ObjectId;
@@ -8,6 +11,9 @@ export interface NotificationDocument extends Document {
   body: string;
   audience: NotificationAudience;
   teamId?: mongoose.Types.ObjectId;
+  imageUrl?: string;
+  documentUrl?: string;
+  documentFilename?: string;
   createdBy: mongoose.Types.ObjectId;
   readBy: mongoose.Types.ObjectId[];
   createdAt: Date;
@@ -21,11 +27,14 @@ const NotificationSchema = new Schema<NotificationDocument>(
     body: { type: String, required: true },
     audience: {
       type: String,
-      enum: ["all", "guardians", "coaches", "students", "team"],
+      enum: ["guardians", "coaches", "both", "team"],
       required: true,
-      default: "all",
+      default: "both",
     },
     teamId: { type: Schema.Types.ObjectId, ref: "Team" },
+    imageUrl: { type: String },
+    documentUrl: { type: String },
+    documentFilename: { type: String },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     readBy: [{ type: Schema.Types.ObjectId, ref: "User" }],
   },

@@ -10,6 +10,7 @@ import {
   AppError,
   NotFoundError,
   ConflictError,
+  BadRequestError,
 } from "../../../shared/errors/AppError";
 import {
   CreateStudentDto,
@@ -26,6 +27,22 @@ export class StudentUseCases {
     private studentRepo: IStudentRepository,
     private userRepo: IUserRepository,
   ) {}
+
+  // Used both at registration and when assigning a player to a team after
+  // the fact — a team picked from a stale dropdown, or a crafted request,
+  // can never silently attach a player to a team in a different franchise.
+  private async validateTeamAssignment(franchiseId: string, teamId: string): Promise<void> {
+    const team = await TeamModel.findOne({
+      _id: teamId,
+      franchiseId,
+      deletedAt: { $exists: false },
+    })
+      .select("_id")
+      .lean();
+    if (!team) {
+      throw new BadRequestError("That team doesn't exist in this player's franchise");
+    }
+  }
 
   async createStudent(
     dto: CreateStudentDto,
@@ -90,6 +107,9 @@ export class StudentUseCases {
     }
 
     // 3. Create student document, linked to both accounts
+    if (dto.teamId) {
+      await this.validateTeamAssignment(dto.franchiseId, dto.teamId);
+    }
     const studentData: Partial<StudentEntity> = {
       userId: studentUser.id,
       franchiseId: dto.franchiseId,
@@ -184,12 +204,25 @@ export class StudentUseCases {
     id: string,
     dto: UpdateStudentDto,
   ): Promise<StudentEntity> {
-    const { dateOfBirth, ...rest } = dto;
+    const { dateOfBirth, teamId, ...rest } = dto;
     const updateData: Partial<StudentEntity> = {
       ...rest,
     };
     if (dateOfBirth) {
       updateData.dateOfBirth = new Date(dateOfBirth);
+    }
+    if (teamId !== undefined) {
+      if (teamId) {
+        const existing = await this.studentRepo.findById(id);
+        if (!existing) throw new NotFoundError("Student");
+        await this.validateTeamAssignment(existing.franchiseId, teamId);
+      }
+      // null explicitly clears the assignment (unassign from team); a
+      // string id sets/reassigns it. StudentEntity's teamId is typed as
+      // string | undefined for normal reads, but the repository passes
+      // this straight through to Mongoose's $set, where null is exactly
+      // what removes the reference — hence the narrow cast here.
+      (updateData as Record<string, unknown>).teamId = teamId;
     }
     const student = await this.studentRepo.update(id, updateData);
     if (!student) throw new NotFoundError("Student");

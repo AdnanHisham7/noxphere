@@ -10,17 +10,24 @@ import { config } from '../../config/app.config';
 import { logger } from '../../shared/utils/logger';
 import { UserNotificationModel } from '../database/models/UserNotification.model';
 import { UserModel } from '../database/models/User.model';
+import { FranchiseModel } from '../database/models/Franchise.model';
+import { AcademyModel } from '../database/models/Academy.model';
+import { whatsAppService } from './WhatsAppService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type NotificationType =
   | 'attendance_present'
   | 'attendance_absent'
   | 'attendance_late'
+  | 'attendance_repeated_absence'
   | 'session_reminder'
   | 'session_location_change'
+  | 'session_created'
   | 'fee_reminder'
+  | 'fee_due_soon'
   | 'fee_paid'
   | 'fee_overdue'
+  | 'payment_receipt'
   | 'performance_updated'
   | 'selection_updated'
   | 'transfer_request'
@@ -35,9 +42,16 @@ export interface SendNotificationOptions {
   body: string;
   data?: Record<string, string>;
   franchiseId?: string;
-  channels?: ('push' | 'email' | 'sms')[];
+  channels?: ('push' | 'email' | 'sms' | 'whatsapp')[];
   emailSubject?: string;
   emailHtml?: string;
+  // WhatsApp-specific content. When omitted, the WhatsApp channel falls
+  // back to a plain text message using `title`/`body`. Providing
+  // whatsappImageUrl or whatsappDocumentUrl sends that media instead of
+  // (not in addition to) a text message, with `body` as the caption.
+  whatsappImageUrl?: string;
+  whatsappDocumentUrl?: string;
+  whatsappDocumentFilename?: string;
 }
 
 // ─── Initialize Firebase Admin ────────────────────────────────────────────────
@@ -82,7 +96,7 @@ export class NotificationService {
     const channels = opts.channels ?? ['push'];
 
     // Fetch users in parallel
-    const users = await UserModel.find({ _id: { $in: opts.userIds }, isActive: true }).select('email fcmTokens firstName');
+    const users = await UserModel.find({ _id: { $in: opts.userIds }, isActive: true }).select('email fcmTokens firstName phone');
 
     const tasks: Promise<void>[] = [];
 
@@ -92,11 +106,39 @@ export class NotificationService {
     if (channels.includes('email') && opts.emailSubject) {
       tasks.push(this.sendEmail(users, opts));
     }
+    if (channels.includes('whatsapp')) {
+      tasks.push(this.sendWhatsApp(users, opts));
+    }
 
     await Promise.allSettled(tasks);
 
     // Persist in-app notifications
     await this.persistNotifications(users.map((u) => u._id.toString()), opts);
+  }
+
+  /**
+   * Resolves the academy name to stamp on outgoing WhatsApp messages, from
+   * either a franchiseId or an academyId directly. Falls back to a
+   * generic label rather than throwing — a lookup failure here should
+   * never block the alert that triggered it.
+   */
+  private async resolveAcademyName(franchiseId?: string, academyId?: string): Promise<string> {
+    try {
+      if (academyId) {
+        const academy = await AcademyModel.findById(academyId).select('name').lean();
+        if (academy) return academy.name;
+      }
+      if (franchiseId) {
+        const franchise = await FranchiseModel.findById(franchiseId).select('academyId').lean();
+        if (franchise) {
+          const academy = await AcademyModel.findById(franchise.academyId).select('name').lean();
+          if (academy) return academy.name;
+        }
+      }
+    } catch (err) {
+      logger.error('[NotificationService] Academy name lookup failed:', err);
+    }
+    return 'Your Academy';
   }
 
   /**
@@ -146,6 +188,46 @@ export class NotificationService {
       } catch (err) {
         logger.error('[NotificationService] FCM error:', err);
       }
+    }
+  }
+
+  /**
+   * Send a WhatsApp message to every user that has a phone number on
+   * file. Users without one are silently skipped rather than failing the
+   * whole batch — this is a defensive fallback only; phone is a required
+   * field on every user account going forward (see UsersUseCases).
+   */
+  private async sendWhatsApp(users: any[], opts: SendNotificationOptions): Promise<void> {
+    const academyName = await this.resolveAcademyName(opts.franchiseId);
+    const recipients = users.filter((u) => !!u.phone);
+    if (recipients.length === 0) return;
+
+    const tasks = recipients.map((u) => {
+      if (opts.whatsappDocumentUrl) {
+        return whatsAppService.sendDocument({
+          to: u.phone,
+          academyName,
+          caption: opts.body,
+          documentUrl: opts.whatsappDocumentUrl,
+          filename: opts.whatsappDocumentFilename ?? 'document.pdf',
+        });
+      }
+      if (opts.whatsappImageUrl) {
+        return whatsAppService.sendImage({
+          to: u.phone,
+          academyName,
+          caption: opts.body,
+          imageUrl: opts.whatsappImageUrl,
+        });
+      }
+      return whatsAppService.sendText({ to: u.phone, academyName, body: `${opts.title}\n${opts.body}` });
+    });
+
+    const results = await Promise.allSettled(tasks);
+    console.log(`[NotificationService] WhatsApp sent: ${results.filter((r) => r.status === 'fulfilled').length}/${recipients.length} delivered`);
+    const failures = results.filter((r) => r.status === 'rejected').length;
+    if (failures > 0) {
+      logger.warn(`[NotificationService] WhatsApp delivery failed for ${failures}/${recipients.length} recipients`);
     }
   }
 
@@ -206,6 +288,92 @@ export class NotificationService {
       ...messages[status],
       franchiseId,
       channels: ['push'],
+    });
+  }
+
+  /**
+   * Scenario 1 — a student has been absent for `streakDays` consecutive
+   * sessions. Sent only to guardians, as both a system notification and a
+   * WhatsApp text message.
+   */
+  async sendRepeatedAbsenceAlert(guardianIds: string[], studentName: string, streakDays: number, franchiseId: string) {
+    await this.send({
+      userIds: guardianIds,
+      type: 'attendance_repeated_absence',
+      title: 'Repeated Absence Alert',
+      body: `${studentName} has been absent for ${streakDays} consecutive sessions. Please reach out to the academy if there's an issue we should know about.`,
+      franchiseId,
+      channels: ['push', 'whatsapp'],
+    });
+  }
+
+  /**
+   * Scenario 2 — an installment is due in `daysUntilDue` days. Sent as a
+   * system notification plus a WhatsApp text+image message, where the
+   * image is the academy's configured payment QR code.
+   */
+  async sendFeeDueAlert(
+    guardianIds: string[],
+    studentName: string,
+    amount: number,
+    dueDate: string,
+    daysUntilDue: number,
+    franchiseId: string,
+    qrImageUrl?: string,
+  ) {
+    const body = `₹${amount.toLocaleString('en-IN')} for ${studentName} is due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}, on ${dueDate}. Please pay to avoid disruption to training.${qrImageUrl ? ' Scan the attached QR code to pay instantly.' : ''}`;
+    await this.send({
+      userIds: guardianIds,
+      type: 'fee_due_soon',
+      title: 'Installment Due Soon',
+      body,
+      franchiseId,
+      channels: ['push', 'whatsapp'],
+      whatsappImageUrl: qrImageUrl,
+    });
+  }
+
+  /**
+   * Scenario 3 — a manager has just recorded a payment. Sent as a system
+   * notification plus a WhatsApp text+document message carrying the
+   * generated receipt.
+   */
+  async sendPaymentReceiptAlert(
+    guardianIds: string[],
+    studentName: string,
+    amount: number,
+    receiptUrl: string,
+    franchiseId: string,
+  ) {
+    await this.send({
+      userIds: guardianIds,
+      type: 'payment_receipt',
+      title: 'Payment Received',
+      body: `We've received a payment of ₹${amount.toLocaleString('en-IN')} for ${studentName}. Your receipt is attached.`,
+      franchiseId,
+      channels: ['push', 'whatsapp'],
+      whatsappDocumentUrl: receiptUrl,
+      whatsappDocumentFilename: `receipt-${studentName.replace(/\s+/g, '-').toLowerCase()}.pdf`,
+    });
+  }
+
+  /**
+   * Scenario 4 — a manager has just created a session. Sent to the
+   * assigned coach only, as a system notification plus a WhatsApp text
+   * message with the session details.
+   */
+  async sendSessionCreatedAlert(
+    coachId: string,
+    sessionSummary: string,
+    franchiseId: string,
+  ) {
+    await this.send({
+      userIds: [coachId],
+      type: 'session_created',
+      title: 'New Session Scheduled',
+      body: sessionSummary,
+      franchiseId,
+      channels: ['push', 'whatsapp'],
     });
   }
 

@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FolderOpen,
+  Settings,
   type LucideIcon,
 } from 'lucide-react';
 import { RootState } from '../../store';
@@ -59,6 +60,7 @@ const navConfig: Record<string, NavItem[]> = {
     { path: '/schedule', label: 'Sessions', icon: CalendarClock },
     { path: '/resources', label: 'Resources', icon: FolderOpen },
     { path: '/notifications', label: 'Alerts', icon: Bell },
+    { path: '/settings', label: 'Settings', icon: Settings },
   ],
   coach: [
     { path: '/coach/dashboard', label: 'Dashboard', icon: LayoutDashboard },

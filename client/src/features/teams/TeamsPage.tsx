@@ -5,6 +5,7 @@ import { Plus, Users, Trash2, Swords } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { Card, Button, Input, Modal, Badge, Skeleton, EmptyState, ImageUploadField } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
+import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import {
   useListTeamsQuery,
   useCreateTeamMutation,
@@ -14,19 +15,23 @@ import {
   type Team,
 } from "../../store/api/teamsApi";
 import { useGetUsersQuery } from "../../store/api/usersApi";
+import { academyApi } from "../../store/api/academyApi";
 
 const TeamsPage: React.FC = () => {
   const navigate = useNavigate();
   const franchiseId = useCurrentFranchiseId();
+  const academyId = useCurrentAcademyId();
   const { data: teams, isLoading, isError } = useListTeamsQuery(
     { franchiseId: franchiseId ?? "" },
     { skip: !franchiseId },
   );
   const { data: coachesResult } = useGetUsersQuery(
-    { roles: "coach", franchiseId: franchiseId ?? "", isActive: "true", limit: 100 },
-    { skip: !franchiseId },
+    { roles: "coach", academyId: academyId ?? "", isActive: "true", limit: 100 },
+    { skip: !academyId },
   );
   const coaches = coachesResult?.data ?? [];
+  const { data: academy } = academyApi.useGetAcademyByIdQuery(academyId ?? "", { skip: !academyId });
+  const categories = academy?.ageGroups ?? [];
   const [createTeam, { isLoading: creating }] = useCreateTeamMutation();
   const [updateTeam] = useUpdateTeamMutation();
   const [deleteTeam] = useDeleteTeamMutation();
@@ -195,7 +200,7 @@ const TeamsPage: React.FC = () => {
                       onClick={() => setBrandingTeamId(team.id)}
                       className="text-xs text-slate-400 hover:text-white transition-colors"
                     >
-                      Edit branding
+                      Edit
                     </button>
                     <button
                       onClick={() => setSelectedTeamId(team.id)}
@@ -222,7 +227,24 @@ const TeamsPage: React.FC = () => {
       <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="New team" size="md">
         <form onSubmit={handleCreate} className="space-y-4">
           <Input label="Team name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. U-15 Eagles" required />
-          <Input label="Age group" value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)} placeholder="e.g. U-15" required />
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+              Age group
+            </label>
+            <select value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)} className="input !w-full" required>
+              <option value="" disabled>
+                {categories.length === 0 ? "No categories set up yet" : "Select a category"}
+              </option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            {categories.length === 0 && (
+              <p className="text-2xs text-slate-500 mt-1">Add categories from Settings first.</p>
+            )}
+          </div>
           <div>
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
               Coach (optional)
@@ -274,6 +296,7 @@ const TeamsPage: React.FC = () => {
       {brandingTeamId && (
         <TeamBrandingModal
           team={teams?.find((t) => t.id === brandingTeamId) ?? null}
+          categories={categories}
           onClose={() => setBrandingTeamId(null)}
         />
       )}
@@ -308,8 +331,14 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({ te
 
 export default TeamsPage;
 
-const TeamBrandingModal: React.FC<{ team: Team | null; onClose: () => void }> = ({ team, onClose }) => {
+const TeamBrandingModal: React.FC<{ team: Team | null; categories: string[]; onClose: () => void }> = ({
+  team,
+  categories,
+  onClose,
+}) => {
   const [updateTeam, { isLoading: saving }] = useUpdateTeamMutation();
+  const [name, setName] = useState(team?.name ?? "");
+  const [ageGroup, setAgeGroup] = useState(team?.ageGroup ?? "");
   const [logoUrl, setLogoUrl] = useState(team?.logoUrl);
   const [bannerUrl, setBannerUrl] = useState(team?.bannerUrl);
   const [primaryColor, setPrimaryColor] = useState(team?.primaryColor ?? "#1f2937");
@@ -318,18 +347,48 @@ const TeamBrandingModal: React.FC<{ team: Team | null; onClose: () => void }> = 
   if (!team) return null;
 
   const handleSave = async () => {
+    if (!name.trim()) {
+      toast.error("Team name can't be empty");
+      return;
+    }
+    if (!ageGroup) {
+      toast.error("Select an age category");
+      return;
+    }
     try {
-      await updateTeam({ id: team.id, body: { logoUrl, bannerUrl, primaryColor, secondaryColor } }).unwrap();
-      toast.success("Team branding updated");
+      await updateTeam({
+        id: team.id,
+        body: { name: name.trim(), ageGroup, logoUrl, bannerUrl, primaryColor, secondaryColor },
+      }).unwrap();
+      toast.success("Team updated");
       onClose();
     } catch {
-      toast.error("Couldn't update branding — try again");
+      toast.error("Couldn't update team — try again");
     }
   };
 
   return (
-    <Modal isOpen onClose={onClose} title={`Edit ${team.name} branding`} size="md">
+    <Modal isOpen onClose={onClose} title={`Edit ${team.name}`} size="md">
       <div className="space-y-4">
+        <Input label="Team name" value={name} onChange={(e) => setName(e.target.value)} required />
+        <div>
+          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+            Age group
+          </label>
+          <select value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)} className="input !w-full">
+            <option value="" disabled>
+              Select a category
+            </option>
+            {/* The team's current category is always offered even if it was
+                since removed from academy settings, so switching away is
+                the only way to lose it — never a silent forced blank. */}
+            {(categories.includes(ageGroup) ? categories : [ageGroup, ...categories]).map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <ImageUploadField label="Team logo" category="team_logo" value={logoUrl} onChange={setLogoUrl} shape="square" />
           <ImageUploadField label="Team banner" category="team_banner" value={bannerUrl} onChange={setBannerUrl} shape="wide" />
@@ -351,7 +410,7 @@ const TeamBrandingModal: React.FC<{ team: Team | null; onClose: () => void }> = 
             />
           </div>
         </div>
-        <Button loading={saving} onClick={handleSave} className="w-full">Save branding</Button>
+        <Button loading={saving} onClick={handleSave} className="w-full">Save changes</Button>
       </div>
     </Modal>
   );

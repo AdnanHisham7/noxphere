@@ -4,6 +4,13 @@ import { IUserRepository } from "../../../domain/repositories/IUserRepository";
 import { UserEntity, UserRole, UserPermissions, defaultPermissions } from "../../../domain/entities/User.entity";
 import { NotFoundError, ConflictError, BadRequestError } from "../../../shared/errors/AppError";
 import { CreateUserDto, UpdateUserDto, ResetPasswordDto } from "../../dtos/users.dto";
+import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
+
+export interface RequestingUser {
+  sub: string;
+  role: UserRole;
+  franchiseId?: string;
+}
 
 function sanitize(user: UserEntity) {
   const { passwordHash, ...rest } = user;
@@ -16,6 +23,7 @@ export class UsersUseCases {
   async listUsers(filters: {
     roles?: string;
     franchiseId?: string;
+    academyId?: string;
     isActive?: string;
     search?: string;
     page?: number;
@@ -24,10 +32,23 @@ export class UsersUseCases {
     const roles = filters.roles
       ? (filters.roles.split(",").filter(Boolean) as UserRole[])
       : undefined;
+
+    // Academy-scoped listing (used to find coaches across every franchise
+    // of an academy) also needs to catch any legacy coach that only ever
+    // had a franchiseId set — resolve that academy's franchise ids so the
+    // repository can match either shape.
+    let franchiseIds: string[] | undefined;
+    if (filters.academyId) {
+      const franchises = await FranchiseModel.find({ academyId: filters.academyId }).select("_id").lean();
+      franchiseIds = franchises.map((f) => f._id.toString());
+    }
+
     const result = await this.userRepo.searchUsers(
       {
         roles,
         franchiseId: filters.franchiseId,
+        academyId: filters.academyId,
+        franchiseIds,
         isActive: filters.isActive === "true" ? true : filters.isActive === "false" ? false : undefined,
         search: filters.search,
       },
@@ -42,9 +63,36 @@ export class UsersUseCases {
     return sanitize(user);
   }
 
-  async createUser(dto: CreateUserDto) {
+  async createUser(dto: CreateUserDto, requester?: RequestingUser) {
     const existing = await this.userRepo.findByEmail(dto.email);
     if (existing) throw new ConflictError("A user with this email already exists");
+
+    // A coach belongs to an academy, not to a single franchise within it —
+    // this is what lets them operate across every franchise of that
+    // academy without ever being bound to one branch. A manager's own
+    // academy is resolved automatically from their franchise; a
+    // super_admin (who isn't tied to any single academy) must supply
+    // academyId explicitly.
+    let academyId: string | undefined;
+    let franchiseId: string | undefined = dto.franchiseId;
+    if (dto.role === "coach") {
+      academyId = dto.academyId;
+      if (!academyId && requester?.role === "manager") {
+        if (!requester.franchiseId) {
+          throw new BadRequestError("Your account isn't linked to a franchise, so a coach's academy can't be resolved");
+        }
+        const franchise = await FranchiseModel.findById(requester.franchiseId).select("academyId").lean();
+        if (!franchise) throw new NotFoundError("Franchise");
+        academyId = franchise.academyId.toString();
+      }
+      if (!academyId) {
+        throw new BadRequestError("academyId is required to create a coach");
+      }
+      // Coaches are never scoped by franchiseId going forward — any value
+      // sent for a coach is ignored so a stale/incorrect binding can never
+      // be created.
+      franchiseId = undefined;
+    }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const user = await this.userRepo.create({
@@ -58,7 +106,8 @@ export class UsersUseCases {
       isEmailVerified: false,
       permissions: defaultPermissions[dto.role],
       fcmTokens: [],
-      franchiseId: dto.franchiseId,
+      franchiseId,
+      academyId,
     });
     return sanitize(user);
   }

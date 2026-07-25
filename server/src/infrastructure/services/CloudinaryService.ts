@@ -8,13 +8,21 @@ export type UploadCategory =
   | "player_photo"
   | "team_logo"
   | "team_banner"
-  | "coach_resource";
+  | "coach_resource"
+  | "fee_qr"
+  | "fee_receipt"
+  | "notification_image"
+  | "notification_document";
 
 const FOLDER_BY_CATEGORY: Record<UploadCategory, string> = {
   player_photo: "noxphere/players/photos",
   team_logo: "noxphere/teams/logos",
   team_banner: "noxphere/teams/banners",
   coach_resource: "noxphere/resources",
+  fee_qr: "noxphere/fees/qr",
+  fee_receipt: "noxphere/fees/receipts",
+  notification_image: "noxphere/notifications/images",
+  notification_document: "noxphere/notifications/documents",
 };
 
 // Resources (documents/PDFs) are handled as "raw" uploads on Cloudinary;
@@ -24,6 +32,10 @@ const RESOURCE_TYPE_BY_CATEGORY: Record<UploadCategory, "image" | "raw"> = {
   team_logo: "image",
   team_banner: "image",
   coach_resource: "raw",
+  fee_qr: "image",
+  fee_receipt: "raw",
+  notification_image: "image",
+  notification_document: "raw",
 };
 
 let configured = false;
@@ -57,9 +69,9 @@ export class CloudinaryService {
         {
           folder: FOLDER_BY_CATEGORY[category],
           resource_type: RESOURCE_TYPE_BY_CATEGORY[category],
-          use_filename: true,
+          public_id: originalFilename,   // includes .pdf
+          use_filename: false,
           unique_filename: true,
-          filename_override: originalFilename,
           overwrite: false,
         },
         (error, result?: UploadApiResponse) => {

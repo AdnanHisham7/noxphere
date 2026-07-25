@@ -10,6 +10,10 @@ coachPortalRouter.get("/dashboard", (req, res, next) => {
   req.app.locals.controllers.coachPortal.getMyDashboard(req, res, next);
 });
 
+coachPortalRouter.get("/franchises", (req, res, next) => {
+  req.app.locals.controllers.coachPortal.getMyFranchises(req, res, next);
+});
+
 coachPortalRouter.get("/roster", (req, res, next) => {
   req.app.locals.controllers.coachPortal.getMyRoster(req, res, next);
 });

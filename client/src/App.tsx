@@ -46,6 +46,9 @@ const FranchiseManagementPage = lazy(
 const CoachesManagementPage = lazy(
   () => import("./features/coaches/CoachesManagementPage"),
 );
+const AcademySettingsPage = lazy(
+  () => import("./features/settings/AcademySettingsPage"),
+);
 const GuardianDashboardPage = lazy(
   () => import("./features/guardian/GuardianDashboardPage"),
 );
@@ -162,6 +165,7 @@ const App: React.FC = () => (
                 <Route path="/teams" element={<TeamsPage />} />
                 <Route path="/teams/:id/manage" element={<TeamManagePage />} />
                 <Route path="/coaches" element={<CoachesManagementPage />} />
+                <Route path="/settings" element={<AcademySettingsPage />} />
               </Route>
 
               {/* Manager + Super Admin */}

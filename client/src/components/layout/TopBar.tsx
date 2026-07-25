@@ -1,15 +1,16 @@
 // src/components/layout/TopBar.tsx
 import { useSelector, useDispatch } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { Building2, ChevronDown, Check, Bell, Repeat2, Lock } from 'lucide-react';
+import { Building2, ChevronDown, Check, Bell, Repeat2 } from 'lucide-react';
 import { markAllRead } from '../../store/slices/notificationSlice';
 import { setActiveFranchise } from '../../store/slices/uiSlice';
 import { Avatar } from '../ui';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import { RootState } from '../../store';
 import { useCurrentFranchiseId } from '../../hooks/useCurrentFranchiseId';
 import { useGetFranchiseByIdQuery, useGetFranchisesQuery } from '../../store/api/franchiseApi';
+import { useGetMyFranchisesQuery } from '../../store/api/coachPortalApi';
 import { useTransferWallEnabled } from '../../hooks/useTransferWallEnabled';
 
 const FranchiseSwitcher: React.FC = () => {
@@ -77,35 +78,83 @@ const FranchiseSwitcher: React.FC = () => {
   );
 };
 
-// A coach is locked to the single franchise they were assigned at login —
-// they can never switch it, so unlike FranchiseSwitcher this renders no
-// dropdown, no chevron, and has no click handler. It exists purely to show
-// the coach which franchise they're operating in.
-const LockedFranchiseBadge: React.FC = () => {
+// A coach can now operate in any franchise of their academy where they
+// have an assigned team or session — this list comes straight from
+// /coach/franchises, so it can never show (or let them switch into) a
+// franchise they don't actually have anything in. If nothing is active
+// yet (fresh login, or a stale selection from a franchise they've since
+// lost access to), the first result is auto-selected.
+const CoachFranchiseSwitcher: React.FC = () => {
+  const dispatch = useDispatch();
   const currentFranchiseId = useCurrentFranchiseId();
-  const { data: currentFranchise } = useGetFranchiseByIdQuery(currentFranchiseId ?? '', {
-    skip: !currentFranchiseId,
-  });
+  const [open, setOpen] = useState(false);
+  const { data: franchises } = useGetMyFranchisesQuery();
 
-  if (!currentFranchiseId) {
+  useEffect(() => {
+    if (!franchises || franchises.length === 0) return;
+    const stillValid = franchises.some((f) => f.id === currentFranchiseId);
+    if (!stillValid) {
+      dispatch(setActiveFranchise(franchises[0].id));
+    }
+  }, [franchises, currentFranchiseId, dispatch]);
+
+  const currentFranchise = franchises?.find((f) => f.id === currentFranchiseId);
+
+  if (!franchises || franchises.length === 0) {
     return (
       <div className="hidden sm:flex items-center gap-2 bg-pitch-800 border border-white/10 rounded px-3 py-1.5">
         <Building2 size={13} className="text-volt-400" />
-        <span className="text-xs text-slate-400 font-medium">No franchise assigned</span>
+        <span className="text-xs text-slate-400 font-medium">No franchise assigned yet</span>
+      </div>
+    );
+  }
+
+  if (franchises.length === 1) {
+    return (
+      <div className="hidden sm:flex items-center gap-2 bg-pitch-800 border border-white/10 rounded px-3 py-1.5">
+        <Building2 size={13} className="text-volt-400" />
+        <span className="text-xs text-slate-300 font-medium max-w-40 truncate">{franchises[0].name}</span>
       </div>
     );
   }
 
   return (
-    <div
-      className="hidden sm:flex items-center gap-2 bg-pitch-800 border border-white/10 rounded px-3 py-1.5"
-      title="Your franchise assignment is fixed and cannot be changed"
-    >
-      <Building2 size={13} className="text-volt-400" />
-      <span className="text-xs text-slate-300 font-medium max-w-40 truncate">
-        {currentFranchise?.name ?? 'Loading…'}
-      </span>
-      <Lock size={11} className="text-slate-600" />
+    <div className="relative hidden sm:block">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 bg-pitch-800 border border-white/10 rounded px-3 py-1.5 hover:border-white/20 transition-colors"
+      >
+        <Building2 size={13} className="text-volt-400" />
+        <span className="text-xs text-slate-300 font-medium max-w-40 truncate">
+          {currentFranchise?.name ?? 'Loading…'}
+        </span>
+        <ChevronDown size={12} className="text-slate-600" />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-11 w-64 card shadow-panel z-50 animate-slide-up py-1.5">
+            <p className="px-3 py-1.5 section-title">Switch franchise</p>
+            {franchises.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => {
+                  dispatch(setActiveFranchise(f.id));
+                  setOpen(false);
+                }}
+                className={clsx(
+                  'w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-white/4 transition-colors',
+                  f.id === currentFranchiseId ? 'text-volt-400 font-semibold' : 'text-slate-300',
+                )}
+              >
+                <span className="truncate">{f.name}</span>
+                {f.id === currentFranchiseId && <Check size={13} />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 };
@@ -123,7 +172,7 @@ export const TopBar: React.FC = () => {
       {/* Left: Franchise selector / breadcrumb */}
       <div className="flex items-center gap-4">
         {user?.role === 'coach' ? (
-          <LockedFranchiseBadge />
+          <CoachFranchiseSwitcher />
         ) : (
           user?.role !== 'super_admin' && <FranchiseSwitcher />
         )}

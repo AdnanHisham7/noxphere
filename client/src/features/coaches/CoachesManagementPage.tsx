@@ -2,31 +2,34 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { clsx } from "clsx";
-import { UserCog, Plus, KeyRound, Power, Search } from "lucide-react";
+import { UserCog, Plus, KeyRound, Power, Search, Pencil } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { Button, Input, Badge, Avatar, Modal, Skeleton, EmptyState } from "../../components/ui";
-import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
+import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
 import {
   useGetUsersQuery,
   useCreateUserMutation,
+  useUpdateUserMutation,
   useToggleUserActiveMutation,
   useResetUserPasswordMutation,
+  type ManagedUser,
 } from "../../store/api/usersApi";
 
 const CoachesManagementPage: React.FC = () => {
-  const franchiseId = useCurrentFranchiseId();
+  const academyId = useCurrentAcademyId();
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [passwordModal, setPasswordModal] = useState<{ id: string; name: string } | null>(null);
+  const [editingCoach, setEditingCoach] = useState<ManagedUser | null>(null);
 
   const { data: coachesResult, isLoading, isError } = useGetUsersQuery(
-    { roles: "coach", franchiseId: franchiseId ?? "", search: search || undefined, limit: 100 },
-    { skip: !franchiseId },
+    { roles: "coach", academyId: academyId ?? "", search: search || undefined, limit: 100 },
+    { skip: !academyId },
   );
   const coaches = coachesResult?.data ?? [];
 
-  const { data: teams } = useListTeamsQuery({ franchiseId: franchiseId ?? "" }, { skip: !franchiseId });
+  const { data: teams } = useListTeamsQuery({ academyId: academyId ?? "" }, { skip: !academyId });
   const teamsByCoach = new Map<string, string[]>();
   for (const t of teams ?? []) {
     if (!t.coach?._id) continue;
@@ -48,7 +51,7 @@ const CoachesManagementPage: React.FC = () => {
     }
   };
 
-  if (!franchiseId) {
+  if (!academyId) {
     return (
       <EmptyState
         icon={<UserCog size={28} />}
@@ -65,7 +68,7 @@ const CoachesManagementPage: React.FC = () => {
           <p className="section-title mb-1">Staff</p>
           <h1 className="font-display font-extrabold text-white text-2xl uppercase tracking-tight">Coaches</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {isLoading ? "Loading…" : `${coachesResult?.total ?? 0} coaches in this franchise`}
+            {isLoading ? "Loading…" : `${coachesResult?.total ?? 0} coaches in this academy`}
           </p>
         </div>
         <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)}>New coach</Button>
@@ -131,6 +134,12 @@ const CoachesManagementPage: React.FC = () => {
 
                 <div className="flex items-center gap-3 pt-2 border-t border-white/5">
                   <button
+                    onClick={() => setEditingCoach(c)}
+                    className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
+                  >
+                    <Pencil size={13} /> Edit
+                  </button>
+                  <button
                     onClick={() => setPasswordModal({ id: c.id, name: `${c.firstName} ${c.lastName}` })}
                     className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-ice-400 transition-colors"
                   >
@@ -151,7 +160,6 @@ const CoachesManagementPage: React.FC = () => {
 
       {showCreate && (
         <CreateCoachModal
-          franchiseId={franchiseId}
           onClose={() => setShowCreate(false)}
           creating={creating}
           onCreate={async (body) => {
@@ -182,16 +190,57 @@ const CoachesManagementPage: React.FC = () => {
           />
         </Modal>
       )}
+
+      {editingCoach && (
+        <EditCoachModal coach={editingCoach} onClose={() => setEditingCoach(null)} />
+      )}
     </div>
   );
 };
 
+const EditCoachModal: React.FC<{ coach: ManagedUser; onClose: () => void }> = ({ coach, onClose }) => {
+  const [updateUser, { isLoading: saving }] = useUpdateUserMutation();
+  const [firstName, setFirstName] = useState(coach.firstName);
+  const [lastName, setLastName] = useState(coach.lastName);
+  const [phone, setPhone] = useState(coach.phone ?? "");
+
+  const handleSave = async () => {
+    if (!firstName.trim() || !lastName.trim()) {
+      toast.error("First and last name are required");
+      return;
+    }
+    try {
+      await updateUser({
+        id: coach.id,
+        data: { firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.trim() || undefined },
+      }).unwrap();
+      toast.success("Coach details updated");
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Couldn't update coach — try again");
+    }
+  };
+
+  return (
+    <Modal isOpen onClose={onClose} title={`Edit ${coach.firstName} ${coach.lastName}`} size="sm">
+      <div className="space-y-4">
+        <Input label="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+        <Input label="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+        <Input label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+        <div className="flex gap-3 pt-2">
+          <Button loading={saving} onClick={handleSave} className="flex-1">Save changes</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
 const CreateCoachModal: React.FC<{
-  franchiseId: string;
   onClose: () => void;
   creating: boolean;
-  onCreate: (body: { email: string; password: string; role: "coach"; firstName: string; lastName: string; phone?: string; franchiseId: string }) => void;
-}> = ({ franchiseId, onClose, creating, onCreate }) => {
+  onCreate: (body: { email: string; password: string; role: "coach"; firstName: string; lastName: string; phone: string }) => void;
+}> = ({ onClose, creating, onCreate }) => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -200,11 +249,11 @@ const CreateCoachModal: React.FC<{
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName || !lastName || !email || password.length < 8) {
+    if (!firstName || !lastName || !email || !phone.trim() || password.length < 8) {
       toast.error("Fill in all required fields (password min. 8 characters)");
       return;
     }
-    onCreate({ email, password, role: "coach", firstName, lastName, phone: phone || undefined, franchiseId });
+    onCreate({ email, password, role: "coach", firstName, lastName, phone: phone.trim() });
   };
 
   return (
@@ -216,7 +265,7 @@ const CreateCoachModal: React.FC<{
           <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
         <Input label="Temporary password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 8 characters" required />
-        <Input label="Phone (optional)" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <Input label="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
         <div className="sm:col-span-2 flex gap-3 pt-2">
           <Button type="submit" className="flex-1" loading={creating}>Create coach</Button>
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>

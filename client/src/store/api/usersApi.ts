@@ -13,6 +13,7 @@ export interface ManagedUser {
   isActive: boolean;
   isEmailVerified: boolean;
   franchiseId?: string;
+  academyId?: string;
   permissions: Record<string, boolean>;
   createdAt: string;
   updatedAt: string;
@@ -30,7 +31,7 @@ export const usersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getUsers: builder.query<
       PaginatedUsers,
-      { roles?: string; franchiseId?: string; isActive?: string; search?: string; page?: number; limit?: number }
+      { roles?: string; franchiseId?: string; academyId?: string; isActive?: string; search?: string; page?: number; limit?: number }
     >({
       query: (params) => ({ url: "/users", params }),
       providesTags: (result) =>
@@ -44,7 +45,7 @@ export const usersApi = baseApi.injectEndpoints({
     }),
     createUser: builder.mutation<
       ManagedUser,
-      { email: string; password: string; role: UserRole; firstName: string; lastName: string; phone?: string; franchiseId?: string }
+      { email: string; password: string; role: UserRole; firstName: string; lastName: string; phone?: string; franchiseId?: string; academyId?: string }
     >({
       query: (body) => ({ url: "/users", method: "POST", body }),
       invalidatesTags: [{ type: "User", id: "LIST" }],

@@ -1,9 +1,10 @@
 // src/features/notifications/NotificationsPage.tsx
 import React, { useState } from "react";
-import { Bell, Plus } from "lucide-react";
+import { Bell, Plus, FileText } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { Card, Badge, Button, Input, Modal, Skeleton, EmptyState } from "../../components/ui";
+import { Card, Badge, Button, Input, Modal, Skeleton, EmptyState, ImageUploadField, DocumentUploadField } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
+import { useListTeamsQuery } from "../../store/api/teamsApi";
 import {
   useListNotificationsQuery,
   useCreateNotificationMutation,
@@ -11,10 +12,9 @@ import {
 } from "../../store/api/adminNotificationsApi";
 
 const AUDIENCE_LABEL: Record<AdminNotification["audience"], string> = {
-  all: "Everyone",
+  both: "Coaches + Guardians",
   guardians: "Guardians",
   coaches: "Coaches",
-  students: "Students",
   team: "One team",
 };
 
@@ -35,7 +35,7 @@ const NotificationsPage: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display text-2xl font-bold text-white uppercase tracking-wide">Notifications</h1>
-          <p className="text-sm text-slate-400 mt-1">Updates sent to guardians, coaches and students</p>
+          <p className="text-sm text-slate-400 mt-1">Updates sent to guardians and coaches</p>
         </div>
         <Button icon={<Plus size={16} />} onClick={() => setShowCompose(true)}>
           Compose
@@ -56,7 +56,7 @@ const NotificationsPage: React.FC = () => {
         <EmptyState
           icon={<Bell size={28} />}
           title="No notifications sent yet"
-          description="Compose your first update to guardians, coaches or students."
+          description="Compose your first update to guardians, coaches, or both."
           action={<Button onClick={() => setShowCompose(true)}>Compose</Button>}
         />
       )}
@@ -69,6 +69,19 @@ const NotificationsPage: React.FC = () => {
               <Badge variant="blue">{AUDIENCE_LABEL[n.audience]}</Badge>
             </div>
             <p className="text-sm text-slate-400 mt-2">{n.body}</p>
+            {n.imageUrl && (
+              <img src={n.imageUrl} alt="" className="mt-3 max-h-40 rounded-lg border border-white/10" />
+            )}
+            {n.documentUrl && (
+              <a
+                href={n.documentUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 text-xs text-volt-400 hover:underline"
+              >
+                <FileText size={13} /> {n.documentFilename ?? "Attached document"}
+              </a>
+            )}
             <p className="text-xs text-slate-600 font-mono mt-3">
               {new Date(n.createdAt).toLocaleString()} · {n.readBy.length} read
             </p>
@@ -89,21 +102,40 @@ const ComposeModal: React.FC<{ isOpen: boolean; onClose: () => void; franchiseId
   franchiseId,
 }) => {
   const [createNotification, { isLoading }] = useCreateNotificationMutation();
+  const { data: teams } = useListTeamsQuery({ franchiseId }, { skip: !franchiseId });
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [audience, setAudience] = useState<AdminNotification["audience"]>("all");
+  const [audience, setAudience] = useState<AdminNotification["audience"]>("both");
+  const [teamId, setTeamId] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
+  const [document, setDocument] = useState<{ url: string; filename: string } | undefined>(undefined);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !body) return;
+    if (audience === "team" && !teamId) {
+      toast.error("Select a team");
+      return;
+    }
     try {
-      await createNotification({ franchiseId, title, body, audience }).unwrap();
+      await createNotification({
+        franchiseId,
+        title,
+        body,
+        audience,
+        teamId: audience === "team" ? teamId : undefined,
+        imageUrl,
+        documentUrl: document?.url,
+        documentFilename: document?.filename,
+      }).unwrap();
       toast.success("Notification sent");
       onClose();
       setTitle("");
       setBody("");
-    } catch {
-      toast.error("Couldn't send notification — try again");
+      setImageUrl(undefined);
+      setDocument(undefined);
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Couldn't send notification — try again");
     }
   };
 
@@ -128,12 +160,42 @@ const ComposeModal: React.FC<{ isOpen: boolean; onClose: () => void; franchiseId
             onChange={(e) => setAudience(e.target.value as AdminNotification["audience"])}
             className="input"
           >
-            <option value="all">Everyone</option>
-            <option value="guardians">Guardians</option>
-            <option value="coaches">Coaches</option>
-            <option value="students">Students</option>
+            <option value="both">Coaches + Guardians</option>
+            <option value="guardians">Guardians only</option>
+            <option value="coaches">Coaches only</option>
+            <option value="team">One team (its coach + its players' guardians)</option>
           </select>
         </div>
+        {audience === "team" && (
+          <div className="space-y-1.5">
+            <label className="label">Team</label>
+            <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className="input" required>
+              <option value="" disabled>
+                Select a team
+              </option>
+              {(teams ?? []).map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} ({t.ageGroup})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        <ImageUploadField
+          label="Image (optional)"
+          category="notification_image"
+          value={imageUrl}
+          onChange={setImageUrl}
+          shape="wide"
+          helperText="Sent as part of the WhatsApp message, and shown here in-app."
+        />
+        <DocumentUploadField
+          label="Document (optional)"
+          category="notification_document"
+          value={document}
+          onChange={setDocument}
+          helperText="Sent as a WhatsApp document attachment, and linked here in-app."
+        />
         <Button type="submit" loading={isLoading} className="w-full">
           Send
         </Button>

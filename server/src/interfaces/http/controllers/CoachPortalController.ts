@@ -15,6 +15,15 @@ export class CoachPortalController {
     }
   };
 
+  getMyFranchises = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const franchises = await this.coachPortalUseCases.getMyFranchises(req.user!.sub);
+      ResponseHandler.success(res, franchises, "Franchises retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
+
   getMyDashboard = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dashboard = await this.coachPortalUseCases.getMyDashboard(req.user!.sub);

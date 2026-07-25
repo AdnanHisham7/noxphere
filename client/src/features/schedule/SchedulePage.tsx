@@ -24,6 +24,7 @@ import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
 import { useGetUsersQuery } from "../../store/api/usersApi";
 import { useGetFranchiseByIdQuery } from "../../store/api/franchiseApi";
+import { academyApi } from "../../store/api/academyApi";
 import {
   useGetSessionsQuery,
   useCreateSessionMutation,
@@ -73,9 +74,11 @@ const SchedulePage: React.FC = () => {
   const { data: allTeams } = useListTeamsQuery({ franchiseId: franchiseId ?? "" }, { skip: !franchiseId });
   const teams = isCoach ? (allTeams ?? []).filter((t) => t.coach?._id === user?.id) : allTeams ?? [];
   const { data: franchise } = useGetFranchiseByIdQuery(franchiseId ?? "", { skip: !franchiseId });
+  const academyId = franchise?.academyId;
+  const { data: academy } = academyApi.useGetAcademyByIdQuery(academyId ?? "", { skip: !academyId });
   const { data: coachesResult } = useGetUsersQuery(
-    { roles: "coach", franchiseId: franchiseId ?? "", isActive: "true", limit: 100 },
-    { skip: !franchiseId || isCoach }
+    { roles: "coach", academyId: academyId ?? "", isActive: "true", limit: 100 },
+    { skip: !academyId || isCoach }
   );
   const coaches = coachesResult?.data ?? [];
 
@@ -421,7 +424,7 @@ const SchedulePage: React.FC = () => {
         <CreateSessionModal
           franchiseId={franchiseId}
           teams={teams ?? []}
-          categories={franchise?.ageGroups ?? []}
+          categories={academy?.ageGroups ?? []}
           coaches={coaches}
           isCoach={isCoach}
           currentUser={user ? { id: user.id, firstName: user.firstName, lastName: user.lastName } : undefined}

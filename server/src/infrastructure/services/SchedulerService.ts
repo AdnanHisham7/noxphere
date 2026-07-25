@@ -12,6 +12,7 @@ import { config } from '../../config/app.config';
 import { logger } from '../../shared/utils/logger';
 import { notificationService } from './NotificationService';
 import { FranchiseModel } from '../database/models/Franchise.model';
+import { AcademyModel } from '../database/models/Academy.model';
 import { StudentModel } from '../database/models/Student.model';
 import { FeeModel } from '../database/models/Fee.model';
 import { UserModel } from '../database/models/User.model';
@@ -66,8 +67,12 @@ sessionReminderQueue.process(async (job) => {
 });
 
 // ─── Fee Reminder Processor ───────────────────────────────────────────────────
+// Scenario: before `academy.dueDateAlertDays` days of an installment's due
+// date, alert the guardian — both a system notification and a WhatsApp
+// text+image message, where the image is the academy's configured
+// payment QR code.
 feeReminderQueue.process(async (job) => {
-  const { feeId } = job.data;
+  const { feeId, installmentNumber } = job.data;
 
   try {
     const fee = await FeeModel.findById(feeId).populate('studentId');
@@ -78,26 +83,28 @@ feeReminderQueue.process(async (job) => {
     const guardianIds = guardians.map((g) => g._id.toString());
     if (guardianIds.length === 0) return;
 
-    // Find the overdue/pending installment
-    const pendingInstallment = fee.installments.find(
-      (inst) => inst.status === 'pending' || inst.status === 'overdue'
-    );
-    if (!pendingInstallment) return;
+    const installment = fee.installments.find((inst) => inst.installmentNumber === installmentNumber);
+    if (!installment || installment.status === 'paid') return;
 
-    await notificationService.sendFeeReminder(
+    const franchise = await FranchiseModel.findById(fee.franchiseId).select('academyId').lean();
+    const academy = franchise ? await AcademyModel.findById(franchise.academyId).select('dueDateAlertDays feeQrImageUrl').lean() : null;
+    const daysUntilDue = academy?.dueDateAlertDays ?? 3;
+
+    await notificationService.sendFeeDueAlert(
       guardianIds,
       `${student.firstName} ${student.lastName}`,
-      pendingInstallment.amount,
-      pendingInstallment.dueDate.toLocaleDateString('en-IN'),
-      fee.franchiseId.toString()
+      installment.amount - installment.paidAmount,
+      installment.dueDate.toLocaleDateString('en-IN'),
+      daysUntilDue,
+      fee.franchiseId.toString(),
+      academy?.feeQrImageUrl,
     );
 
-    // Update reminder count
-    pendingInstallment.reminderSentCount += 1;
-    pendingInstallment.lastReminderAt = new Date();
+    installment.reminderSentCount += 1;
+    installment.lastReminderAt = new Date();
     await fee.save();
 
-    logger.info(`[Scheduler] Fee reminder sent for student ${student.firstName} ${student.lastName}`);
+    logger.info(`[Scheduler] Fee due-soon alert sent for student ${student.firstName} ${student.lastName}`);
   } catch (err) {
     logger.error('[Scheduler] Fee reminder error:', err);
     throw err;
@@ -148,41 +155,29 @@ export class SchedulerService {
   }
 
   /**
-   * Schedule fee reminders for a specific fee record
+   * Schedule the installment-due-soon reminder for a specific fee
+   * installment, timed `academy.dueDateAlertDays` days before its due
+   * date (default 3). Called once per installment when a fee record is
+   * created — see AdminFeesUseCases.createFee.
    */
-  async scheduleFeeReminders(feeId: string, dueDate: Date): Promise<void> {
+  async scheduleFeeReminders(feeId: string, installmentNumber: number, dueDate: Date, franchiseId: string): Promise<void> {
     const now = new Date();
+    const franchise = await FranchiseModel.findById(franchiseId).select('academyId').lean();
+    const academy = franchise ? await AcademyModel.findById(franchise.academyId).select('dueDateAlertDays').lean() : null;
+    const daysBefore = academy?.dueDateAlertDays ?? 3;
 
-    // 3 days before
-    const threeDaysBefore = new Date(dueDate.getTime() - 3 * 24 * 60 * 60_000);
-    if (threeDaysBefore > now) {
-      await feeReminderQueue.add({ feeId }, {
-        delay: threeDaysBefore.getTime() - now.getTime(),
-        jobId: `fee-3day-${feeId}`,
-      });
-    }
+    const alertTime = new Date(dueDate.getTime() - daysBefore * 24 * 60 * 60_000);
+    if (alertTime <= now) return; // due date is already too close/past for the configured lead time
 
-    // On due date (morning)
-    const onDueDate = new Date(dueDate);
-    onDueDate.setHours(9, 0, 0, 0);
-    if (onDueDate > now) {
-      await feeReminderQueue.add({ feeId }, {
-        delay: onDueDate.getTime() - now.getTime(),
-        jobId: `fee-due-${feeId}`,
-      });
-    }
+    await feeReminderQueue.add(
+      { feeId, installmentNumber },
+      {
+        delay: alertTime.getTime() - now.getTime(),
+        jobId: `fee-due-${feeId}-${installmentNumber}`,
+      },
+    );
 
-    // 3 days after (overdue)
-    const threeDaysAfter = new Date(dueDate.getTime() + 3 * 24 * 60 * 60_000);
-    if (threeDaysAfter > now) {
-      await feeReminderQueue.add({ feeId }, {
-        delay: threeDaysAfter.getTime() - now.getTime(),
-        jobId: `fee-overdue-${feeId}`,
-        repeat: { every: 3 * 24 * 60 * 60_000, limit: 3 }, // repeat 3x
-      });
-    }
-
-    logger.info(`[Scheduler] Fee reminders scheduled for fee ${feeId}`);
+    logger.info(`[Scheduler] Fee due-soon reminder scheduled for fee ${feeId} installment ${installmentNumber}, ${daysBefore} day(s) before due date`);
   }
 
   /**

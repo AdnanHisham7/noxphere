@@ -172,6 +172,21 @@ export class ScheduleUseCases {
     const populated = await SessionModel.findById(session.id)
       .populate("teamId", "name ageGroup")
       .populate("coachId", "firstName lastName");
+
+    // A coach scheduling their own session already knows about it — only
+    // notify when a manager created it on the coach's behalf.
+    if (!requestingCoachId) {
+      const target = dto.targetType === "team" ? (populated?.teamId as any)?.name : dto.category;
+      const sessionDate = new Date(dto.date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+      await notificationService
+        .sendSessionCreatedAlert(
+          dto.coachId,
+          `A new session has been scheduled for ${target ?? "your squad"} on ${sessionDate}, ${dto.startTime}–${dto.endTime} at ${dto.location}.`,
+          dto.franchiseId,
+        )
+        .catch(() => undefined);
+    }
+
     return toCard(populated);
   }
 
@@ -401,6 +416,48 @@ export class ScheduleUseCases {
           session.franchiseId.toString(),
         )
         .catch(() => undefined);
+    }
+
+    // Scenario: N consecutive absent days (N = academy.absentAlertDays,
+    // default 5) triggers a separate, stronger "repeated absence" alert
+    // to guardians — distinct from the per-session absent notification
+    // above. This only fires guardians for students actually marked
+    // absent just now, and only once per streak (a record's
+    // guardianNotified flag stops it firing again on every subsequent
+    // absence once the streak has already been reported).
+    const justAbsent = records.filter((r) => r.status === "absent");
+    if (justAbsent.length > 0) {
+      const franchise = await FranchiseModel.findById(session.franchiseId).select("academyId").lean();
+      const academy = franchise ? await AcademyModel.findById(franchise.academyId).select("absentAlertDays").lean() : null;
+      const threshold = academy?.absentAlertDays ?? 5;
+
+      for (const r of justAbsent) {
+        const recentRecords = await AttendanceModel.find({ studentId: r.studentId })
+          .sort({ sessionDate: -1 })
+          .limit(threshold)
+          .lean();
+        if (recentRecords.length < threshold) continue;
+        const allAbsent = recentRecords.every((rec) => rec.status === "absent");
+        const alreadyNotifiedForStreak = recentRecords.some((rec) => rec.guardianNotified);
+        if (!allAbsent || alreadyNotifiedForStreak) continue;
+
+        const student = await StudentModel.findById(r.studentId);
+        if (!student || student.guardianIds.length === 0) continue;
+
+        await notificationService
+          .sendRepeatedAbsenceAlert(
+            student.guardianIds.map((g) => g.toString()),
+            `${student.firstName} ${student.lastName}`,
+            threshold,
+            session.franchiseId.toString(),
+          )
+          .catch(() => undefined);
+
+        await AttendanceModel.updateMany(
+          { _id: { $in: recentRecords.map((rec) => rec._id) } },
+          { $set: { guardianNotified: true } },
+        );
+      }
     }
 
     return this.getSessionRoster(sessionId);

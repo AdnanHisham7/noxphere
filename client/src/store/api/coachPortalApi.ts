@@ -49,12 +49,23 @@ export interface StudentBasic {
   jerseyNumber?: number;
 }
 
+export interface CoachFranchise {
+  id: string;
+  academyId: string;
+  name: string;
+}
+
 export const coachPortalApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getStudentBasic: builder.query<StudentBasic, string>({
       query: (id) => `/students/${id}`,
       transformResponse: (res: { data: StudentBasic }) => res.data,
       providesTags: (_r, _e, id) => [{ type: "Student", id }],
+    }),
+    getMyFranchises: builder.query<CoachFranchise[], void>({
+      query: () => "/coach/franchises",
+      transformResponse: (res: { data: CoachFranchise[] }) => res.data,
+      providesTags: ["Franchise"],
     }),
     getCoachDashboard: builder.query<CoachDashboard, void>({
       query: () => "/coach/dashboard",
@@ -80,6 +91,7 @@ export const coachPortalApi = baseApi.injectEndpoints({
 export const {
   useGetCoachDashboardQuery,
   useGetMyRosterQuery,
+  useGetMyFranchisesQuery,
   useGetStudentBasicQuery,
   useAddCoachRemarkMutation,
 } = coachPortalApi;

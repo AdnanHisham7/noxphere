@@ -7,8 +7,12 @@ export const CreateUserSchema = z.object({
   role: z.enum(["super_admin", "manager", "coach", "student", "guardian"]),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  phone: z.string().optional(),
+  phone: z.string().trim().min(7, "A valid phone number is required").max(20),
   franchiseId: z.string().optional(),
+  // Only meaningful for role "coach", and only required from the client
+  // when a super_admin is creating the account — a manager's own academy
+  // is resolved automatically server-side. See UsersUseCases.createUser.
+  academyId: z.string().optional(),
 });
 
 export const UpdateUserSchema = z.object({
@@ -17,6 +21,7 @@ export const UpdateUserSchema = z.object({
   phone: z.string().optional(),
   role: z.enum(["super_admin", "manager", "coach", "student", "guardian"]).optional(),
   franchiseId: z.string().optional(),
+  academyId: z.string().optional(),
   permissions: z
     .object({
       canManageUsers: z.boolean().optional(),

@@ -31,13 +31,14 @@ export class TeamController {
 
   list = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { franchiseId } = req.query;
-      if (!franchiseId) throw new BadRequestError("franchiseId is required");
-      // A coach only ever sees the teams assigned to them, regardless of
-      // what (if anything) was passed in the coachId query param.
-      const coachId =
-        req.user!.role === "coach" ? req.user!.sub : (req.query.coachId as string | undefined);
-      const teams = await this.teamUseCases.listTeams(franchiseId as string);
+      const { franchiseId, academyId } = req.query;
+      if (!franchiseId && !academyId) {
+        throw new BadRequestError("franchiseId or academyId is required");
+      }
+      const teams = await this.teamUseCases.listTeams({
+        franchiseId: franchiseId as string | undefined,
+        academyId: academyId as string | undefined,
+      });
       ResponseHandler.success(res, teams, "Teams retrieved");
     } catch (err) {
       next(err);

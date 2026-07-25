@@ -5,7 +5,10 @@ export interface AdminNotification {
   id: string;
   title: string;
   body: string;
-  audience: "all" | "guardians" | "coaches" | "students" | "team";
+  audience: "guardians" | "coaches" | "both" | "team";
+  imageUrl?: string;
+  documentUrl?: string;
+  documentFilename?: string;
   createdAt: string;
   readBy: string[];
 }
@@ -16,6 +19,9 @@ export interface CreateNotificationBody {
   body: string;
   audience: AdminNotification["audience"];
   teamId?: string;
+  imageUrl?: string;
+  documentUrl?: string;
+  documentFilename?: string;
 }
 
 export interface NotificationListResult {

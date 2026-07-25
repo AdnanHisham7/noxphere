@@ -9,10 +9,11 @@ export class UsersController {
 
   list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { roles, franchiseId, isActive, search, page = "1", limit = "20" } = req.query;
+      const { roles, franchiseId, academyId, isActive, search, page = "1", limit = "20" } = req.query;
       const result = await this.usersUseCases.listUsers({
         roles: roles as string,
         franchiseId: franchiseId as string,
+        academyId: academyId as string,
         isActive: isActive as string,
         search: search as string,
         page: parseInt(page as string),
@@ -36,7 +37,7 @@ export class UsersController {
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const dto = CreateUserSchema.parse(req.body);
-      const user = await this.usersUseCases.createUser(dto);
+      const user = await this.usersUseCases.createUser(dto, req.user);
       ResponseHandler.created(res, user, "User created successfully");
     } catch (err) {
       next(err);

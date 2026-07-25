@@ -4,15 +4,12 @@ import { RootState } from "../store";
 
 export const useCurrentFranchiseId = (): string | null => {
   return useSelector((state: RootState) => {
-    // A coach is permanently locked to the single franchise they were
-    // assigned at login — this always resolves straight from their user
-    // record and deliberately never reads state.ui.activeFranchiseId, so
-    // there is no code path (stale localStorage, another user's session
-    // on the same browser, a leftover switch) that can move a coach out
-    // of their own franchise.
-    if (state.auth.user?.role === "coach") {
-      return state.auth.user.franchiseId ?? null;
-    }
+    // Coaches are no longer locked to a single franchise — like a
+    // manager, they operate against whichever franchise is currently
+    // active in the UI (see CoachFranchiseSwitcher in TopBar, which only
+    // ever offers franchises the coach actually has a team or session
+    // in). Falling back to state.auth.user?.franchiseId covers the brief
+    // window right after login before the switcher has picked a default.
     return state.ui.activeFranchiseId ?? state.auth.user?.franchiseId ?? null;
   });
 };
