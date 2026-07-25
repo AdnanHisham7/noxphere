@@ -1,8 +1,7 @@
-// src/domain/repositories/IStudentRepository.ts
-import { StudentEntity } from '@domain/entities/Student.entity';
-import { PerformanceDocument } from '@infrastructure/database/models/Performance.model';
-import { AttendanceDocument } from '@infrastructure/database/models/Attendance.model';
-import { CoachRemarkDocument } from '@infrastructure/database/models/CoachRemark.model';
+import { StudentEntity } from '../entities/Student.entity';
+import { PerformanceDocument } from '../../infrastructure/database/models/Performance.model';
+import { AttendanceDocument } from '../../infrastructure/database/models/Attendance.model';
+import { CoachRemarkDocument } from '../../infrastructure/database/models/CoachRemark.model';
 
 export interface IStudentRepository {
   // Student CRUD

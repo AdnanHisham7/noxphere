@@ -1,30 +1,25 @@
-// src/application/use-cases/student/StudentUseCases.ts
-import { IStudentRepository } from "@domain/repositories/IStudentRepository";
-import { IUserRepository } from "@domain/repositories/IUserRepository";
-import { StudentEntity } from "@domain/entities/Student.entity";
+import { IStudentRepository } from "../../../domain/repositories/IStudentRepository";
+import { IUserRepository } from "../../../domain/repositories/IUserRepository";
+import { StudentEntity } from "../../../domain/entities/Student.entity";
 import {
   defaultPermissions,
   UserEntity,
   UserRole,
-} from "@domain/entities/User.entity";
+} from "../../../domain/entities/User.entity";
 import {
   AppError,
   NotFoundError,
   ConflictError,
-} from "@shared/errors/AppError";
+} from "../../../shared/errors/AppError";
 import {
   CreateStudentDto,
   UpdateStudentDto,
-  AddPerformanceDto,
-  MarkAttendanceDto,
   AddCoachRemarkDto,
-  ListOnTransferDto,
 } from "../../dtos/student.dto";
 import bcrypt from "bcryptjs";
-import mongoose, { Types } from "mongoose";
-import { PerformanceModel } from "@infrastructure/database/models/Performance.model";
-import { AttendanceModel } from "@infrastructure/database/models/Attendance.model";
-import { CoachRemarkModel } from "@infrastructure/database/models/CoachRemark.model";
+import mongoose from "mongoose";
+import { CoachRemarkModel } from "../../../infrastructure/database/models/CoachRemark.model";
+import { TeamModel } from "../../../infrastructure/database/models/Team.model";
 
 export class StudentUseCases {
   constructor(
@@ -36,13 +31,50 @@ export class StudentUseCases {
     dto: CreateStudentDto,
     createdBy: string,
   ): Promise<StudentEntity> {
-    // 1. Create user account for student using guardian email
-    let user = await this.userRepo.findByEmail(dto.email);
-    if (!user) {
-      const tempPassword = Math.random().toString(36).slice(-8); // generate random password
+    // 1. Create (or reuse) a guardian-role account for the guardian's email.
+    // This is what the Guardian Portal logs into, and it's what every
+    // guardian notification (schedule alerts, selection updates, fee
+    // reminders, attendance/performance) is addressed to via
+    // student.guardianIds.
+    let guardianUser = await this.userRepo.findByEmail(dto.guardian.email);
+    if (!guardianUser) {
+      const tempPassword = Math.random().toString(36).slice(-8);
       const passwordHash = await bcrypt.hash(tempPassword, 12);
-      user = await this.userRepo.create({
-        email: dto.email,
+      const [guardianFirstName, ...guardianLastParts] = dto.guardian.name.trim().split(" ");
+      guardianUser = await this.userRepo.create({
+        email: dto.guardian.email,
+        passwordHash,
+        role: "guardian",
+        firstName: guardianFirstName || dto.guardian.name,
+        lastName: guardianLastParts.join(" ") || "-",
+        phone: dto.guardian.phone,
+        isActive: true,
+        isEmailVerified: false,
+        permissions: defaultPermissions["guardian" as UserRole],
+        fcmTokens: [],
+        franchiseId: dto.franchiseId,
+      });
+      // TODO: Send email with temp password
+    }
+
+    // 2. Create a separate student-role account for the player themself.
+    // `dto.email` is usually the same as the guardian's email in youth
+    // academies (players rarely have their own inbox) — in that case we
+    // don't want to collide with the guardian account we just created, so
+    // we derive a distinct, non-loginable placeholder address instead. An
+    // admin can later give the player their own real login email via
+    // profile edit once they're old enough to want one.
+    const studentEmail =
+      dto.email.trim().toLowerCase() === dto.guardian.email.trim().toLowerCase()
+        ? `student.${new mongoose.Types.ObjectId().toHexString()}@accounts.internal`
+        : dto.email;
+
+    let studentUser = await this.userRepo.findByEmail(studentEmail);
+    if (!studentUser) {
+      const tempPassword = Math.random().toString(36).slice(-8);
+      const passwordHash = await bcrypt.hash(tempPassword, 12);
+      studentUser = await this.userRepo.create({
+        email: studentEmail,
         passwordHash,
         role: "student",
         firstName: dto.firstName,
@@ -52,16 +84,18 @@ export class StudentUseCases {
         isEmailVerified: false,
         permissions: defaultPermissions["student" as UserRole],
         fcmTokens: [],
+        franchiseId: dto.franchiseId,
       });
       // TODO: Send email with temp password
     }
-    // 2. Create student document
+
+    // 3. Create student document, linked to both accounts
     const studentData: Partial<StudentEntity> = {
-      userId: user.id,
-      campId: dto.campId,
+      userId: studentUser.id,
+      franchiseId: dto.franchiseId,
       teamId: dto.teamId,
       coachId: dto.coachId,
-      guardianIds: [],
+      guardianIds: [guardianUser.id],
       guardian: dto.guardian,
       firstName: dto.firstName,
       lastName: dto.lastName,
@@ -70,6 +104,7 @@ export class StudentUseCases {
       jerseyNumber: dto.jerseyNumber,
       jerseySize: dto.jerseySize,
       position: dto.position,
+      photo: dto.photo,
       medicalInfo: dto.medicalInfo,
       enrollmentDate: new Date(),
       isActive: true,
@@ -82,27 +117,65 @@ export class StudentUseCases {
   }
 
   async getStudents(
-    campId: string,
+    franchiseId: string,
     filters: any,
     page = 1,
     limit = 20,
+    restrictToCoachId?: string,
   ): Promise<{ items: StudentEntity[]; total: number }> {
-    const filter: any = { campId, isActive: true };
-    if (filters.teamId) filter.teamId = filters.teamId;
+    const filter: any = { franchiseId, isActive: true };
+
+    // A coach only ever sees students on a team assigned to them, or a
+    // student explicitly assigned to them directly (e.g. trial players not
+    // yet placed on a team). Derived fresh from Team.coachId every call so
+    // a team reassignment can never leave a coach seeing a stale roster.
+    let allowedTeamIds: string[] | null = null;
+    if (restrictToCoachId) {
+      const coachTeams = await TeamModel.find({
+        franchiseId,
+        coachId: restrictToCoachId,
+        deletedAt: { $exists: false },
+      })
+        .select("_id")
+        .lean();
+      allowedTeamIds = coachTeams.map((t) => t._id.toString());
+    }
+
+    if (filters.teamId) {
+      if (allowedTeamIds && !allowedTeamIds.includes(filters.teamId)) {
+        return { items: [], total: 0 };
+      }
+      filter.teamId = filters.teamId;
+    } else if (allowedTeamIds) {
+      filter.$or = [{ teamId: { $in: allowedTeamIds } }, { coachId: restrictToCoachId }];
+    }
+
     if (filters.ageGroup) filter.ageGroup = filters.ageGroup;
     if (filters.selectionStatus)
       filter.selectionStatus = filters.selectionStatus;
     if (filters.search) {
-      filter.$or = [
+      const searchOr = [
         { firstName: { $regex: filters.search, $options: "i" } },
         { lastName: { $regex: filters.search, $options: "i" } },
       ];
+      if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, { $or: searchOr }];
+        delete filter.$or;
+      } else {
+        filter.$or = searchOr;
+      }
     }
     return await this.studentRepo.findAll(filter, page, limit);
   }
 
   async getStudentById(id: string): Promise<StudentEntity> {
     const student = await this.studentRepo.findById(id);
+    if (!student) throw new NotFoundError("Student");
+    return student;
+  }
+
+  async updateStudentPhoto(id: string, photo: string): Promise<StudentEntity> {
+    const student = await this.studentRepo.update(id, { photo });
     if (!student) throw new NotFoundError("Student");
     return student;
   }
@@ -128,77 +201,14 @@ export class StudentUseCases {
     if (!success) throw new NotFoundError("Student");
   }
 
-  async addPerformance(
-    studentId: string,
-    dto: AddPerformanceDto,
-    coachId: string,
-  ): Promise<any> {
-    const student = await this.studentRepo.findById(studentId);
-    if (!student) throw new NotFoundError("Student");
-    const overallScore =
-      dto.skillScores.reduce((sum, s) => sum + s.score, 0) /
-      dto.skillScores.length;
-    const performance = await this.studentRepo.addPerformance({
-      studentId: new mongoose.Types.ObjectId(studentId),
-      campId: new mongoose.Types.ObjectId(student.campId),
-      teamId: student.teamId
-        ? new mongoose.Types.ObjectId(student.teamId)
-        : undefined,
-      coachId: new mongoose.Types.ObjectId(coachId),
-      sessionDate: new Date(dto.sessionDate),
-      skillScores: dto.skillScores,
-      overallScore,
-      remarks: dto.remarks,
-
-      videoUrl: dto.videoUrl,
-    });
-    // Update student overallRating (e.g., average of last 5 performances)
-    const recentPerformances = await this.studentRepo.getPerformanceHistory(
-      studentId,
-      5,
-    );
-    const avgRating =
-      recentPerformances.reduce((sum, p) => sum + p.overallScore, 0) /
-      recentPerformances.length;
-    await this.studentRepo.update(studentId, {
-      overallRating: parseFloat(avgRating.toFixed(1)),
-    });
-    return performance;
-  }
-
-  async markAttendance(
-    studentId: string,
-    dto: MarkAttendanceDto,
-    markedBy: string,
-  ): Promise<any> {
-    const student = await this.studentRepo.findById(studentId);
-    if (!student) throw new NotFoundError("Student");
-    const studentObjectId = new Types.ObjectId(studentId);
-    const campObjectId = new Types.ObjectId(student.campId);
-    const attendance = await this.studentRepo.markAttendance({
-      studentId: studentObjectId,
-      campId: campObjectId,
-      date: new Date(dto.date),
-      status: dto.status,
-      remarks: dto.remarks,
-      markedBy,
-    });
-    // Recalculate attendance percentage
-    const totalDays = await AttendanceModel.countDocuments({
-      studentId: studentObjectId,
-      campId: campObjectId,
-    });
-    const presentDays = await AttendanceModel.countDocuments({
-      studentId: studentObjectId,
-      campId: campObjectId,
-      status: "present",
-    });
-    const percentage = totalDays ? (presentDays / totalDays) * 100 : 0;
-    await this.studentRepo.update(studentId, {
-      attendancePercentage: parseFloat(percentage.toFixed(1)),
-    });
-    return attendance;
-  }
+  // NOTE: freeform per-student addPerformance()/markAttendance() methods
+  // used to live here, letting attendance/performance be recorded for any
+  // date with no link to a real scheduled session. That's been replaced —
+  // both are now only recordable against a real Session via
+  // ScheduleUseCases.markSessionAttendance() / logSessionPerformance(),
+  // reached through POST /schedule/:id/attendance and
+  // POST /schedule/:id/performance. See getPlayerCard() below for reading
+  // a student's attendance/performance history.
 
   async addCoachRemark(
     studentId: string,
@@ -213,20 +223,6 @@ export class StudentUseCases {
       text: dto.text,
       date: new Date(),
     });
-  }
-
-  async listOnTransferWall(
-    studentId: string,
-    dto: ListOnTransferDto,
-  ): Promise<StudentEntity> {
-    const student = await this.studentRepo.update(studentId, {
-      transferStatus: "listed",
-      transferPrice: dto.price,
-      transferNote: dto.note,
-      transferListedAt: new Date(),
-    });
-    if (!student) throw new NotFoundError("Student");
-    return student;
   }
 
   async getPlayerCard(studentId: string): Promise<any> {

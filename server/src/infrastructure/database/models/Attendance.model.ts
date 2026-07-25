@@ -3,10 +3,10 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface AttendanceDocument extends Document {
   studentId: mongoose.Types.ObjectId;
-  campId: mongoose.Types.ObjectId;
-  teamId: mongoose.Types.ObjectId;
+  franchiseId: mongoose.Types.ObjectId;
+  teamId?: mongoose.Types.ObjectId;
   coachId: mongoose.Types.ObjectId;
-  date?: Date; // Deprecated, use sessionDate instead
+  sessionId: mongoose.Types.ObjectId;
   sessionDate: Date;
   status: 'present' | 'absent' | 'late' | 'excused';
   checkInTime?: Date;
@@ -25,9 +25,12 @@ export interface AttendanceDocument extends Document {
 const AttendanceSchema = new Schema<AttendanceDocument>(
   {
     studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
-    campId: { type: Schema.Types.ObjectId, ref: 'Camp', required: true, index: true },
-    teamId: { type: Schema.Types.ObjectId, ref: 'Team', required: true, index: true },
+    franchiseId: { type: Schema.Types.ObjectId, ref: 'Franchise', required: true, index: true },
+    teamId: { type: Schema.Types.ObjectId, ref: 'Team', index: true },
     coachId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    // Attendance can only be marked against a real scheduled session — this
+    // is what stops it from being marked for an arbitrary/made-up date.
+    sessionId: { type: Schema.Types.ObjectId, ref: 'Session', required: true, index: true },
     sessionDate: { type: Date, required: true, index: true },
     status: {
       type: String,
@@ -47,11 +50,13 @@ const AttendanceSchema = new Schema<AttendanceDocument>(
   { timestamps: true }
 );
 
-AttendanceSchema.index({ studentId: 1, campId: 1, sessionDate: -1 });
+AttendanceSchema.index({ studentId: 1, franchiseId: 1, sessionDate: -1 });
 AttendanceSchema.index({ teamId: 1, sessionDate: -1 });
-AttendanceSchema.index({ campId: 1, sessionDate: -1, status: 1 });
+AttendanceSchema.index({ franchiseId: 1, sessionDate: -1, status: 1 });
 
-// Prevent duplicate attendance per student per date
-AttendanceSchema.index({ studentId: 1, campId: 1, sessionDate: 1 }, { unique: true });
+// One attendance record per student per session — this is the constraint
+// that keeps marking idempotent (re-marking a session updates, not
+// duplicates).
+AttendanceSchema.index({ studentId: 1, sessionId: 1 }, { unique: true });
 
 export const AttendanceModel = mongoose.model<AttendanceDocument>('Attendance', AttendanceSchema);

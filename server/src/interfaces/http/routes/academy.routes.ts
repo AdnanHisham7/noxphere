@@ -1,50 +1,73 @@
 import { Router } from "express";
-import { authenticate, authorize } from "@interfaces/http/middleware/auth.middleware";
-import { validate } from "@interfaces/http/middleware/validate.middleware";
+import { authenticate, authorize } from "../middleware/auth.middleware";
+import { validate } from "../middleware/validate.middleware";
 import {
   CreateAcademySchema,
   UpdateAcademySchema,
   AcademyConfigSchema,
-} from "@application/dtos/academy.dto";
-import { academyController } from "@bootstrap/container";
+} from "../../../application/dtos/academy.dto";
 
-const router = Router();
+export const academyRouter = Router();
 
 // All routes require authentication
-router.use(authenticate);
+academyRouter.use(authenticate);
 
 // Public read (any authenticated user)
-router.get("/", academyController.getAll);
-router.get("/:id", academyController.getById);
+academyRouter.get("/", (req, res, next) => {
+  req.app.locals.controllers.academy.getAll(req, res, next);
+});
+academyRouter.get("/:id", (req, res, next) => {
+  req.app.locals.controllers.academy.getById(req, res, next);
+});
 
 // Write operations require super_admin role
-router.post(
+academyRouter.post(
   "/",
   authorize("super_admin"),
   validate(CreateAcademySchema),
-  academyController.create,
+  (req, res, next) => {
+    req.app.locals.controllers.academy.create(req, res, next);
+  },
 );
 
-router.put(
+academyRouter.put(
   "/:id",
   authorize("super_admin"),
   validate(UpdateAcademySchema),
-  academyController.update,
+  (req, res, next) => {
+    req.app.locals.controllers.academy.update(req, res, next);
+  },
 );
 
-router.patch(
+// Config updates (which includes skillParameters) may also be made by a
+// manager, but only for their own academy — ownership is enforced inside
+// AcademyUseCases.updateAcademyConfig, not here, since it requires
+// resolving the manager's franchise -> academy relationship.
+academyRouter.patch(
   "/:id/config",
-  authorize("super_admin"),
+  authorize("super_admin", "manager"),
   validate(AcademyConfigSchema),
-  academyController.updateConfig,
+  (req, res, next) => {
+    req.app.locals.controllers.academy.updateConfig(req, res, next);
+  },
 );
 
-router.patch(
+academyRouter.patch(
   "/:id/toggle-status",
   authorize("super_admin"),
-  academyController.toggleStatus,
+  (req, res, next) => {
+    req.app.locals.controllers.academy.toggleStatus(req, res, next);
+  },
 );
 
-router.delete("/:id", authorize("super_admin"), academyController.delete);
+academyRouter.patch(
+  "/:id/transfer-wall",
+  authorize("super_admin"),
+  (req, res, next) => {
+    req.app.locals.controllers.academy.toggleTransferWall(req, res, next);
+  },
+);
 
-export default router;
+academyRouter.delete("/:id", authorize("super_admin"), (req, res, next) => {
+  req.app.locals.controllers.academy.delete(req, res, next);
+});

@@ -1,4 +1,3 @@
-// src/application/dtos/student.dto.ts
 import { z } from 'zod';
 
 export const GuardianInfoSchema = z.object({
@@ -21,17 +20,18 @@ export const CreateStudentSchema = z.object({
   lastName: z.string().min(1).max(50),
   dateOfBirth: z.string().datetime(),
   ageGroup: z.string().min(1),
-  campId: z.string().min(1),
+  franchiseId: z.string().min(1),
   teamId: z.string().optional(),
   coachId: z.string().optional(),
   jerseyNumber: z.number().min(1).max(99).optional(),
   jerseySize: z.string().optional(),
   position: z.string().optional(),
+  photo: z.string().url().optional(),
   guardian: GuardianInfoSchema,
   medicalInfo: MedicalInfoSchema,
 });
 
-export const UpdateStudentSchema = CreateStudentSchema.omit({ email: true, campId: true }).partial();
+export const UpdateStudentSchema = CreateStudentSchema.omit({ email: true, franchiseId: true }).partial();
 
 export const AddPerformanceSchema = z.object({
   sessionDate: z.string().datetime(),
@@ -50,14 +50,8 @@ export const AddCoachRemarkSchema = z.object({
   text: z.string().min(1),
 });
 
-export const ListOnTransferSchema = z.object({
-  price: z.number().min(0),
-  note: z.string().optional(),
-});
-
 export type CreateStudentDto = z.infer<typeof CreateStudentSchema>;
 export type UpdateStudentDto = z.infer<typeof UpdateStudentSchema>;
 export type AddPerformanceDto = z.infer<typeof AddPerformanceSchema>;
 export type MarkAttendanceDto = z.infer<typeof MarkAttendanceSchema>;
 export type AddCoachRemarkDto = z.infer<typeof AddCoachRemarkSchema>;
-export type ListOnTransferDto = z.infer<typeof ListOnTransferSchema>;

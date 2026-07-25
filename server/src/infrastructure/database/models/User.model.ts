@@ -11,7 +11,8 @@ export interface UserDocument extends Omit<UserEntity, "id">, Document {}
 const PermissionsSchema = new Schema(
   {
     canManageUsers: { type: Boolean, default: false },
-    canManageCamps: { type: Boolean, default: false },
+    canManageFranchises: { type: Boolean, default: false },
+    canManageSessions: { type: Boolean, default: false },
     canManageFinance: { type: Boolean, default: false },
     canViewReports: { type: Boolean, default: false },
     canManageAttendance: { type: Boolean, default: false },
@@ -47,7 +48,7 @@ const UserSchema = new Schema<UserDocument>(
     isEmailVerified: { type: Boolean, default: false },
     permissions: { type: PermissionsSchema, required: true },
     fcmTokens: [{ type: String }],
-    academyId: { type: Schema.Types.ObjectId, ref: "Academy", index: true }, 
+    franchiseId: { type: Schema.Types.ObjectId, ref: "Franchise", index: true },
     lastLoginAt: { type: Date },
     deletedAt: { type: Date, index: true },
   },
@@ -84,6 +85,6 @@ UserSchema.pre("save", function (next) {
 });
 
 UserSchema.index({ email: 1, deletedAt: 1 });
-UserSchema.index({ campId: 1, role: 1, isActive: 1 });
+UserSchema.index({ franchiseId: 1, role: 1, isActive: 1 });
 
 export const UserModel = mongoose.model<UserDocument>("User", UserSchema);

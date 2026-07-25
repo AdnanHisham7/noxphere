@@ -1,4 +1,3 @@
-// src/domain/entities/Student.entity.ts
 export interface MedicalInfo {
   bloodGroup?: string;
   allergies?: string[];
@@ -25,7 +24,7 @@ export type TransferStatus = "not_listed" | "listed" | "sold";
 export interface StudentEntity {
   id: string;
   userId: string;
-  campId: string;
+  franchiseId: string;
   teamId?: string;
   coachId?: string;
   guardianIds: string[]; // additional guardian users (if any)

@@ -1,4 +1,3 @@
-// src/infrastructure/database/models/CoachRemark.model.ts
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface CoachRemarkDocument extends Document {

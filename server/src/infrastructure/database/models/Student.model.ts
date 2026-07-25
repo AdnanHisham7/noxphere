@@ -4,7 +4,7 @@ import { StudentEntity } from "../../../domain/entities/Student.entity";
 
 export interface StudentDocument extends Document {
   userId: mongoose.Types.ObjectId;
-  campId: mongoose.Types.ObjectId;
+  franchiseId: mongoose.Types.ObjectId;
   teamId?: mongoose.Types.ObjectId;
   coachId?: mongoose.Types.ObjectId;
   guardianIds: mongoose.Types.ObjectId[];
@@ -62,9 +62,9 @@ const StudentSchema = new Schema<StudentDocument>(
       required: true,
       index: true,
     },
-    campId: {
+    franchiseId: {
       type: Schema.Types.ObjectId,
-      ref: "Camp",
+      ref: "Franchise",
       required: true,
       index: true,
     },
@@ -133,8 +133,8 @@ StudentSchema.pre(
   },
 );
 
-StudentSchema.index({ campId: 1, ageGroup: 1, isActive: 1 });
-StudentSchema.index({ campId: 1, transferStatus: 1 });
+StudentSchema.index({ franchiseId: 1, ageGroup: 1, isActive: 1 });
+StudentSchema.index({ franchiseId: 1, transferStatus: 1 });
 StudentSchema.index({ firstName: "text", lastName: "text" });
 
 export const StudentModel = mongoose.model<StudentDocument>(

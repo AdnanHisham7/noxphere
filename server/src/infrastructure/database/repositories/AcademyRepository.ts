@@ -1,22 +1,35 @@
-// src/infrastructure/database/repositories/AcademyRepository.ts
 import {
   IAcademyRepository,
   PaginationOptions,
   PaginatedResult,
 } from "../../../domain/repositories/IAcademyRepository";
-import { AcademyEntity } from "../../../domain/entities/Academy.entity";
+import { AcademyEntity, CreateAcademyEntity } from "../../../domain/entities/Academy.entity";
 import { AcademyModel, AcademyDocument } from "../models/Academy.model";
 
 export class MongoAcademyRepository implements IAcademyRepository {
   private toEntity(doc: AcademyDocument): AcademyEntity {
+    const manager = doc.managerId as any;
+
     return {
       id: doc.id,
       name: doc.name,
       academyCode: doc.academyCode,
+
+      manager:
+        typeof manager === "object" && manager.firstName
+          ? {
+              id: manager._id.toString(),
+              firstName: manager.firstName,
+              lastName: manager.lastName,
+              email: manager.email,
+            }
+          : undefined,
+
       location: doc.location,
       ageGroups: doc.ageGroups,
       maxStudents: doc.maxStudents,
       isActive: doc.isActive,
+      transferWallEnabled: doc.transferWallEnabled,
       alertBeforeMinutes: doc.alertBeforeMinutes,
       notificationAlertAfterMinutes: doc.notificationAlertAfterMinutes,
       skillParameters: doc.skillParameters,
@@ -57,6 +70,7 @@ export class MongoAcademyRepository implements IAcademyRepository {
     const skip = (options.page - 1) * options.limit;
     const [docs, total] = await Promise.all([
       AcademyModel.find(query)
+        .populate("managerId", "firstName lastName email")
         .skip(skip)
         .limit(options.limit)
         .sort({ createdAt: -1 }),
@@ -72,10 +86,8 @@ export class MongoAcademyRepository implements IAcademyRepository {
     };
   }
 
-  async create(
-    academy: Omit<AcademyEntity, "id" | "createdAt" | "updatedAt">,
-  ): Promise<AcademyEntity> {
-    const doc = await AcademyModel.create(academy);
+  async create(data: CreateAcademyEntity): Promise<AcademyEntity> {
+    const doc = await AcademyModel.create(data);
     return this.toEntity(doc);
   }
 

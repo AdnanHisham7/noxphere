@@ -1,4 +1,3 @@
-// src/infrastructure/database/repositories/StudentRepository.ts
 import { IStudentRepository } from "../../../domain/repositories/IStudentRepository";
 import { StudentModel, StudentDocument } from "../models/Student.model";
 import {
@@ -16,7 +15,7 @@ import {
 import { StudentEntity } from "../../../domain/entities/Student.entity";
 import { FilterQuery } from "mongoose";
 
-export class MongoStudentRepository implements IStudentRepository {
+export class StudentRepository implements IStudentRepository {
   // Student CRUD
   async create(data: Partial<StudentEntity>): Promise<StudentEntity> {
     const doc = await StudentModel.create(data);
@@ -89,7 +88,7 @@ export class MongoStudentRepository implements IStudentRepository {
     limit = 30,
   ): Promise<AttendanceDocument[]> {
     return await AttendanceModel.find({ studentId })
-      .sort({ date: -1 })
+      .sort({ sessionDate: -1 })
       .limit(limit);
   }
 
@@ -108,7 +107,7 @@ export class MongoStudentRepository implements IStudentRepository {
     return {
       id: doc._id.toString(),
       userId: doc.userId.toString(),
-      campId: doc.campId.toString(),
+      franchiseId: doc.franchiseId.toString(),
       teamId: doc.teamId?.toString(),
       coachId: doc.coachId?.toString(),
       guardianIds: doc.guardianIds?.map((id: any) => id.toString()) || [],

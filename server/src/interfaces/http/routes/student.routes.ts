@@ -1,64 +1,37 @@
-// src/interfaces/http/routes/student.routes.ts
-import { Router } from "express";
-import { authenticate, requirePermission } from "../middleware/auth.middleware";
-import { studentController } from "@bootstrap/container";
+import { Router } from 'express';
+import { authenticate, requirePermission, enforceCoachOwnFranchise } from '../middleware/auth.middleware';
 
-const router = Router();
+export const studentRouter = Router();
 
-router.post(
-  "/",
-  authenticate,
-  requirePermission("canManageCamps"),
-  studentController.create,
-);
-router.get("/", authenticate, studentController.list);
-router.get("/:id", authenticate, studentController.getById);
-router.put(
-  "/:id",
-  authenticate,
-  requirePermission("canManageCamps"),
-  studentController.update,
-);
-router.delete(
-  "/:id",
-  authenticate,
-  requirePermission("canManageCamps"),
-  studentController.delete,
-);
+// These will be bound to controller instance from app.locals
+studentRouter.post('/', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
+  req.app.locals.controllers.student.create(req, res, next);
+});
+studentRouter.get('/', authenticate, enforceCoachOwnFranchise, (req, res, next) => {
+  req.app.locals.controllers.student.list(req, res, next);
+});
+studentRouter.get('/:id', authenticate, (req, res, next) => {
+  req.app.locals.controllers.student.getById(req, res, next);
+});
+studentRouter.put('/:id', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
+  req.app.locals.controllers.student.update(req, res, next);
+});
+studentRouter.patch('/:id/photo', authenticate, requirePermission('canManagePerformance'), (req, res, next) => {
+  req.app.locals.controllers.student.updatePhoto(req, res, next);
+});
+studentRouter.delete('/:id', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
+  req.app.locals.controllers.student.delete(req, res, next);
+});
 
-// Performance
-router.post(
-  "/:id/performance",
-  authenticate,
-  requirePermission("canManagePerformance"),
-  studentController.addPerformance,
-);
-
-// Attendance
-router.post(
-  "/:id/attendance",
-  authenticate,
-  requirePermission("canManageAttendance"),
-  studentController.markAttendance,
-);
+// Attendance/Performance are now only recorded against a real scheduled
+// session — see /schedule/:id/attendance and /schedule/:id/performance.
 
 // Coach Remarks
-router.post(
-  "/:id/remarks",
-  authenticate,
-  requirePermission("canManagePerformance"),
-  studentController.addCoachRemark,
-);
-
-// Transfer Wall
-router.post(
-  "/:id/transfer",
-  authenticate,
-  requirePermission("canManageCamps"),
-  studentController.listOnTransfer,
-);
+studentRouter.post('/:id/remarks', authenticate, requirePermission('canManagePerformance'), (req, res, next) => {
+  req.app.locals.controllers.student.addCoachRemark(req, res, next);
+});
 
 // Player Card (public? use authentication)
-router.get("/:id/playercard", authenticate, studentController.getPlayerCard);
-
-export default router;
+studentRouter.get('/:id/playercard', authenticate, (req, res, next) => {
+  req.app.locals.controllers.student.getPlayerCard(req, res, next);
+});

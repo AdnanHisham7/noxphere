@@ -1,21 +1,11 @@
 // src/application/use-cases/auth/AuthUseCases.ts
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { IUserRepository } from "../../../domain/repositories/IUserRepository";
-import { IAcademyRepository } from "@domain/repositories/IAcademyRepository";
-import {
-  UserEntity,
-  UserRole,
-  defaultPermissions,
-} from "../../../domain/entities/User.entity";
-import {
-  AppError,
-  UnauthorizedError,
-  ConflictError,
-  NotFoundError,
-} from "../../../shared/errors/AppError";
-import { RegisterDto, LoginDto, RefreshTokenDto } from "../../dtos/auth.dto";
-import { config } from "../../../config/app.config";
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { IUserRepository } from '../../../domain/repositories/IUserRepository';
+import { UserEntity, UserRole, defaultPermissions } from '../../../domain/entities/User.entity';
+import { AppError, UnauthorizedError, ConflictError, NotFoundError } from '../../../shared/errors/AppError';
+import { RegisterDto, LoginDto, RefreshTokenDto } from '../../dtos/auth.dto';
+import { config } from '../../../config/app.config';
 
 export interface AuthTokens {
   accessToken: string;
@@ -24,20 +14,17 @@ export interface AuthTokens {
 }
 
 export interface AuthResult {
-  user: Omit<UserEntity, "passwordHash">;
+  user: Omit<UserEntity, 'passwordHash'>;
   tokens: AuthTokens;
 }
 
 export class AuthUseCases {
-  constructor(
-    private readonly userRepository: IUserRepository,
-    private readonly academyRepository: IAcademyRepository,
-  ) {}
+  constructor(private readonly userRepository: IUserRepository) {}
 
   async register(dto: RegisterDto): Promise<AuthResult> {
     const existing = await this.userRepository.findByEmail(dto.email);
     if (existing) {
-      throw new ConflictError("Email already registered");
+      throw new ConflictError('Email already registered');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
@@ -52,6 +39,7 @@ export class AuthUseCases {
       isActive: true,
       isEmailVerified: false,
       fcmTokens: [],
+      franchiseId: dto.franchiseId,
     });
 
     const tokens = this.generateTokens(user);
@@ -59,70 +47,47 @@ export class AuthUseCases {
   }
 
   async login(dto: LoginDto): Promise<AuthResult> {
+    console.log('Attempting login for email:', dto.email);
     const user = await this.userRepository.findByEmail(dto.email);
+    console.log('User found during login:', user);
     if (!user) {
-      throw new UnauthorizedError("Invalid credentials");
+      throw new UnauthorizedError('Invalid credentials');
     }
-
+    
     if (!user.isActive) {
-      throw new UnauthorizedError("Account is deactivated");
+      throw new UnauthorizedError('Account is deactivated');
     }
-
+    
     // Need to explicitly select passwordHash since it's excluded by default
-    const userWithPassword = await this.userRepository.findByEmailWithPassword(
-      dto.email,
-    );
-    if (!userWithPassword) throw new UnauthorizedError("Invalid credentials");
+    const userWithPassword = await this.userRepository.findByEmailWithPassword(dto.email);
+    if (!userWithPassword) throw new UnauthorizedError('Invalid credentials');
 
-    const isPasswordValid = await bcrypt.compare(
-      dto.password,
-      userWithPassword.passwordHash,
-    );
+    const isPasswordValid = await bcrypt.compare(dto.password, userWithPassword.passwordHash);
     if (!isPasswordValid) {
-      throw new UnauthorizedError("Invalid credentials");
+      throw new UnauthorizedError('Invalid credentials');
     }
 
     await this.userRepository.update(user.id, { lastLoginAt: new Date() });
-
+    
     if (dto.fcmToken) {
       await this.userRepository.addFcmToken(user.id, dto.fcmToken);
     }
-
-    let academyInfo = undefined;
-    if (user.academyId) {
-      const academy = await this.academyRepository.findById(user.academyId);
-      if (academy) {
-        academyInfo = academy.name;
-      }
-    }
-
+    
     const tokens = this.generateTokens(user);
-    const obj = {
-      user: {
-        ...user,
-        academyName: academyInfo, // attach academy name
-      } as Omit<UserEntity, "passwordHash"> & {
-        academyName?: string;
-      },
-      tokens,
-    };
-    console.log("Login successful for user:", obj);
-    return obj;
+    console.log('Tokens generated during login:', tokens);
+    return { user, tokens };
   }
 
   async refreshToken(dto: RefreshTokenDto): Promise<AuthTokens> {
     try {
-      const payload = jwt.verify(
-        dto.refreshToken,
-        config.jwt.refreshSecret,
-      ) as { sub: string };
+      const payload = jwt.verify(dto.refreshToken, config.jwt.refreshSecret) as { sub: string };
       const user = await this.userRepository.findById(payload.sub);
       if (!user || !user.isActive) {
-        throw new UnauthorizedError("Invalid refresh token");
+        throw new UnauthorizedError('Invalid refresh token');
       }
       return this.generateTokens(user);
     } catch {
-      throw new UnauthorizedError("Invalid or expired refresh token");
+      throw new UnauthorizedError('Invalid or expired refresh token');
     }
   }
 
@@ -132,27 +97,22 @@ export class AuthUseCases {
     }
   }
 
-  async changePassword(
-    userId: string,
-    currentPassword: string,
-    newPassword: string,
-  ): Promise<void> {
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
     const user = await this.userRepository.findByIdWithPassword(userId);
-    if (!user) throw new NotFoundError("User");
+    if (!user) throw new NotFoundError('User');
 
     const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!isValid) throw new UnauthorizedError("Current password is incorrect");
+    if (!isValid) throw new UnauthorizedError('Current password is incorrect');
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
-    await this.userRepository.update(userId, {
-      passwordHash,
-    } as Partial<UserEntity>);
+    await this.userRepository.update(userId, { passwordHash } as Partial<UserEntity>);
   }
 
   private generateTokens(user: UserEntity): AuthTokens {
     const payload = {
       sub: user.id,
       role: user.role,
+      franchiseId: user.franchiseId,
       permissions: user.permissions,
     };
 

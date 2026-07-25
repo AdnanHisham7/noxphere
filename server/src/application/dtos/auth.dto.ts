@@ -8,7 +8,7 @@ export const RegisterSchema = z.object({
   firstName: z.string().min(1).max(50),
   lastName: z.string().min(1).max(50),
   phone: z.string().optional(),
-  campId: z.string().optional(),
+  franchiseId: z.string().optional(),
   fcmToken: z.string().optional(),
 });
 
@@ -39,7 +39,7 @@ export const CreateStudentSchema = z.object({
   lastName: z.string().min(1).max(50),
   dateOfBirth: z.string().datetime(),
   ageGroup: z.string().min(1),
-  campId: z.string().min(1),
+  franchiseId: z.string().min(1),
   teamId: z.string().optional(),
   coachId: z.string().optional(),
   guardianIds: z.array(z.string()).default([]),
@@ -55,7 +55,7 @@ export const CreateStudentSchema = z.object({
   }),
 });
 
-export const UpdateStudentSchema = CreateStudentSchema.partial().omit({ email: true, campId: true });
+export const UpdateStudentSchema = CreateStudentSchema.partial().omit({ email: true, franchiseId: true });
 
 export type CreateStudentDto = z.infer<typeof CreateStudentSchema>;
 export type UpdateStudentDto = z.infer<typeof UpdateStudentSchema>;
@@ -70,7 +70,7 @@ export const MarkAttendanceSchema = z.object({
 
 export const BulkAttendanceSchema = z.object({
   teamId: z.string().min(1),
-  campId: z.string().min(1),
+  franchiseId: z.string().min(1),
   sessionDate: z.string().datetime(),
   entries: z.array(MarkAttendanceSchema),
 });
@@ -86,7 +86,7 @@ export const SkillScoreSchema = z.object({
 
 export const CreatePerformanceSchema = z.object({
   studentId: z.string().min(1),
-  campId: z.string().min(1),
+  franchiseId: z.string().min(1),
   teamId: z.string().min(1),
   sessionDate: z.string().datetime(),
   skillScores: z.array(SkillScoreSchema).min(1),
@@ -96,10 +96,10 @@ export const CreatePerformanceSchema = z.object({
 });
 
 export const BulkPerformanceSchema = z.object({
-  campId: z.string().min(1),
+  franchiseId: z.string().min(1),
   teamId: z.string().min(1),
   sessionDate: z.string().datetime(),
-  performances: z.array(CreatePerformanceSchema.omit({ campId: true, teamId: true, sessionDate: true })),
+  performances: z.array(CreatePerformanceSchema.omit({ franchiseId: true, teamId: true, sessionDate: true })),
 });
 
 export type CreatePerformanceDto = z.infer<typeof CreatePerformanceSchema>;
@@ -118,7 +118,7 @@ export const ListTransferSchema = z.object({
 
 export const TransferRequestSchema = z.object({
   listingId: z.string().min(1),
-  toCampId: z.string().min(1),
+  toFranchiseId: z.string().min(1),
   offeredPrice: z.number().min(0),
   message: z.string().optional(),
 });
