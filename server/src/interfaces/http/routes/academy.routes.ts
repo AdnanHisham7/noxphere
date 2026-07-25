@@ -6,7 +6,7 @@ import {
   UpdateAcademySchema,
   AcademyConfigSchema,
 } from "@application/dtos/academy.dto";
-import { academyController } from "src/bootstrap/container";
+import { academyController } from "@bootstrap/container";
 
 const router = Router();
 

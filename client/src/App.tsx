@@ -17,6 +17,10 @@ const LoginPage = lazy(() => import("@/features/auth/LoginPage"));
 const AcademiesManagement = lazy(
   () => import("@/features/academies/AcademiesManagement"),
 );
+const StudentsPage = lazy(() => import("@/features/students/StudentsPage"));
+const StudentDetailPage = lazy(
+  () => import("@/features/students/StudentDetailPage"),
+);
 
 const PageLoader = () => (
   <div className="min-h-screen bg-pitch-950 flex items-center justify-center">
@@ -63,6 +67,11 @@ const App: React.FC = () => (
                 <Route
                   path="/manager/dashboard"
                   element={<div>Dashboard</div>}
+                />
+                <Route path="/manager/students" element={<StudentsPage />} />
+                <Route
+                  path="/manager/students/:id"
+                  element={<StudentDetailPage />}
                 />
               </Route>
             </Route>
