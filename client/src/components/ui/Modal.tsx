@@ -1,4 +1,5 @@
 // src/components/ui/Modal.tsx
+import React from "react";
 import { clsx } from "clsx";
 
 interface ModalProps {
@@ -27,28 +28,36 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       />
+      
+      {/* Modal Box */}
       <div
         className={clsx(
-          "relative card shadow-panel w-full animate-slide-up",
+          "relative card shadow-panel w-full max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden animate-slide-up",
           sizes[size],
         )}
       >
-        <div className="flex items-center justify-between p-5 border-b border-white/5">
+        {/* Fixed Header */}
+        <div className="flex items-center justify-between p-5 border-b border-white/5 flex-shrink-0">
           <h2 className="font-display font-bold text-white uppercase tracking-wide">
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="btn-ghost text-slate-400 hover:text-white p-1"
+            className="btn-ghost text-slate-400 hover:text-white p-1 transition-colors"
           >
             ✕
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        
+        {/* Scrollable Body Content */}
+        <div className="p-5 overflow-y-auto min-h-0 custom-scrollbar">
+          {children}
+        </div>
       </div>
     </div>
   );

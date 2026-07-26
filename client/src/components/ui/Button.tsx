@@ -1,7 +1,7 @@
 // src/components/ui/Button.tsx
 import React from "react";
 import { clsx } from "clsx";
-import { Spinner } from "@/components/ui";
+import { Spinner } from "./Spinner";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "danger" | "ghost";

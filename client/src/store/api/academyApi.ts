@@ -1,10 +1,6 @@
 // src/store/api/academyApi.ts
-import {
-  Academy,
-  AcademyConfigPayload,
-  CreateAcademyPayload,
-} from "@/features/academies/types";
-import { baseApi } from "@/store/api/baseApi";
+import { Academy, AcademyConfigPayload, CreateAcademyPayload } from '@/features/academies/types';
+import { baseApi } from './baseApi';
 
 interface AcademyListResponse {
   data: Academy[];
@@ -25,10 +21,7 @@ export const academyApi = baseApi.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.data.map(({ id }) => ({
-                type: "Academy" as const,
-                id,
-              })),
+              ...result.data.map(({ id }) => ({ type: "Academy" as const, id })),
               { type: "Academy", id: "LIST" },
             ]
           : [{ type: "Academy", id: "LIST" }],
@@ -69,8 +62,15 @@ export const academyApi = baseApi.injectEndpoints({
         url: `/academies/${id}/toggle-status`,
         method: "PATCH",
       }),
-      // This will now correctly trigger a refetch of getAcademies
+      // This will now correctly trigger a refetch of getAcademies 
       // because the IDs will match.
+      invalidatesTags: (result, error, id) => [{ type: "Academy", id }],
+    }),
+    toggleTransferWall: builder.mutation<Academy, string>({
+      query: (id) => ({
+        url: `/academies/${id}/transfer-wall`,
+        method: "PATCH",
+      }),
       invalidatesTags: (result, error, id) => [{ type: "Academy", id }],
     }),
     deleteAcademy: builder.mutation<void, string>({

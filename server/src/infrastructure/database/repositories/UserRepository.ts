@@ -18,7 +18,8 @@ export class MongoUserRepository implements IUserRepository {
       isEmailVerified: doc.isEmailVerified,
       permissions: doc.permissions,
       fcmTokens: doc.fcmTokens,
-      campId: doc.campId?.toString(),
+      franchiseId: doc.franchiseId?.toString(),
+      academyId: doc.academyId?.toString(),
       lastLoginAt: doc.lastLoginAt,
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
@@ -48,11 +49,66 @@ export class MongoUserRepository implements IUserRepository {
 
   async findByRole(
     role: UserRole,
-    campId?: string,
+    franchiseId?: string,
     options: PaginationOptions = { page: 1, limit: 20 }
   ): Promise<PaginatedResult<UserEntity>> {
     const query: Record<string, unknown> = { role, isActive: true };
-    if (campId) query.campId = campId;
+    if (franchiseId) query.franchiseId = franchiseId;
+
+    const skip = (options.page - 1) * options.limit;
+    const [docs, total] = await Promise.all([
+      UserModel.find(query).skip(skip).limit(options.limit).sort({ createdAt: -1 }),
+      UserModel.countDocuments(query),
+    ]);
+
+    return {
+      data: docs.map((d) => this.toEntity(d)),
+      total,
+      page: options.page,
+      limit: options.limit,
+      totalPages: Math.ceil(total / options.limit),
+    };
+  }
+
+  async searchUsers(
+    filters: {
+      roles?: UserRole[];
+      franchiseId?: string;
+      academyId?: string;
+      franchiseIds?: string[];
+      isActive?: boolean;
+      search?: string;
+    },
+    options: PaginationOptions = { page: 1, limit: 20 }
+  ): Promise<PaginatedResult<UserEntity>> {
+    const query: Record<string, unknown> = { deletedAt: { $exists: false } };
+    if (filters.roles && filters.roles.length > 0) query.role = { $in: filters.roles };
+    if (filters.isActive !== undefined) query.isActive = filters.isActive;
+
+    // academyId scoping and free-text search both need an $or clause —
+    // combine them with $and instead of letting the second assignment
+    // silently clobber the first.
+    const andClauses: Record<string, unknown>[] = [];
+    if (filters.academyId) {
+      andClauses.push({
+        $or: [
+          { academyId: filters.academyId },
+          { franchiseId: { $in: filters.franchiseIds ?? [] } },
+        ],
+      });
+    } else if (filters.franchiseId) {
+      query.franchiseId = filters.franchiseId;
+    }
+    if (filters.search) {
+      andClauses.push({
+        $or: [
+          { firstName: { $regex: filters.search, $options: 'i' } },
+          { lastName: { $regex: filters.search, $options: 'i' } },
+          { email: { $regex: filters.search, $options: 'i' } },
+        ],
+      });
+    }
+    if (andClauses.length > 0) query.$and = andClauses;
 
     const skip = (options.page - 1) * options.limit;
     const [docs, total] = await Promise.all([

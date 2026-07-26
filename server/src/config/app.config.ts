@@ -10,7 +10,7 @@ export const config = {
   clientUrl: process.env.CLIENT_URL || "http://localhost:3000",
 
   db: {
-    uri: process.env.MONGODB_URI || "mongodb://localhost:27017/football-camp",
+    uri: process.env.MONGODB_URI || "mongodb://localhost:27017/football-franchise",
   },
 
   redis: {
@@ -36,8 +36,8 @@ export const config = {
     port: parseInt(process.env.SMTP_PORT || "587", 10),
     user: process.env.SMTP_USER || "",
     pass: process.env.SMTP_PASS || "",
-    from: process.env.FROM_EMAIL || "noreply@footballcamp.com",
-    fromName: process.env.FROM_NAME || "Football Camp",
+    from: process.env.FROM_EMAIL || "noreply@footballfranchise.com",
+    fromName: process.env.FROM_NAME || "Football Franchise",
   },
 
   firebase: {
@@ -61,6 +61,25 @@ export const config = {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
     s3Bucket: process.env.AWS_S3_BUCKET || "",
+  },
+
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME || "",
+    apiKey: process.env.CLOUDINARY_API_KEY || "",
+    apiSecret: process.env.CLOUDINARY_API_SECRET || "",
+    maxImageSizeBytes: parseInt(process.env.CLOUDINARY_MAX_IMAGE_BYTES || `${5 * 1024 * 1024}`, 10),
+  },
+
+  // A single official WhatsApp Business number/account is shared across
+  // every academy on the platform — there is deliberately no per-academy
+  // WhatsApp config anywhere in the codebase. Each outgoing message has
+  // the academy's name woven into its own text so recipients can tell
+  // which academy it's from (see WhatsAppService).
+  whatsapp: {
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
+    accessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
+    apiVersion: process.env.WHATSAPP_API_VERSION || "v20.0",
+    apiBaseUrl: process.env.WHATSAPP_API_BASE_URL || "https://graph.facebook.com",
   },
 
   rateLimit: {

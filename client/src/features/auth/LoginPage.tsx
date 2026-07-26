@@ -6,10 +6,11 @@ import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
-import { useLoginMutation } from '@/store/api/authApi';
-import { setCredentials } from '@/store/slices/authSlice';
-import { RootState } from '@/store';
-import { Button, Input } from '@/components/ui';
+import { useLoginMutation } from '../../store/api/authApi';
+import { setCredentials } from '../../store/slices/authSlice';
+import { setActiveFranchise } from '../../store/slices/uiSlice';
+import { RootState } from '../../store';
+import { Button, Input } from '../../components/ui';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -46,6 +47,12 @@ const LoginPage: React.FC = () => {
           },
         })
       );
+      // Auto-select this user's franchise (their first/default one) as the
+      // active franchise for this session, so the top bar and every
+      // franchise-scoped page immediately reflect it without extra clicks.
+      if (result.data.user.franchiseId) {
+        dispatch(setActiveFranchise(result.data.user.franchiseId));
+      }
       toast.success('Welcome back!');
       navigate('/dashboard');
     } catch (err: any) {
@@ -89,7 +96,7 @@ const LoginPage: React.FC = () => {
             </div>
             <div>
               <p className="font-display font-900 text-white uppercase text-xl tracking-widest">Football</p>
-              <p className="font-display font-400 text-volt-400 uppercase text-xs tracking-[0.4em]">Camp Platform</p>
+              <p className="font-display font-400 text-volt-400 uppercase text-xs tracking-[0.4em]">Franchise Platform</p>
             </div>
           </div>
         </div>
@@ -99,7 +106,7 @@ const LoginPage: React.FC = () => {
           <div>
             <p className="font-display font-900 text-white text-5xl uppercase leading-none tracking-tight">
               Manage Your<br />
-              <span className="text-volt-400">Camp.</span><br />
+              <span className="text-volt-400">Franchise.</span><br />
               Elevate Your<br />
               <span className="text-ice-400">Game.</span>
             </p>
@@ -140,7 +147,7 @@ const LoginPage: React.FC = () => {
             <div className="w-8 h-8 bg-volt-400 rounded flex items-center justify-center">
               <span className="font-display font-900 text-pitch-900 text-sm">FC</span>
             </div>
-            <p className="font-display font-extrabold text-white uppercase tracking-widest">Football Camp</p>
+            <p className="font-display font-extrabold text-white uppercase tracking-widest">Football Franchise</p>
           </div>
 
           {/* Header */}
@@ -155,7 +162,7 @@ const LoginPage: React.FC = () => {
             <Input
               label="Email Address"
               type="email"
-              placeholder="coach@footballcamp.com"
+              placeholder="coach@footballfranchise.com"
               error={errors.email?.message}
               {...register('email')}
             />

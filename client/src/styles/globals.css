@@ -1,5 +1,5 @@
 /* src/styles/globals.css */
-@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600;700;800;900&family=Barlow:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600;700;800;900&family=Barlow:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -32,7 +32,7 @@
   body {
     background-color: #0a0a0f;
     color: #e2e8f0;
-    font-family: "Barlow", system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
   }
@@ -137,21 +137,11 @@
   .pill {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide;
   }
-  .pill-green {
-    @apply pill bg-field-400/15 text-field-400 border border-field-400/20;
-  }
-  .pill-red {
-    @apply pill bg-ember-400/15 text-ember-400 border border-ember-400/20;
-  }
-  .pill-blue {
-    @apply pill bg-ice-400/15 text-ice-400 border border-ice-400/20;
-  }
-  .pill-yellow {
-    @apply pill bg-volt-400/15 text-volt-400 border border-volt-400/20;
-  }
-  .pill-gray {
-    @apply pill bg-white/5 text-slate-400 border border-white/10;
-  }
+  .pill-green { @apply pill bg-field-400/15 text-field-400 border border-field-400/20; }
+  .pill-red { @apply pill bg-ember-400/15 text-ember-400 border border-ember-400/20; }
+  .pill-blue { @apply pill bg-ice-400/15 text-ice-400 border border-ice-400/20; }
+  .pill-yellow { @apply pill bg-volt-400/15 text-volt-400 border border-volt-400/20; }
+  .pill-gray { @apply pill bg-white/5 text-slate-400 border border-white/10; }
 
   /* ── Loading skeleton ── */
   .skeleton {
@@ -179,11 +169,65 @@
     border-image: linear-gradient(135deg, #ccff00, transparent) 1;
   }
 
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+/* ══════════════════════════════════════════════
+   Noxphere — orbital design system
+   (scoped to .nox-landing so the existing app UI
+   is untouched until later migration phases)
+   ══════════════════════════════════════════════ */
+.nox-landing {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  background-color: #0a0a0f;
+  color: #f4f5fa;
+}
+
+.nox-landing h1,
+.nox-landing h2,
+.nox-landing h3,
+.nox-landing .font-orbital {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+@layer components {
+  .nox-eyebrow {
+    @apply inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-core-400;
   }
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+
+  .nox-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full
+           bg-gradient-to-br from-core-300 via-core-400 to-core-600
+           text-ink-950 font-orbital font-semibold text-sm
+           shadow-core-glow transition-transform duration-200
+           hover:scale-[1.03] active:scale-[0.98];
+  }
+
+  .nox-btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full
+           border border-white/15 text-nox-high font-orbital font-medium text-sm
+           bg-white/[0.02] backdrop-blur-sm transition-colors duration-200
+           hover:border-white/30 hover:bg-white/[0.06];
+  }
+
+  .nox-card {
+    @apply relative rounded-2xl border border-white/[0.06] bg-orbit-panel shadow-orbit-card;
+  }
+
+  .nox-ring-badge {
+    @apply relative flex items-center justify-center w-12 h-12 rounded-full
+           border border-core-400/30 bg-core-400/[0.06] text-core-400;
+  }
+}
+
+/* Continuous orbit rotation — disabled for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .nox-landing .animate-orbit-slow,
+  .nox-landing .animate-orbit-slower,
+  .nox-landing .animate-orbit-reverse,
+  .nox-landing .animate-orbit-float,
+  .nox-landing .animate-core-pulse {
+    animation: none !important;
   }
 }

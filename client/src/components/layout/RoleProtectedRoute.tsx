@@ -1,7 +1,7 @@
 // src/components/layout/RoleProtectedRoute.tsx
 import { useSelector } from "react-redux";
 import { Navigate, Outlet } from "react-router-dom";
-import { RootState } from "@/store";
+import { RootState } from "../../store";
 
 interface RoleProtectedRouteProps {
   allowedRoles: string[];

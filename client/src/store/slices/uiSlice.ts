@@ -1,34 +1,31 @@
-// src/store/slices/uiSlice.ts
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+  // src/store/slices/uiSlice.ts
+  import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-interface UiState {
-  sidebarCollapsed: boolean;
-  activeAcademyId: string | null;
-  activeAcademyName: string | null;
-}
+  interface UiState {
+    sidebarCollapsed: boolean;
+    activeFranchiseId: string | null;
+  }
 
-const uiSlice = createSlice({
-  name: "ui",
-  initialState: {
-    sidebarCollapsed: false,
-    activeAcademyId: localStorage.getItem("activeAcademyId"),
-    activeAcademyName: localStorage.getItem("activeAcademyName"),
-  } as UiState,
-  reducers: {
-    toggleSidebar: (state) => {
-      state.sidebarCollapsed = !state.sidebarCollapsed;
+  const uiSlice = createSlice({
+    name: 'ui',
+    initialState: {
+      sidebarCollapsed: false,
+      activeFranchiseId: localStorage.getItem('activeFranchiseId'),
+    } as UiState,
+    reducers: {
+      toggleSidebar: (state) => {
+        state.sidebarCollapsed = !state.sidebarCollapsed;
+      },
+      setActiveFranchise: (state, action: PayloadAction<string>) => {
+        state.activeFranchiseId = action.payload;
+        localStorage.setItem('activeFranchiseId', action.payload);
+      },
+      clearActiveFranchise: (state) => {
+        state.activeFranchiseId = null;
+        localStorage.removeItem('activeFranchiseId');
+      },
     },
-    setActiveAcademy: (
-      state,
-      action: PayloadAction<{ id: string; name: string }>,
-    ) => {
-      state.activeAcademyId = action.payload.id;
-      state.activeAcademyName = action.payload.name;
-      localStorage.setItem("activeAcademyId", action.payload.id);
-      localStorage.setItem("activeAcademyName", action.payload.name);
-    },
-  },
-});
+  });
 
-export const { toggleSidebar, setActiveAcademy } = uiSlice.actions;
-export default uiSlice.reducer;
+  export const { toggleSidebar, setActiveFranchise, clearActiveFranchise } = uiSlice.actions;
+  export default uiSlice.reducer;

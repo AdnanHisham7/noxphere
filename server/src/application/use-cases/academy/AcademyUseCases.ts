@@ -4,6 +4,8 @@ import {
   AcademyEntity,
   Location,
 } from "../../../domain/entities/Academy.entity";
+import { FranchiseEntity } from "../../../domain/entities/Franchise.entity";
+import { FranchiseModel, FranchiseDocument } from "../../../infrastructure/database/models/Franchise.model";
 import { UserEntity, UserRole } from "../../../domain/entities/User.entity";
 import {
   CreateAcademyDto,
@@ -15,8 +17,31 @@ import {
   ConflictError,
   NotFoundError,
   BadRequestError,
+  ForbiddenError,
 } from "../../../shared/errors/AppError";
 import bcrypt from "bcryptjs";
+
+function toFranchiseEntity(doc: FranchiseDocument): FranchiseEntity {
+  const json = doc.toJSON() as any;
+  return {
+    id: json.id,
+    academyId: json.academyId?.toString?.() ?? json.academyId,
+    name: json.name,
+    franchiseCode: json.franchiseCode,
+    managerId: json.managerId?.toString?.(),
+    location: json.location,
+    sessionTimes: json.sessionTimes ?? [],
+    ageGroups: json.ageGroups ?? [],
+    skillLevels: json.skillLevels ?? [],
+    maxStudents: json.maxStudents,
+    isActive: json.isActive,
+    alertBeforeMinutes: json.alertBeforeMinutes,
+    notificationAlertAfterMinutes: json.notificationAlertAfterMinutes,
+    skillParameters: json.skillParameters ?? [],
+    createdAt: json.createdAt,
+    updatedAt: json.updatedAt,
+  };
+}
 
 export class AcademyUseCases {
   constructor(
@@ -24,7 +49,7 @@ export class AcademyUseCases {
     private readonly userRepository: IUserRepository,
   ) {}
 
-  async createAcademy(dto: CreateAcademyDto): Promise<AcademyEntity> {
+  async createAcademy(dto: CreateAcademyDto): Promise<AcademyEntity & { defaultFranchise: FranchiseEntity }> {
     // 1. Check if academy code already exists (if provided)
     if (dto.academyCode) {
       const existing = await this.academyRepository.findByCode(dto.academyCode);
@@ -38,7 +63,8 @@ export class AcademyUseCases {
     if (existingUser)
       throw new ConflictError("Manager email already registered");
 
-    // 3. Create the manager user
+    // 3. Create the manager user (franchiseId is attached once the
+    // franchise below exists)
     const passwordHash = await bcrypt.hash(dto.manager.password, 12);
     const managerUser = await this.userRepository.create({
       email: dto.manager.email.toLowerCase(),
@@ -46,12 +72,13 @@ export class AcademyUseCases {
       role: "manager" as UserRole,
       firstName: dto.manager.firstName,
       lastName: dto.manager.lastName,
-      phone: undefined,
+      phone: dto.manager.phone,
       isActive: true,
       isEmailVerified: false,
       permissions: {
         canManageUsers: true,
-        canManageCamps: false,
+        canManageFranchises: true,
+        canManageSessions: true,
         canManageFinance: true,
         canViewReports: true,
         canManageAttendance: true,
@@ -60,7 +87,6 @@ export class AcademyUseCases {
         canSendNotifications: true,
       },
       fcmTokens: [],
-      campId: undefined, // will be updated later if needed
     });
 
     // 4. Generate unique academy code if not provided
@@ -80,10 +106,38 @@ export class AcademyUseCases {
       isActive: true,
       alertBeforeMinutes: dto.alertBeforeMinutes,
       notificationAlertAfterMinutes: dto.notificationAlertAfterMinutes,
+      absentAlertDays: dto.absentAlertDays,
+      dueDateAlertDays: dto.dueDateAlertDays,
       skillParameters: dto.skillParameters,
     });
 
-    return academy;
+    // 6. Auto-create a single default franchise under this academy. Every
+    // academy needs at least one operational franchise for students, teams,
+    // sessions, fees etc. to be scoped into — managers and coaches work
+    // within a franchise, not the academy record directly.
+    const franchiseCode = await this.generateUniqueFranchiseCode(dto.name);
+    const defaultFranchise = await FranchiseModel.create({
+      academyId: academy.id,
+      name: `${dto.name} — Main Franchise`,
+      franchiseCode,
+      managerId: managerUser.id,
+      location: dto.location,
+      ageGroups: dto.ageGroups,
+      maxStudents: dto.maxStudents,
+      isActive: true,
+      alertBeforeMinutes: dto.alertBeforeMinutes,
+      notificationAlertAfterMinutes: dto.notificationAlertAfterMinutes,
+      skillParameters: dto.skillParameters,
+    });
+
+    // 7. Attach the new franchise to the manager so it's auto-selected the
+    // moment they log in.
+    await this.userRepository.update(managerUser.id, { franchiseId: defaultFranchise.id } as Partial<UserEntity>);
+
+    return {
+      ...academy,
+      defaultFranchise: toFranchiseEntity(defaultFranchise),
+    };
   }
 
   async getAcademyById(id: string): Promise<AcademyEntity> {
@@ -134,11 +188,49 @@ export class AcademyUseCases {
   async updateAcademyConfig(
     id: string,
     dto: AcademyConfigDto,
+    requester?: { role: string; franchiseId?: string },
   ): Promise<AcademyEntity> {
     const academy = await this.academyRepository.findById(id);
     if (!academy) throw new NotFoundError("Academy");
 
-    const updated = await this.academyRepository.update(id, dto);
+    // A manager may only edit the academy their own franchise belongs to.
+    // super_admin is unrestricted. This is what makes the settings tab —
+    // name, location, age categories, guardian alert-day thresholds, and
+    // skillParameters — genuinely editable by the manager of the academy,
+    // without opening up isActive, maxStudents, or the session-reminder
+    // minute fields, which stay super_admin-only.
+    //
+    // Whitelisting here (rather than blacklisting isActive) means a
+    // future field added to AcademyConfigSchema doesn't silently become
+    // manager-editable too.
+    // Location is a required embedded document — replacing it wholesale
+    // with whatever partial object the client sent would risk wiping
+    // fields the manager didn't touch. Merge onto what's already stored
+    // instead, so a partial edit (e.g. just the address) never corrupts
+    // the rest.
+    const mergedLocation = dto.location ? { ...academy.location, ...dto.location } : undefined;
+
+    let effectiveDto: Partial<AcademyEntity> = { ...dto, location: mergedLocation };
+    if (requester && requester.role === "manager") {
+      if (!requester.franchiseId) {
+        throw new ForbiddenError("Your account isn't linked to a franchise");
+      }
+      const franchise = await FranchiseModel.findById(requester.franchiseId).select("academyId").lean();
+      if (!franchise || franchise.academyId.toString() !== id) {
+        throw new ForbiddenError("You can only configure your own academy");
+      }
+      effectiveDto = {
+        name: dto.name,
+        location: mergedLocation,
+        ageGroups: dto.ageGroups,
+        absentAlertDays: dto.absentAlertDays,
+        dueDateAlertDays: dto.dueDateAlertDays,
+        feeQrImageUrl: dto.feeQrImageUrl,
+        skillParameters: dto.skillParameters,
+      };
+    }
+
+    const updated = await this.academyRepository.update(id, effectiveDto);
     if (!updated) throw new NotFoundError("Academy");
     return updated;
   }
@@ -154,12 +246,40 @@ export class AcademyUseCases {
     return updated;
   }
 
+  async toggleTransferWall(id: string): Promise<AcademyEntity> {
+    const academy = await this.academyRepository.findById(id);
+    if (!academy) throw new NotFoundError("Academy");
+
+    const updated = await this.academyRepository.update(id, {
+      transferWallEnabled: !academy.transferWallEnabled,
+    });
+    if (!updated) throw new NotFoundError("Academy");
+    return updated;
+  }
+
   async deleteAcademy(id: string): Promise<void> {
     const academy = await this.academyRepository.findById(id);
     if (!academy) throw new NotFoundError("Academy");
 
     const deleted = await this.academyRepository.softDelete(id);
     if (!deleted) throw new BadRequestError("Could not delete academy");
+  }
+
+  private async generateUniqueFranchiseCode(baseName: string): Promise<string> {
+    const prefix = baseName
+      .substring(0, 3)
+      .toUpperCase()
+      .replace(/[^A-Z]/g, "");
+    const random = Math.floor(1000 + Math.random() * 9000);
+    let code = `${prefix}-F-${random}`;
+    let exists = await FranchiseModel.findOne({ franchiseCode: code });
+    let counter = 1;
+    while (exists) {
+      code = `${prefix}-F-${random}${counter}`;
+      exists = await FranchiseModel.findOne({ franchiseCode: code });
+      counter++;
+    }
+    return code;
   }
 
   private async generateUniqueCode(baseName: string): Promise<string> {

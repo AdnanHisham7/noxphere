@@ -60,7 +60,10 @@ export class AcademyController {
     try {
       const { id } = req.params;
       const dto = AcademyConfigSchema.parse(req.body);
-      const academy = await this.academyUseCases.updateAcademyConfig(id, dto);
+      const academy = await this.academyUseCases.updateAcademyConfig(id, dto, {
+        role: req.user!.role,
+        franchiseId: req.user!.franchiseId,
+      });
       ResponseHandler.success(res, academy, 'Configuration updated successfully');
     } catch (err) {
       next(err);
@@ -72,6 +75,20 @@ export class AcademyController {
       const { id } = req.params;
       const academy = await this.academyUseCases.toggleAcademyStatus(id);
       ResponseHandler.success(res, academy, `Academy ${academy.isActive ? 'activated' : 'deactivated'}`);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  toggleTransferWall = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const academy = await this.academyUseCases.toggleTransferWall(id);
+      ResponseHandler.success(
+        res,
+        academy,
+        `Transfer wall ${academy.transferWallEnabled ? 'enabled' : 'disabled'}`,
+      );
     } catch (err) {
       next(err);
     }

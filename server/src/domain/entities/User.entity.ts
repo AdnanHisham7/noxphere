@@ -3,7 +3,8 @@ export type UserRole = 'super_admin' | 'manager' | 'coach' | 'student' | 'guardi
 
 export interface UserPermissions {
   canManageUsers: boolean;
-  canManageCamps: boolean;
+  canManageFranchises: boolean;
+  canManageSessions: boolean;
   canManageFinance: boolean;
   canViewReports: boolean;
   canManageAttendance: boolean;
@@ -25,7 +26,13 @@ export interface UserEntity {
   isEmailVerified: boolean;
   permissions: UserPermissions;
   fcmTokens: string[];
-  campId?: string;
+  franchiseId?: string;
+  // Set for coaches (and optionally other roles). A coach is scoped to an
+  // academy, not to a single franchise within it — this is what lets them
+  // operate across every franchise of that academy without being bound to
+  // one branch. franchiseId is kept only as legacy/optional metadata for
+  // coaches and is never used to restrict their access.
+  academyId?: string;
   lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -35,7 +42,8 @@ export interface UserEntity {
 export const defaultPermissions: Record<UserRole, UserPermissions> = {
   super_admin: {
     canManageUsers: true,
-    canManageCamps: true,
+    canManageFranchises: true,
+    canManageSessions: true,
     canManageFinance: true,
     canViewReports: true,
     canManageAttendance: true,
@@ -45,7 +53,8 @@ export const defaultPermissions: Record<UserRole, UserPermissions> = {
   },
   manager: {
     canManageUsers: true,
-    canManageCamps: false,
+    canManageFranchises: true,
+    canManageSessions: true,
     canManageFinance: true,
     canViewReports: true,
     canManageAttendance: true,
@@ -55,17 +64,19 @@ export const defaultPermissions: Record<UserRole, UserPermissions> = {
   },
   coach: {
     canManageUsers: false,
-    canManageCamps: false,
+    canManageFranchises: false,
+    canManageSessions: true,
     canManageFinance: false,
     canViewReports: false,
     canManageAttendance: true,
     canManagePerformance: true,
-    canManageSelection: false,
+    canManageSelection: true,
     canSendNotifications: false,
   },
   student: {
     canManageUsers: false,
-    canManageCamps: false,
+    canManageFranchises: false,
+    canManageSessions: false,
     canManageFinance: false,
     canViewReports: false,
     canManageAttendance: false,
@@ -75,7 +86,8 @@ export const defaultPermissions: Record<UserRole, UserPermissions> = {
   },
   guardian: {
     canManageUsers: false,
-    canManageCamps: false,
+    canManageFranchises: false,
+    canManageSessions: false,
     canManageFinance: false,
     canViewReports: false,
     canManageAttendance: false,
