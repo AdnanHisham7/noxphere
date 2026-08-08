@@ -10,6 +10,7 @@ export interface RequestingUser {
   sub: string;
   role: UserRole;
   franchiseId?: string;
+  academyId?: string;
 }
 
 function sanitize(user: UserEntity) {
@@ -76,22 +77,21 @@ export class UsersUseCases {
     let academyId: string | undefined;
     let franchiseId: string | undefined = dto.franchiseId;
     if (dto.role === "coach") {
-      academyId = dto.academyId;
+      academyId = dto.academyId || requester?.academyId;
       if (!academyId && requester?.role === "manager") {
-        if (!requester.franchiseId) {
-          throw new BadRequestError("Your account isn't linked to a franchise, so a coach's academy can't be resolved");
+        if (requester.franchiseId) {
+          const franchise = await FranchiseModel.findById(requester.franchiseId).select("academyId").lean();
+          if (franchise) {
+            academyId = franchise.academyId.toString();
+          }
         }
-        const franchise = await FranchiseModel.findById(requester.franchiseId).select("academyId").lean();
-        if (!franchise) throw new NotFoundError("Franchise");
-        academyId = franchise.academyId.toString();
       }
       if (!academyId) {
-        throw new BadRequestError("academyId is required to create a coach");
+        throw new BadRequestError("Your account isn't linked to a franchise, so a coach's academy can't be resolved");
       }
-      // Coaches are never scoped by franchiseId going forward — any value
-      // sent for a coach is ignored so a stale/incorrect binding can never
-      // be created.
-      franchiseId = undefined;
+      if (!franchiseId || franchiseId === "") {
+        franchiseId = undefined;
+      }
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
@@ -114,7 +114,10 @@ export class UsersUseCases {
 
   async updateUser(id: string, dto: UpdateUserDto) {
     const { permissions: _permissionsPatch, ...rest } = dto;
-    const updates: Partial<UserEntity> = { ...rest };
+    const updates: any = { ...rest };
+    if (updates.franchiseId === "") {
+      updates.franchiseId = null;
+    }
     if (dto.role) {
       updates.permissions = {
         ...defaultPermissions[dto.role],

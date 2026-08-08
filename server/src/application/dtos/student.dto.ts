@@ -12,6 +12,14 @@ export const MedicalInfoSchema = z.object({
   medicalConditions: z.array(z.string()).default([]),
   emergencyContactName: z.string().min(1),
   emergencyContactPhone: z.string().min(1),
+  medicalCondition: z.string().optional(),
+  medicalNotes: z.string().optional(),
+  medicalReportUrl: z.string().url().optional().or(z.literal('')),
+  medicalCertificateUrl: z.string().url().optional().or(z.literal('')),
+  scanReportUrl: z.string().url().optional().or(z.literal('')),
+  pdfAttachmentUrl: z.string().url().optional().or(z.literal('')),
+  imageAttachmentUrl: z.string().url().optional().or(z.literal('')),
+  docAttachmentUrl: z.string().url().optional().or(z.literal('')),
 });
 
 export const CreateStudentSchema = z.object({
@@ -26,7 +34,8 @@ export const CreateStudentSchema = z.object({
   jerseyNumber: z.number().min(1).max(99).optional(),
   jerseySize: z.string().optional(),
   position: z.string().optional(),
-  photo: z.string().url().optional(),
+  positions: z.array(z.string()).optional(),
+  photo: z.string().url().optional().or(z.literal('')),
   guardian: GuardianInfoSchema,
   medicalInfo: MedicalInfoSchema,
 });

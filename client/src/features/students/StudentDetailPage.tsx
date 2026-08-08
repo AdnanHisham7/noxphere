@@ -16,7 +16,7 @@ import {
 } from "recharts";
 import { clsx } from "clsx";
 import { Repeat2, Mail, Pencil } from "lucide-react";
-import { Button, Badge, Avatar, Modal, Skeleton, EmptyState, Input } from "../../components/ui";
+import { Button, Badge, Avatar, Modal, Skeleton, EmptyState, Input, DocumentUploadField } from "../../components/ui";
 import { toast } from "react-hot-toast";
 import { useTransferWallEnabled } from "../../hooks/useTransferWallEnabled";
 import mannequinPng from "../../assets/players/mannequin.png";
@@ -25,7 +25,7 @@ import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import QRCode from "react-qr-code";
 import { useGetPlayerCardQuery, useUpdateStudentPhotoMutation, useUpdateStudentMutation, type Student } from "../../store/api/studentsApi";
-import { useGetFranchiseByIdQuery } from "../../store/api/franchiseApi";
+import { useGetFranchiseByIdQuery, useGetFranchisesQuery } from "../../store/api/franchiseApi";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
 import { academyApi } from "../../store/api/academyApi";
 import { useListPlayerMutation } from "../../store/api/transferApi";
@@ -687,7 +687,25 @@ const TransferListingModal: React.FC<{
 
 export default StudentDetailPage;
 
-const POSITIONS = ["Goalkeeper", "Defender", "Midfielder", "Forward"];
+const POSITIONS = [
+  "Goalkeeper", "Sweeper Keeper", "Center Back", "Left Back", "Right Back",
+  "Wing Back", "Defensive Midfielder", "Central Midfielder", "Attacking Midfielder",
+  "Left Midfielder", "Right Midfielder", "Left Winger", "Right Winger",
+  "Center Forward", "Striker", "Second Striker", "False 9"
+];
+
+const calculateAgeCategory = (dobString: string): string => {
+  if (!dobString) return "U-13";
+  const dobDate = new Date(dobString);
+  const today = new Date();
+  let age = today.getFullYear() - dobDate.getFullYear();
+  const m = today.getMonth() - dobDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) {
+    age--;
+  }
+  const categoryNum = Math.max(5, Math.min(25, age + 1));
+  return `U-${categoryNum}`;
+};
 
 const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({ student, onClose }) => {
   const [updateStudent, { isLoading: saving }] = useUpdateStudentMutation();
@@ -696,15 +714,46 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
     skip: !franchise?.academyId,
   });
   const categories = academy?.ageGroups ?? [];
-  const { data: teams } = useListTeamsQuery({ franchiseId: student.franchiseId }, { skip: !student.franchiseId });
+  const { data: franchises } = useGetFranchisesQuery(
+    franchise ? { academyId: franchise.academyId, isActive: true } : undefined,
+    { skip: !franchise },
+  );
+  
+  const [franchiseId, setFranchiseId] = useState(student.franchiseId);
+  const { data: teams } = useListTeamsQuery({ franchiseId: franchiseId }, { skip: !franchiseId });
 
   const [firstName, setFirstName] = useState(student.firstName);
   const [lastName, setLastName] = useState(student.lastName);
+  const [dob, setDob] = useState(student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : "");
   const [ageGroup, setAgeGroup] = useState(student.ageGroup);
   const [teamId, setTeamId] = useState(student.teamId ?? "");
-  const [position, setPosition] = useState(student.position ?? "");
+  const [positions, setPositions] = useState<string[]>(student.positions || (student.position ? [student.position] : []));
   const [jerseyNumber, setJerseyNumber] = useState(student.jerseyNumber ? String(student.jerseyNumber) : "");
   const [jerseySize, setJerseySize] = useState(student.jerseySize ?? "");
+
+  // Guardian details state
+  const [guardianName, setGuardianName] = useState(student.guardian?.name ?? "");
+  const [guardianPhone, setGuardianPhone] = useState(student.guardian?.phone ?? "");
+  const [guardianEmail, setGuardianEmail] = useState(student.guardian?.email ?? "");
+
+  // Medical info state
+  const [bloodGroup, setBloodGroup] = useState(student.medicalInfo?.bloodGroup ?? "");
+  const [allergies, setAllergies] = useState(student.medicalInfo?.allergies?.join(", ") ?? "");
+  const [medicalConditions, setMedicalConditions] = useState(student.medicalInfo?.medicalConditions?.join(", ") ?? "");
+  const [emergencyContactName, setEmergencyContactName] = useState(student.medicalInfo?.emergencyContactName ?? "");
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState(student.medicalInfo?.emergencyContactPhone ?? "");
+  const [medicalCondition, setMedicalCondition] = useState(student.medicalInfo?.medicalCondition ?? "");
+  const [medicalNotes, setMedicalNotes] = useState(student.medicalInfo?.medicalNotes ?? "");
+  const [medicalReportUrl, setMedicalReportUrl] = useState(student.medicalInfo?.medicalReportUrl);
+  const [medicalCertificateUrl, setMedicalCertificateUrl] = useState(student.medicalInfo?.medicalCertificateUrl);
+  const [scanReportUrl, setScanReportUrl] = useState(student.medicalInfo?.scanReportUrl);
+
+  const handleDobChange = (value: string) => {
+    setDob(value);
+    if (value) {
+      setAgeGroup(calculateAgeCategory(value));
+    }
+  };
 
   const handleSave = async () => {
     if (!firstName.trim() || !lastName.trim()) {
@@ -715,17 +764,45 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
       toast.error("Select an age category");
       return;
     }
+    if (!guardianName.trim() || !guardianPhone.trim() || !guardianEmail.trim()) {
+      toast.error("Guardian contact details are required");
+      return;
+    }
+    if (!emergencyContactName.trim() || !emergencyContactPhone.trim()) {
+      toast.error("Emergency contact details are required");
+      return;
+    }
     try {
       await updateStudent({
         id: student.id,
         data: {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
+          dateOfBirth: new Date(dob).toISOString(),
           ageGroup,
           teamId: teamId || null,
-          position: position || undefined,
+          franchiseId,
+          position: positions[0] || "Forward",
+          positions: positions,
           jerseyNumber: jerseyNumber ? parseInt(jerseyNumber, 10) : undefined,
           jerseySize: jerseySize || undefined,
+          guardian: {
+            name: guardianName.trim(),
+            phone: guardianPhone.trim(),
+            email: guardianEmail.trim(),
+          },
+          medicalInfo: {
+            bloodGroup: bloodGroup || undefined,
+            allergies: allergies ? allergies.split(",").map((s) => s.trim()).filter(Boolean) : [],
+            medicalConditions: medicalConditions ? medicalConditions.split(",").map((s) => s.trim()).filter(Boolean) : [],
+            emergencyContactName: emergencyContactName.trim(),
+            emergencyContactPhone: emergencyContactPhone.trim(),
+            medicalCondition: medicalCondition.trim() || undefined,
+            medicalNotes: medicalNotes.trim() || undefined,
+            medicalReportUrl: medicalReportUrl || undefined,
+            medicalCertificateUrl: medicalCertificateUrl || undefined,
+            scanReportUrl: scanReportUrl || undefined,
+          },
         },
       }).unwrap();
       toast.success("Player details updated");
@@ -735,64 +812,156 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
     }
   };
 
+  const categoriesList = Array.from({ length: 21 }, (_, i) => `U-${i + 5}`);
+  const allCategories = Array.from(new Set([...categories, ...categoriesList])).sort(
+    (a, b) => parseInt(a.replace('U-', '')) - parseInt(b.replace('U-', ''))
+  );
+
   return (
-    <Modal isOpen onClose={onClose} title={`Edit ${student.firstName} ${student.lastName}`} size="md">
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <Input label="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-          <Input label="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+    <Modal isOpen onClose={onClose} title={`Edit ${student.firstName} ${student.lastName}`} size="xl">
+      <div className="space-y-6">
+        
+        {/* Responsive Content Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-start max-h-[60vh] overflow-y-auto pr-2 no-scrollbar">
+          
+          {/* COLUMN 1: Player Info & Guardian Details */}
+          <div className="space-y-4">
+            <div>
+              <p className="section-title mb-3 text-volt-400">Player Info</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+                <Input label="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Date of Birth" type="date" value={dob} onChange={(e) => handleDobChange(e.target.value)} required />
+              <div>
+                <label className="label">Age group</label>
+                <select value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)} className="input !w-full">
+                  {allCategories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Playing Positions (Select all that apply)</label>
+              <div className="flex flex-wrap gap-1.5 mt-1 border border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-pitch-900">
+                {POSITIONS.map((pos) => {
+                  const isSelected = positions.includes(pos);
+                  return (
+                    <button
+                      key={pos}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setPositions(positions.filter((p) => p !== pos));
+                        } else {
+                          setPositions([...positions, pos]);
+                        }
+                      }}
+                      className={clsx(
+                        "px-2 py-0.5 rounded text-[10px] font-semibold uppercase border transition-all duration-150",
+                        isSelected
+                          ? "bg-volt-400 border-volt-400 text-pitch-900 font-extrabold"
+                          : "bg-pitch-800 border-white/5 text-slate-400 hover:border-white/10 hover:text-white"
+                      )}
+                    >
+                      {pos}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Jersey number"
+                type="number"
+                min={0}
+                value={jerseyNumber}
+                onChange={(e) => setJerseyNumber(e.target.value)}
+              />
+              <Input label="Jersey size" value={jerseySize} onChange={(e) => setJerseySize(e.target.value)} placeholder="e.g. M" />
+            </div>
+
+            <div>
+              <label className="label">Franchise Assignment</label>
+              <select value={franchiseId} onChange={(e) => setFranchiseId(e.target.value)} className="input !w-full">
+                {(franchises ?? []).map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="label">Team Assignment</label>
+              <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className="input !w-full">
+                <option value="">No team assigned</option>
+                {(teams ?? []).map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.ageGroup})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="border-t border-white/5 pt-4 mt-2">
+              <p className="section-title mb-3 text-volt-400">Guardian Details</p>
+              <div className="space-y-3">
+                <Input label="Guardian name" value={guardianName} onChange={(e) => setGuardianName(e.target.value)} required />
+                <Input label="Guardian phone" value={guardianPhone} onChange={(e) => setGuardianPhone(e.target.value)} required />
+                <Input label="Guardian email" value={guardianEmail} onChange={(e) => setGuardianEmail(e.target.value)} required />
+              </div>
+            </div>
+          </div>
+
+          {/* COLUMN 2: Emergency & Medical details */}
+          <div className="space-y-4 md:border-l md:border-white/5 md:pl-6 h-full">
+            <div>
+              <p className="section-title mb-3 text-volt-400">Emergency & Medical</p>
+              <div className="space-y-3">
+                <Input label="Emergency contact name" value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} required />
+                <Input label="Emergency contact phone" value={emergencyContactPhone} onChange={(e) => setEmergencyContactPhone(e.target.value)} required />
+                <Input label="Blood group" value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} placeholder="O+" />
+                <Input label="Allergies (comma separated)" value={allergies} onChange={(e) => setAllergies(e.target.value)} placeholder="Peanuts, Dust" />
+                <Input label="Medical conditions (comma separated)" value={medicalConditions} onChange={(e) => setMedicalConditions(e.target.value)} placeholder="Asthma" />
+                <Input label="Medical Condition Detail" value={medicalCondition} onChange={(e) => setMedicalCondition(e.target.value)} placeholder="Describe any current conditions" />
+                <div>
+                  <label className="label">Medical Notes</label>
+                  <textarea className="input w-full min-h-[60px] text-xs py-2" value={medicalNotes} onChange={(e) => setMedicalNotes(e.target.value)} placeholder="Any notes for coaches..." />
+                </div>
+                <div className="space-y-3 pt-2">
+                  <DocumentUploadField
+                    label="Medical Report (PDF/Word)"
+                    category="notification_document"
+                    value={medicalReportUrl ? { url: medicalReportUrl, filename: "medical-report.pdf" } : undefined}
+                    onChange={(file) => setMedicalReportUrl(file?.url)}
+                  />
+                  <DocumentUploadField
+                    label="Medical Certificate (PDF/Word)"
+                    category="notification_document"
+                    value={medicalCertificateUrl ? { url: medicalCertificateUrl, filename: "medical-certificate.pdf" } : undefined}
+                    onChange={(file) => setMedicalCertificateUrl(file?.url)}
+                  />
+                  <DocumentUploadField
+                    label="Scan Report (PDF/Word)"
+                    category="notification_document"
+                    value={scanReportUrl ? { url: scanReportUrl, filename: "scan-report.pdf" } : undefined}
+                    onChange={(file) => setScanReportUrl(file?.url)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
-        <div>
-          <label className="label">Age group</label>
-          <select value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)} className="input !w-full">
-            <option value="" disabled>
-              Select a category
-            </option>
-            {/* Always offer the player's current category even if it was
-                since removed from academy settings, so this can't force a
-                silent blank. */}
-            {(categories.includes(ageGroup) ? categories : [ageGroup, ...categories].filter(Boolean)).map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="label">Team</label>
-          <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className="input !w-full">
-            <option value="">No team assigned</option>
-            {(teams ?? []).map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name} ({t.ageGroup})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="label">Position</label>
-          <select value={position} onChange={(e) => setPosition(e.target.value)} className="input !w-full">
-            <option value="">Not set</option>
-            {POSITIONS.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            label="Jersey number"
-            type="number"
-            min={0}
-            value={jerseyNumber}
-            onChange={(e) => setJerseyNumber(e.target.value)}
-          />
-          <Input label="Jersey size" value={jerseySize} onChange={(e) => setJerseySize(e.target.value)} placeholder="e.g. M" />
-        </div>
-        <div className="flex gap-3 pt-2">
-          <Button loading={saving} onClick={handleSave} className="flex-1">Save changes</Button>
-          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+
+        <div className="flex gap-3 pt-4 border-t border-white/5 justify-end">
+          <Button type="button" variant="secondary" onClick={onClose} className="px-5">Cancel</Button>
+          <Button loading={saving} onClick={handleSave} className="px-8 bg-volt-400 text-pitch-900 font-bold hover:bg-volt-300">Save changes</Button>
         </div>
       </div>
     </Modal>

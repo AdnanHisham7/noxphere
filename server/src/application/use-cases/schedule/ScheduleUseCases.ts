@@ -52,7 +52,7 @@ function resolveRefId(value: any): string | undefined {
 function toCard(doc: any) {
   const json = doc.toJSON ? doc.toJSON() : doc;
   return {
-    id: json.id,
+    id: json.id || json._id?.toString(),
     franchiseId: json.franchiseId?.toString ? json.franchiseId.toString() : json.franchiseId,
     targetType: json.targetType ?? "team",
     teamId: resolveRefId(json.teamId),
@@ -63,6 +63,15 @@ function toCard(doc: any) {
       ? `${json.coachId.firstName} ${json.coachId.lastName ?? ""}`.trim()
       : undefined,
     coachId: resolveRefId(json.coachId),
+    coachIds: json.coachIds?.map((id: any) => id._id?.toString() || id.toString() || id) ?? [],
+    coaches: json.coachIds?.map((c: any) => c.firstName ? `${c.firstName} ${c.lastName || ""}`.trim() : c.toString()).filter(Boolean) ?? [],
+    categories: json.categories ?? [],
+    startDate: json.startDate,
+    endDate: json.endDate,
+    dailyStartTime: json.dailyStartTime,
+    dailyEndTime: json.dailyEndTime,
+    playerIds: json.playerIds?.map((id: any) => id._id?.toString() || id.toString() || id) ?? [],
+    documents: json.documents ?? [],
     type: json.type,
     date: json.date,
     startTime: json.startTime,
@@ -79,17 +88,29 @@ function toCard(doc: any) {
 
 export class ScheduleUseCases {
   async listSessions(filters: {
-    franchiseId: string;
+    franchiseId?: string;
+    academyId?: string;
     from?: string;
     to?: string;
     teamId?: string;
     coachId?: string;
     status?: string;
   }) {
-    if (!filters.franchiseId) throw new BadRequestError("franchiseId is required");
-    const query: Record<string, unknown> = { franchiseId: filters.franchiseId };
+    const query: Record<string, unknown> = {};
+    if (filters.franchiseId) {
+      query.franchiseId = filters.franchiseId;
+    } else if (filters.academyId) {
+      const franchises = await FranchiseModel.find({ academyId: filters.academyId }).select("_id").lean();
+      query.franchiseId = { $in: franchises.map((f) => f._id) };
+    } else {
+      throw new BadRequestError("franchiseId or academyId is required");
+    }
+
     if (filters.teamId) query.teamId = filters.teamId;
-    if (filters.coachId) query.coachId = filters.coachId;
+    if (filters.coachId) {
+      // support matching coachId in either the old coachId field or coachIds array
+      query.$or = [{ coachId: filters.coachId }, { coachIds: filters.coachId }];
+    }
     if (filters.status) query.status = filters.status;
     if (filters.from || filters.to) {
       query.date = {
@@ -98,16 +119,19 @@ export class ScheduleUseCases {
       };
     }
     const sessions = await SessionModel.find(query)
-      .populate("teamId", "name ageGroup")
       .populate("coachId", "firstName lastName")
-      .sort({ date: 1, startTime: 1 });
+      .populate("coachIds", "firstName lastName")
+      .populate("teamId", "name ageGroup")
+      .sort({ date: -1, startTime: -1 })
+      .lean();
     return sessions.map(toCard);
   }
 
   async getSessionById(id: string) {
     const session = await SessionModel.findById(id)
       .populate("teamId", "name ageGroup")
-      .populate("coachId", "firstName lastName");
+      .populate("coachId", "firstName lastName")
+      .populate("coachIds", "firstName lastName");
     if (!session) throw new NotFoundError("Session");
     return toCard(session);
   }
@@ -121,32 +145,48 @@ export class ScheduleUseCases {
    * coach is this coach. This is enforced here — not just in the
    * controller — so the rule holds no matter what calls this use-case.
    */
-  async createSession(dto: CreateSessionDto, createdBy: string, requestingCoachId?: string) {
+  async createSession(dto: CreateSessionDto & { coachIds?: string[]; categories?: string[]; startDate?: string; endDate?: string; dailyStartTime?: string; dailyEndTime?: string; playerIds?: string[]; documents?: { name: string; url: string }[] }, createdBy: string, requestingCoachId?: string) {
     if (dto.endTime <= dto.startTime) {
       throw new BadRequestError("endTime must be after startTime");
     }
-    if (!dto.coachId) {
-      throw new BadRequestError("coachId is required");
+    if (!dto.coachId && (!dto.coachIds || dto.coachIds.length === 0)) {
+      throw new BadRequestError("coachId or coachIds are required");
+    }
+    if (dto.coachIds && dto.coachIds.length > 0 && !dto.coachId) {
+      dto.coachId = dto.coachIds[0];
     }
     if (requestingCoachId && dto.targetType === "category") {
       throw new ForbiddenError("Coaches can only schedule sessions for a team they are assigned to");
     }
 
     if (dto.targetType === "category") {
-      if (!dto.category) throw new BadRequestError("category is required for a category session");
+      if (!dto.category && (!dto.categories || dto.categories.length === 0)) {
+        throw new BadRequestError("category or categories are required for a category session");
+      }
+      if (dto.categories && dto.categories.length > 0 && !dto.category) {
+        dto.category = dto.categories[0];
+      }
       const franchise = await FranchiseModel.findById(dto.franchiseId).select("ageGroups").lean();
       if (!franchise) throw new NotFoundError("Franchise");
-      if (franchise.ageGroups?.length && !franchise.ageGroups.includes(dto.category)) {
+      const targetCat = dto.category!;
+      if (franchise.ageGroups?.length && !franchise.ageGroups.includes(targetCat)) {
         throw new BadRequestError(
-          `"${dto.category}" isn't one of this franchise's configured age groups (${franchise.ageGroups.join(", ")})`,
+          `"${targetCat}" isn't one of this franchise's configured age groups (${franchise.ageGroups.join(", ")})`,
         );
       }
     } else {
       if (!dto.teamId) throw new BadRequestError("teamId is required for a team session");
       const team = await TeamModel.findById(dto.teamId);
       if (!team) throw new NotFoundError("Team");
-      if (team.franchiseId.toString() !== dto.franchiseId) {
-        throw new BadRequestError("That team doesn't belong to this franchise");
+      if (team.franchiseId) {
+        if (team.franchiseId.toString() !== dto.franchiseId) {
+          throw new BadRequestError("That team doesn't belong to this franchise");
+        }
+      } else {
+        const franchise = await FranchiseModel.findById(dto.franchiseId).select("academyId").lean();
+        if (!franchise || franchise.academyId.toString() !== team.academyId?.toString()) {
+          throw new BadRequestError("That global team is not part of this franchise's academy");
+        }
       }
       if (requestingCoachId && team.coachId?.toString() !== requestingCoachId) {
         throw new ForbiddenError("You can only schedule sessions for a team assigned to you");
@@ -158,24 +198,33 @@ export class ScheduleUseCases {
       targetType: dto.targetType,
       teamId: dto.targetType === "team" ? dto.teamId : undefined,
       category: dto.targetType === "category" ? dto.category : undefined,
+      categories: dto.categories || (dto.category ? [dto.category] : []),
       coachId: dto.coachId,
+      coachIds: dto.coachIds || [dto.coachId],
       type: dto.type,
       date: dto.date,
       startTime: dto.startTime,
       endTime: dto.endTime,
+      startDate: dto.startDate || dto.date,
+      endDate: dto.endDate || dto.date,
+      dailyStartTime: dto.dailyStartTime || dto.startTime,
+      dailyEndTime: dto.dailyEndTime || dto.endTime,
       location: dto.location,
       fieldNumber: dto.fieldNumber,
       notes: dto.notes,
+      playerIds: dto.playerIds,
+      documents: dto.documents,
       createdBy,
       status: "upcoming",
     });
     const populated = await SessionModel.findById(session.id)
       .populate("teamId", "name ageGroup")
-      .populate("coachId", "firstName lastName");
+      .populate("coachId", "firstName lastName")
+      .populate("coachIds", "firstName lastName");
 
     // A coach scheduling their own session already knows about it — only
     // notify when a manager created it on the coach's behalf.
-    if (!requestingCoachId) {
+    if (!requestingCoachId && dto.coachId) {
       const target = dto.targetType === "team" ? (populated?.teamId as any)?.name : dto.category;
       const sessionDate = new Date(dto.date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
       await notificationService
@@ -190,17 +239,24 @@ export class ScheduleUseCases {
     return toCard(populated);
   }
 
-  async updateSession(id: string, dto: UpdateSessionDto) {
+  async updateSession(id: string, dto: UpdateSessionDto & { coachIds?: string[]; categories?: string[]; startDate?: string; endDate?: string; dailyStartTime?: string; dailyEndTime?: string; playerIds?: string[]; documents?: { name: string; url: string }[] }) {
     const session = await SessionModel.findById(id);
     if (!session) throw new NotFoundError("Session");
     if (dto.startTime && dto.endTime && dto.endTime <= dto.startTime) {
       throw new BadRequestError("endTime must be after startTime");
     }
+    if (dto.coachIds && dto.coachIds.length > 0) {
+      dto.coachId = dto.coachIds[0];
+    }
+    if (dto.categories && dto.categories.length > 0) {
+      dto.category = dto.categories[0];
+    }
     Object.assign(session, dto);
     await session.save();
     const populated = await SessionModel.findById(id)
       .populate("teamId", "name ageGroup")
-      .populate("coachId", "firstName lastName");
+      .populate("coachId", "firstName lastName")
+      .populate("coachIds", "firstName lastName");
     return toCard(populated);
   }
 
@@ -291,13 +347,21 @@ export class ScheduleUseCases {
   async getSessionRoster(sessionId: string) {
     const session = await SessionModel.findById(sessionId)
       .populate("teamId", "name ageGroup")
-      .populate("coachId", "firstName lastName");
+      .populate("coachId", "firstName lastName")
+      .populate("coachIds", "firstName lastName");
     if (!session) throw new NotFoundError("Session");
 
-    const studentQuery =
-      session.targetType === "category"
-        ? { franchiseId: session.franchiseId, ageGroup: session.category, isActive: true }
-        : { teamId: session.teamId, isActive: true };
+    const categoriesFilter = session.categories && session.categories.length > 0 ? { $in: session.categories } : session.category;
+    const studentQuery: any = { isActive: true };
+    const playerQueryList = session.playerIds && session.playerIds.length > 0 ? { _id: { $in: session.playerIds } } : null;
+
+    if (session.targetType === "category") {
+      const defaultFilter = { franchiseId: session.franchiseId, ageGroup: categoriesFilter };
+      studentQuery.$or = playerQueryList ? [defaultFilter, playerQueryList] : [defaultFilter];
+    } else {
+      const defaultFilter = { teamId: session.teamId };
+      studentQuery.$or = playerQueryList ? [defaultFilter, playerQueryList] : [defaultFilter];
+    }
 
     const students = await StudentModel.find(studentQuery)
       .select("firstName lastName photo position jerseyNumber teamId")

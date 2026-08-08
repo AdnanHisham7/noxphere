@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { Building2, ChevronDown, Check, Bell, Repeat2 } from 'lucide-react';
 import { markAllRead } from '../../store/slices/notificationSlice';
-import { setActiveFranchise } from '../../store/slices/uiSlice';
+import { setActiveFranchise, clearActiveFranchise } from '../../store/slices/uiSlice';
 import { Avatar } from '../ui';
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
@@ -17,22 +17,38 @@ const FranchiseSwitcher: React.FC = () => {
   const dispatch = useDispatch();
   const currentFranchiseId = useCurrentFranchiseId();
   const [open, setOpen] = useState(false);
+  const { user } = useSelector((s: RootState) => s.auth);
+  const isFranchiseManager = user?.role === "manager" && !!user?.franchiseId;
 
   // Resolve the current franchise's academy, then list sibling franchises
   // under that same academy so a manager/coach can switch between them.
   const { data: currentFranchise } = useGetFranchiseByIdQuery(currentFranchiseId ?? '', {
     skip: !currentFranchiseId,
   });
+
+  const activeAcademyId = user?.academyId || currentFranchise?.academyId;
+
   const { data: franchises } = useGetFranchisesQuery(
-    currentFranchise ? { academyId: currentFranchise.academyId, isActive: true } : undefined,
-    { skip: !currentFranchise },
+    activeAcademyId ? { academyId: activeAcademyId, isActive: true } : undefined,
+    { skip: !activeAcademyId || isFranchiseManager },
   );
 
-  if (!currentFranchiseId) {
+  useEffect(() => {
+    if (isFranchiseManager || !franchises || franchises.length === 0) return;
+    if (!currentFranchiseId) return; // Do not auto-force selection if currently in Head Office view
+    const stillValid = franchises.some((f) => f.id === currentFranchiseId);
+    if (!stillValid) {
+      dispatch(setActiveFranchise(franchises[0].id));
+    }
+  }, [franchises, currentFranchiseId, isFranchiseManager, dispatch]);
+
+  if (isFranchiseManager) {
     return (
       <div className="hidden sm:flex items-center gap-2 bg-pitch-800 border border-white/10 rounded px-3 py-1.5">
         <Building2 size={13} className="text-volt-400" />
-        <span className="text-xs text-slate-400 font-medium">No franchise selected</span>
+        <span className="text-xs text-slate-300 font-medium max-w-40 truncate">
+          {currentFranchise?.name ?? 'Loading…'}
+        </span>
       </div>
     );
   }
@@ -45,17 +61,32 @@ const FranchiseSwitcher: React.FC = () => {
       >
         <Building2 size={13} className="text-volt-400" />
         <span className="text-xs text-slate-300 font-medium max-w-40 truncate">
-          {currentFranchise?.name ?? 'Loading…'}
+          {currentFranchiseId ? (currentFranchise?.name ?? 'Loading…') : 'Head Office'}
         </span>
         <ChevronDown size={12} className="text-slate-600" />
       </button>
 
-      {open && franchises && franchises.length > 0 && (
+      {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-11 w-64 card shadow-panel z-50 animate-slide-up py-1.5">
             <p className="px-3 py-1.5 section-title">Switch franchise</p>
-            {franchises.map((f) => (
+            
+            <button
+              onClick={() => {
+                dispatch(clearActiveFranchise());
+                setOpen(false);
+              }}
+              className={clsx(
+                'w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-white/4 transition-colors',
+                !currentFranchiseId ? 'text-volt-400 font-semibold' : 'text-slate-300',
+              )}
+            >
+              <span>Head Office Dashboard</span>
+              {!currentFranchiseId && <Check size={13} />}
+            </button>
+
+            {franchises && franchises.map((f) => (
               <button
                 key={f.id}
                 onClick={() => {
@@ -63,7 +94,7 @@ const FranchiseSwitcher: React.FC = () => {
                   setOpen(false);
                 }}
                 className={clsx(
-                  'w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-white/4 transition-colors',
+                  'w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-white/4 transition-colors border-t border-white/5',
                   f.id === currentFranchiseId ? 'text-volt-400 font-semibold' : 'text-slate-300',
                 )}
               >

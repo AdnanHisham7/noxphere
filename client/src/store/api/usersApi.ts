@@ -3,6 +3,12 @@ import { baseApi } from "./baseApi";
 
 export type UserRole = "super_admin" | "manager" | "coach" | "student" | "guardian";
 
+export interface WeeklyAvailability {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+}
+
 export interface ManagedUser {
   id: string;
   email: string;
@@ -15,6 +21,8 @@ export interface ManagedUser {
   franchiseId?: string;
   academyId?: string;
   permissions: Record<string, boolean>;
+  weeklyAvailability?: WeeklyAvailability[];
+  customUnavailableDates?: string[];
   createdAt: string;
   updatedAt: string;
 }

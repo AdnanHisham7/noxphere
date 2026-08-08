@@ -13,6 +13,12 @@ export interface UserPermissions {
   canSendNotifications: boolean;
 }
 
+export interface WeeklyAvailability {
+  dayOfWeek: number; // 0 = Sunday, 1 = Monday, etc.
+  startTime: string; // HH:MM
+  endTime: string; // HH:MM
+}
+
 export interface UserEntity {
   id: string;
   email: string;
@@ -27,12 +33,9 @@ export interface UserEntity {
   permissions: UserPermissions;
   fcmTokens: string[];
   franchiseId?: string;
-  // Set for coaches (and optionally other roles). A coach is scoped to an
-  // academy, not to a single franchise within it — this is what lets them
-  // operate across every franchise of that academy without being bound to
-  // one branch. franchiseId is kept only as legacy/optional metadata for
-  // coaches and is never used to restrict their access.
   academyId?: string;
+  weeklyAvailability?: WeeklyAvailability[];
+  customUnavailableDates?: string[];
   lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;

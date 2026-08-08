@@ -1,7 +1,6 @@
-// src/features/fees/FeesPage.tsx
 import React, { useState } from "react";
 import { clsx } from "clsx";
-import { Wallet, Plus, Trash2 } from "lucide-react";
+import { Wallet, Plus, Trash2, Edit2, RotateCcw, AlertTriangle } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { Card, Badge, Button, Input, Modal, Skeleton, EmptyState, ImageUploadField } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
@@ -11,6 +10,8 @@ import {
   useListFeesQuery,
   useCreateFeeMutation,
   useRecordPaymentMutation,
+  useUpdatePaymentMutation,
+  useUndoPaymentMutation,
   type CreateFeeBody,
 } from "../../store/api/adminFeesApi";
 import { useGetStudentsQuery } from "../../store/api/studentsApi";
@@ -67,6 +68,7 @@ const FeesPage: React.FC = () => {
   const [studentFilter, setStudentFilter] = useState<string>("");
   const [showCreate, setShowCreate] = useState(false);
   const [payTarget, setPayTarget] = useState<{ feeId: string; installmentNumber: number; amount: number } | null>(null);
+  const [editTarget, setEditTarget] = useState<{ feeId: string; installmentNumber: number; amount: number; paymentMethod?: string; transactionId?: string } | null>(null);
 
   const { data: fees, isLoading, isError } = useListFeesQuery(
     { franchiseId: franchiseId ?? "", studentId: studentFilter || undefined },
@@ -79,8 +81,21 @@ const FeesPage: React.FC = () => {
   const students = studentsResult?.items ?? [];
 
   const [createFee, { isLoading: creating }] = useCreateFeeMutation();
+  const [undoPayment] = useUndoPaymentMutation();
 
   const visible = (fees ?? []).filter((f) => !statusFilter || f.overallStatus === statusFilter);
+
+  const handleUndoPayment = async (feeId: string, installmentNumber: number) => {
+    if (!window.confirm("Are you sure you want to undo this payment? This will reset the installment to unpaid/pending.")) {
+      return;
+    }
+    try {
+      await undoPayment({ feeId, installmentNumber }).unwrap();
+      toast.success("Payment reverted successfully");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Couldn't undo payment — try again");
+    }
+  };
 
   if (!franchiseId) {
     return (
@@ -100,13 +115,13 @@ const FeesPage: React.FC = () => {
           <p className="text-sm text-slate-400 mt-1">Schedule and track collection across every player</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <select value={studentFilter} onChange={(e) => setStudentFilter(e.target.value)} className="input !w-auto">
+          <select value={studentFilter} onChange={(e) => setStudentFilter(e.target.value)} className="input !w-auto text-xs">
             <option value="">All players</option>
             {students.map((s) => (
-              <option key={s.id} value={s.id}></option>
+              <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
             ))}
           </select>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input !w-auto">
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input !w-auto text-xs">
             <option value="">All statuses</option>
             <option value="pending">Pending</option>
             <option value="partial">Partial</option>
@@ -160,32 +175,90 @@ const FeesPage: React.FC = () => {
                   key={inst.installmentNumber}
                   className="flex items-center justify-between text-sm bg-white/[0.03] rounded-lg px-3 py-2.5"
                 >
-                  <span className="text-slate-400">
-                    Installment {inst.installmentNumber} · due {new Date(inst.dueDate).toLocaleDateString()}
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-slate-400">
+                      Installment {inst.installmentNumber} · due {new Date(inst.dueDate).toLocaleDateString()}
+                    </span>
+                    {inst.paidAt && (
+                      <span className="text-[10px] text-slate-500">
+                        Paid via <span className="uppercase font-semibold">{inst.paymentMethod || "cash"}</span> on {new Date(inst.paidAt).toLocaleDateString()}
+                        {inst.transactionId && ` (Txn: ${inst.transactionId})`}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-3">
                     <span className="text-white font-mono">
                       ₹{inst.paidAmount.toLocaleString("en-IN")} / ₹{inst.amount.toLocaleString("en-IN")}
                     </span>
                     <Badge variant={STATUS_VARIANT[inst.status] ?? "gray"}>{inst.status}</Badge>
-                    {inst.status !== "paid" && (
-                      <button
-                        onClick={() =>
-                          setPayTarget({
-                            feeId: fee._id,
-                            installmentNumber: inst.installmentNumber,
-                            amount: inst.amount - inst.paidAmount,
-                          })
-                        }
-                        className="text-xs text-volt-400 hover:text-volt-300 transition-colors"
-                      >
-                        Record payment
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {inst.paidAmount > 0 && (
+                        <>
+                          <button
+                            onClick={() =>
+                              setEditTarget({
+                                feeId: fee._id,
+                                installmentNumber: inst.installmentNumber,
+                                amount: inst.paidAmount,
+                                paymentMethod: inst.paymentMethod || "cash",
+                                transactionId: inst.transactionId || "",
+                              })
+                            }
+                            className="text-2xs text-slate-400 hover:text-volt-400 transition-colors font-semibold border border-white/5 bg-white/5 rounded px-2 py-1"
+                            title="Edit this payment"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleUndoPayment(fee._id, inst.installmentNumber)}
+                            className="text-2xs text-slate-500 hover:text-ember-400 transition-colors font-semibold border border-white/5 bg-white/5 rounded px-2 py-1"
+                            title="Undo this payment"
+                          >
+                            Undo
+                          </button>
+                        </>
+                      )}
+                      {inst.status !== "paid" && (
+                        <button
+                          onClick={() =>
+                            setPayTarget({
+                              feeId: fee._id,
+                              installmentNumber: inst.installmentNumber,
+                              amount: inst.amount - inst.paidAmount,
+                            })
+                          }
+                          className="text-xs text-volt-400 hover:text-volt-300 transition-colors font-semibold bg-volt-400/10 border border-volt-400/20 rounded px-2 py-1"
+                        >
+                          Record payment
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Audit Logs */}
+            {fee.auditLog && fee.auditLog.length > 0 && (
+              <div className="mt-4 border-t border-white/5 pt-3 space-y-2">
+                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Audit Trail Logs</h4>
+                <div className="space-y-1.5 max-h-24 overflow-y-auto pr-1 no-scrollbar">
+                  {fee.auditLog.map((log, index) => (
+                    <div key={index} className="flex justify-between items-start text-[10px] bg-white/[0.01] border border-white/5 rounded px-2.5 py-1 text-slate-400 font-mono">
+                      <div>
+                        <span className="text-volt-400 capitalize font-semibold">[{log.action.replace("_", " ")}]</span>{" "}
+                        <span>{log.details || `Amount: ₹${log.amount}`}</span>
+                      </div>
+                      <div className="text-right text-[9px] text-slate-500 shrink-0 ml-2">
+                        <span>by {log.performedByName}</span>
+                        <span className="block">{new Date(log.timestamp).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
           </Card>
         ))}
       </div>
@@ -207,6 +280,7 @@ const FeesPage: React.FC = () => {
         />
       )}
       {payTarget && <RecordPaymentModal target={payTarget} onClose={() => setPayTarget(null)} />}
+      {editTarget && <EditPaymentModal target={editTarget} onClose={() => setEditTarget(null)} />}
     </div>
   );
 };
@@ -232,9 +306,6 @@ const CreateFeeModal: React.FC<{
   const [notes, setNotes] = useState("");
   const [installments, setInstallments] = useState([emptyInstallment()]);
 
-  // Keep the installment count in sync with the chosen fee type: one_time
-  // and early_bird are always a single payment, installment plans can have
-  // as many as the manager schedules.
   const setFeeTypeAndAdjust = (type: CreateFeeBody["feeType"]) => {
     setFeeType(type);
     if (type !== "installment") setInstallments([emptyInstallment()]);
@@ -246,9 +317,6 @@ const CreateFeeModal: React.FC<{
     setInstallments((prev) => prev.map((inst, idx) => (idx === i ? { ...inst, [field]: value } : inst)));
   };
 
-  // Auto-split the total evenly across the current installments whenever
-  // asked, so the manager doesn't have to do the maths — they can still
-  // fine-tune each amount afterwards.
   const splitEvenly = () => {
     const total = parseFloat(totalAmount);
     if (!total || installments.length === 0) return;
@@ -300,8 +368,8 @@ const CreateFeeModal: React.FC<{
     <Modal isOpen onClose={onClose} title="Schedule a fee" size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="label">Player</label>
-          <select className="input" value={studentId} onChange={(e) => setStudentId(e.target.value)} required>
+          <label className="label text-xs">Player</label>
+          <select className="input text-xs" value={studentId} onChange={(e) => setStudentId(e.target.value)} required>
             <option value="">Select a player…</option>
             {students.map((s) => (
               <option key={s.id} value={s.id}>{s.firstName} {s.lastName} · {s.ageGroup}</option>
@@ -310,7 +378,7 @@ const CreateFeeModal: React.FC<{
         </div>
 
         <div>
-          <label className="label">Fee type</label>
+          <label className="label text-xs">Fee type</label>
           <div className="flex gap-2">
             {(["one_time", "installment", "early_bird"] as const).map((t) => (
               <button
@@ -335,7 +403,7 @@ const CreateFeeModal: React.FC<{
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="label !mb-0">
+            <label className="label !mb-0 text-xs">
               {feeType === "installment" ? "Installments" : "Payment due"}
             </label>
             <div className="flex gap-3">
@@ -361,14 +429,14 @@ const CreateFeeModal: React.FC<{
                   placeholder="Amount"
                   value={inst.amount}
                   onChange={(e) => updateInstallment(i, "amount", e.target.value)}
-                  className="input flex-1"
+                  className="input flex-1 text-xs"
                   required
                 />
                 <input
                   type="date"
                   value={inst.dueDate}
                   onChange={(e) => updateInstallment(i, "dueDate", e.target.value)}
-                  className="input flex-1"
+                  className="input flex-1 text-xs"
                   required
                 />
                 {feeType === "installment" && installments.length > 1 && (
@@ -382,8 +450,8 @@ const CreateFeeModal: React.FC<{
         </div>
 
         <div>
-          <label className="label">Notes (optional)</label>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="input w-full resize-none" placeholder="e.g. Term 1 fee — scholarship applied" />
+          <label className="label text-xs">Notes (optional)</label>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="input w-full resize-none text-xs" placeholder="e.g. Term 1 fee — scholarship applied" />
         </div>
 
         <div className="flex gap-3 pt-2">
@@ -402,6 +470,7 @@ const RecordPaymentModal: React.FC<{
   const [recordPayment, { isLoading }] = useRecordPaymentMutation();
   const [amount, setAmount] = useState(String(target.amount));
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [transactionId, setTransactionId] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -411,6 +480,7 @@ const RecordPaymentModal: React.FC<{
         installmentNumber: target.installmentNumber,
         amount: Number(amount),
         paymentMethod,
+        transactionId: transactionId || undefined,
       }).unwrap();
       toast.success("Payment recorded");
       onClose();
@@ -424,16 +494,65 @@ const RecordPaymentModal: React.FC<{
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input label="Amount (₹)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} required />
         <div>
-          <label className="label">Payment method</label>
-          <select className="input" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+          <label className="label text-xs">Payment method</label>
+          <select className="input text-xs" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
             <option value="cash">Cash</option>
             <option value="card">Card</option>
             <option value="upi">UPI</option>
             <option value="bank_transfer">Bank transfer</option>
           </select>
         </div>
-        <Button type="submit" loading={isLoading} className="w-full">
+        <Input label="Transaction ID (optional)" value={transactionId} onChange={(e) => setTransactionId(e.target.value)} />
+        <Button type="submit" loading={isLoading} className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2">
           Record payment
+        </Button>
+      </form>
+    </Modal>
+  );
+};
+
+const EditPaymentModal: React.FC<{
+  target: { feeId: string; installmentNumber: number; amount: number; paymentMethod?: string; transactionId?: string };
+  onClose: () => void;
+}> = ({ target, onClose }) => {
+  const [updatePayment, { isLoading }] = useUpdatePaymentMutation();
+  const [amount, setAmount] = useState(String(target.amount));
+  const [paymentMethod, setPaymentMethod] = useState(target.paymentMethod || "cash");
+  const [transactionId, setTransactionId] = useState(target.transactionId || "");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await updatePayment({
+        feeId: target.feeId,
+        installmentNumber: target.installmentNumber,
+        amount: Number(amount),
+        paymentMethod,
+        transactionId: transactionId || undefined,
+      }).unwrap();
+      toast.success("Payment details updated");
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Couldn't update payment — try again");
+    }
+  };
+
+  return (
+    <Modal isOpen onClose={onClose} title="Edit payment details" size="sm">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Input label="Amount (₹)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+        <div>
+          <label className="label text-xs">Payment method</label>
+          <select className="input text-xs" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+            <option value="cash">Cash</option>
+            <option value="card">Card</option>
+            <option value="upi">UPI</option>
+            <option value="bank_transfer">Bank transfer</option>
+          </select>
+        </div>
+        <Input label="Transaction ID (optional)" value={transactionId} onChange={(e) => setTransactionId(e.target.value)} />
+        <Button type="submit" loading={isLoading} className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2">
+          Save Changes
         </Button>
       </form>
     </Modal>

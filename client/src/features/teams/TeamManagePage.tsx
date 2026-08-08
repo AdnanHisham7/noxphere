@@ -7,7 +7,7 @@ import { EmptyState, Skeleton, Button } from "../../components/ui";
 import { ManageTeamView } from "./tactics/ManageTeamView";
 import type { Player, Position } from "./tactics/types";
 
-const MIN_PLAYERS_FOR_CONSOLE = 10;
+const MIN_PLAYERS_FOR_CONSOLE = 0;
 
 // The roster only stores a coarse position (Forward/Midfielder/Defender/
 // Goalkeeper) chosen at enrollment. The tactics console works with

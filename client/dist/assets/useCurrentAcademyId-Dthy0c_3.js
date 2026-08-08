@@ -1,0 +1,1 @@
+import{P as s,z as c,G as n}from"./index-BrKEqiiR.js";const o=()=>{const{user:a}=s(d=>d.auth),t=c(),{data:e}=n(t??"",{skip:!t||!!(a!=null&&a.academyId)});return(a==null?void 0:a.academyId)||(e==null?void 0:e.academyId)||null};export{o as u};

@@ -119,6 +119,7 @@ export class StudentRepository implements IStudentRepository {
       jerseyNumber: doc.jerseyNumber,
       jerseySize: doc.jerseySize,
       position: doc.position,
+      positions: doc.positions || (doc.position ? [doc.position] : []),
       photo: doc.photo,
       medicalInfo: doc.medicalInfo,
       enrollmentDate: doc.enrollmentDate,

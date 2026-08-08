@@ -130,9 +130,8 @@ export class AcademyUseCases {
       skillParameters: dto.skillParameters,
     });
 
-    // 7. Attach the new franchise to the manager so it's auto-selected the
-    // moment they log in.
-    await this.userRepository.update(managerUser.id, { franchiseId: defaultFranchise.id } as Partial<UserEntity>);
+    // 7. Associate the manager user with the academy, keeping franchiseId undefined so they are treated as an Academy Owner (Head Office).
+    await this.userRepository.update(managerUser.id, { academyId: academy.id } as Partial<UserEntity>);
 
     return {
       ...academy,
@@ -188,7 +187,7 @@ export class AcademyUseCases {
   async updateAcademyConfig(
     id: string,
     dto: AcademyConfigDto,
-    requester?: { role: string; franchiseId?: string },
+    requester?: { role: string; franchiseId?: string; academyId?: string },
   ): Promise<AcademyEntity> {
     const academy = await this.academyRepository.findById(id);
     if (!academy) throw new NotFoundError("Academy");
@@ -212,11 +211,17 @@ export class AcademyUseCases {
 
     let effectiveDto: Partial<AcademyEntity> = { ...dto, location: mergedLocation };
     if (requester && requester.role === "manager") {
-      if (!requester.franchiseId) {
-        throw new ForbiddenError("Your account isn't linked to a franchise");
+      const isOwner = requester.academyId && requester.academyId === id;
+      
+      let isFranchiseManager = false;
+      if (requester.franchiseId) {
+        const franchise = await FranchiseModel.findById(requester.franchiseId).select("academyId").lean();
+        if (franchise && franchise.academyId.toString() === id) {
+          isFranchiseManager = true;
+        }
       }
-      const franchise = await FranchiseModel.findById(requester.franchiseId).select("academyId").lean();
-      if (!franchise || franchise.academyId.toString() !== id) {
+
+      if (!isOwner && !isFranchiseManager) {
         throw new ForbiddenError("You can only configure your own academy");
       }
       effectiveDto = {

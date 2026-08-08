@@ -16,6 +16,7 @@ export interface StudentDocument extends Document {
   jerseyNumber?: number;
   jerseySize?: string;
   position?: string;
+  positions?: string[];
   photo?: string;
   medicalInfo: StudentEntity["medicalInfo"];
   enrollmentDate: Date;
@@ -41,6 +42,14 @@ const MedicalInfoSchema = new Schema(
     medicalConditions: [String],
     emergencyContactName: { type: String, required: true },
     emergencyContactPhone: { type: String, required: true },
+    medicalCondition: String,
+    medicalNotes: String,
+    medicalReportUrl: String,
+    medicalCertificateUrl: String,
+    scanReportUrl: String,
+    pdfAttachmentUrl: String,
+    imageAttachmentUrl: String,
+    docAttachmentUrl: String,
   },
   { _id: false },
 );
@@ -78,6 +87,7 @@ const StudentSchema = new Schema<StudentDocument>(
     jerseyNumber: Number,
     jerseySize: String,
     position: String,
+    positions: [String],
     photo: String,
     medicalInfo: { type: MedicalInfoSchema, required: true },
     enrollmentDate: { type: Date, default: Date.now },
@@ -132,6 +142,13 @@ StudentSchema.pre(
     next();
   },
 );
+
+StudentSchema.pre("save", function (next) {
+  if (this.positions && this.positions.length > 0) {
+    this.position = this.positions[0];
+  }
+  next();
+});
 
 StudentSchema.index({ franchiseId: 1, ageGroup: 1, isActive: 1 });
 StudentSchema.index({ franchiseId: 1, transferStatus: 1 });

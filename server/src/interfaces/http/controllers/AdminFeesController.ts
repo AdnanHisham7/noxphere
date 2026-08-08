@@ -53,8 +53,38 @@ export class AdminFeesController {
         req.params.id,
         Number(req.params.installmentNumber),
         { amount, paymentMethod, transactionId },
+        req.user!.sub,
       );
       ResponseHandler.success(res, fee, "Payment recorded");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  updatePayment = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { amount, paymentMethod, transactionId } = req.body;
+      if (amount === undefined) throw new BadRequestError("amount is required");
+      const fee = await this.feesUseCases.updatePayment(
+        req.params.id,
+        Number(req.params.installmentNumber),
+        { amount, paymentMethod, transactionId },
+        req.user!.sub,
+      );
+      ResponseHandler.success(res, fee, "Payment updated");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  undoPayment = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const fee = await this.feesUseCases.undoPayment(
+        req.params.id,
+        Number(req.params.installmentNumber),
+        req.user!.sub,
+      );
+      ResponseHandler.success(res, fee, "Payment undone");
     } catch (err) {
       next(err);
     }

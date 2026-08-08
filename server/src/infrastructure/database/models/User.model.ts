@@ -50,6 +50,14 @@ const UserSchema = new Schema<UserDocument>(
     fcmTokens: [{ type: String }],
     franchiseId: { type: Schema.Types.ObjectId, ref: "Franchise", index: true },
     academyId: { type: Schema.Types.ObjectId, ref: "Academy", index: true },
+    weeklyAvailability: [
+      {
+        dayOfWeek: { type: Number, required: true },
+        startTime: { type: String, required: true },
+        endTime: { type: String, required: true },
+      },
+    ],
+    customUnavailableDates: [{ type: String }],
     lastLoginAt: { type: Date },
     deletedAt: { type: Date, index: true },
   },

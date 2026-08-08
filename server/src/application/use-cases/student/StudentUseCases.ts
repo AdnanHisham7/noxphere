@@ -21,6 +21,7 @@ import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import { CoachRemarkModel } from "../../../infrastructure/database/models/CoachRemark.model";
 import { TeamModel } from "../../../infrastructure/database/models/Team.model";
+import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
 
 export class StudentUseCases {
   constructor(
@@ -28,19 +29,36 @@ export class StudentUseCases {
     private userRepo: IUserRepository,
   ) {}
 
-  // Used both at registration and when assigning a player to a team after
-  // the fact — a team picked from a stale dropdown, or a crafted request,
-  // can never silently attach a player to a team in a different franchise.
   private async validateTeamAssignment(franchiseId: string, teamId: string): Promise<void> {
     const team = await TeamModel.findOne({
       _id: teamId,
-      franchiseId,
       deletedAt: { $exists: false },
     })
-      .select("_id")
+      .select("franchiseId academyId")
       .lean();
     if (!team) {
-      throw new BadRequestError("That team doesn't exist in this player's franchise");
+      throw new BadRequestError("That team doesn't exist");
+    }
+
+    const playerFranchise = await FranchiseModel.findById(franchiseId).select("academyId").lean();
+    if (!playerFranchise) {
+      throw new BadRequestError("Franchise not found");
+    }
+
+    let teamAcademyId = team.academyId?.toString();
+    if (!teamAcademyId && team.franchiseId) {
+      const teamFranchise = await FranchiseModel.findById(team.franchiseId).select("academyId").lean();
+      if (teamFranchise) {
+        teamAcademyId = teamFranchise.academyId.toString();
+      }
+    }
+
+    if (!teamAcademyId) {
+      throw new BadRequestError("Team's academy context could not be resolved");
+    }
+
+    if (playerFranchise.academyId.toString() !== teamAcademyId) {
+      throw new BadRequestError("That team is not part of this academy's ecosystem");
     }
   }
 

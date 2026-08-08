@@ -113,6 +113,7 @@ export class AuthUseCases {
       sub: user.id,
       role: user.role,
       franchiseId: user.franchiseId,
+      academyId: user.academyId,
       permissions: user.permissions,
     };
 

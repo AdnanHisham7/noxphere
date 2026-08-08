@@ -12,6 +12,7 @@ import {
   Modal,
   Skeleton,
   ImageUploadField,
+  DocumentUploadField,
 } from "../../components/ui";
 import { toast } from "react-hot-toast";
 import mannequinPng from "../../assets/players/mannequin.png";
@@ -135,8 +136,21 @@ const getRatingColor = (r: number) =>
 
 type ViewMode = "grid" | "list";
 
+const categoriesList = Array.from({ length: 21 }, (_, i) => `U-${i + 5}`);
+
 const emptyGuardian = { name: "", phone: "", email: "" };
-const emptyMedical = { emergencyContactName: "", emergencyContactPhone: "", bloodGroup: "", allergies: "", medicalConditions: "" };
+const emptyMedical = {
+  emergencyContactName: "",
+  emergencyContactPhone: "",
+  bloodGroup: "",
+  allergies: "",
+  medicalConditions: "",
+  medicalCondition: "",
+  medicalNotes: "",
+  medicalReportUrl: undefined as string | undefined,
+  medicalCertificateUrl: undefined as string | undefined,
+  scanReportUrl: undefined as string | undefined,
+};
 
 const StudentsPage: React.FC = () => {
   const franchiseId = useCurrentFranchiseId();
@@ -226,7 +240,7 @@ const StudentsPage: React.FC = () => {
         <div className="min-w-32">
           <select className="input" value={filterAge} onChange={(e) => setFilterAge(e.target.value)}>
             <option value="">All Ages</option>
-            {["U-13", "U-15", "U-17", "U-19", "U-21"].map((a) => (
+            {categoriesList.map((a) => (
               <option key={a}>{a}</option>
             ))}
           </select>
@@ -466,6 +480,26 @@ const StudentsPage: React.FC = () => {
   );
 };
 
+const defaultPositions = [
+  "Goalkeeper", "Sweeper Keeper", "Center Back", "Left Back", "Right Back",
+  "Wing Back", "Defensive Midfielder", "Central Midfielder", "Attacking Midfielder",
+  "Left Midfielder", "Right Midfielder", "Left Winger", "Right Winger",
+  "Center Forward", "Striker", "Second Striker", "False 9"
+];
+
+const calculateAgeCategory = (dobString: string): string => {
+  if (!dobString) return "U-13";
+  const dobDate = new Date(dobString);
+  const today = new Date();
+  let age = today.getFullYear() - dobDate.getFullYear();
+  const m = today.getMonth() - dobDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) {
+    age--;
+  }
+  const categoryNum = Math.max(5, Math.min(25, age + 1));
+  return `U-${categoryNum}`;
+};
+
 const AddPlayerModal: React.FC<{
   franchiseId: string;
   teams: { id: string; name: string }[];
@@ -478,7 +512,7 @@ const AddPlayerModal: React.FC<{
   const [lastName, setLastName] = useState("");
   const [dob, setDob] = useState("");
   const [ageGroup, setAgeGroup] = useState("U-13");
-  const [position, setPosition] = useState("Forward");
+  const [positions, setPositions] = useState<string[]>([]);
   const [jerseyNumber, setJerseyNumber] = useState("");
   const [teamId, setTeamId] = useState("");
   const [photo, setPhoto] = useState<string | undefined>(undefined);
@@ -486,8 +520,15 @@ const AddPlayerModal: React.FC<{
   const [medical, setMedical] = useState(emptyMedical);
 
   const reset = () => {
-    setFirstName(""); setLastName(""); setDob(""); setAgeGroup("U-13"); setPosition("Forward");
+    setFirstName(""); setLastName(""); setDob(""); setAgeGroup("U-13"); setPositions([]);
     setJerseyNumber(""); setTeamId(""); setPhoto(undefined); setGuardian(emptyGuardian); setMedical(emptyMedical);
+  };
+
+  const handleDobChange = (value: string) => {
+    setDob(value);
+    if (value) {
+      setAgeGroup(calculateAgeCategory(value));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -505,7 +546,8 @@ const AddPlayerModal: React.FC<{
       franchiseId,
       teamId: teamId || undefined,
       jerseyNumber: jerseyNumber ? parseInt(jerseyNumber, 10) : undefined,
-      position,
+      position: positions[0] || "Forward",
+      positions: positions,
       photo,
       guardian,
       medicalInfo: {
@@ -514,16 +556,22 @@ const AddPlayerModal: React.FC<{
         medicalConditions: medical.medicalConditions ? medical.medicalConditions.split(",").map((s) => s.trim()).filter(Boolean) : [],
         emergencyContactName: medical.emergencyContactName,
         emergencyContactPhone: medical.emergencyContactPhone,
+        medicalCondition: medical.medicalCondition || undefined,
+        medicalNotes: medical.medicalNotes || undefined,
+        medicalReportUrl: medical.medicalReportUrl || undefined,
+        medicalCertificateUrl: medical.medicalCertificateUrl || undefined,
+        scanReportUrl: medical.scanReportUrl || undefined,
       },
     });
     reset();
   };
 
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Enroll New Player" size="xl">
       <form onSubmit={handleSubmit} className="flex flex-col h-full space-y-6">
         
-        {/* Responsive Content Grid: Stacks on mobile, splits into 2 columns on desktop */}
+        {/* Responsive Content Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-start">
           
           {/* COLUMN 1: Player info & Guardians */}
@@ -545,23 +593,49 @@ const AddPlayerModal: React.FC<{
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Date of Birth" type="date" value={dob} onChange={(e) => setDob(e.target.value)} required />
+              <Input label="Date of Birth" type="date" value={dob} onChange={(e) => handleDobChange(e.target.value)} required />
               <div>
                 <label className="label">Age Group</label>
                 <select className="input w-full" value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
-                  {["U-13", "U-15", "U-17", "U-19", "U-21"].map((a) => <option key={a}>{a}</option>)}
+                  {categoriesList.map((a) => <option key={a}>{a}</option>)}
                 </select>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2">
-                <label className="label">Position</label>
-                <select className="input w-full" value={position} onChange={(e) => setPosition(e.target.value)}>
-                  {["Forward", "Midfielder", "Defender", "Goalkeeper"].map((p) => <option key={p}>{p}</option>)}
-                </select>
+            <div>
+              <label className="label">Playing Positions (Select all that apply)</label>
+              <div className="flex flex-wrap gap-1.5 mt-1 border border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-pitch-900">
+                {defaultPositions.map((pos) => {
+                  const isSelected = positions.includes(pos);
+                  return (
+                    <button
+                      key={pos}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setPositions(positions.filter((p) => p !== pos));
+                        } else {
+                          setPositions([...positions, pos]);
+                        }
+                      }}
+                      className={clsx(
+                        "px-2 py-0.5 rounded text-[10px] font-semibold uppercase border transition-all duration-150",
+                        isSelected
+                          ? "bg-volt-400 border-volt-400 text-pitch-900 font-extrabold"
+                          : "bg-pitch-800 border-white/5 text-slate-400 hover:border-white/10 hover:text-white"
+                      )}
+                    >
+                      {pos}
+                    </button>
+                  );
+                })}
               </div>
-              <Input label="Jersey" type="number" min={1} max={99} value={jerseyNumber} onChange={(e) => setJerseyNumber(e.target.value)} placeholder="9" />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-3">
+                <Input label="Jersey Number" type="number" min={1} max={99} value={jerseyNumber} onChange={(e) => setJerseyNumber(e.target.value)} placeholder="9" />
+              </div>
             </div>
 
             <div>
@@ -595,6 +669,31 @@ const AddPlayerModal: React.FC<{
                 <Input label="Blood Group (optional)" value={medical.bloodGroup} onChange={(e) => setMedical({ ...medical, bloodGroup: e.target.value })} placeholder="O+" />
                 <Input label="Allergies (comma separated)" value={medical.allergies} onChange={(e) => setMedical({ ...medical, allergies: e.target.value })} placeholder="Peanuts, Dust" />
                 <Input label="Medical Conditions (comma separated)" value={medical.medicalConditions} onChange={(e) => setMedical({ ...medical, medicalConditions: e.target.value })} placeholder="Asthma" />
+                <Input label="Medical Condition Detail" value={medical.medicalCondition} onChange={(e) => setMedical({ ...medical, medicalCondition: e.target.value })} placeholder="Describe any current conditions" />
+                <div>
+                  <label className="label">Medical Notes</label>
+                  <textarea className="input w-full min-h-[60px] text-xs py-2" value={medical.medicalNotes} onChange={(e) => setMedical({ ...medical, medicalNotes: e.target.value })} placeholder="Any notes for coaches..." />
+                </div>
+                <div className="space-y-3 pt-2">
+                  <DocumentUploadField
+                    label="Medical Report (PDF/Word)"
+                    category="notification_document"
+                    value={medical.medicalReportUrl ? { url: medical.medicalReportUrl, filename: "medical-report.pdf" } : undefined}
+                    onChange={(file) => setMedical({ ...medical, medicalReportUrl: file?.url })}
+                  />
+                  <DocumentUploadField
+                    label="Medical Certificate (PDF/Word)"
+                    category="notification_document"
+                    value={medical.medicalCertificateUrl ? { url: medical.medicalCertificateUrl, filename: "medical-certificate.pdf" } : undefined}
+                    onChange={(file) => setMedical({ ...medical, medicalCertificateUrl: file?.url })}
+                  />
+                  <DocumentUploadField
+                    label="Scan Report (PDF/Word)"
+                    category="notification_document"
+                    value={medical.scanReportUrl ? { url: medical.scanReportUrl, filename: "scan-report.pdf" } : undefined}
+                    onChange={(file) => setMedical({ ...medical, scanReportUrl: file?.url })}
+                  />
+                </div>
               </div>
             </div>
           </div>

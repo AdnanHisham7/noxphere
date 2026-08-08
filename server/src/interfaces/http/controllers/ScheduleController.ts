@@ -24,21 +24,27 @@ export class ScheduleController {
    */
   private async assertCoachOwnsSession(req: Request, sessionId: string): Promise<void> {
     if (req.user!.role !== "coach") return;
-    const session = await this.scheduleUseCases.getSessionById(sessionId);
-    if (session.coachId !== req.user!.sub) {
+    const session = (await this.scheduleUseCases.getSessionById(sessionId)) as any;
+    const isAssigned = session.coachIds && session.coachIds.length > 0
+      ? session.coachIds.includes(req.user!.sub)
+      : session.coachId === req.user!.sub;
+    if (!isAssigned) {
       throw new ForbiddenError("You can only manage sessions assigned to you");
     }
   }
 
   list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { franchiseId, from, to, teamId, status } = req.query;
-      if (!franchiseId) throw new BadRequestError("franchiseId is required");
+      const { franchiseId, academyId, from, to, teamId, status } = req.query;
+      if (!franchiseId && !academyId) {
+        throw new BadRequestError("franchiseId or academyId is required");
+      }
       // A coach only ever sees their own sessions — regardless of what
       // (if anything) was passed in the coachId query param.
       const coachId = req.user!.role === "coach" ? req.user!.sub : (req.query.coachId as string);
       const sessions = await this.scheduleUseCases.listSessions({
-        franchiseId: franchiseId as string,
+        franchiseId: franchiseId as string | undefined,
+        academyId: academyId as string | undefined,
         from: from as string,
         to: to as string,
         teamId: teamId as string,
@@ -53,9 +59,14 @@ export class ScheduleController {
 
   getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const session = await this.scheduleUseCases.getSessionById(req.params.id);
-      if (req.user!.role === "coach" && session.coachId !== req.user!.sub) {
-        throw new ForbiddenError("You can only view sessions assigned to you");
+      const session = (await this.scheduleUseCases.getSessionById(req.params.id)) as any;
+      if (req.user!.role === "coach") {
+        const isAssigned = session.coachIds && session.coachIds.length > 0
+          ? session.coachIds.includes(req.user!.sub)
+          : session.coachId === req.user!.sub;
+        if (!isAssigned) {
+          throw new ForbiddenError("You can only view sessions assigned to you");
+        }
       }
       ResponseHandler.success(res, session, "Session retrieved");
     } catch (err) {
@@ -162,8 +173,14 @@ export class ScheduleController {
       const roster = await this.scheduleUseCases.getSessionRoster(req.params.id);
       console.log("roster:", roster.session, "req.user:", req.user);
 
-      if (req.user!.role === "coach" && roster.session.coachId !== req.user!.sub) {
-        throw new ForbiddenError("You can only view sessions assigned to you");
+      const session = roster.session as any;
+      if (req.user!.role === "coach") {
+        const isAssigned = session.coachIds && session.coachIds.length > 0
+          ? session.coachIds.includes(req.user!.sub)
+          : session.coachId === req.user!.sub;
+        if (!isAssigned) {
+          throw new ForbiddenError("You can only view sessions assigned to you");
+        }
       }
       ResponseHandler.success(res, roster, "Session roster retrieved");
     } catch (err) {

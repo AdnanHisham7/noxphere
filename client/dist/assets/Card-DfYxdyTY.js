@@ -1,0 +1,1 @@
+import{s as c,n as t}from"./index-BrKEqiiR.js";const x=({children:s,className:r,hover:a,onClick:o})=>c.jsx("div",{className:t(a?"card-hover cursor-pointer":"card",r),onClick:o,children:s});export{x as C};

@@ -169,7 +169,9 @@ const SessionRosterPage: React.FC = () => {
           </Link>
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="font-display font-bold text-xl text-white uppercase tracking-wide">
-              {session.targetType === "category" ? (session.category ?? "Category") : (session.teamName ?? "Team")}
+              {session.targetType === "category"
+                ? (session.categories && session.categories.length > 0 ? session.categories.join(", ") : session.category ?? "Category")
+                : (session.teamName ?? "Team")}
             </h1>
             <Badge variant="gray" size="sm">
               {session.type}
@@ -182,11 +184,16 @@ const SessionRosterPage: React.FC = () => {
             </Badge>
           </div>
           <p className="text-2xs text-slate-400 font-mono mt-1">
-            {new Date(session.date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+            {session.startDate && session.endDate && session.startDate !== session.endDate ? (
+              `${new Date(session.startDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${new Date(session.endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
+            ) : (
+              new Date(session.date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
+            )}
             {" · "}
-            {session.startTime}–{session.endTime}
+            {session.dailyStartTime || session.startTime}–{session.dailyEndTime || session.endTime}
             {" · "}
             {session.location}
+            {session.coaches && session.coaches.length > 0 && ` · Coaches: ${session.coaches.join(", ")}`}
           </p>
         </div>
 

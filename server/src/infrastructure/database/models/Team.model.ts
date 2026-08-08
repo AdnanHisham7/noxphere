@@ -3,7 +3,8 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface TeamDocument extends Document {
   name: string;
   ageGroup: string;
-  franchiseId: mongoose.Types.ObjectId;
+  franchiseId?: mongoose.Types.ObjectId;
+  academyId?: mongoose.Types.ObjectId;
   coachId?: mongoose.Types.ObjectId;
   description?: string;
   logoUrl?: string;
@@ -21,7 +22,8 @@ const TeamSchema = new Schema<TeamDocument>(
   {
     name: { type: String, required: true, trim: true },
     ageGroup: { type: String, required: true, trim: true },
-    franchiseId: { type: Schema.Types.ObjectId, ref: "Franchise", required: true, index: true },
+    franchiseId: { type: Schema.Types.ObjectId, ref: "Franchise", index: true },
+    academyId: { type: Schema.Types.ObjectId, ref: "Academy", index: true },
     coachId: { type: Schema.Types.ObjectId, ref: "User", index: true },
     description: String,
     logoUrl: String,
