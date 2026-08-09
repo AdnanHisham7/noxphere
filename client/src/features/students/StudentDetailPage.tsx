@@ -16,6 +16,8 @@ import {
 } from "recharts";
 import { clsx } from "clsx";
 import { Repeat2, Mail, Pencil } from "lucide-react";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store";
 import { Button, Badge, Avatar, Modal, Skeleton, EmptyState, Input, DocumentUploadField } from "../../components/ui";
 import { toast } from "react-hot-toast";
 import { useTransferWallEnabled } from "../../hooks/useTransferWallEnabled";
@@ -49,6 +51,14 @@ const attendanceTextColors: Record<string, string> = {
   excused: "text-ice-400",
 };
 
+const isImage = (url: string) => {
+  return /\.(jpg|jpeg|png|webp|gif|svg)($|\?)/i.test(url);
+};
+
+const isPdf = (url: string) => {
+  return /\.pdf($|\?)/i.test(url);
+};
+
 const StudentDetailPage: React.FC = () => {
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState<"overview" | "attendance" | "performance" | "info">("overview");
@@ -56,6 +66,9 @@ const StudentDetailPage: React.FC = () => {
   const [editModal, setEditModal] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const { user } = useSelector((s: RootState) => s.auth);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewName, setPreviewName] = useState<string>("");
 
   const { data: card, isLoading, isError } = useGetPlayerCardQuery(id ?? "", { skip: !id });
   const [listPlayer, { isLoading: listing }] = useListPlayerMutation();
@@ -585,24 +598,74 @@ const StudentDetailPage: React.FC = () => {
 
       {/* Info tab */}
       {activeTab === "info" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {[
-            { label: "Date of Birth", value: new Date(student.dateOfBirth).toLocaleDateString("en-IN") },
-            { label: "Enrolled", value: new Date(student.enrollmentDate).toLocaleDateString("en-IN") },
-            { label: "Blood Group", value: student.medicalInfo.bloodGroup || "Not on file" },
-            { label: "Emergency Contact", value: `${student.medicalInfo.emergencyContactName} — ${student.medicalInfo.emergencyContactPhone}` },
-            { label: "Guardian", value: student.guardian.name },
-            { label: "Guardian Phone", value: student.guardian.phone },
-            { label: "Guardian Email", value: student.guardian.email },
-            { label: "Allergies", value: student.medicalInfo.allergies?.length ? student.medicalInfo.allergies.join(", ") : "None" },
-            { label: "Medical Conditions", value: student.medicalInfo.medicalConditions?.length ? student.medicalInfo.medicalConditions.join(", ") : "None" },
-            { label: "Jersey Size", value: student.jerseySize || "Not on file" },
-          ].map((item) => (
-            <div key={item.label} className="card p-4">
-              <p className="section-title mb-1">{item.label}</p>
-              <p className="text-sm text-slate-200">{item.value}</p>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[
+              { label: "Date of Birth", value: new Date(student.dateOfBirth).toLocaleDateString("en-IN") },
+              { label: "Enrolled", value: new Date(student.enrollmentDate).toLocaleDateString("en-IN") },
+              { label: "Blood Group", value: student.medicalInfo.bloodGroup || "Not on file" },
+              { label: "Emergency Contact", value: `${student.medicalInfo.emergencyContactName} — ${student.medicalInfo.emergencyContactPhone}` },
+              { label: "Guardian", value: student.guardian.name },
+              { label: "Guardian Phone", value: student.guardian.phone },
+              { label: "Guardian Email", value: student.guardian.email },
+              { label: "Allergies", value: student.medicalInfo.allergies?.length ? student.medicalInfo.allergies.join(", ") : "None" },
+              { label: "Medical Conditions", value: student.medicalInfo.medicalConditions?.length ? student.medicalInfo.medicalConditions.join(", ") : "None" },
+              { label: "Jersey Size", value: student.jerseySize || "Not on file" },
+            ].map((item) => (
+              <div key={item.label} className="card p-4">
+                <p className="section-title mb-1">{item.label}</p>
+                <p className="text-sm text-slate-200">{item.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Uploaded Documents Section */}
+          {(user?.role === "super_admin" || user?.role === "manager" || user?.role === "coach") && (
+            <div className="card p-5 space-y-4">
+              <p className="section-title text-volt-400">Uploaded Documents</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                  { label: "Medical Report", url: student.medicalInfo?.medicalReportUrl },
+                  { label: "Medical Certificate", url: student.medicalInfo?.medicalCertificateUrl },
+                  { label: "Scan Report", url: student.medicalInfo?.scanReportUrl },
+                  { label: "PDF Attachment", url: student.medicalInfo?.pdfAttachmentUrl },
+                  { label: "Image Attachment", url: student.medicalInfo?.imageAttachmentUrl },
+                  { label: "Document Attachment", url: student.medicalInfo?.docAttachmentUrl },
+                ]
+                  .filter((doc) => !!doc.url)
+                  .map((doc) => (
+                    <div
+                      key={doc.label}
+                      className="p-4 bg-white/[0.02] border border-white/10 rounded-lg hover:border-volt-400 hover:bg-white/[0.04] transition-all cursor-pointer flex flex-col justify-between h-28"
+                      onClick={() => {
+                        setPreviewUrl(doc.url!);
+                        setPreviewName(doc.label);
+                      }}
+                    >
+                      <div>
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{doc.label}</p>
+                        <p className="text-2xs text-slate-500 mt-1 truncate">
+                          {doc.url?.split("/").pop() || "view-document"}
+                        </p>
+                      </div>
+                      <span className="text-2xs font-bold text-volt-400 uppercase tracking-wider flex items-center gap-1 mt-3">
+                        👁 View Document
+                      </span>
+                    </div>
+                  ))}
+                {![
+                  student.medicalInfo?.medicalReportUrl,
+                  student.medicalInfo?.medicalCertificateUrl,
+                  student.medicalInfo?.scanReportUrl,
+                  student.medicalInfo?.pdfAttachmentUrl,
+                  student.medicalInfo?.imageAttachmentUrl,
+                  student.medicalInfo?.docAttachmentUrl,
+                ].some(Boolean) && (
+                  <p className="text-xs text-slate-500 italic col-span-3">No documents uploaded for this player.</p>
+                )}
+              </div>
             </div>
-          ))}
+          )}
         </div>
       )}
 
@@ -619,6 +682,58 @@ const StudentDetailPage: React.FC = () => {
 
       {editModal && (
         <EditStudentModal student={student} onClose={() => setEditModal(false)} />
+      )}
+
+      {previewUrl && (
+        <Modal
+          isOpen={true}
+          onClose={() => {
+            setPreviewUrl(null);
+            setPreviewName("");
+          }}
+          title={previewName}
+          size="xl"
+        >
+          <div className="flex flex-col items-center justify-center p-2 min-h-[50vh]">
+            {isImage(previewUrl) ? (
+              <img
+                src={previewUrl}
+                alt={previewName}
+                className="max-w-full max-h-[75vh] object-contain rounded-lg border border-white/10"
+              />
+            ) : isPdf(previewUrl) ? (
+              <iframe
+                src={previewUrl}
+                className="w-full h-[75vh] border-0 rounded-lg bg-white"
+                title={previewName}
+              />
+            ) : (
+              <div className="text-center p-6 space-y-4">
+                <span className="text-4xl">📁</span>
+                <p className="text-sm text-slate-300">
+                  This document format cannot be previewed directly in the browser.
+                </p>
+                <div className="flex justify-center gap-3">
+                  <a
+                    href={previewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-volt-400 hover:bg-volt-300 text-pitch-900 rounded font-semibold text-xs transition-colors flex items-center justify-center"
+                  >
+                    Open in New Tab
+                  </a>
+                  <a
+                    href={previewUrl}
+                    download
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded font-semibold text-xs border border-white/10 transition-colors flex items-center justify-center"
+                  >
+                    Download File
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal>
       )}
     </div>
   );

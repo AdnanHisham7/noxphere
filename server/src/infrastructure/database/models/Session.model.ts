@@ -27,6 +27,7 @@ export interface SessionDocument extends Document {
   createdAt: Date;
   updatedAt: Date;
   playerIds?: mongoose.Types.ObjectId[];
+  rosterPlayerIds?: mongoose.Types.ObjectId[];
   documents?: { name: string; url: string }[];
 }
 
@@ -68,6 +69,7 @@ const SessionSchema = new Schema<SessionDocument>(
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     deletedAt: { type: Date, select: false },
     playerIds: [{ type: Schema.Types.ObjectId, ref: "Student" }],
+    rosterPlayerIds: [{ type: Schema.Types.ObjectId, ref: "Student" }],
     documents: [
       {
         name: { type: String, required: true },
