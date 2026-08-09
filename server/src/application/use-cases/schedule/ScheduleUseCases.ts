@@ -71,6 +71,7 @@ function toCard(doc: any) {
     dailyStartTime: json.dailyStartTime,
     dailyEndTime: json.dailyEndTime,
     playerIds: json.playerIds?.map((id: any) => id._id?.toString() || id.toString() || id) ?? [],
+    rosterPlayerIds: json.rosterPlayerIds?.map((id: any) => id._id?.toString() || id.toString() || id) ?? [],
     documents: json.documents ?? [],
     type: json.type,
     date: json.date,
@@ -193,7 +194,42 @@ export class ScheduleUseCases {
       }
     }
 
-    const session = await SessionModel.create({
+    let resolvedPlayerIds: any[] = [];
+    if (dto.targetType === "category") {
+      const categoriesFilter = dto.categories && dto.categories.length > 0 ? { $in: dto.categories } : dto.category;
+      const baseStudents = await StudentModel.find({
+        franchiseId: dto.franchiseId,
+        ageGroup: categoriesFilter,
+        isActive: true,
+      }).select("_id").lean();
+      resolvedPlayerIds = baseStudents.map((s) => s._id);
+    } else {
+      const baseStudents = await StudentModel.find({
+        teamId: dto.teamId,
+        isActive: true,
+      }).select("_id").lean();
+      resolvedPlayerIds = baseStudents.map((s) => s._id);
+    }
+
+    let datesToCreate: string[] = [dto.date];
+    if (dto.startDate && dto.endDate && dto.startDate !== dto.endDate) {
+      const [startYear, startMonth, startDay] = dto.startDate.split("-").map(Number);
+      const [endYear, endMonth, endDay] = dto.endDate.split("-").map(Number);
+      
+      let currentDate = new Date(Date.UTC(startYear, startMonth - 1, startDay));
+      const endDateUTC = new Date(Date.UTC(endYear, endMonth - 1, endDay));
+      
+      datesToCreate = [];
+      while (currentDate <= endDateUTC) {
+        const year = currentDate.getUTCFullYear();
+        const month = String(currentDate.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(currentDate.getUTCDate()).padStart(2, "0");
+        datesToCreate.push(`${year}-${month}-${day}`);
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+      }
+    }
+
+    const sessionsToCreate = datesToCreate.map((dateStr) => ({
       franchiseId: dto.franchiseId,
       targetType: dto.targetType,
       teamId: dto.targetType === "team" ? dto.teamId : undefined,
@@ -202,22 +238,27 @@ export class ScheduleUseCases {
       coachId: dto.coachId,
       coachIds: dto.coachIds || [dto.coachId],
       type: dto.type,
-      date: dto.date,
-      startTime: dto.startTime,
-      endTime: dto.endTime,
-      startDate: dto.startDate || dto.date,
-      endDate: dto.endDate || dto.date,
+      date: dateStr,
+      startTime: dto.dailyStartTime || dto.startTime,
+      endTime: dto.dailyEndTime || dto.endTime,
+      startDate: dateStr,
+      endDate: dateStr,
       dailyStartTime: dto.dailyStartTime || dto.startTime,
       dailyEndTime: dto.dailyEndTime || dto.endTime,
       location: dto.location,
       fieldNumber: dto.fieldNumber,
       notes: dto.notes,
       playerIds: dto.playerIds,
+      rosterPlayerIds: resolvedPlayerIds,
       documents: dto.documents,
       createdBy,
       status: "upcoming",
-    });
-    const populated = await SessionModel.findById(session.id)
+    }));
+
+    const createdSessions = await SessionModel.create(sessionsToCreate);
+    const firstSession = createdSessions[0];
+
+    const populated = await SessionModel.findById(firstSession.id)
       .populate("teamId", "name ageGroup")
       .populate("coachId", "firstName lastName")
       .populate("coachIds", "firstName lastName");
@@ -351,16 +392,21 @@ export class ScheduleUseCases {
       .populate("coachIds", "firstName lastName");
     if (!session) throw new NotFoundError("Session");
 
-    const categoriesFilter = session.categories && session.categories.length > 0 ? { $in: session.categories } : session.category;
     const studentQuery: any = { isActive: true };
-    const playerQueryList = session.playerIds && session.playerIds.length > 0 ? { _id: { $in: session.playerIds } } : null;
-
-    if (session.targetType === "category") {
-      const defaultFilter = { franchiseId: session.franchiseId, ageGroup: categoriesFilter };
-      studentQuery.$or = playerQueryList ? [defaultFilter, playerQueryList] : [defaultFilter];
+    if (session.rosterPlayerIds !== undefined) {
+      const allRosterPlayerIds = [...(session.rosterPlayerIds || []), ...(session.playerIds || [])];
+      studentQuery._id = { $in: allRosterPlayerIds };
     } else {
-      const defaultFilter = { teamId: session.teamId };
-      studentQuery.$or = playerQueryList ? [defaultFilter, playerQueryList] : [defaultFilter];
+      const categoriesFilter = session.categories && session.categories.length > 0 ? { $in: session.categories } : session.category;
+      const playerQueryList = session.playerIds && session.playerIds.length > 0 ? { _id: { $in: session.playerIds } } : null;
+
+      if (session.targetType === "category") {
+        const defaultFilter = { franchiseId: session.franchiseId, ageGroup: categoriesFilter };
+        studentQuery.$or = playerQueryList ? [defaultFilter, playerQueryList] : [defaultFilter];
+      } else {
+        const defaultFilter = { teamId: session.teamId };
+        studentQuery.$or = playerQueryList ? [defaultFilter, playerQueryList] : [defaultFilter];
+      }
     }
 
     const students = await StudentModel.find(studentQuery)
@@ -610,13 +656,19 @@ export class ScheduleUseCases {
   }
 
   private async notifySessionGuardians(
-    session: { targetType: string; teamId?: mongoose.Types.ObjectId; category?: string; franchiseId: mongoose.Types.ObjectId },
+    session: { targetType: string; teamId?: mongoose.Types.ObjectId; category?: string; franchiseId: mongoose.Types.ObjectId; rosterPlayerIds?: mongoose.Types.ObjectId[]; playerIds?: mongoose.Types.ObjectId[] },
     opts: { title: string; body: string; type: "session_location_change" },
   ) {
-    const query =
-      session.targetType === "category"
-        ? { franchiseId: session.franchiseId, ageGroup: session.category, isActive: true }
-        : { teamId: session.teamId, isActive: true };
+    let query: any;
+    if (session.rosterPlayerIds !== undefined) {
+      const allRosterPlayerIds = [...(session.rosterPlayerIds || []), ...(session.playerIds || [])];
+      query = { _id: { $in: allRosterPlayerIds }, isActive: true };
+    } else {
+      query =
+        session.targetType === "category"
+          ? { franchiseId: session.franchiseId, ageGroup: session.category, isActive: true }
+          : { teamId: session.teamId, isActive: true };
+    }
     const students = await StudentModel.find(query);
     const guardianIds = Array.from(
       new Set(students.flatMap((s) => s.guardianIds.map((g) => g.toString()))),
