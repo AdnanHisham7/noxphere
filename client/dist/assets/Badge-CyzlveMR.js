@@ -1,0 +1,1 @@
+import{s as a}from"./index-BrKEqiiR.js";const n=({variant:e="gray",size:s="md",className:l,children:r})=>{const p={green:"pill-green",red:"pill-red",blue:"pill-blue",yellow:"pill-yellow",gray:"pill-gray"},t=s==="sm"?"text-[10px] px-2 py-0.5":"";return a.jsx("span",{className:`${p[e]} ${t}${l?` ${l}`:""}`,children:r})};export{n as B};

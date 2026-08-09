@@ -4,6 +4,14 @@ export interface MedicalInfo {
   medicalConditions?: string[];
   emergencyContactName: string;
   emergencyContactPhone: string;
+  medicalCondition?: string;
+  medicalNotes?: string;
+  medicalReportUrl?: string;
+  medicalCertificateUrl?: string;
+  scanReportUrl?: string;
+  pdfAttachmentUrl?: string;
+  imageAttachmentUrl?: string;
+  docAttachmentUrl?: string;
 }
 
 export interface GuardianInfo {
@@ -36,6 +44,7 @@ export interface StudentEntity {
   jerseyNumber?: number;
   jerseySize?: string;
   position?: string;
+  positions?: string[];
   photo?: string;
   medicalInfo: MedicalInfo;
   enrollmentDate: Date;

@@ -8,7 +8,13 @@ export class DashboardController {
 
   getStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const data = await this.dashboardUseCases.getStats(req.query.franchiseId as string);
+      const { franchiseId, academyId } = req.query;
+      const isSuperAdmin = req.user?.role === "super_admin";
+      const data = await this.dashboardUseCases.getStats({
+        franchiseId: franchiseId as string | undefined,
+        academyId: academyId as string | undefined,
+        isSuperAdmin,
+      });
       ResponseHandler.success(res, data, "Dashboard stats retrieved");
     } catch (err) {
       next(err);
@@ -17,9 +23,12 @@ export class DashboardController {
 
   getAttendanceTrend = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { franchiseId, days } = req.query;
+      const { franchiseId, academyId, days } = req.query;
       const data = await this.dashboardUseCases.getAttendanceTrend(
-        franchiseId as string,
+        {
+          franchiseId: franchiseId as string | undefined,
+          academyId: academyId as string | undefined,
+        },
         days ? parseInt(days as string) : undefined,
       );
       ResponseHandler.success(res, data, "Attendance trend retrieved");
@@ -30,7 +39,11 @@ export class DashboardController {
 
   getSkillRadar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const data = await this.dashboardUseCases.getSkillRadar(req.query.franchiseId as string);
+      const { franchiseId, academyId } = req.query;
+      const data = await this.dashboardUseCases.getSkillRadar({
+        franchiseId: franchiseId as string | undefined,
+        academyId: academyId as string | undefined,
+      });
       ResponseHandler.success(res, data, "Skill radar retrieved");
     } catch (err) {
       next(err);
@@ -39,7 +52,11 @@ export class DashboardController {
 
   getTeamHealth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const data = await this.dashboardUseCases.getTeamHealth(req.query.franchiseId as string);
+      const { franchiseId, academyId } = req.query;
+      const data = await this.dashboardUseCases.getTeamHealth({
+        franchiseId: franchiseId as string | undefined,
+        academyId: academyId as string | undefined,
+      });
       ResponseHandler.success(res, data, "Team health retrieved");
     } catch (err) {
       next(err);
@@ -48,9 +65,12 @@ export class DashboardController {
 
   getTopPerformers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { franchiseId, limit } = req.query;
+      const { franchiseId, academyId, limit } = req.query;
       const data = await this.dashboardUseCases.getTopPerformers(
-        franchiseId as string,
+        {
+          franchiseId: franchiseId as string | undefined,
+          academyId: academyId as string | undefined,
+        },
         limit ? parseInt(limit as string) : undefined,
       );
       ResponseHandler.success(res, data, "Top performers retrieved");
@@ -61,9 +81,12 @@ export class DashboardController {
 
   getRecentActivity = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { franchiseId, limit } = req.query;
+      const { franchiseId, academyId, limit } = req.query;
       const data = await this.dashboardUseCases.getRecentActivity(
-        franchiseId as string,
+        {
+          franchiseId: franchiseId as string | undefined,
+          academyId: academyId as string | undefined,
+        },
         limit ? parseInt(limit as string) : undefined,
       );
       ResponseHandler.success(res, data, "Recent activity retrieved");

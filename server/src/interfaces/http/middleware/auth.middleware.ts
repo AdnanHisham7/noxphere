@@ -9,6 +9,7 @@ export interface JwtPayload {
   sub: string;
   role: UserRole;
   franchiseId?: string;
+  academyId?: string;
   permissions: Record<string, boolean>;
 }
 

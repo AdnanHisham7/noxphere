@@ -1,3 +1,5 @@
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
 import { useCurrentFranchiseId } from "./useCurrentFranchiseId";
 import { useGetFranchiseByIdQuery } from "../store/api/franchiseApi";
 
@@ -8,9 +10,10 @@ import { useGetFranchiseByIdQuery } from "../store/api/franchiseApi";
  * resource in this academy" should use this instead of franchiseId.
  */
 export const useCurrentAcademyId = (): string | null => {
+  const { user } = useSelector((s: RootState) => s.auth);
   const franchiseId = useCurrentFranchiseId();
   const { data: franchise } = useGetFranchiseByIdQuery(franchiseId ?? "", {
-    skip: !franchiseId,
+    skip: !franchiseId || !!user?.academyId,
   });
-  return franchise?.academyId ?? null;
+  return user?.academyId || franchise?.academyId || null;
 };

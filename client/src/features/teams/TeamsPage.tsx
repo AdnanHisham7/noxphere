@@ -1,8 +1,10 @@
 // src/features/teams/TeamsPage.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { Plus, Users, Trash2, Swords } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { RootState } from "../../store";
 import { Card, Button, Input, Modal, Badge, Skeleton, EmptyState, ImageUploadField } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
@@ -16,14 +18,18 @@ import {
 } from "../../store/api/teamsApi";
 import { useGetUsersQuery } from "../../store/api/usersApi";
 import { academyApi } from "../../store/api/academyApi";
+import { useGetFranchisesQuery } from "../../store/api/franchiseApi";
+import { useGetStudentsQuery, useUpdateStudentMutation } from "../../store/api/studentsApi";
 
 const TeamsPage: React.FC = () => {
+  const { user } = useSelector((s: RootState) => s.auth);
   const navigate = useNavigate();
   const franchiseId = useCurrentFranchiseId();
+  const isHeadOffice = user?.role === 'manager' && !franchiseId;
   const academyId = useCurrentAcademyId();
   const { data: teams, isLoading, isError } = useListTeamsQuery(
-    { franchiseId: franchiseId ?? "" },
-    { skip: !franchiseId },
+    franchiseId ? { franchiseId } : { academyId: academyId ?? "" },
+    { skip: !franchiseId && !academyId },
   );
   const { data: coachesResult } = useGetUsersQuery(
     { roles: "coach", academyId: academyId ?? "", isActive: "true", limit: 100 },
@@ -31,7 +37,10 @@ const TeamsPage: React.FC = () => {
   );
   const coaches = coachesResult?.data ?? [];
   const { data: academy } = academyApi.useGetAcademyByIdQuery(academyId ?? "", { skip: !academyId });
-  const categories = academy?.ageGroups ?? [];
+  const categoriesList = Array.from({ length: 21 }, (_, i) => `U-${i + 5}`);
+  const categories = Array.from(new Set([...(academy?.ageGroups ?? []), ...categoriesList])).sort(
+    (a, b) => parseInt(a.replace('U-', '')) - parseInt(b.replace('U-', ''))
+  );
   const [createTeam, { isLoading: creating }] = useCreateTeamMutation();
   const [updateTeam] = useUpdateTeamMutation();
   const [deleteTeam] = useDeleteTeamMutation();
@@ -55,12 +64,13 @@ const TeamsPage: React.FC = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!franchiseId || !name || !ageGroup) return;
+    if (!name || !ageGroup) return;
     try {
       await createTeam({
         name,
         ageGroup,
-        franchiseId,
+        franchiseId: isHeadOffice ? undefined : franchiseId ?? undefined,
+        academyId: isHeadOffice ? academyId ?? undefined : undefined,
         coachId: coachId || undefined,
         logoUrl,
         bannerUrl,
@@ -93,7 +103,7 @@ const TeamsPage: React.FC = () => {
     }
   };
 
-  if (!franchiseId) {
+  if (!franchiseId && !isHeadOffice) {
     return (
       <EmptyState
         icon={<Users size={28} />}
@@ -107,12 +117,20 @@ const TeamsPage: React.FC = () => {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white uppercase tracking-wide">Teams</h1>
-          <p className="text-sm text-slate-400 mt-1">Batches and squads for this franchise</p>
+          <h1 className="font-display text-2xl font-bold text-white uppercase tracking-wide">
+            {isHeadOffice ? "Academy Teams" : "Teams"}
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">
+            {isHeadOffice
+              ? "All squads across all franchises of the academy"
+              : "Batches and squads for this franchise"}
+          </p>
         </div>
-        <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)}>
-          New team
-        </Button>
+        {!isHeadOffice && (
+          <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)}>
+            New team
+          </Button>
+        )}
       </div>
 
       {isLoading && (
@@ -166,56 +184,74 @@ const TeamsPage: React.FC = () => {
                       </div>
                     )}
                     <div>
-                      <h3 className="font-display font-bold text-white uppercase tracking-wide leading-tight">{team.name}</h3>
-                      <Badge variant="blue">{team.ageGroup}</Badge>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="font-display font-bold text-white uppercase tracking-wide leading-tight">{team.name}</h3>
+                        {!team.franchiseId && (
+                          <Badge variant="green" size="sm">GLOBAL</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        <Badge variant="blue">{team.ageGroup}</Badge>
+                        {team.franchise && (
+                          <Badge variant="gray" size="sm">
+                            {team.franchise.name}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDelete(team.id)}
-                    className="text-slate-500 hover:text-ember-400 transition-colors p-1"
-                    aria-label="Delete team"
-                  >
-                    <Trash2 size={15} />
-                  </button>
+                  {!isHeadOffice && (
+                    <button
+                      onClick={() => handleDelete(team.id)}
+                      className="text-slate-500 hover:text-ember-400 transition-colors p-1"
+                      aria-label="Delete team"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </div>
                 <p className="text-sm text-slate-400 mt-3">
-                  {team.coach ? `${team.coach.firstName} ${team.coach.lastName}` : "No coach assigned"}
+                  Coach: {team.coach ? `${team.coach.firstName} ${team.coach.lastName}` : "No coach assigned"}
                 </p>
-                <select
-                  value={team.coach?._id ?? ""}
-                  onChange={(e) => handleAssignCoach(team.id, e.target.value)}
-                  className="input !w-full !text-xs mt-2"
-                >
-                  <option value="">No coach assigned</option>
-                  {coaches.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.firstName} {c.lastName}
-                    </option>
-                  ))}
-                </select>
+                {!isHeadOffice && (
+                  <select
+                    value={team.coach?._id ?? ""}
+                    onChange={(e) => handleAssignCoach(team.id, e.target.value)}
+                    className="input !w-full !text-xs mt-2"
+                  >
+                    <option value="">No coach assigned</option>
+                    {coaches.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.firstName} {c.lastName}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <div className="mt-4 flex items-center justify-between flex-wrap gap-2">
                   <span className="text-xs text-slate-500 font-mono">{team.studentCount} students</span>
                   <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setBrandingTeamId(team.id)}
-                      className="text-xs text-slate-400 hover:text-white transition-colors"
-                    >
-                      Edit
-                    </button>
+                    {!isHeadOffice && (
+                      <button
+                        onClick={() => setBrandingTeamId(team.id)}
+                        className="text-xs text-slate-400 hover:text-white transition-colors"
+                      >
+                        Edit
+                      </button>
+                    )}
                     <button
                       onClick={() => setSelectedTeamId(team.id)}
                       className="text-xs text-volt-400 hover:text-volt-300 transition-colors"
                     >
                       View roster →
                     </button>
-                    <button
-                      onClick={() => team.studentCount >= 10 && navigate(`/teams/${team.id}/manage`)}
-                      disabled={team.studentCount < 10}
-                      title={team.studentCount < 10 ? "Needs at least 10 players to unlock" : "Open the tactics console"}
-                      className="text-xs flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors disabled:text-slate-600 disabled:cursor-not-allowed"
-                    >
-                      <Swords size={12} /> Manage team
-                    </button>
+                    {!isHeadOffice && (
+                      <button
+                        onClick={() => navigate(`/teams/${team.id}/manage`)}
+                        className="text-xs flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors"
+                      >
+                        <Swords size={12} /> Manage team
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -305,25 +341,199 @@ const TeamsPage: React.FC = () => {
 };
 
 const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({ teamId, onClose }) => {
-  const { data: team, isLoading } = useGetTeamByIdQuery(teamId);
+  const { user } = useSelector((s: RootState) => s.auth);
+  const activeFranchiseId = useCurrentFranchiseId();
+  const isHeadOffice = user?.role === 'manager' && !activeFranchiseId;
+  const currentAcademyId = useCurrentAcademyId();
+  const { data: team, isLoading: teamLoading } = useGetTeamByIdQuery(teamId);
+  const [updateStudent] = useUpdateStudentMutation();
+  const { data: franchises } = useGetFranchisesQuery(
+    currentAcademyId ? { academyId: currentAcademyId, isActive: true } : undefined,
+    { skip: !currentAcademyId }
+  );
+
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState("");
+  const [search, setSearch] = useState("");
+  const [selectedAgeGroup, setSelectedAgeGroup] = useState("");
+
+  // Auto-select team's franchise initially
+  React.useEffect(() => {
+    if (team?.franchiseId && !selectedFranchiseId) {
+      setSelectedFranchiseId(team.franchiseId);
+    }
+  }, [team]);
+
+  const { data: studentsResult, isLoading: studentsLoading } = useGetStudentsQuery(
+    {
+      franchiseId: selectedFranchiseId,
+      search: search || undefined,
+      ageGroup: selectedAgeGroup || undefined,
+      limit: 100,
+    },
+    { skip: !selectedFranchiseId || isHeadOffice }
+  );
+  const availableStudents = studentsResult?.items ?? [];
+  const teamStudentIds = new Set(team?.students?.map((s) => s._id) ?? []);
+  const filteredAvailable = availableStudents.filter((s) => !teamStudentIds.has(s.id));
+
+  const handleRemove = async (studentId: string) => {
+    try {
+      await updateStudent({ id: studentId, data: { teamId: null } }).unwrap();
+      toast.success("Player removed from team");
+    } catch {
+      toast.error("Couldn't remove player — try again");
+    }
+  };
+
+  const handleAssign = async (studentId: string) => {
+    try {
+      await updateStudent({ id: studentId, data: { teamId } }).unwrap();
+      toast.success("Player assigned to team");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Couldn't assign player — try again");
+    }
+  };
+
+  const categoriesList = Array.from({ length: 21 }, (_, i) => `U-${i + 5}`);
 
   return (
-    <Modal isOpen onClose={onClose} title={team?.name ?? "Team roster"} size="lg">
-      {isLoading && <Skeleton className="h-40" />}
-      {team && team.students.length === 0 && (
-        <EmptyState title="No students on this team yet" description="Assign students to this team from the Students page." />
-      )}
-      {team && team.students.length > 0 && (
-        <div className="space-y-2">
-          {team.students.map((s) => (
-            <div key={s._id} className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/[0.03]">
-              <span className="text-sm text-white">
-                {s.firstName} {s.lastName}
-              </span>
-              <span className="text-xs text-slate-500 font-mono">{s.attendancePercentage}% attendance</span>
+    <Modal isOpen onClose={onClose} title={team ? (isHeadOffice ? `Roster — ${team.name}` : `Manage Roster — ${team.name}`) : "Team roster"} size={isHeadOffice ? "md" : "xl"}>
+      {teamLoading && <Skeleton className="h-60" />}
+      {team && (
+        isHeadOffice ? (
+          /* Head Office: Read-only View */
+          <div className="flex flex-col h-[50vh] min-h-[350px]">
+            <div className="mb-3">
+              <h4 className="text-xs font-bold text-volt-400 uppercase tracking-wide">Current Players</h4>
+              <p className="text-2xs text-slate-500 mt-0.5">{team.students.length} players assigned</p>
             </div>
-          ))}
-        </div>
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              {team.students.length === 0 ? (
+                <div className="h-full flex items-center justify-center border border-dashed border-white/5 rounded-lg p-5">
+                  <p className="text-xs text-slate-500 text-center italic">No players assigned to this team.</p>
+                </div>
+              ) : (
+                team.students.map((s) => (
+                  <div key={s._id} className="flex items-center justify-between px-3 py-2 bg-white/[0.03] border border-white/5 rounded-lg">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-white truncate">{s.firstName} {s.lastName}</p>
+                      <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                        {s.position || "No position set"} · {s.attendancePercentage}% attendance
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Franchise Level: Full interactive roster management */
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 h-[55vh] min-h-[400px]">
+            
+            {/* LEFT: Current Team Roster (2/5 width) */}
+            <div className="md:col-span-2 flex flex-col h-full border-r border-white/5 pr-4">
+              <div className="mb-3">
+                <h4 className="text-xs font-bold text-volt-400 uppercase tracking-wide">Current Roster</h4>
+                <p className="text-2xs text-slate-500 mt-0.5">{team.students.length} players assigned</p>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                {team.students.length === 0 ? (
+                  <div className="h-full flex items-center justify-center border border-dashed border-white/5 rounded-lg p-5">
+                    <p className="text-xs text-slate-500 text-center italic">No players assigned. Use the panel on the right to add players.</p>
+                  </div>
+                ) : (
+                  team.students.map((s) => (
+                    <div key={s._id} className="flex items-center justify-between px-3 py-2 bg-white/[0.03] border border-white/5 rounded-lg hover:border-white/10 transition-colors">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-white truncate">{s.firstName} {s.lastName}</p>
+                        <p className="text-[10px] text-slate-500 font-mono mt-0.5">{s.attendancePercentage}% attendance</p>
+                      </div>
+                      <button
+                        onClick={() => handleRemove(s._id)}
+                        className="text-slate-500 hover:text-ember-400 transition-colors p-1"
+                        title="Remove player"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT: Add/Transfer Players (3/5 width) */}
+            <div className="md:col-span-3 flex flex-col h-full pl-2">
+              <div className="mb-3 space-y-2">
+                <h4 className="text-xs font-bold text-volt-400 uppercase tracking-wide">Available Players</h4>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-1">
+                    <select
+                      value={selectedFranchiseId}
+                      onChange={(e) => setSelectedFranchiseId(e.target.value)}
+                      className="input !text-[11px] !py-1 !px-2 !w-full"
+                    >
+                      <option value="" disabled>Select Franchise</option>
+                      {(franchises ?? []).map((f) => (
+                        <option key={f.id} value={f.id}>{f.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-span-1">
+                    <select
+                      value={selectedAgeGroup}
+                      onChange={(e) => setSelectedAgeGroup(e.target.value)}
+                      className="input !text-[11px] !py-1 !px-2 !w-full"
+                    >
+                      <option value="">All Ages</option>
+                      {categoriesList.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-span-1">
+                    <input
+                      type="text"
+                      placeholder="Search name..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="input !text-[11px] !py-1 !px-2 !w-full"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                {studentsLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 rounded-lg" />)}
+                  </div>
+                ) : filteredAvailable.length === 0 ? (
+                  <div className="h-full flex items-center justify-center border border-dashed border-white/5 rounded-lg p-5">
+                    <p className="text-xs text-slate-500 text-center italic">No available players match filters.</p>
+                  </div>
+                ) : (
+                  filteredAvailable.map((s) => (
+                    <div key={s.id} className="flex items-center justify-between px-3 py-2.5 bg-white/[0.01] border border-white/5 rounded-lg hover:border-white/10 transition-colors">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-white truncate">{s.firstName} {s.lastName}</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          {s.ageGroup} · {s.teamId ? "Already on a team" : "Unassigned"}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleAssign(s.id)}
+                        className="px-2.5 py-1 rounded bg-volt-400 hover:bg-volt-300 text-pitch-900 text-[10px] font-bold uppercase transition-all"
+                      >
+                        {s.teamId ? "Transfer" : "Assign"}
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+          </div>
+        )
       )}
     </Modal>
   );

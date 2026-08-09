@@ -36,6 +36,16 @@ export const UpdateUserSchema = z.object({
     })
     .partial()
     .optional(),
+  weeklyAvailability: z
+    .array(
+      z.object({
+        dayOfWeek: z.number().min(0).max(6),
+        startTime: z.string(),
+        endTime: z.string(),
+      })
+    )
+    .optional(),
+  customUnavailableDates: z.array(z.string()).optional(),
 });
 
 export const ResetPasswordSchema = z.object({

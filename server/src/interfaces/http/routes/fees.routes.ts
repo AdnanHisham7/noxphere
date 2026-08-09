@@ -20,3 +20,21 @@ feesRouter.post(
     req.app.locals.controllers.fees.recordPayment(req, res, next);
   },
 );
+
+feesRouter.put(
+  "/:id/installments/:installmentNumber/pay",
+  authenticate,
+  requirePermission("canManageFinance"),
+  (req, res, next) => {
+    req.app.locals.controllers.fees.updatePayment(req, res, next);
+  },
+);
+
+feesRouter.post(
+  "/:id/installments/:installmentNumber/undo",
+  authenticate,
+  requirePermission("canManageFinance"),
+  (req, res, next) => {
+    req.app.locals.controllers.fees.undoPayment(req, res, next);
+  },
+);

@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { RootState } from '../../store';
 import { clearCredentials } from '../../store/slices/authSlice';
-import { toggleSidebar } from '../../store/slices/uiSlice';
+import { toggleSidebar, setActiveFranchise, clearActiveFranchise } from '../../store/slices/uiSlice';
 import { Avatar } from '../ui';
 import { useLogoutMutation } from '../../store/api/authApi';
 import { useTransferWallEnabled } from '../../hooks/useTransferWallEnabled';
@@ -47,25 +47,19 @@ const navConfig: Record<string, NavItem[]> = {
   ],
   manager: [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/franchises', label: 'Franchises', icon: Building2 },
+    { path: '/franchises', label: 'Franchise', icon: Building2 },
     { path: '/students', label: 'Squad', icon: Shirt },
-    { path: '/teams', label: 'Teams', icon: Shield },
+    { path: '/teams', label: 'Team', icon: Shield },
     { path: '/coaches', label: 'Coaches', icon: UserCog },
-    { path: '/fees', label: 'Fees', icon: CreditCard },
-    // { path: '/selection', label: 'Selection', icon: Target },
-    { path: '/transfer-wall', label: 'Transfer Wall', icon: Repeat2 },
-    // "Sessions" covers scheduling, viewing, and marking attendance /
-    // performance for every session — those no longer need their own
-    // sidebar entries or pages.
     { path: '/schedule', label: 'Sessions', icon: CalendarClock },
     { path: '/resources', label: 'Resources', icon: FolderOpen },
+    { path: '/fees', label: 'Fees', icon: CreditCard },
     { path: '/notifications', label: 'Alerts', icon: Bell },
     { path: '/settings', label: 'Settings', icon: Settings },
   ],
   coach: [
     { path: '/coach/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/students', label: 'Squad', icon: Shirt },
-    // { path: '/selection', label: 'Selection', icon: Target },
     { path: '/schedule', label: 'Sessions', icon: CalendarClock },
     { path: '/resources', label: 'Resources', icon: FolderOpen },
     { path: '/notifications', label: 'Alerts', icon: Bell },
@@ -76,15 +70,24 @@ export const Sidebar: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((s: RootState) => s.auth);
-  const { sidebarCollapsed, unreadCount } = useSelector((s: RootState) => ({
+  const { sidebarCollapsed, unreadCount, activeFranchiseId } = useSelector((s: RootState) => ({
     sidebarCollapsed: s.ui.sidebarCollapsed,
     unreadCount: s.notifications.unreadCount,
+    activeFranchiseId: s.ui.activeFranchiseId ?? s.auth.user?.franchiseId ?? null,
   }));
   const transferWallEnabled = useTransferWallEnabled();
 
-  const navItems = (navConfig[user?.role || 'manager'] || []).filter(
-    (item) => item.path !== '/transfer-wall' || transferWallEnabled,
-  );
+  const isHeadOfficeUser = user?.role === 'manager' && !user?.franchiseId;
+  const isCurrentlyAtHeadOffice = user?.role === 'manager' && !activeFranchiseId;
+
+  const navItems = (navConfig[user?.role || 'manager'] || [])
+    .filter((item) => item.path !== '/transfer-wall' || transferWallEnabled)
+    .filter((item) => {
+      if (isCurrentlyAtHeadOffice) {
+        return ['/dashboard', '/franchises', '/teams', '/coaches', '/resources', '/notifications', '/settings'].includes(item.path);
+      }
+      return true;
+    });
   const [logoutRequest] = useLogoutMutation();
 
   const handleLogout = async () => {
@@ -96,6 +99,7 @@ export const Sidebar: React.FC = () => {
     dispatch(clearCredentials());
     navigate('/login');
   };
+
 
   return (
     <aside
@@ -121,6 +125,18 @@ export const Sidebar: React.FC = () => {
 
       {/* Navigation */}
       <nav className="flex-1 py-4 overflow-y-auto no-scrollbar">
+        {isHeadOfficeUser && (
+          <button
+            onClick={() => {
+              dispatch(clearActiveFranchise());
+              navigate('/dashboard');
+            }}
+            className="flex items-center gap-3 px-3 py-2.5 mx-2 mb-4 bg-volt-400/10 border border-volt-400/20 text-volt-400 rounded text-xs font-bold hover:bg-volt-400/20 transition-all duration-150 w-[calc(100%-1rem)]"
+          >
+            <Building2 size={14} className="flex-shrink-0" />
+            {!sidebarCollapsed && <span className="uppercase tracking-wider">Head Office Dashboard</span>}
+          </button>
+        )}
         <div className="space-y-0.5 px-2">
           {navItems.map((item) => {
             const Icon = item.icon;

@@ -8,18 +8,27 @@ export interface Session {
   teamId?: string;
   teamName?: string;
   category?: string;
+  categories?: string[];
   categoryColor?: string;
   coach?: string;
   coachId: string;
-  type: "training" | "match" | "trial" | "fitness";
+  coachIds?: string[];
+  coaches?: string[];
+  type: string;
   date: string;
   startTime: string;
   endTime: string;
+  startDate?: string;
+  endDate?: string;
+  dailyStartTime?: string;
+  dailyEndTime?: string;
   location: string;
   fieldNumber?: string;
   status: "upcoming" | "ongoing" | "completed" | "cancelled";
   notes?: string;
   cancelReason?: string;
+  playerIds?: string[];
+  documents?: { name: string; url: string }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -29,14 +38,22 @@ export interface CreateSessionInput {
   targetType: "team" | "category";
   teamId?: string;
   category?: string;
+  categories?: string[];
   coachId?: string;
-  type: Session["type"];
+  coachIds?: string[];
+  type: string;
   date: string;
   startTime: string;
   endTime: string;
+  startDate?: string;
+  endDate?: string;
+  dailyStartTime?: string;
+  dailyEndTime?: string;
   location: string;
   fieldNumber?: string;
   notes?: string;
+  playerIds?: string[];
+  documents?: { name: string; url: string }[];
 }
 
 export interface RosterPlayer {
@@ -64,7 +81,7 @@ export const scheduleApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getSessions: builder.query<
       Session[],
-      { franchiseId: string; from?: string; to?: string; teamId?: string; coachId?: string; status?: string }
+      { franchiseId?: string; academyId?: string; from?: string; to?: string; teamId?: string; coachId?: string; status?: string }
     >({
       query: (params) => ({ url: "/schedule", params }),
       // Transform response to return the internal array

@@ -21,12 +21,15 @@ import {
 const FranchiseManagementPage: React.FC = () => {
   const { user } = useSelector((s: RootState) => s.auth);
   const isSuperAdmin = user?.role === "super_admin";
+  const isHeadOfficeRole = isSuperAdmin || (user?.role === "manager" && !user?.franchiseId);
 
-  // Manager: resolve their own academy via their current franchise.
+  // Manager: resolve their own academy via their user record, fallback to current franchise.
   const currentFranchiseId = useCurrentFranchiseId();
   const { data: currentFranchise } = useGetFranchiseByIdQuery(currentFranchiseId ?? "", {
     skip: !currentFranchiseId || isSuperAdmin,
   });
+
+  const canCreateFranchise = isHeadOfficeRole;
 
   // Super admin: pick any academy from a dropdown.
   const { data: academiesResult } = academyApi.useGetAcademiesQuery(
@@ -36,7 +39,7 @@ const FranchiseManagementPage: React.FC = () => {
   const academies = academiesResult?.data ?? [];
   const [selectedAcademyId, setSelectedAcademyId] = useState("");
 
-  const activeAcademyId = isSuperAdmin ? selectedAcademyId : currentFranchise?.academyId;
+  const activeAcademyId = isSuperAdmin ? selectedAcademyId : (user?.academyId || currentFranchise?.academyId);
 
   const { data: franchises, isLoading, isError } = useGetFranchisesQuery(
     activeAcademyId ? { academyId: activeAcademyId } : undefined,
@@ -92,7 +95,7 @@ const FranchiseManagementPage: React.FC = () => {
               : "Manage the franchises under your academy"}
           </p>
         </div>
-        {activeAcademyId && (
+        {activeAcademyId && canCreateFranchise && (
           <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)}>New franchise</Button>
         )}
       </div>
@@ -134,7 +137,7 @@ const FranchiseManagementPage: React.FC = () => {
           icon={<Building2 size={28} />}
           title="No franchises yet"
           description="Every academy needs at least one franchise for students, teams, and sessions to belong to."
-          action={<Button onClick={() => setShowCreate(true)}>Create franchise</Button>}
+          action={canCreateFranchise ? <Button onClick={() => setShowCreate(true)}>Create franchise</Button> : undefined}
         />
       )}
 

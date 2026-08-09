@@ -10,18 +10,31 @@ const SessionBaseSchema = z.object({
   targetType: z.enum(["team", "category"]).default("team"),
   teamId: z.string().min(1).optional(),
   category: z.string().min(1).optional(),
+  categories: z.array(z.string()).optional(),
   // Optional here: a coach scheduling their own session never sends this —
   // the controller always overrides it with the logged-in coach's id. A
   // manager/super_admin must supply it; that's enforced in the use-case,
   // not here, since it depends on who's making the request.
   coachId: z.string().min(1).optional(),
-  type: z.enum(["training", "match", "trial", "fitness"]).default("training"),
+  coachIds: z.array(z.string()).optional(),
+  type: z.string().default("training"),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD"),
   startTime: z.string().regex(/^\d{2}:\d{2}$/, "startTime must be HH:MM"),
   endTime: z.string().regex(/^\d{2}:\d{2}$/, "endTime must be HH:MM"),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  dailyStartTime: z.string().optional(),
+  dailyEndTime: z.string().optional(),
   location: z.string().min(1),
   fieldNumber: z.string().optional(),
   notes: z.string().optional(),
+  playerIds: z.array(z.string()).optional(),
+  documents: z.array(
+    z.object({
+      name: z.string(),
+      url: z.string(),
+    })
+  ).optional(),
 });
 
 export const CreateSessionSchema = SessionBaseSchema.refine(

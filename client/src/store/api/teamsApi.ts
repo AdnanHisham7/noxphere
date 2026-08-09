@@ -12,6 +12,8 @@ export interface Team {
   primaryColor?: string;
   secondaryColor?: string;
   studentCount: number;
+  franchiseId?: string;
+  franchise?: { id: string; name: string };
 }
 
 export interface TeamDetail extends Omit<Team, "coach"> {
@@ -31,7 +33,8 @@ export interface TeamDetail extends Omit<Team, "coach"> {
 export interface CreateTeamBody {
   name: string;
   ageGroup: string;
-  franchiseId: string;
+  franchiseId?: string;
+  academyId?: string;
   coachId?: string;
   description?: string;
   logoUrl?: string;

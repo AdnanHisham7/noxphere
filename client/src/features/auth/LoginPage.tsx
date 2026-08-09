@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import { useLoginMutation } from '../../store/api/authApi';
 import { setCredentials } from '../../store/slices/authSlice';
-import { setActiveFranchise } from '../../store/slices/uiSlice';
+import { setActiveFranchise, clearActiveFranchise } from '../../store/slices/uiSlice';
 import { RootState } from '../../store';
 import { Button, Input } from '../../components/ui';
 
@@ -22,7 +22,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { isAuthenticated } = useSelector((s: RootState) => s.auth);
+  const { isAuthenticated, user } = useSelector((s: RootState) => s.auth);
   const [login, { isLoading }] = useLoginMutation();
 
   const {
@@ -38,9 +38,10 @@ const LoginPage: React.FC = () => {
   const onSubmit = async (data: LoginForm) => {
     try {
       const result = await login(data).unwrap();
+      const loadedUser = result.data.user;
       dispatch(
         setCredentials({
-          user: result.data.user,
+          user: loadedUser,
           tokens: {
             accessToken: result.data.tokens.accessToken,
             refreshToken: result.data.tokens.refreshToken,
@@ -50,8 +51,10 @@ const LoginPage: React.FC = () => {
       // Auto-select this user's franchise (their first/default one) as the
       // active franchise for this session, so the top bar and every
       // franchise-scoped page immediately reflect it without extra clicks.
-      if (result.data.user.franchiseId) {
-        dispatch(setActiveFranchise(result.data.user.franchiseId));
+      if (loadedUser.franchiseId) {
+        dispatch(setActiveFranchise(loadedUser.franchiseId));
+      } else if (loadedUser.role === 'manager') {
+        dispatch(clearActiveFranchise());
       }
       toast.success('Welcome back!');
       navigate('/dashboard');

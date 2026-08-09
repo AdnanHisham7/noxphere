@@ -1,4 +1,3 @@
-// src/features/notifications/NotificationsPage.tsx
 import React, { useState } from "react";
 import { Bell, Plus, FileText } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -12,10 +11,13 @@ import {
 } from "../../store/api/adminNotificationsApi";
 
 const AUDIENCE_LABEL: Record<AdminNotification["audience"], string> = {
-  both: "Coaches + Guardians",
-  guardians: "Guardians",
-  coaches: "Coaches",
-  team: "One team",
+  players: "Players Only",
+  guardians: "Guardians Only",
+  coaches: "Coaches Only",
+  managers: "Managers Only",
+  franchise: "Entire Franchise",
+  academy: "Entire Academy",
+  team: "One Team",
 };
 
 const NotificationsPage: React.FC = () => {
@@ -66,13 +68,34 @@ const NotificationsPage: React.FC = () => {
           <Card key={n.id} className="p-5">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h3 className="font-display font-semibold text-white">{n.title}</h3>
-              <Badge variant="blue">{AUDIENCE_LABEL[n.audience]}</Badge>
+              <div className="flex items-center gap-2">
+                {n.channels && n.channels.map((ch) => (
+                  <Badge key={ch} variant="gray" className="text-[9px] uppercase">{ch}</Badge>
+                ))}
+                <Badge variant="blue">{AUDIENCE_LABEL[n.audience]}</Badge>
+              </div>
             </div>
             <p className="text-sm text-slate-400 mt-2">{n.body}</p>
             {n.imageUrl && (
               <img src={n.imageUrl} alt="" className="mt-3 max-h-40 rounded-lg border border-white/10" />
             )}
-            {n.documentUrl && (
+            
+            {/* Render Multiple Attachments */}
+            {n.attachments && n.attachments.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {n.attachments.map((at, idx) => (
+                  <a
+                    key={idx}
+                    href={at.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-volt-400 hover:underline bg-white/5 border border-white/5 px-2.5 py-1 rounded-md"
+                  >
+                    <FileText size={12} /> {at.name}
+                  </a>
+                ))}
+              </div>
+            ) : n.documentUrl ? (
               <a
                 href={n.documentUrl}
                 target="_blank"
@@ -81,7 +104,8 @@ const NotificationsPage: React.FC = () => {
               >
                 <FileText size={13} /> {n.documentFilename ?? "Attached document"}
               </a>
-            )}
+            ) : null}
+
             <p className="text-xs text-slate-600 font-mono mt-3">
               {new Date(n.createdAt).toLocaleString()} · {n.readBy.length} read
             </p>
@@ -105,16 +129,21 @@ const ComposeModal: React.FC<{ isOpen: boolean; onClose: () => void; franchiseId
   const { data: teams } = useListTeamsQuery({ franchiseId }, { skip: !franchiseId });
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [audience, setAudience] = useState<AdminNotification["audience"]>("both");
+  const [audience, setAudience] = useState<AdminNotification["audience"]>("franchise");
   const [teamId, setTeamId] = useState("");
   const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
-  const [document, setDocument] = useState<{ url: string; filename: string } | undefined>(undefined);
+  const [channels, setChannels] = useState<string[]>(["push", "whatsapp"]);
+  const [attachments, setAttachments] = useState<{ name: string; url: string }[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !body) return;
     if (audience === "team" && !teamId) {
       toast.error("Select a team");
+      return;
+    }
+    if (channels.length === 0) {
+      toast.error("Select at least one communication channel");
       return;
     }
     try {
@@ -125,23 +154,26 @@ const ComposeModal: React.FC<{ isOpen: boolean; onClose: () => void; franchiseId
         audience,
         teamId: audience === "team" ? teamId : undefined,
         imageUrl,
-        documentUrl: document?.url,
-        documentFilename: document?.filename,
+        documentUrl: attachments[0]?.url,
+        documentFilename: attachments[0]?.name,
+        attachments,
+        channels,
       }).unwrap();
       toast.success("Notification sent");
       onClose();
       setTitle("");
       setBody("");
       setImageUrl(undefined);
-      setDocument(undefined);
+      setChannels(["push", "whatsapp"]);
+      setAttachments([]);
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't send notification — try again");
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Compose notification" size="md">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal isOpen={isOpen} onClose={onClose} title="Compose notification" size="lg">
+      <form onSubmit={handleSubmit} className="space-y-4 max-h-[75vh] overflow-y-auto pr-2 no-scrollbar">
         <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
         <div className="space-y-1.5">
           <label className="label">Message</label>
@@ -149,27 +181,56 @@ const ComposeModal: React.FC<{ isOpen: boolean; onClose: () => void; franchiseId
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={4}
-            className="input resize-none"
+            className="input resize-none text-xs"
+            placeholder="Write announcement details..."
             required
           />
         </div>
+
         <div className="space-y-1.5">
-          <label className="label">Audience</label>
+          <label className="label font-bold text-slate-400">Communication Channels (Select all that apply)</label>
+          <div className="flex gap-4 bg-pitch-900 border border-white/5 rounded-lg p-2.5 w-fit">
+            {(["push", "whatsapp", "email", "sms"] as const).map((ch) => (
+              <label key={ch} className="flex items-center gap-2 cursor-pointer text-xs text-white">
+                <input
+                  type="checkbox"
+                  checked={channels.includes(ch)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setChannels([...channels, ch]);
+                    } else {
+                      setChannels(channels.filter((c) => c !== ch));
+                    }
+                  }}
+                  className="rounded bg-pitch-950 border-white/10 text-volt-400 focus:ring-volt-400"
+                />
+                <span className="capitalize">{ch}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="label">Target Audience</label>
           <select
             value={audience}
             onChange={(e) => setAudience(e.target.value as AdminNotification["audience"])}
-            className="input"
+            className="input text-xs"
           >
-            <option value="both">Coaches + Guardians</option>
-            <option value="guardians">Guardians only</option>
-            <option value="coaches">Coaches only</option>
-            <option value="team">One team (its coach + its players' guardians)</option>
+            <option value="franchise">Entire Franchise (Guardians + Players + Coaches + Managers)</option>
+            <option value="academy">Entire Academy (All Sibling Franchises)</option>
+            <option value="players">Players Only</option>
+            <option value="guardians">Guardians Only</option>
+            <option value="coaches">Coaches Only</option>
+            <option value="managers">Managers Only</option>
+            <option value="team">One specific team roster</option>
           </select>
         </div>
+
         {audience === "team" && (
           <div className="space-y-1.5">
             <label className="label">Team</label>
-            <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className="input" required>
+            <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className="input text-xs" required>
               <option value="" disabled>
                 Select a team
               </option>
@@ -181,23 +242,47 @@ const ComposeModal: React.FC<{ isOpen: boolean; onClose: () => void; franchiseId
             </select>
           </div>
         )}
+
         <ImageUploadField
-          label="Image (optional)"
+          label="Banner Image (optional)"
           category="notification_image"
           value={imageUrl}
           onChange={setImageUrl}
           shape="wide"
-          helperText="Sent as part of the WhatsApp message, and shown here in-app."
+          helperText="Shown in-app and sent as part of the WhatsApp message."
         />
-        <DocumentUploadField
-          label="Document (optional)"
-          category="notification_document"
-          value={document}
-          onChange={setDocument}
-          helperText="Sent as a WhatsApp document attachment, and linked here in-app."
-        />
-        <Button type="submit" loading={isLoading} className="w-full">
-          Send
+
+        <div className="space-y-2">
+          <label className="label">Documents & Attachments (Optional)</label>
+          <DocumentUploadField
+            label="Add attachment (PDF/Word)"
+            category="notification_document"
+            onChange={(file) => {
+              if (file) {
+                setAttachments([...attachments, { name: file.filename || "Attachment File", url: file.url }]);
+              }
+            }}
+          />
+          {attachments.length > 0 && (
+            <div className="space-y-1.5 mt-2 bg-pitch-900/50 p-2 border border-white/5 rounded-lg max-h-24 overflow-y-auto">
+              {attachments.map((at, idx) => (
+                <div key={idx} className="flex items-center justify-between text-2xs text-slate-300">
+                  <span className="truncate max-w-[80%] font-mono">{at.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setAttachments(attachments.filter((_, i) => i !== idx))}
+                    className="text-slate-500 hover:text-ember-400 transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <Button type="submit" loading={isLoading} className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2.5">
+          Broadcast Announcement
         </Button>
       </form>
     </Modal>

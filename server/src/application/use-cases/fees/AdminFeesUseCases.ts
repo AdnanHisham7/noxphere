@@ -81,7 +81,7 @@ export class AdminFeesUseCases {
     return fee;
   }
 
-  async recordPayment(feeId: string, installmentNumber: number, input: RecordPaymentInput) {
+  async recordPayment(feeId: string, installmentNumber: number, input: RecordPaymentInput, performedBy: string) {
     if (input.amount <= 0) throw new BadRequestError("Payment amount must be greater than zero");
 
     const fee = await FeeModel.findById(feeId);
@@ -102,10 +102,106 @@ export class AdminFeesUseCases {
       if (inst.status === "pending" && inst.dueDate < now) inst.status = "overdue";
     }
 
+    const user = await UserModel.findById(performedBy).select("firstName lastName").lean();
+    const performedByName = user ? `${user.firstName} ${user.lastName}` : "System";
+
+    fee.auditLog.push({
+      action: "record_payment",
+      amount: input.amount,
+      installmentNumber,
+      paymentMethod: input.paymentMethod,
+      transactionId: input.transactionId,
+      timestamp: new Date(),
+      performedBy: performedBy as any,
+      performedByName,
+      details: `Recorded payment of INR ${input.amount} for installment #${installmentNumber}.`
+    });
+
     fee.overallStatus = computeOverallStatus(fee.installments) as typeof fee.overallStatus;
     await fee.save();
 
     await this.sendPaymentReceipt(fee, installmentNumber, input.amount);
+
+    return fee.toJSON ? fee.toJSON() : fee;
+  }
+
+  async updatePayment(
+    feeId: string,
+    installmentNumber: number,
+    input: { amount: number; paymentMethod?: string; transactionId?: string },
+    performedBy: string
+  ) {
+    if (input.amount < 0) throw new BadRequestError("Payment amount cannot be negative");
+
+    const fee = await FeeModel.findById(feeId);
+    if (!fee) throw new NotFoundError("Fee record not found");
+
+    const installment = fee.installments.find((i) => i.installmentNumber === installmentNumber);
+    if (!installment) throw new NotFoundError("Installment not found");
+
+    const user = await UserModel.findById(performedBy).select("firstName lastName").lean();
+    const performedByName = user ? `${user.firstName} ${user.lastName}` : "System";
+
+    const oldAmount = installment.paidAmount;
+    installment.paidAmount = Math.min(installment.amount, input.amount);
+    installment.paymentMethod = input.paymentMethod;
+    installment.transactionId = input.transactionId;
+    installment.status = installment.paidAmount >= installment.amount ? "paid" : installment.paidAmount > 0 ? "partial" : "pending";
+    if (installment.paidAmount > 0 && !installment.paidAt) {
+      installment.paidAt = new Date();
+    }
+
+    fee.auditLog.push({
+      action: "update_payment",
+      amount: input.amount,
+      installmentNumber,
+      paymentMethod: input.paymentMethod,
+      transactionId: input.transactionId,
+      timestamp: new Date(),
+      performedBy: performedBy as any,
+      performedByName,
+      details: `Updated installment #${installmentNumber} payment from INR ${oldAmount} to INR ${input.amount}.`
+    });
+
+    fee.overallStatus = computeOverallStatus(fee.installments) as any;
+    await fee.save();
+
+    return fee.toJSON ? fee.toJSON() : fee;
+  }
+
+  async undoPayment(
+    feeId: string,
+    installmentNumber: number,
+    performedBy: string
+  ) {
+    const fee = await FeeModel.findById(feeId);
+    if (!fee) throw new NotFoundError("Fee record not found");
+
+    const installment = fee.installments.find((i) => i.installmentNumber === installmentNumber);
+    if (!installment) throw new NotFoundError("Installment not found");
+
+    const user = await UserModel.findById(performedBy).select("firstName lastName").lean();
+    const performedByName = user ? `${user.firstName} ${user.lastName}` : "System";
+
+    const oldAmount = installment.paidAmount;
+    installment.paidAmount = 0;
+    installment.paidAt = undefined;
+    installment.paymentMethod = undefined;
+    installment.transactionId = undefined;
+    installment.status = "pending";
+
+    fee.auditLog.push({
+      action: "undo_payment",
+      amount: 0,
+      installmentNumber,
+      timestamp: new Date(),
+      performedBy: performedBy as any,
+      performedByName,
+      details: `Undid payment of INR ${oldAmount} for installment #${installmentNumber}.`
+    });
+
+    fee.overallStatus = computeOverallStatus(fee.installments) as any;
+    await fee.save();
 
     return fee.toJSON ? fee.toJSON() : fee;
   }

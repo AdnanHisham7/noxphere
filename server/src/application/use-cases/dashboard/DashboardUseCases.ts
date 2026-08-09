@@ -1,9 +1,14 @@
 // src/application/use-cases/dashboard/DashboardUseCases.ts
+import mongoose from "mongoose";
 import { StudentModel } from "../../../infrastructure/database/models/Student.model";
 import { TeamModel } from "../../../infrastructure/database/models/Team.model";
 import { AttendanceModel } from "../../../infrastructure/database/models/Attendance.model";
 import { PerformanceModel } from "../../../infrastructure/database/models/Performance.model";
 import { FeeModel } from "../../../infrastructure/database/models/Fee.model";
+import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
+import { UserModel } from "../../../infrastructure/database/models/User.model";
+import { SessionModel } from "../../../infrastructure/database/models/Session.model";
+import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
 import { BadRequestError } from "../../../shared/errors/AppError";
 
 function round1(n: number): number {
@@ -11,14 +16,52 @@ function round1(n: number): number {
 }
 
 export class DashboardUseCases {
-  async getStats(franchiseId: string) {
-    if (!franchiseId) throw new BadRequestError("franchiseId is required");
+  private async getQueryFranchiseIds(params: { franchiseId?: string; academyId?: string }): Promise<mongoose.Types.ObjectId[]> {
+    if (params.franchiseId) {
+      return [new mongoose.Types.ObjectId(params.franchiseId)];
+    }
+    if (params.academyId) {
+      const franchises = await FranchiseModel.find({ academyId: params.academyId }).select("_id").lean();
+      return franchises.map((f) => f._id);
+    }
+    throw new BadRequestError("Either franchiseId or academyId is required");
+  }
 
-    const [totalStudents, pendingStudents, students, fees] = await Promise.all([
-      StudentModel.countDocuments({ franchiseId, isActive: true }),
-      StudentModel.countDocuments({ franchiseId, isActive: false }),
-      StudentModel.find({ franchiseId, isActive: true }).select("attendancePercentage overallRating"),
-      FeeModel.find({ franchiseId }),
+  async getStats(params: { franchiseId?: string; academyId?: string; isSuperAdmin?: boolean }) {
+    if (params.isSuperAdmin) {
+      const [totalAcademies, totalFranchises, totalStudents, totalCoaches, totalTeams] = await Promise.all([
+        AcademyModel.countDocuments({ deletedAt: { $exists: false } }),
+        FranchiseModel.countDocuments({ deletedAt: { $exists: false } }),
+        StudentModel.countDocuments({ isActive: true }),
+        UserModel.countDocuments({ role: "coach", isActive: true, deletedAt: { $exists: false } }),
+        TeamModel.countDocuments({ deletedAt: { $exists: false } }),
+      ]);
+
+      return {
+        totalStudents,
+        pendingEnrollment: 0,
+        avgAttendance: 0,
+        avgRating: 0,
+        feesCollected: 0,
+        feesOutstanding: 0,
+        totalCoaches,
+        totalTeams,
+        totalSessions: 0,
+        franchisePerformance: [],
+        totalAcademies,
+        totalFranchises,
+      };
+    }
+
+    const franchiseIds = await this.getQueryFranchiseIds(params);
+
+    const [totalStudents, pendingStudents, students, fees, totalTeams, totalSessions] = await Promise.all([
+      StudentModel.countDocuments({ franchiseId: { $in: franchiseIds }, isActive: true }),
+      StudentModel.countDocuments({ franchiseId: { $in: franchiseIds }, isActive: false }),
+      StudentModel.find({ franchiseId: { $in: franchiseIds }, isActive: true }).select("attendancePercentage overallRating"),
+      FeeModel.find({ franchiseId: { $in: franchiseIds } }),
+      TeamModel.countDocuments({ franchiseId: { $in: franchiseIds }, deletedAt: { $exists: false } }),
+      SessionModel.countDocuments({ franchiseId: { $in: franchiseIds }, deletedAt: { $exists: false } }),
     ]);
 
     const avgAttendance =
@@ -38,6 +81,49 @@ export class DashboardUseCases {
       feesOutstanding += fee.finalAmount - paid;
     }
 
+    let totalCoaches = 0;
+    let franchisePerformance: any[] = [];
+
+    if (params.academyId) {
+      totalCoaches = await UserModel.countDocuments({
+        role: "coach",
+        academyId: params.academyId,
+        isActive: true,
+        deletedAt: { $exists: false },
+      });
+
+      const franchises = await FranchiseModel.find({ academyId: params.academyId });
+      franchisePerformance = await Promise.all(
+        franchises.map(async (f) => {
+          const [fStudents, fTeams, fSessions, fFees] = await Promise.all([
+            StudentModel.countDocuments({ franchiseId: f._id, isActive: true }),
+            TeamModel.countDocuments({ franchiseId: f._id, deletedAt: { $exists: false } }),
+            SessionModel.countDocuments({ franchiseId: f._id, deletedAt: { $exists: false } }),
+            FeeModel.find({ franchiseId: f._id }),
+          ]);
+          let fPaid = 0;
+          let fOutstanding = 0;
+          for (const fee of fFees) {
+            const paid = fee.installments.reduce((s, i) => s + i.paidAmount, 0);
+            fPaid += paid;
+            fOutstanding += fee.finalAmount - paid;
+          }
+          return {
+            id: f._id.toString(),
+            name: f.name,
+            code: f.franchiseCode,
+            location: f.location?.name,
+            totalPlayers: fStudents,
+            totalTeams: fTeams,
+            totalSessions: fSessions,
+            feesCollected: round1(fPaid),
+            feesOutstanding: round1(fOutstanding),
+            isActive: f.isActive,
+          };
+        })
+      );
+    }
+
     return {
       totalStudents,
       pendingEnrollment: pendingStudents,
@@ -45,16 +131,20 @@ export class DashboardUseCases {
       avgRating: round1(avgRating),
       feesCollected: round1(feesCollected),
       feesOutstanding: round1(feesOutstanding),
+      totalCoaches,
+      totalTeams,
+      totalSessions,
+      franchisePerformance,
     };
   }
 
-  async getAttendanceTrend(franchiseId: string, days = 7) {
-    if (!franchiseId) throw new BadRequestError("franchiseId is required");
+  async getAttendanceTrend(params: { franchiseId?: string; academyId?: string }, days = 7) {
+    const franchiseIds = await this.getQueryFranchiseIds(params);
     const since = new Date();
     since.setDate(since.getDate() - (days - 1));
     since.setHours(0, 0, 0, 0);
 
-    const records = await AttendanceModel.find({ franchiseId, sessionDate: { $gte: since } }).select("sessionDate status");
+    const records = await AttendanceModel.find({ franchiseId: { $in: franchiseIds }, sessionDate: { $gte: since } }).select("sessionDate status");
     const buckets = new Map<string, { present: number; total: number }>();
     for (let i = 0; i < days; i++) {
       const d = new Date(since);
@@ -75,9 +165,9 @@ export class DashboardUseCases {
     }));
   }
 
-  async getSkillRadar(franchiseId: string) {
-    if (!franchiseId) throw new BadRequestError("franchiseId is required");
-    const performances = await PerformanceModel.find({ franchiseId })
+  async getSkillRadar(params: { franchiseId?: string; academyId?: string }) {
+    const franchiseIds = await this.getQueryFranchiseIds(params);
+    const performances = await PerformanceModel.find({ franchiseId: { $in: franchiseIds } })
       .sort({ sessionDate: -1 })
       .limit(500)
       .select("skillScores");
@@ -97,9 +187,9 @@ export class DashboardUseCases {
     }));
   }
 
-  async getTeamHealth(franchiseId: string) {
-    if (!franchiseId) throw new BadRequestError("franchiseId is required");
-    const teams = await TeamModel.find({ franchiseId }).populate(
+  async getTeamHealth(params: { franchiseId?: string; academyId?: string }) {
+    const franchiseIds = await this.getQueryFranchiseIds(params);
+    const teams = await TeamModel.find({ franchiseId: { $in: franchiseIds } }).populate(
       "coachId",
       "firstName lastName",
     );
@@ -128,9 +218,9 @@ export class DashboardUseCases {
     );
   }
 
-  async getTopPerformers(franchiseId: string, limit = 5) {
-    if (!franchiseId) throw new BadRequestError("franchiseId is required");
-    const students = await StudentModel.find({ franchiseId, isActive: true })
+  async getTopPerformers(params: { franchiseId?: string; academyId?: string }, limit = 5) {
+    const franchiseIds = await this.getQueryFranchiseIds(params);
+    const students = await StudentModel.find({ franchiseId: { $in: franchiseIds }, isActive: true })
       .populate("teamId", "name")
       .sort({ overallRating: -1 })
       .limit(limit);
@@ -144,12 +234,12 @@ export class DashboardUseCases {
     }));
   }
 
-  async getRecentActivity(franchiseId: string, limit = 10) {
-    if (!franchiseId) throw new BadRequestError("franchiseId is required");
+  async getRecentActivity(params: { franchiseId?: string; academyId?: string }, limit = 10) {
+    const franchiseIds = await this.getQueryFranchiseIds(params);
     const [attendance, performance, fees] = await Promise.all([
-      AttendanceModel.find({ franchiseId }).sort({ createdAt: -1 }).limit(limit).populate("studentId", "firstName lastName"),
-      PerformanceModel.find({ franchiseId }).sort({ createdAt: -1 }).limit(limit).populate("studentId", "firstName lastName"),
-      FeeModel.find({ franchiseId, "installments.paidAt": { $exists: true } })
+      AttendanceModel.find({ franchiseId: { $in: franchiseIds } }).sort({ createdAt: -1 }).limit(limit).populate("studentId", "firstName lastName"),
+      PerformanceModel.find({ franchiseId: { $in: franchiseIds } }).sort({ createdAt: -1 }).limit(limit).populate("studentId", "firstName lastName"),
+      FeeModel.find({ franchiseId: { $in: franchiseIds }, "installments.paidAt": { $exists: true } })
         .sort({ updatedAt: -1 })
         .limit(limit)
         .populate("studentId", "firstName lastName"),

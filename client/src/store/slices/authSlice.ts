@@ -9,6 +9,7 @@ export interface AuthUser {
   lastName: string;
   avatar?: string;
   franchiseId?: string;
+  academyId?: string;
   permissions: Record<string, boolean>;
 }
 

@@ -17,8 +17,8 @@ const AcademySettingsPage: React.FC = () => {
 
   const [name, setName] = useState("");
   const [location, setLocation] = useState<Location>({ name: "", address: "", latitude: 0, longitude: 0, fieldNumber: "" });
-  const [categories, setCategories] = useState<string[]>([]);
-  const [newCategory, setNewCategory] = useState("");
+  const [skillParameters, setSkillParameters] = useState<string[]>([]);
+  const [newSkill, setNewSkill] = useState("");
   const [absentAlertDays, setAbsentAlertDays] = useState(5);
   const [dueDateAlertDays, setDueDateAlertDays] = useState(3);
 
@@ -26,24 +26,24 @@ const AcademySettingsPage: React.FC = () => {
     if (!academy) return;
     setName(academy.name);
     setLocation(academy.location);
-    setCategories(academy.ageGroups);
+    setSkillParameters(academy.skillParameters || []);
     setAbsentAlertDays(academy.absentAlertDays);
     setDueDateAlertDays(academy.dueDateAlertDays);
   }, [academy]);
 
-  const addCategory = () => {
-    const trimmed = newCategory.trim();
+  const addSkill = () => {
+    const trimmed = newSkill.trim();
     if (!trimmed) return;
-    if (categories?.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
-      toast.error("That category already exists");
+    if (skillParameters.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
+      toast.error("That skill parameter already exists");
       return;
     }
-    setCategories((prev) => [...prev, trimmed]);
-    setNewCategory("");
+    setSkillParameters((prev) => [...prev, trimmed]);
+    setNewSkill("");
   };
 
-  const removeCategory = (category: string) => {
-    setCategories((prev) => prev.filter((c) => c !== category));
+  const removeSkill = (skill: string) => {
+    setSkillParameters((prev) => prev.filter((s) => s !== skill));
   };
 
   const handleSave = async () => {
@@ -66,7 +66,8 @@ const AcademySettingsPage: React.FC = () => {
         config: {
           name: name.trim(),
           location,
-          ageGroups: categories,
+          ageGroups: academy?.ageGroups,
+          skillParameters,
           absentAlertDays,
           dueDateAlertDays,
         },
@@ -81,8 +82,8 @@ const AcademySettingsPage: React.FC = () => {
     return (
       <EmptyState
         icon={<Settings size={28} />}
-        title="No franchise selected"
-        description="Select a franchise from the top bar to manage academy settings."
+        title="Access Denied"
+        description="No academy context resolved. Please log in as an academy manager to configure settings."
       />
     );
   }
@@ -162,20 +163,20 @@ const AcademySettingsPage: React.FC = () => {
       </Card>
 
       <Card>
-        <h2 className="font-display text-sm font-bold text-white uppercase tracking-wide mb-1">Age categories</h2>
+        <h2 className="font-display text-sm font-bold text-white uppercase tracking-wide mb-1">Technical skill parameters</h2>
         <p className="text-xs text-slate-400 mb-4">
-          Used across every franchise when creating teams and sessions — e.g. U-14, U-15, U-16.
+          Defines the parameters coaches evaluate students on during sessions (e.g. Dribbling, Passing, Shooting, Attitude).
         </p>
         <div className="flex flex-wrap gap-2 mb-4">
-          {categories?.length === 0 && <p className="text-xs text-slate-500">No categories yet — add one below.</p>}
-          {categories?.map((category) => (
-            <Badge key={category} variant="blue" className="flex items-center gap-1.5 pr-1.5">
-              {category}
+          {skillParameters?.length === 0 && <p className="text-xs text-slate-500">No skill parameters defined yet — add one below.</p>}
+          {skillParameters?.map((skill) => (
+            <Badge key={skill} variant="blue" className="flex items-center gap-1.5 pr-1.5">
+              {skill}
               <button
                 type="button"
-                onClick={() => removeCategory(category)}
+                onClick={() => removeSkill(skill)}
                 className="hover:text-ember-400 transition-colors"
-                aria-label={`Remove ${category}`}
+                aria-label={`Remove ${skill}`}
               >
                 <X size={12} />
               </button>
@@ -184,17 +185,17 @@ const AcademySettingsPage: React.FC = () => {
         </div>
         <div className="flex gap-2 max-w-sm">
           <Input
-            placeholder="e.g. U-17"
-            value={newCategory}
-            onChange={(e) => setNewCategory(e.target.value)}
+            placeholder="e.g. Conditioning"
+            value={newSkill}
+            onChange={(e) => setNewSkill(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                addCategory();
+                addSkill();
               }
             }}
           />
-          <Button type="button" variant="secondary" icon={<Plus size={15} />} onClick={addCategory}>
+          <Button type="button" variant="secondary" icon={<Plus size={15} />} onClick={addSkill}>
             Add
           </Button>
         </div>

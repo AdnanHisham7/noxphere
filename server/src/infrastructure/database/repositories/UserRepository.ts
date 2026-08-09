@@ -20,6 +20,12 @@ export class MongoUserRepository implements IUserRepository {
       fcmTokens: doc.fcmTokens,
       franchiseId: doc.franchiseId?.toString(),
       academyId: doc.academyId?.toString(),
+      weeklyAvailability: doc.weeklyAvailability?.map((wa) => ({
+        dayOfWeek: wa.dayOfWeek,
+        startTime: wa.startTime,
+        endTime: wa.endTime,
+      })),
+      customUnavailableDates: doc.customUnavailableDates,
       lastLoginAt: doc.lastLoginAt,
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
