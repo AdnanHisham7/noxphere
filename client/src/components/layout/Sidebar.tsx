@@ -134,7 +134,7 @@ export const Sidebar: React.FC = () => {
             className="flex items-center gap-3 px-3 py-2.5 mx-2 mb-4 bg-volt-400/10 border border-volt-400/20 text-volt-400 rounded text-xs font-bold hover:bg-volt-400/20 transition-all duration-150 w-[calc(100%-1rem)]"
           >
             <Building2 size={14} className="flex-shrink-0" />
-            {!sidebarCollapsed && <span className="uppercase tracking-wider">Head Office Dashboard</span>}
+            {!sidebarCollapsed && <span className="uppercase tracking-wider">Academy Overview</span>}
           </button>
         )}
         <div className="space-y-0.5 px-2">

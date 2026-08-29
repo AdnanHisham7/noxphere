@@ -124,6 +124,7 @@ export class StudentRepository implements IStudentRepository {
       medicalInfo: doc.medicalInfo,
       enrollmentDate: doc.enrollmentDate,
       isActive: doc.isActive,
+      status: doc.status ?? "active",
       attendancePercentage: doc.attendancePercentage,
       overallRating: doc.overallRating,
       selectionStatus: doc.selectionStatus,

@@ -4,6 +4,7 @@ import { clsx } from "clsx";
 import { Users, Plus, Trash2, KeyRound, Power } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { Button, Input, Badge, Avatar, Modal, Skeleton, EmptyState } from "../../components/ui";
+import { useConfirm } from "../../hooks/useConfirm";
 import {
   useGetUsersQuery,
   useCreateUserMutation,
@@ -47,6 +48,7 @@ const UsersManagementPage: React.FC = () => {
   const [toggleActive] = useToggleUserActiveMutation();
   const [resetPassword, { isLoading: resetting }] = useResetUserPasswordMutation();
   const [deleteUser] = useDeleteUserMutation();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const handleToggle = async (id: string, isActive: boolean) => {
     try {
@@ -58,7 +60,13 @@ const UsersManagementPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Permanently remove ${name}? This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: "Remove user",
+      message: `Permanently remove ${name}? This cannot be undone.`,
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteUser(id).unwrap();
       toast.success("User removed");
@@ -202,6 +210,7 @@ const UsersManagementPage: React.FC = () => {
           />
         </Modal>
       )}
+      {ConfirmDialog}
     </div>
   );
 };

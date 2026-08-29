@@ -118,7 +118,7 @@ export class AcademyUseCases {
     const franchiseCode = await this.generateUniqueFranchiseCode(dto.name);
     const defaultFranchise = await FranchiseModel.create({
       academyId: academy.id,
-      name: `${dto.name} — Main Franchise`,
+      name: dto.name,
       franchiseCode,
       managerId: managerUser.id,
       location: dto.location,

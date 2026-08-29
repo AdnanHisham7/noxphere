@@ -2,6 +2,7 @@ import { baseApi } from './baseApi';
 
 export type SelectionStatus = 'pending' | 'shortlisted' | 'on_hold' | 'selected' | 'not_selected' | 'released';
 export type TransferStatus = 'not_listed' | 'listed' | 'sold';
+export type StudentStatus = 'active' | 'inactive' | 'on_leave' | 'graduated' | 'dropped_out';
 
 export interface MedicalInfo {
   bloodGroup?: string;
@@ -45,6 +46,7 @@ export interface Student {
   medicalInfo: MedicalInfo;
   enrollmentDate: string;
   isActive: boolean;
+  status: StudentStatus;
   attendancePercentage: number;
   overallRating: number;
   selectionStatus: SelectionStatus;
@@ -93,6 +95,15 @@ export interface PlayerCard {
   remarks: { _id: string; text: string; date: string; coachId?: { firstName: string; lastName: string } }[];
 }
 
+export interface FranchiseTransferLogEntry {
+  id: string;
+  fromFranchise: { id: string; name: string } | null;
+  toFranchise: { id: string; name: string } | null;
+  transferredBy: { id: string; name: string } | null;
+  reason?: string;
+  transferredAt: string;
+}
+
 export const studentsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getStudents: builder.query<
@@ -119,7 +130,7 @@ export const studentsApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: Student }) => res.data,
       invalidatesTags: [{ type: 'Student', id: 'LIST' }],
     }),
-    updateStudent: builder.mutation<Student, { id: string; data: Omit<Partial<CreateStudentBody>, "teamId"> & { teamId?: string | null } }>({
+    updateStudent: builder.mutation<Student, { id: string; data: Omit<Partial<CreateStudentBody>, "teamId" | "franchiseId"> & { teamId?: string | null } }>({
       query: ({ id, data }) => ({ url: `/students/${id}`, method: 'PUT', body: data }),
       transformResponse: (res: { data: Student }) => res.data,
       invalidatesTags: (_, __, { id }) => [{ type: 'Student', id }, { type: 'Student', id: 'LIST' }],
@@ -146,6 +157,29 @@ export const studentsApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: PlayerCard }) => res.data,
       providesTags: (_, __, id) => [{ type: 'Performance', id }, { type: 'Student', id }],
     }),
+    updateStudentStatus: builder.mutation<Student, { id: string; status: StudentStatus }>({
+      query: ({ id, status }) => ({ url: `/students/${id}/status`, method: 'PATCH', body: { status } }),
+      transformResponse: (res: { data: Student }) => res.data,
+      invalidatesTags: (_, __, { id }) => [{ type: 'Student', id }, { type: 'Student', id: 'LIST' }],
+    }),
+    transferStudentFranchise: builder.mutation<Student, { id: string; toFranchiseId: string; reason?: string }>({
+      query: ({ id, toFranchiseId, reason }) => ({
+        url: `/students/${id}/transfer-franchise`,
+        method: 'POST',
+        body: { toFranchiseId, reason },
+      }),
+      transformResponse: (res: { data: Student }) => res.data,
+      invalidatesTags: (_, __, { id }) => [
+        { type: 'Student', id },
+        { type: 'Student', id: 'LIST' },
+        { type: 'TransferHistory', id },
+      ],
+    }),
+    getTransferHistory: builder.query<FranchiseTransferLogEntry[], string>({
+      query: (id) => `/students/${id}/transfer-history`,
+      transformResponse: (res: { data: FranchiseTransferLogEntry[] }) => res.data,
+      providesTags: (_, __, id) => [{ type: 'TransferHistory', id }],
+    }),
   }),
 });
 
@@ -158,4 +192,7 @@ export const {
   useDeleteStudentMutation,
   useAddCoachRemarkMutation,
   useGetPlayerCardQuery,
+  useUpdateStudentStatusMutation,
+  useTransferStudentFranchiseMutation,
+  useGetTransferHistoryQuery,
 } = studentsApi;

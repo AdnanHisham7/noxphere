@@ -43,6 +43,9 @@ const FinancePage = lazy(() => import("./features/finance/FinancePage"));
 const FranchiseManagementPage = lazy(
   () => import("./features/franchises/FranchiseManagementPage"),
 );
+const FranchiseDashboardPage = lazy(
+  () => import("./features/franchises/FranchiseDashboardPage"),
+);
 const CoachesManagementPage = lazy(
   () => import("./features/coaches/CoachesManagementPage"),
 );
@@ -175,6 +178,7 @@ const App: React.FC = () => (
                 }
               >
                 <Route path="/franchises" element={<FranchiseManagementPage />} />
+                <Route path="/franchises/:franchiseId" element={<FranchiseDashboardPage />} />
               </Route>
 
               {/* Super Admin only */}

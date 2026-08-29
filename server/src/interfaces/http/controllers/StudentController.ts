@@ -2,7 +2,14 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { StudentUseCases } from '../../../application/use-cases/student/StudentUseCases';
 import { ResponseHandler } from '../../../shared/utils/ResponseHandler';
-import { CreateStudentSchema, UpdateStudentSchema, AddCoachRemarkSchema } from '../../../application/dtos/student.dto';
+import {
+  CreateStudentSchema,
+  UpdateStudentSchema,
+  AddCoachRemarkSchema,
+  UpdateStudentStatusSchema,
+  TransferStudentFranchiseSchema,
+} from '../../../application/dtos/student.dto';
+import { ForbiddenError } from '../../../shared/errors/AppError';
 
 export class StudentController {
   constructor(private studentUseCases: StudentUseCases) {}
@@ -82,6 +89,40 @@ export class StudentController {
     try {
       const data = await this.studentUseCases.getPlayerCard(req.params.id);
       ResponseHandler.success(res, data, 'Player card data');
+    } catch (err) { next(err); }
+  };
+
+  updateStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const dto = UpdateStudentStatusSchema.parse(req.body);
+      const student = await this.studentUseCases.updateStudentStatus(req.params.id, dto.status);
+      ResponseHandler.success(res, student, 'Player status updated');
+    } catch (err) { next(err); }
+  };
+
+  transferFranchise = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Only Head Office (an academy-owner manager with no franchiseId of
+      // their own, or super_admin) may move a player between franchises —
+      // a manager locked to a single franchise has no authority over the
+      // destination franchise. Mirrors FranchiseController's role checks.
+      if (req.user!.role === 'manager' && req.user!.franchiseId) {
+        throw new ForbiddenError('Only Head Office can transfer players between franchises');
+      }
+      const dto = TransferStudentFranchiseSchema.parse(req.body);
+      const student = await this.studentUseCases.transferStudentFranchise(req.params.id, dto, {
+        userId: req.user!.sub,
+        academyId: req.user!.academyId,
+        isSuperAdmin: req.user!.role === 'super_admin',
+      });
+      ResponseHandler.success(res, student, 'Player transferred to new franchise');
+    } catch (err) { next(err); }
+  };
+
+  getTransferHistory = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const history = await this.studentUseCases.getFranchiseTransferHistory(req.params.id);
+      ResponseHandler.success(res, history, 'Transfer history retrieved');
     } catch (err) { next(err); }
   };
 }

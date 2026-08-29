@@ -1,6 +1,6 @@
 // src/components/layout/TopBar.tsx
 import { useSelector, useDispatch } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Building2, ChevronDown, Check, Bell, Repeat2 } from 'lucide-react';
 import { markAllRead } from '../../store/slices/notificationSlice';
 import { setActiveFranchise, clearActiveFranchise } from '../../store/slices/uiSlice';
@@ -61,7 +61,7 @@ const FranchiseSwitcher: React.FC = () => {
       >
         <Building2 size={13} className="text-volt-400" />
         <span className="text-xs text-slate-300 font-medium max-w-40 truncate">
-          {currentFranchiseId ? (currentFranchise?.name ?? 'Loading…') : 'Head Office'}
+          {currentFranchiseId ? (currentFranchise?.name ?? 'Loading…') : 'Academy Overview'}
         </span>
         <ChevronDown size={12} className="text-slate-600" />
       </button>
@@ -82,7 +82,7 @@ const FranchiseSwitcher: React.FC = () => {
                 !currentFranchiseId ? 'text-volt-400 font-semibold' : 'text-slate-300',
               )}
             >
-              <span>Head Office Dashboard</span>
+              <span>Academy Overview</span>
               {!currentFranchiseId && <Check size={13} />}
             </button>
 
@@ -192,11 +192,20 @@ const CoachFranchiseSwitcher: React.FC = () => {
 
 export const TopBar: React.FC = () => {
   const dispatch = useDispatch();
+  const location = useLocation();
   const { user } = useSelector((s: RootState) => s.auth);
   const { unreadCount, items: notifications } = useSelector((s: RootState) => s.notifications);
   const [notifOpen, setNotifOpen] = useState(false);
   const transferWallEnabled = useTransferWallEnabled();
   const showTransferWallLink = user?.role === 'manager' && transferWallEnabled;
+
+  // The Dashboard always shows the academy's overall data now, and a
+  // franchise-specific dashboard is reached by clicking into a franchise
+  // from the Franchises tab — so the manager-facing franchise switcher
+  // would be redundant (and misleading, since it no longer drives either
+  // page) on both routes.
+  const hideFranchiseSwitcher =
+    location.pathname === '/dashboard' || location.pathname.startsWith('/franchises');
 
   return (
     <header className="h-16 bg-pitch-900/80 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-6 sticky top-0 z-30">
@@ -205,7 +214,7 @@ export const TopBar: React.FC = () => {
         {user?.role === 'coach' ? (
           <CoachFranchiseSwitcher />
         ) : (
-          user?.role !== 'super_admin' && <FranchiseSwitcher />
+          user?.role !== 'super_admin' && !hideFranchiseSwitcher && <FranchiseSwitcher />
         )}
       </div>
 

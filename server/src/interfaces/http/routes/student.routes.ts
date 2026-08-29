@@ -22,6 +22,15 @@ studentRouter.patch('/:id/photo', authenticate, requirePermission('canManagePerf
 studentRouter.delete('/:id', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
   req.app.locals.controllers.student.delete(req, res, next);
 });
+studentRouter.patch('/:id/status', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
+  req.app.locals.controllers.student.updateStatus(req, res, next);
+});
+studentRouter.post('/:id/transfer-franchise', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
+  req.app.locals.controllers.student.transferFranchise(req, res, next);
+});
+studentRouter.get('/:id/transfer-history', authenticate, (req, res, next) => {
+  req.app.locals.controllers.student.getTransferHistory(req, res, next);
+});
 
 // Attendance/Performance are now only recorded against a real scheduled
 // session — see /schedule/:id/attendance and /schedule/:id/performance.

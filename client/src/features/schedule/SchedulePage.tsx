@@ -21,6 +21,7 @@ import { toast } from "react-hot-toast";
 import { Button, Badge, Modal, Input, Skeleton, EmptyState, DocumentUploadField } from "../../components/ui";
 import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
+import { useConfirm } from "../../hooks/useConfirm";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
 import { useGetUsersQuery } from "../../store/api/usersApi";
 import { useGetFranchiseByIdQuery, useGetFranchisesQuery } from "../../store/api/franchiseApi";
@@ -116,6 +117,7 @@ const SchedulePage: React.FC = () => {
   const [cancelSession, { isLoading: cancelling }] = useCancelSessionMutation();
   const [changeLocation, { isLoading: changingLocation }] = useChangeSessionLocationMutation();
   const [deleteSession] = useDeleteSessionMutation();
+  const { confirm, ConfirmDialog } = useConfirm();
   const [alertAllGuardians, { isLoading: alerting }] = useAlertAllGuardiansMutation();
 
   // Filtered Sessions
@@ -142,7 +144,13 @@ const SchedulePage: React.FC = () => {
   }, [sessionsList]);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Remove this session permanently? This action cannot be undone.")) return;
+    const ok = await confirm({
+      title: "Remove session",
+      message: "Remove this session permanently? This action cannot be undone.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteSession(id).unwrap();
       toast.success("Session removed permanently");
@@ -510,6 +518,7 @@ const SchedulePage: React.FC = () => {
           />
         </Modal>
       )}
+      {ConfirmDialog}
     </div>
   );
 };
@@ -648,7 +657,7 @@ const CreateSessionModal: React.FC<{
     <Modal isOpen onClose={onClose} title="New Operational Session" size="lg">
       <form onSubmit={handleSubmit} className="space-y-5 text-xs max-h-[70vh] overflow-y-auto pr-2 no-scrollbar">
         
-        {/* Franchise Selector (Head Office View Only) */}
+        {/* Franchise Selector (Academy Overview Only) */}
         {!franchiseId && academyFranchises && (
           <div>
             <label className="block text-2xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Franchise</label>

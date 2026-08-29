@@ -1,12 +1,15 @@
 // src/features/franchises/FranchiseManagementPage.tsx
 import React, { useEffect, useState } from "react";
 import { clsx } from "clsx";
-import { Building2, Plus, Power, Trash2, ListChecks, X, Pencil } from "lucide-react";
+import { Building2, Plus, Power, Trash2, ListChecks, X, Pencil, LayoutDashboard } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import { setActiveFranchise } from "../../store/slices/uiSlice";
 import { Button, Input, Badge, Modal, Skeleton, EmptyState } from "../../components/ui";
 import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
+import { useConfirm } from "../../hooks/useConfirm";
 import { academyApi } from "../../store/api/academyApi";
 import {
   useGetFranchisesQuery,
@@ -19,6 +22,9 @@ import {
 } from "../../store/api/franchiseApi";
 
 const FranchiseManagementPage: React.FC = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { confirm, ConfirmDialog } = useConfirm();
   const { user } = useSelector((s: RootState) => s.auth);
   const isSuperAdmin = user?.role === "super_admin";
   const isHeadOfficeRole = isSuperAdmin || (user?.role === "manager" && !user?.franchiseId);
@@ -74,13 +80,27 @@ const FranchiseManagementPage: React.FC = () => {
 
   const handleDelete = async (f: Franchise) => {
     if (!activeAcademyId) return;
-    if (!window.confirm(`Remove "${f.name}"? This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: "Remove franchise",
+      message: `Remove "${f.name}"? This cannot be undone.`,
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteFranchise({ id: f.id, academyId: activeAcademyId }).unwrap();
       toast.success("Franchise removed");
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't remove franchise — try again");
     }
+  };
+
+  // Drill into this franchise's own dashboard — the only place a
+  // franchise-specific view now lives (the top bar no longer carries a
+  // franchise switcher on this page or on /dashboard).
+  const handleViewDashboard = (f: Franchise) => {
+    dispatch(setActiveFranchise(f.id));
+    navigate(`/franchises/${f.id}`);
   };
 
   return (
@@ -185,6 +205,13 @@ const FranchiseManagementPage: React.FC = () => {
                   <Pencil size={14} />
                 </button>
               </div>
+              <button
+                onClick={() => handleViewDashboard(f)}
+                className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-pitch-900 bg-volt-400 hover:bg-volt-300 rounded px-3 py-2 transition-colors"
+              >
+                <LayoutDashboard size={13} />
+                View Dashboard
+              </button>
               <div className="flex items-center gap-3 pt-2 border-t border-white/5">
                 <button
                   onClick={() => handleToggle(f.id, f.isActive)}
@@ -205,6 +232,8 @@ const FranchiseManagementPage: React.FC = () => {
           ))}
         </div>
       )}
+
+      {ConfirmDialog}
 
       {showCreate && activeAcademyId && (
         <CreateFranchiseModal

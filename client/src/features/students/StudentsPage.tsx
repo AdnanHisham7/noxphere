@@ -18,6 +18,7 @@ import { toast } from "react-hot-toast";
 import mannequinPng from "../../assets/players/mannequin.png";
 import { PlayerPlaceholder } from "@/components/ui/PlayerPlaceholder";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
+import { useConfirm } from "../../hooks/useConfirm";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
 import {
   useGetStudentsQuery,
@@ -102,9 +103,14 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
         </div>
 
         <div className="flex items-center justify-between">
-          <Badge variant={selectionBadge[student.selectionStatus]?.variant} size="sm">
-            {selectionBadge[student.selectionStatus]?.label}
-          </Badge>
+          <div className="flex items-center gap-1.5">
+            <Badge variant={selectionBadge[student.selectionStatus]?.variant} size="sm">
+              {selectionBadge[student.selectionStatus]?.label}
+            </Badge>
+            {student.status !== "active" && (
+              <Badge variant="gray" size="sm">{student.status.replace("_", " ")}</Badge>
+            )}
+          </div>
 
           <div className="text-right">
             <p className="text-[9px] text-white/40 uppercase">Team</p>
@@ -180,9 +186,16 @@ const StudentsPage: React.FC = () => {
 
   const [createStudent, { isLoading: creating }] = useCreateStudentMutation();
   const [deleteStudent] = useDeleteStudentMutation();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Remove ${name} from the franchise? This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: "Remove player",
+      message: `Remove ${name} from the franchise? This cannot be undone.`,
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteStudent(id).unwrap();
       toast.success("Player removed");
@@ -434,9 +447,14 @@ const StudentsPage: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-4 py-3 hidden xl:table-cell">
-                    <Badge variant={selectionBadge[student.selectionStatus]?.variant}>
-                      {selectionBadge[student.selectionStatus]?.label}
-                    </Badge>
+                    <div className="flex flex-col gap-1 items-start">
+                      <Badge variant={selectionBadge[student.selectionStatus]?.variant}>
+                        {selectionBadge[student.selectionStatus]?.label}
+                      </Badge>
+                      {student.status !== "active" && (
+                        <Badge variant="gray">{student.status.replace("_", " ")}</Badge>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-3">
@@ -476,6 +494,7 @@ const StudentsPage: React.FC = () => {
         }}
         creating={creating}
       />
+      {ConfirmDialog}
     </div>
   );
 };

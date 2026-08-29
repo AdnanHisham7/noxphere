@@ -21,6 +21,7 @@ export interface StudentDocument extends Document {
   medicalInfo: StudentEntity["medicalInfo"];
   enrollmentDate: Date;
   isActive: boolean;
+  status: StudentEntity["status"];
   attendancePercentage: number;
   overallRating: number;
   selectionStatus: StudentEntity["selectionStatus"];
@@ -92,6 +93,17 @@ const StudentSchema = new Schema<StudentDocument>(
     medicalInfo: { type: MedicalInfoSchema, required: true },
     enrollmentDate: { type: Date, default: Date.now },
     isActive: { type: Boolean, default: true, index: true },
+    // Manager-selectable lifecycle status for the player, independent of
+    // `isActive` (soft-delete gate) and `selectionStatus` (the recruitment
+    // pipeline, managed from the Selection board). Lets a manager mark a
+    // player on_leave/graduated/dropped_out without removing them from the
+    // roster or affecting recruitment-stage tracking.
+    status: {
+      type: String,
+      enum: ["active", "inactive", "on_leave", "graduated", "dropped_out"],
+      default: "active",
+      index: true,
+    },
     attendancePercentage: { type: Number, default: 0, min: 0, max: 100 },
     overallRating: { type: Number, default: 0, min: 0, max: 10 },
     selectionStatus: {

@@ -401,7 +401,7 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({ te
       {teamLoading && <Skeleton className="h-60" />}
       {team && (
         isHeadOffice ? (
-          /* Head Office: Read-only View */
+          /* Academy Overview: Read-only View */
           <div className="flex flex-col h-[50vh] min-h-[350px]">
             <div className="mb-3">
               <h4 className="text-xs font-bold text-volt-400 uppercase tracking-wide">Current Players</h4>

@@ -11,17 +11,20 @@ import {
   NotFoundError,
   ConflictError,
   BadRequestError,
+  ForbiddenError,
 } from "../../../shared/errors/AppError";
 import {
   CreateStudentDto,
   UpdateStudentDto,
   AddCoachRemarkDto,
+  TransferStudentFranchiseDto,
 } from "../../dtos/student.dto";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import { CoachRemarkModel } from "../../../infrastructure/database/models/CoachRemark.model";
 import { TeamModel } from "../../../infrastructure/database/models/Team.model";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
+import { FranchiseTransferLogModel } from "../../../infrastructure/database/models/FranchiseTransferLog.model";
 
 export class StudentUseCases {
   constructor(
@@ -250,6 +253,132 @@ export class StudentUseCases {
   async deleteStudent(id: string): Promise<void> {
     const success = await this.studentRepo.delete(id);
     if (!success) throw new NotFoundError("Student");
+  }
+
+  async updateStudentStatus(
+    id: string,
+    status: StudentEntity["status"],
+  ): Promise<StudentEntity> {
+    const student = await this.studentRepo.update(id, { status });
+    if (!student) throw new NotFoundError("Student");
+    return student;
+  }
+
+  // Moves a player from their current franchise to another franchise
+  // within the SAME academy — distinct from the Transfer Wall marketplace
+  // (TransferListing/TransferRequest), which is for cross-manager
+  // negotiated transfers. This is a direct administrative reassignment,
+  // restricted to Head Office (an academy-owner manager, or super_admin) —
+  // see StudentController.transferFranchise for the role check.
+  async transferStudentFranchise(
+    studentId: string,
+    dto: TransferStudentFranchiseDto,
+    requester: { userId: string; academyId?: string; isSuperAdmin: boolean },
+  ): Promise<StudentEntity> {
+    const student = await this.studentRepo.findById(studentId);
+    if (!student) throw new NotFoundError("Student");
+
+    if (dto.toFranchiseId === student.franchiseId) {
+      throw new BadRequestError("Player is already assigned to that franchise");
+    }
+
+    const [fromFranchise, toFranchise] = await Promise.all([
+      FranchiseModel.findById(student.franchiseId).select("academyId").lean(),
+      FranchiseModel.findById(dto.toFranchiseId)
+        .select("academyId isActive")
+        .lean(),
+    ]);
+    if (!fromFranchise) throw new NotFoundError("Current franchise");
+    if (!toFranchise) throw new NotFoundError("Destination franchise");
+    if (!toFranchise.isActive) {
+      throw new BadRequestError("Cannot transfer a player into an inactive franchise");
+    }
+    if (fromFranchise.academyId.toString() !== toFranchise.academyId.toString()) {
+      throw new BadRequestError(
+        "Players can only be transferred between franchises of the same academy",
+      );
+    }
+    if (
+      !requester.isSuperAdmin &&
+      requester.academyId &&
+      requester.academyId !== fromFranchise.academyId.toString()
+    ) {
+      throw new ForbiddenError("You can only transfer players within your own academy");
+    }
+
+    // Team/coach assignments are franchise-scoped (see
+    // validateTeamAssignment above) — moving academies without clearing
+    // them would leave the player pointing at a team that belongs to the
+    // franchise they just left.
+    const franchiseUpdate: Record<string, unknown> = {
+      franchiseId: dto.toFranchiseId,
+      teamId: null,
+      coachId: null,
+    };
+    const updated = await this.studentRepo.update(
+      studentId,
+      franchiseUpdate as Partial<StudentEntity>,
+    );
+    if (!updated) throw new NotFoundError("Student");
+
+    await FranchiseTransferLogModel.create({
+      studentId,
+      academyId: fromFranchise.academyId,
+      fromFranchiseId: student.franchiseId,
+      toFranchiseId: dto.toFranchiseId,
+      transferredBy: requester.userId,
+      reason: dto.reason,
+    });
+
+    // Keep the player's own login account and every linked guardian
+    // account in sync so a fresh login carries the correct franchise
+    // scope going forward.
+    const accountIds = [student.userId, ...student.guardianIds];
+    await Promise.all(
+      accountIds.map((accId) =>
+        this.userRepo.update(accId, {
+          franchiseId: dto.toFranchiseId,
+        } as Partial<UserEntity>),
+      ),
+    );
+
+    return updated;
+  }
+
+  async getFranchiseTransferHistory(studentId: string): Promise<
+    Array<{
+      id: string;
+      fromFranchise: { id: string; name: string } | null;
+      toFranchise: { id: string; name: string } | null;
+      transferredBy: { id: string; name: string } | null;
+      reason?: string;
+      transferredAt: Date;
+    }>
+  > {
+    const logs = await FranchiseTransferLogModel.find({ studentId })
+      .sort({ createdAt: -1 })
+      .populate("fromFranchiseId", "name")
+      .populate("toFranchiseId", "name")
+      .populate("transferredBy", "firstName lastName")
+      .lean();
+
+    return logs.map((log: any) => ({
+      id: log._id.toString(),
+      fromFranchise: log.fromFranchiseId
+        ? { id: log.fromFranchiseId._id.toString(), name: log.fromFranchiseId.name }
+        : null,
+      toFranchise: log.toFranchiseId
+        ? { id: log.toFranchiseId._id.toString(), name: log.toFranchiseId.name }
+        : null,
+      transferredBy: log.transferredBy
+        ? {
+            id: log.transferredBy._id.toString(),
+            name: `${log.transferredBy.firstName} ${log.transferredBy.lastName}`,
+          }
+        : null,
+      reason: log.reason,
+      transferredAt: log.createdAt,
+    }));
   }
 
   // NOTE: freeform per-student addPerformance()/markAttendance() methods

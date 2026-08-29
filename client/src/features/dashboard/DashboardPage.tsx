@@ -1,6 +1,6 @@
 // src/features/dashboard/DashboardPage.tsx
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart,
@@ -39,14 +39,23 @@ const formatCurrency = (n: number) =>
 
 const DashboardPage: React.FC = () => {
   const dispatch = useDispatch();
-  const franchiseId = useCurrentFranchiseId();
+  const navigate = useNavigate();
+  const activeFranchiseId = useCurrentFranchiseId();
   const user = useSelector((s: RootState) => s.auth.user);
   const academyId = user?.academyId;
 
   const isSuperAdmin = user?.role === 'super_admin';
-  const isConsolidated = !franchiseId && !!academyId;
-  const skip = !franchiseId && !academyId && !isSuperAdmin;
-  const queryParams = isSuperAdmin ? {} : (franchiseId ? { franchiseId } : { academyId: academyId ?? undefined });
+  const isOwnerManager = user?.role === 'manager' && !user?.franchiseId;
+
+  // The plain /dashboard route always shows the academy-wide overview for
+  // an owner-manager, regardless of any franchise picked earlier while
+  // browsing other pages (Students/Fees/etc. still honor that selection —
+  // only this page ignores it). Franchise-specific dashboards live at
+  // /franchises/:id instead, reached from the Franchises tab.
+  const franchiseId = isOwnerManager ? undefined : (user?.franchiseId ?? activeFranchiseId ?? undefined);
+  const isConsolidated = isOwnerManager;
+  const skip = !isSuperAdmin && !franchiseId && !academyId;
+  const queryParams = isSuperAdmin ? {} : (isConsolidated ? { academyId: academyId ?? undefined } : { franchiseId });
 
   const { data: stats, isLoading: statsLoading } = useGetDashboardStatsQuery(
     queryParams, { skip },
@@ -83,10 +92,10 @@ const DashboardPage: React.FC = () => {
       <div className="flex items-start justify-between">
         <div>
           <p className="section-title mb-1">
-            {isSuperAdmin ? "System Overview" : (isConsolidated ? "Academy Headquarters" : "Overview")}
+            {isSuperAdmin ? "System Overview" : (isConsolidated ? "Academy Overview" : "Overview")}
           </p>
           <h1 className="font-display font-extrabold text-white text-2xl uppercase tracking-tight">
-            {isSuperAdmin ? "Super Admin Dashboard" : (isConsolidated ? "Head Office Dashboard" : "Dashboard")}
+            {isSuperAdmin ? "Super Admin Dashboard" : (isConsolidated ? "Academy Dashboard" : "Dashboard")}
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
@@ -95,7 +104,7 @@ const DashboardPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1.5 text-xs text-volt-400 bg-volt-400/10 border border-volt-400/20 rounded px-3 py-1.5 font-bold font-mono">
             <span className="w-1.5 h-1.5 rounded-full bg-volt-400 animate-pulse-volt" />
-            {isSuperAdmin ? "Super Admin Active" : (isConsolidated ? "Head Office Active" : "Franchise Active")}
+            {isSuperAdmin ? "Super Admin Active" : (isConsolidated ? "Academy-wide" : "Franchise Active")}
           </span>
         </div>
       </div>
@@ -149,7 +158,7 @@ const DashboardPage: React.FC = () => {
           />
         </div>
       ) : isConsolidated ? (
-        /* Consolidated (Head Office) Stats Layout */
+        /* Consolidated (academy-wide) Stats Layout */
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <StatCard
             label="Total Franchises"
@@ -324,7 +333,7 @@ const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Franchise Performance list (Only for Head Office view) */}
+      {/* Franchise Performance list (only on the academy-wide overview) */}
       {isConsolidated && stats?.franchisePerformance && stats.franchisePerformance.length > 0 && (
         <div className="card p-5 space-y-4 animate-fade-in">
           <div>
@@ -363,8 +372,14 @@ const DashboardPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-3 text-center">
-                      <Button size="sm" onClick={() => dispatch(setActiveFranchise(fp.id))}>
-                        Enter Franchise
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          dispatch(setActiveFranchise(fp.id));
+                          navigate(`/franchises/${fp.id}`);
+                        }}
+                      >
+                        View Dashboard
                       </Button>
                     </td>
                   </tr>

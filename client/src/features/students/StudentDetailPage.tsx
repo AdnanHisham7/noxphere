@@ -15,18 +15,28 @@ import {
   CartesianGrid,
 } from "recharts";
 import { clsx } from "clsx";
-import { Repeat2, Mail, Pencil } from "lucide-react";
+import { Repeat2, Mail, Pencil, ArrowLeftRight, History } from "lucide-react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
 import { Button, Badge, Avatar, Modal, Skeleton, EmptyState, Input, DocumentUploadField } from "../../components/ui";
 import { toast } from "react-hot-toast";
 import { useTransferWallEnabled } from "../../hooks/useTransferWallEnabled";
+import { useConfirm } from "../../hooks/useConfirm";
 import mannequinPng from "../../assets/players/mannequin.png";
 import { PlayerPlaceholder } from "@/components/ui/PlayerPlaceholder";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import QRCode from "react-qr-code";
-import { useGetPlayerCardQuery, useUpdateStudentPhotoMutation, useUpdateStudentMutation, type Student } from "../../store/api/studentsApi";
+import {
+  useGetPlayerCardQuery,
+  useUpdateStudentPhotoMutation,
+  useUpdateStudentMutation,
+  useUpdateStudentStatusMutation,
+  useTransferStudentFranchiseMutation,
+  useGetTransferHistoryQuery,
+  type Student,
+  type StudentStatus,
+} from "../../store/api/studentsApi";
 import { useGetFranchiseByIdQuery, useGetFranchisesQuery } from "../../store/api/franchiseApi";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
 import { academyApi } from "../../store/api/academyApi";
@@ -63,19 +73,46 @@ const StudentDetailPage: React.FC = () => {
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState<"overview" | "attendance" | "performance" | "info">("overview");
   const [transferModal, setTransferModal] = useState(false);
+  const [franchiseTransferModal, setFranchiseTransferModal] = useState(false);
   const [editModal, setEditModal] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const { user } = useSelector((s: RootState) => s.auth);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewName, setPreviewName] = useState<string>("");
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const { data: card, isLoading, isError } = useGetPlayerCardQuery(id ?? "", { skip: !id });
   const [listPlayer, { isLoading: listing }] = useListPlayerMutation();
   const [uploadImage, { isLoading: uploadingPhoto }] = useUploadImageMutation();
   const [updateStudentPhoto] = useUpdateStudentPhotoMutation();
+  const [updateStudentStatus, { isLoading: statusUpdating }] = useUpdateStudentStatusMutation();
+  const [transferFranchise, { isLoading: transferringFranchise }] = useTransferStudentFranchiseMutation();
   const transferWallEnabled = useTransferWallEnabled();
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // Only Head Office (an academy-owner manager, or super_admin) may move a
+  // player between franchises — matches the backend authorization check.
+  const canTransferFranchise = user?.role === "super_admin" || (user?.role === "manager" && !user?.franchiseId);
+  const canEditStatus = user?.role === "manager" || user?.role === "super_admin";
+
+  const handleStatusChange = async (status: StudentStatus) => {
+    if (!id) return;
+    if (status !== "active") {
+      const ok = await confirm({
+        title: "Change player status",
+        message: `Mark this player as "${status.replace("_", " ")}"? This is visible across the roster and to guardians.`,
+        confirmLabel: "Change status",
+      });
+      if (!ok) return;
+    }
+    try {
+      await updateStudentStatus({ id, status }).unwrap();
+      toast.success("Player status updated");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Couldn't update status — try again");
+    }
+  };
 
   const handlePhotoChange = async (file: File | undefined) => {
     if (!file || !id) return;
@@ -228,6 +265,27 @@ const StudentDetailPage: React.FC = () => {
                     </Badge>
                     {student.transferStatus === "listed" && <Badge variant="blue">↔ On Transfer</Badge>}
                     {student.transferStatus === "sold" && <Badge variant="green">Transferred</Badge>}
+                    {canEditStatus ? (
+                      <select
+                        value={student.status}
+                        disabled={statusUpdating}
+                        onChange={(e) => handleStatusChange(e.target.value as StudentStatus)}
+                        className={clsx(
+                          "text-2xs font-bold uppercase tracking-wide rounded px-2 py-1 border bg-pitch-800",
+                          student.status === "active" ? "text-field-400 border-field-400/30" : "text-ember-400 border-ember-400/30",
+                        )}
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="on_leave">On Leave</option>
+                        <option value="graduated">Graduated</option>
+                        <option value="dropped_out">Dropped Out</option>
+                      </select>
+                    ) : (
+                      <Badge variant={student.status === "active" ? "green" : "gray"}>
+                        {student.status.replace("_", " ")}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>
@@ -381,6 +439,17 @@ const StudentDetailPage: React.FC = () => {
                 <Button size="sm" variant="secondary" icon={<Pencil size={14} />} onClick={() => setEditModal(true)}>
                   Edit details
                 </Button>
+
+                {canTransferFranchise && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    icon={<ArrowLeftRight size={14} />}
+                    onClick={() => setFranchiseTransferModal(true)}
+                  >
+                    Transfer Franchise
+                  </Button>
+                )}
 
                 {student.transferStatus !== "listed" && student.transferStatus !== "sold" && transferWallEnabled && (
                   <Button size="sm" variant="secondary" icon={<Repeat2 size={14} />} onClick={() => setTransferModal(true)}>
@@ -619,6 +688,9 @@ const StudentDetailPage: React.FC = () => {
             ))}
           </div>
 
+          {/* Franchise Transfer History */}
+          <FranchiseTransferHistoryCard studentId={student.id} />
+
           {/* Uploaded Documents Section */}
           {(user?.role === "super_admin" || user?.role === "manager" || user?.role === "coach") && (
             <div className="card p-5 space-y-4">
@@ -683,6 +755,32 @@ const StudentDetailPage: React.FC = () => {
       {editModal && (
         <EditStudentModal student={student} onClose={() => setEditModal(false)} />
       )}
+
+      {franchiseTransferModal && (
+        <FranchiseTransferModal
+          student={student}
+          transferring={transferringFranchise}
+          onClose={() => setFranchiseTransferModal(false)}
+          onSubmit={async (toFranchiseId, reason) => {
+            const ok = await confirm({
+              title: "Transfer player",
+              message: `Move ${student.firstName} ${student.lastName} to the selected franchise? Their team and coach assignment will be cleared, and a record of this transfer will be kept on their profile.`,
+              confirmLabel: "Transfer player",
+              danger: true,
+            });
+            if (!ok) return;
+            try {
+              await transferFranchise({ id: student.id, toFranchiseId, reason }).unwrap();
+              toast.success("Player transferred to new franchise");
+              setFranchiseTransferModal(false);
+            } catch (err: any) {
+              toast.error(err?.data?.message || "Couldn't transfer player — try again");
+            }
+          }}
+        />
+      )}
+
+      {ConfirmDialog}
 
       {previewUrl && (
         <Modal
@@ -800,6 +898,113 @@ const TransferListingModal: React.FC<{
   );
 };
 
+const FranchiseTransferHistoryCard: React.FC<{ studentId: string }> = ({ studentId }) => {
+  const { data: history, isLoading } = useGetTransferHistoryQuery(studentId);
+
+  if (isLoading) {
+    return (
+      <div className="card p-5 space-y-3">
+        <p className="section-title text-volt-400">Franchise Transfer History</p>
+        <Skeleton className="h-10 rounded" />
+      </div>
+    );
+  }
+
+  if (!history || history.length === 0) return null;
+
+  return (
+    <div className="card p-5 space-y-4">
+      <p className="section-title text-volt-400">Franchise Transfer History</p>
+      <div className="space-y-3">
+        {history.map((h) => (
+          <div key={h.id} className="flex items-start gap-3 p-3 bg-white/[0.02] border border-white/5 rounded-lg">
+            <ArrowLeftRight size={14} className="text-ice-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-slate-200">
+                <span className="font-semibold">{h.fromFranchise?.name ?? "Unknown"}</span>
+                {" → "}
+                <span className="font-semibold">{h.toFranchise?.name ?? "Unknown"}</span>
+              </p>
+              <p className="text-2xs text-slate-500 mt-1">
+                {new Date(h.transferredAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                {h.transferredBy?.name ? ` · by ${h.transferredBy.name}` : ""}
+              </p>
+              {h.reason && <p className="text-xs text-slate-400 mt-1 italic">"{h.reason}"</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const FranchiseTransferModal: React.FC<{
+  student: Student;
+  transferring: boolean;
+  onClose: () => void;
+  onSubmit: (toFranchiseId: string, reason?: string) => void;
+}> = ({ student, transferring, onClose, onSubmit }) => {
+  const { data: currentFranchise } = useGetFranchiseByIdQuery(student.franchiseId, { skip: !student.franchiseId });
+  const { data: franchises } = useGetFranchisesQuery(
+    currentFranchise ? { academyId: currentFranchise.academyId, isActive: true } : undefined,
+    { skip: !currentFranchise },
+  );
+  const destinationOptions = (franchises ?? []).filter((f) => f.id !== student.franchiseId);
+  const [toFranchiseId, setToFranchiseId] = useState("");
+  const [reason, setReason] = useState("");
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title="Transfer Franchise" size="sm">
+      <div className="space-y-4">
+        <div>
+          <label className="label">Current Franchise</label>
+          <p className="text-sm text-slate-300">{currentFranchise?.name ?? "—"}</p>
+        </div>
+        <div>
+          <label className="label">Move to</label>
+          <select
+            value={toFranchiseId}
+            onChange={(e) => setToFranchiseId(e.target.value)}
+            className="input !w-full"
+          >
+            <option value="">Select destination franchise…</option>
+            {destinationOptions.map((f) => (
+              <option key={f.id} value={f.id}>{f.name}</option>
+            ))}
+          </select>
+          {destinationOptions.length === 0 && (
+            <p className="text-2xs text-slate-500 mt-1.5">No other active franchises in this academy to transfer into.</p>
+          )}
+        </div>
+        <div>
+          <label className="label">Reason (optional)</label>
+          <textarea
+            className="input min-h-16 resize-none"
+            placeholder="e.g. Family relocation, closer to new franchise"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2 p-3 bg-ember-400/5 border border-ember-400/15 rounded">
+          <span className="text-ember-400 text-sm">⚠</span>
+          <p className="text-xs text-ember-400">Their current team and coach assignment will be cleared as part of the move.</p>
+        </div>
+        <div className="flex gap-3">
+          <Button
+            className="flex-1"
+            loading={transferring}
+            disabled={!toFranchiseId}
+            onClick={() => onSubmit(toFranchiseId, reason.trim() || undefined)}
+          >
+            Transfer Player
+          </Button>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
 export default StudentDetailPage;
 
 const POSITIONS = [
@@ -829,13 +1034,12 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
     skip: !franchise?.academyId,
   });
   const categories = academy?.ageGroups ?? [];
-  const { data: franchises } = useGetFranchisesQuery(
-    franchise ? { academyId: franchise.academyId, isActive: true } : undefined,
-    { skip: !franchise },
-  );
-  
-  const [franchiseId, setFranchiseId] = useState(student.franchiseId);
-  const { data: teams } = useListTeamsQuery({ franchiseId: franchiseId }, { skip: !franchiseId });
+  // Team assignment is scoped to the player's current franchise — franchise
+  // reassignment is a separate, confirmed action (see "Transfer Franchise"
+  // above), not something this form edits, since changing it here without
+  // also moving the team/coach assignment would leave the player pointing
+  // at a team from a different franchise.
+  const { data: teams } = useListTeamsQuery({ franchiseId: student.franchiseId }, { skip: !student.franchiseId });
 
   const [firstName, setFirstName] = useState(student.firstName);
   const [lastName, setLastName] = useState(student.lastName);
@@ -896,7 +1100,6 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
           dateOfBirth: new Date(dob).toISOString(),
           ageGroup,
           teamId: teamId || null,
-          franchiseId,
           position: positions[0] || "Forward",
           positions: positions,
           jerseyNumber: jerseyNumber ? parseInt(jerseyNumber, 10) : undefined,
@@ -1003,12 +1206,11 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
             </div>
 
             <div>
-              <label className="label">Franchise Assignment</label>
-              <select value={franchiseId} onChange={(e) => setFranchiseId(e.target.value)} className="input !w-full">
-                {(franchises ?? []).map((f) => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </select>
+              <label className="label">Franchise</label>
+              <div className="input !w-full flex items-center justify-between text-slate-400 cursor-not-allowed">
+                <span>{franchise?.name ?? "—"}</span>
+                <span className="text-2xs uppercase tracking-wide text-slate-600">Use Transfer Franchise to move this player</span>
+              </div>
             </div>
 
             <div>

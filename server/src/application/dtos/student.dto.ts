@@ -61,8 +61,19 @@ export const AddCoachRemarkSchema = z.object({
   text: z.string().min(1),
 });
 
+export const UpdateStudentStatusSchema = z.object({
+  status: z.enum(["active", "inactive", "on_leave", "graduated", "dropped_out"]),
+});
+
+export const TransferStudentFranchiseSchema = z.object({
+  toFranchiseId: z.string().min(1),
+  reason: z.string().max(500).optional(),
+});
+
 export type CreateStudentDto = z.infer<typeof CreateStudentSchema>;
 export type UpdateStudentDto = z.infer<typeof UpdateStudentSchema>;
 export type AddPerformanceDto = z.infer<typeof AddPerformanceSchema>;
 export type MarkAttendanceDto = z.infer<typeof MarkAttendanceSchema>;
 export type AddCoachRemarkDto = z.infer<typeof AddCoachRemarkSchema>;
+export type UpdateStudentStatusDto = z.infer<typeof UpdateStudentStatusSchema>;
+export type TransferStudentFranchiseDto = z.infer<typeof TransferStudentFranchiseSchema>;

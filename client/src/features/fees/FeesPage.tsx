@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { Card, Badge, Button, Input, Modal, Skeleton, EmptyState, ImageUploadField } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
+import { useConfirm } from "../../hooks/useConfirm";
 import { academyApi } from "../../store/api/academyApi";
 import {
   useListFeesQuery,
@@ -82,13 +83,18 @@ const FeesPage: React.FC = () => {
 
   const [createFee, { isLoading: creating }] = useCreateFeeMutation();
   const [undoPayment] = useUndoPaymentMutation();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const visible = (fees ?? []).filter((f) => !statusFilter || f.overallStatus === statusFilter);
 
   const handleUndoPayment = async (feeId: string, installmentNumber: number) => {
-    if (!window.confirm("Are you sure you want to undo this payment? This will reset the installment to unpaid/pending.")) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Undo payment",
+      message: "Undo this payment? This will reset the installment to unpaid/pending.",
+      confirmLabel: "Undo payment",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await undoPayment({ feeId, installmentNumber }).unwrap();
       toast.success("Payment reverted successfully");
@@ -281,6 +287,7 @@ const FeesPage: React.FC = () => {
       )}
       {payTarget && <RecordPaymentModal target={payTarget} onClose={() => setPayTarget(null)} />}
       {editTarget && <EditPaymentModal target={editTarget} onClose={() => setEditTarget(null)} />}
+      {ConfirmDialog}
     </div>
   );
 };

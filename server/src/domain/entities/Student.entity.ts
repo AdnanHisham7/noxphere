@@ -28,6 +28,12 @@ export type SelectionStatus =
   | "not_selected"
   | "released";
 export type TransferStatus = "not_listed" | "listed" | "sold";
+export type StudentStatus =
+  | "active"
+  | "inactive"
+  | "on_leave"
+  | "graduated"
+  | "dropped_out";
 
 export interface StudentEntity {
   id: string;
@@ -49,6 +55,7 @@ export interface StudentEntity {
   medicalInfo: MedicalInfo;
   enrollmentDate: Date;
   isActive: boolean;
+  status: StudentStatus;
   attendancePercentage: number;
   overallRating: number;
   selectionStatus: SelectionStatus;
