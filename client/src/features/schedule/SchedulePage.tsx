@@ -55,6 +55,24 @@ const TYPE_LABEL: Record<Session["type"], string> = {
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
+interface CoachAvailabilityFields {
+  id: string;
+  firstName: string;
+  lastName: string;
+  weeklyAvailability?: { dayOfWeek: number; startTime: string; endTime: string }[];
+  customUnavailableDates?: string[];
+}
+
+// A coach with no weeklyAvailability configured at all is treated as
+// always available — nothing has been set for them to conflict with.
+// Mirrors the backend check in ScheduleUseCases.assertCoachesAvailable.
+const isCoachAvailableOnDate = (coach: CoachAvailabilityFields, dateStr: string): boolean => {
+  if (coach.customUnavailableDates?.includes(dateStr)) return false;
+  if (!coach.weeklyAvailability || coach.weeklyAvailability.length === 0) return true;
+  const dayOfWeek = new Date(`${dateStr}T00:00:00Z`).getUTCDay();
+  return coach.weeklyAvailability.some((wa) => wa.dayOfWeek === dayOfWeek);
+};
+
 const SchedulePage: React.FC = () => {
   const franchiseId = useCurrentFranchiseId();
   const navigate = useNavigate();
@@ -529,7 +547,7 @@ const CreateSessionModal: React.FC<{
   franchiseId: string;
   teams: { id: string; name: string; coach?: { _id: string; firstName: string; lastName: string } }[];
   categories: string[];
-  coaches: { id: string; firstName: string; lastName: string }[];
+  coaches: CoachAvailabilityFields[];
   isCoach: boolean;
   currentUser?: { id: string; firstName: string; lastName: string };
   onClose: () => void;
@@ -757,10 +775,15 @@ const CreateSessionModal: React.FC<{
             <div className="flex flex-wrap gap-1.5 mt-1 border border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-pitch-900">
               {coaches.map((c) => {
                 const isSelected = coachIds.includes(c.id);
+                const checkDate = isMultiDay ? startDate : date;
+                const isAvailable = isCoachAvailableOnDate(c, checkDate);
+                const isDisabled = !isAvailable && !isSelected;
                 return (
                   <button
                     key={c.id}
                     type="button"
+                    disabled={isDisabled}
+                    title={!isAvailable ? "Marked unavailable on this date" : undefined}
                     onClick={() => {
                       if (isSelected) {
                         setCoachIds(coachIds.filter((id) => id !== c.id));
@@ -770,12 +793,15 @@ const CreateSessionModal: React.FC<{
                     }}
                     className={clsx(
                       "px-2 py-0.5 rounded text-[10px] font-semibold border transition-all duration-150",
-                      isSelected
-                        ? "bg-volt-400 border-volt-400 text-pitch-900 font-extrabold"
-                        : "bg-pitch-800 border-white/5 text-slate-400 hover:border-white/10 hover:text-white"
+                      isDisabled
+                        ? "bg-pitch-800 border-white/5 text-slate-600 cursor-not-allowed opacity-50"
+                        : isSelected
+                          ? "bg-volt-400 border-volt-400 text-pitch-900 font-extrabold"
+                          : "bg-pitch-800 border-white/5 text-slate-400 hover:border-white/10 hover:text-white"
                     )}
                   >
                     {c.firstName} {c.lastName}
+                    {!isAvailable && " · Unavailable"}
                   </button>
                 );
               })}
@@ -988,7 +1014,7 @@ const EditSessionModal: React.FC<{
   franchiseId: string;
   teams: { id: string; name: string; coach?: { _id: string; firstName: string; lastName: string } }[];
   categories: string[];
-  coaches: { id: string; firstName: string; lastName: string }[];
+  coaches: CoachAvailabilityFields[];
   onClose: () => void;
   onUpdate: (data: any) => void;
   saving: boolean;
@@ -1120,10 +1146,15 @@ const EditSessionModal: React.FC<{
           <div className="flex flex-wrap gap-1.5 mt-1 border border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-pitch-900">
             {coaches.map((c) => {
               const isSelected = coachIds.includes(c.id);
+              const checkDate = isMultiDay ? session.startDate ?? date : date;
+              const isAvailable = isCoachAvailableOnDate(c, checkDate);
+              const isDisabled = !isAvailable && !isSelected;
               return (
                 <button
                   key={c.id}
                   type="button"
+                  disabled={isDisabled}
+                  title={!isAvailable ? "Marked unavailable on this date" : undefined}
                   onClick={() => {
                     if (isSelected) {
                       setCoachIds(coachIds.filter((id) => id !== c.id));
@@ -1133,12 +1164,15 @@ const EditSessionModal: React.FC<{
                   }}
                   className={clsx(
                     "px-2 py-0.5 rounded text-[10px] font-semibold border transition-all duration-150",
-                    isSelected
-                      ? "bg-volt-400 border-volt-400 text-pitch-900 font-extrabold"
-                      : "bg-pitch-800 border-white/5 text-slate-400 hover:border-white/10 hover:text-white"
+                    isDisabled
+                      ? "bg-pitch-800 border-white/5 text-slate-600 cursor-not-allowed opacity-50"
+                      : isSelected
+                        ? "bg-volt-400 border-volt-400 text-pitch-900 font-extrabold"
+                        : "bg-pitch-800 border-white/5 text-slate-400 hover:border-white/10 hover:text-white"
                   )}
                 >
                   {c.firstName} {c.lastName}
+                  {!isAvailable && " · Unavailable"}
                 </button>
               );
             })}

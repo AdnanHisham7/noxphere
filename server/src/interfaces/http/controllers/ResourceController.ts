@@ -12,14 +12,18 @@ export class ResourceController {
     try {
       const { franchiseId } = req.query;
       if (!franchiseId) throw new BadRequestError("franchiseId is required");
+      const requester = {
+        academyId: req.user!.academyId,
+        isSuperAdmin: req.user!.role === "super_admin",
+      };
 
       if (req.user!.role === "manager" || req.user!.role === "super_admin") {
-        const result = await this.resourceUseCases.listForManager(franchiseId as string);
+        const result = await this.resourceUseCases.listForManager(franchiseId as string, requester);
         ResponseHandler.success(res, result, "Resources retrieved");
         return;
       }
 
-      const resources = await this.resourceUseCases.listForCoach(franchiseId as string, req.user!.sub);
+      const resources = await this.resourceUseCases.listForCoach(franchiseId as string, req.user!.sub, requester);
       ResponseHandler.success(res, { data: resources, storage: null }, "Resources retrieved");
     } catch (err) {
       next(err);
@@ -34,6 +38,8 @@ export class ResourceController {
         franchiseId,
         uploadedBy: req.user!.sub,
         uploadedByRole: req.user!.role,
+        requesterAcademyId: req.user!.academyId,
+        isSuperAdmin: req.user!.role === "super_admin",
         fileBuffer: req.file.buffer,
         fileName: req.file.originalname,
         mimeType: req.file.mimetype,
@@ -47,7 +53,11 @@ export class ResourceController {
 
   verify = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const resource = await this.resourceUseCases.verifyResource(req.params.id, req.user!.sub);
+      const resource = await this.resourceUseCases.verifyResource(req.params.id, {
+        id: req.user!.sub,
+        academyId: req.user!.academyId,
+        isSuperAdmin: req.user!.role === "super_admin",
+      });
       ResponseHandler.success(res, resource, "Resource verified");
     } catch (err) {
       next(err);
@@ -56,7 +66,12 @@ export class ResourceController {
 
   delete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      await this.resourceUseCases.deleteResource(req.params.id, { id: req.user!.sub, role: req.user!.role });
+      await this.resourceUseCases.deleteResource(req.params.id, {
+        id: req.user!.sub,
+        role: req.user!.role,
+        academyId: req.user!.academyId,
+        isSuperAdmin: req.user!.role === "super_admin",
+      });
       ResponseHandler.success(res, null, "Resource removed");
     } catch (err) {
       next(err);

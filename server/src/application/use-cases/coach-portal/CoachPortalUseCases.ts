@@ -4,6 +4,8 @@ import { StudentModel } from "../../../infrastructure/database/models/Student.mo
 import { SessionModel } from "../../../infrastructure/database/models/Session.model";
 import { TeamModel } from "../../../infrastructure/database/models/Team.model";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
+import { UserModel } from "../../../infrastructure/database/models/User.model";
+import { NotFoundError } from "../../../shared/errors/AppError";
 
 export class CoachPortalUseCases {
   /** Reads here are scoped to students on a team assigned to the logged-in
@@ -122,6 +124,20 @@ export class CoachPortalUseCases {
       roster: roundedRoster,
       todaySessions: todaySessions.map(toCard),
       upcomingSessions: upcomingSessions.map(toCard),
+    };
+  }
+
+  // A manager sets this from Coaches Management, but until now nothing
+  // ever read it back — a coach had no way to see their own availability
+  // reflected anywhere in their portal.
+  async getMyAvailability(coachUserId: string) {
+    const coach = await UserModel.findById(coachUserId)
+      .select("weeklyAvailability customUnavailableDates")
+      .lean();
+    if (!coach) throw new NotFoundError("Coach");
+    return {
+      weeklyAvailability: coach.weeklyAvailability ?? [],
+      customUnavailableDates: coach.customUnavailableDates ?? [],
     };
   }
 }

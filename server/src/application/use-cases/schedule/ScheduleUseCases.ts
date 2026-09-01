@@ -7,6 +7,7 @@ import { AttendanceModel } from "../../../infrastructure/database/models/Attenda
 import { PerformanceModel } from "../../../infrastructure/database/models/Performance.model";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
 import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
+import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { notificationService } from "../../../infrastructure/services/NotificationService";
 import { NotFoundError, BadRequestError, ForbiddenError } from "../../../shared/errors/AppError";
 import {
@@ -146,6 +147,42 @@ export class ScheduleUseCases {
    * coach is this coach. This is enforced here — not just in the
    * controller — so the rule holds no matter what calls this use-case.
    */
+  // A manager can mark a coach unavailable for a day of the week
+  // (weeklyAvailability) or a specific date (customUnavailableDates).
+  // The session-assignment UI disables picking such a coach for a
+  // conflicting date, but this backend check exists too so the same
+  // rule holds for any direct API call, not just the form. A coach with
+  // no weeklyAvailability configured at all is treated as always
+  // available — nothing has been set for them to conflict with.
+  private async assertCoachesAvailable(coachIds: string[], dates: string[]): Promise<void> {
+    const uniqueCoachIds = Array.from(new Set(coachIds.filter(Boolean)));
+    if (uniqueCoachIds.length === 0 || dates.length === 0) return;
+
+    const coaches = await UserModel.find({ _id: { $in: uniqueCoachIds } })
+      .select("firstName lastName weeklyAvailability customUnavailableDates")
+      .lean();
+
+    for (const coach of coaches) {
+      const hasWeeklyRules = (coach.weeklyAvailability?.length ?? 0) > 0;
+      const unavailableDates = new Set(coach.customUnavailableDates ?? []);
+      const availableDays = new Set((coach.weeklyAvailability ?? []).map((wa) => wa.dayOfWeek));
+      const coachName = `${coach.firstName} ${coach.lastName}`;
+
+      for (const dateStr of dates) {
+        if (unavailableDates.has(dateStr)) {
+          throw new BadRequestError(`${coachName} has been marked unavailable on ${dateStr}`);
+        }
+        if (hasWeeklyRules) {
+          const [year, month, day] = dateStr.split("-").map(Number);
+          const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+          if (!availableDays.has(dayOfWeek)) {
+            throw new BadRequestError(`${coachName} isn't available on that day of the week`);
+          }
+        }
+      }
+    }
+  }
+
   async createSession(dto: CreateSessionDto & { coachIds?: string[]; categories?: string[]; startDate?: string; endDate?: string; dailyStartTime?: string; dailyEndTime?: string; playerIds?: string[]; documents?: { name: string; url: string }[] }, createdBy: string, requestingCoachId?: string) {
     if (dto.endTime <= dto.startTime) {
       throw new BadRequestError("endTime must be after startTime");
@@ -229,6 +266,8 @@ export class ScheduleUseCases {
       }
     }
 
+    await this.assertCoachesAvailable(dto.coachIds && dto.coachIds.length > 0 ? dto.coachIds : [dto.coachId!], datesToCreate);
+
     const sessionsToCreate = datesToCreate.map((dateStr) => ({
       franchiseId: dto.franchiseId,
       targetType: dto.targetType,
@@ -288,6 +327,11 @@ export class ScheduleUseCases {
     }
     if (dto.coachIds && dto.coachIds.length > 0) {
       dto.coachId = dto.coachIds[0];
+    }
+    if (dto.coachId || (dto.coachIds && dto.coachIds.length > 0)) {
+      const nextCoachIds = dto.coachIds && dto.coachIds.length > 0 ? dto.coachIds : [dto.coachId!];
+      const sessionDate = dto.date ?? session.date;
+      await this.assertCoachesAvailable(nextCoachIds, [sessionDate]);
     }
     if (dto.categories && dto.categories.length > 0) {
       dto.category = dto.categories[0];
