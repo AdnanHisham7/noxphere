@@ -27,6 +27,17 @@ academySubscriptionRouter.put("/platform-rate", authenticate, (req, res, next) =
   req.app.locals.controllers.academySubscription.setPlatformRate(req, res, next);
 });
 
+academySubscriptionRouter.get("/platform-staff-rate", authenticate, (req, res, next) => {
+  req.app.locals.controllers.academySubscription.getPlatformStaffRate(req, res, next);
+});
+academySubscriptionRouter.put("/platform-staff-rate", authenticate, (req, res, next) => {
+  if (req.user!.role !== "super_admin") {
+    res.status(403).json({ success: false, message: "Only super_admin can set the platform staff rate", code: "FORBIDDEN" });
+    return;
+  }
+  req.app.locals.controllers.academySubscription.setPlatformStaffRate(req, res, next);
+});
+
 // NOTE: the webhook route itself is mounted separately in index.ts, with
 // express.raw() instead of express.json(), because Stripe's signature
 // verification needs the exact raw request bytes — parsing it as JSON

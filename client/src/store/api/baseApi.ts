@@ -94,6 +94,9 @@ export const baseApi = createApi({
     "Resource",
     "TransferHistory",
     "Consent",
+    "EmployeeRole",
+    "Employee",
+    "SalaryPayment",
   ],
   endpoints: () => ({}),
 });

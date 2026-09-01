@@ -9,10 +9,14 @@ export interface AcademySubscriptionStatus {
   status: SubscriptionStatus;
   billingInterval: BillingInterval | null;
   provisionedCapacity: number;
+  provisionedStaffCapacity: number;
   currentPeriodEnd: string | null;
   ratePerStudentPerDay: number;
+  staffRatePerStaffPerMonth: number;
   currentDefaultRate: number;
+  currentDefaultStaffRate: number;
   activeStudentCount: number;
+  activeStaffCount: number;
   isActive: boolean;
 }
 
@@ -25,7 +29,7 @@ export const academySubscriptionApi = baseApi.injectEndpoints({
     }),
     createSubscriptionCheckout: builder.mutation<
       { url: string },
-      { academyId: string; capacity: number; billingInterval: BillingInterval }
+      { academyId: string; capacity: number; staffCapacity: number; billingInterval: BillingInterval }
     >({
       query: ({ academyId, ...body }) => ({
         url: `/academy-subscriptions/${academyId}/checkout`,
@@ -35,15 +39,15 @@ export const academySubscriptionApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: { url: string } }) => res.data,
     }),
     upgradeSubscriptionCapacity: builder.mutation<
-      { provisionedCapacity: number },
-      { academyId: string; capacity: number }
+      { provisionedCapacity: number; provisionedStaffCapacity: number },
+      { academyId: string; capacity: number; staffCapacity: number }
     >({
-      query: ({ academyId, capacity }) => ({
+      query: ({ academyId, capacity, staffCapacity }) => ({
         url: `/academy-subscriptions/${academyId}/upgrade`,
         method: "POST",
-        body: { capacity },
+        body: { capacity, staffCapacity },
       }),
-      transformResponse: (res: { data: { provisionedCapacity: number } }) => res.data,
+      transformResponse: (res: { data: { provisionedCapacity: number; provisionedStaffCapacity: number } }) => res.data,
       invalidatesTags: ["Academy"],
     }),
     getPlatformDefaultRate: builder.query<number, void>({
@@ -56,6 +60,16 @@ export const academySubscriptionApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: { rate: number } }) => res.data.rate,
       invalidatesTags: ["Academy"],
     }),
+    getPlatformDefaultStaffRate: builder.query<number, void>({
+      query: () => "/academy-subscriptions/platform-staff-rate",
+      transformResponse: (res: { data: { rate: number } }) => res.data.rate,
+      providesTags: ["Academy"],
+    }),
+    setPlatformDefaultStaffRate: builder.mutation<number, number>({
+      query: (rate) => ({ url: "/academy-subscriptions/platform-staff-rate", method: "PUT", body: { rate } }),
+      transformResponse: (res: { data: { rate: number } }) => res.data.rate,
+      invalidatesTags: ["Academy"],
+    }),
   }),
 });
 
@@ -65,4 +79,6 @@ export const {
   useUpgradeSubscriptionCapacityMutation,
   useGetPlatformDefaultRateQuery,
   useSetPlatformDefaultRateMutation,
+  useGetPlatformDefaultStaffRateQuery,
+  useSetPlatformDefaultStaffRateMutation,
 } = academySubscriptionApi;

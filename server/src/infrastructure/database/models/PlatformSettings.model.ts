@@ -6,6 +6,7 @@ export interface PlatformSettingsDocument extends Document {
   // PlatformSettingsModel.findOne()), so this collection only ever holds
   // one document.
   defaultRatePerStudentPerDay: number;
+  defaultStaffRatePerStaffPerMonth: number;
   updatedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -14,6 +15,7 @@ export interface PlatformSettingsDocument extends Document {
 const PlatformSettingsSchema = new Schema<PlatformSettingsDocument>(
   {
     defaultRatePerStudentPerDay: { type: Number, required: true, default: 1, min: 0 },
+    defaultStaffRatePerStaffPerMonth: { type: Number, required: true, default: 10, min: 0 },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true },

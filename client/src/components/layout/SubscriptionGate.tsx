@@ -17,7 +17,7 @@ export const SubscriptionGate: React.FC<{ children: React.ReactNode }> = ({ chil
   const user = useSelector((s: RootState) => s.auth.user);
   const [showModal, setShowModal] = useState(false);
 
-  const gatedRole = user?.role === "manager" || user?.role === "coach";
+  const gatedRole = user?.role === "manager" || user?.role === "coach" || user?.role === "employee";
   const academyId = user?.academyId;
 
   const { data: status, isLoading } = useGetAcademySubscriptionStatusQuery(academyId ?? "", {

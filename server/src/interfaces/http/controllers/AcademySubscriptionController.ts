@@ -8,11 +8,13 @@ import { BadRequestError, ForbiddenError } from "../../../shared/errors/AppError
 
 const CheckoutSchema = z.object({
   capacity: z.number().int().min(1),
+  staffCapacity: z.number().int().min(0).default(0),
   billingInterval: z.enum(["month", "year"]),
 });
 
 const UpgradeSchema = z.object({
   capacity: z.number().int().min(1),
+  staffCapacity: z.number().int().min(0),
 });
 
 const RateSchema = z.object({
@@ -80,6 +82,25 @@ export class AcademySubscriptionController {
       const dto = RateSchema.parse(req.body);
       const rate = await this.useCases.setPlatformDefaultRate(dto.rate, req.user!.sub);
       ResponseHandler.success(res, { rate }, "Platform default rate updated");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  getPlatformStaffRate = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rate = await this.useCases.getPlatformDefaultStaffRate();
+      ResponseHandler.success(res, { rate }, "Platform default staff rate retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  setPlatformStaffRate = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const dto = RateSchema.parse(req.body);
+      const rate = await this.useCases.setPlatformDefaultStaffRate(dto.rate, req.user!.sub);
+      ResponseHandler.success(res, { rate }, "Platform default staff rate updated");
     } catch (err) {
       next(err);
     }

@@ -59,6 +59,7 @@ export const AcademyConfigSchema = z.object({
   location: LocationSchema.partial().optional(),
   maxStudents: z.number().min(1).optional(),
   subscriptionRateOverride: z.number().min(0).optional(),
+  staffRateOverride: z.number().min(0).optional(),
   dataProtectionContactEmail: z.string().email().optional(),
   ageGroups: z.array(z.string()).optional(),
   alertBeforeMinutes: z.number().min(0).optional(),

@@ -780,9 +780,9 @@ const AcademiesManagement: React.FC = () => {
           <div className="space-y-5">
             <div className="space-y-3">
               <p className="section-title">Subscription Billing</p>
-              <div>
+              <div className="grid grid-cols-2 gap-4">
                 <Input
-                  label={`Rate override (₹/student/day) — platform default applies if blank`}
+                  label="Rate override (₹/student/day)"
                   type="number"
                   step="0.01"
                   value={configForm.subscriptionRateOverride ?? selectedAcademy.subscriptionRateOverride ?? ""}
@@ -794,7 +794,21 @@ const AcademiesManagement: React.FC = () => {
                   }
                   placeholder="Platform default"
                 />
+                <Input
+                  label="Staff rate override (₹/staff/month)"
+                  type="number"
+                  step="0.01"
+                  value={configForm.staffRateOverride ?? selectedAcademy.staffRateOverride ?? ""}
+                  onChange={(e) =>
+                    setConfigForm({
+                      ...configForm,
+                      staffRateOverride: e.target.value === "" ? undefined : parseFloat(e.target.value),
+                    })
+                  }
+                  placeholder="Platform default"
+                />
               </div>
+              <p className="text-2xs text-slate-500">Leave either blank to use the platform default rate.</p>
             </div>
             <div className="space-y-3">
               <p className="section-title">Capacity & Eligibility</p>

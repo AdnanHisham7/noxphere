@@ -31,11 +31,40 @@ import { Avatar } from '../ui';
 import { useLogoutMutation } from '../../store/api/authApi';
 import { useTransferWallEnabled } from '../../hooks/useTransferWallEnabled';
 
+type EmployeePermissionKey =
+  | 'canManageUsers'
+  | 'canManageFranchises'
+  | 'canManageSessions'
+  | 'canManageFinance'
+  | 'canViewReports'
+  | 'canManageAttendance'
+  | 'canManagePerformance'
+  | 'canManageSelection'
+  | 'canSendNotifications';
+
 interface NavItem {
   path: string;
   label: string;
   icon: LucideIcon;
+  // Approximate mapping onto the app's 9 generic permission keys — those
+  // were designed for coarse role gating (manager/coach/etc.), not
+  // fine-grained per-page ACLs, so this is a best-effort fit rather than
+  // an exact one. Only used for the 'employee' role below; every other
+  // role ignores this and sees its full fixed list as before.
+  requiredPermission?: EmployeePermissionKey;
 }
+
+const EMPLOYEE_NAV: NavItem[] = [
+  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/franchises', label: 'Franchise', icon: Building2, requiredPermission: 'canManageFranchises' },
+  { path: '/students', label: 'Squad', icon: Shirt, requiredPermission: 'canManageAttendance' },
+  { path: '/teams', label: 'Team', icon: Shield, requiredPermission: 'canManagePerformance' },
+  { path: '/coaches', label: 'Coaches', icon: UserCog, requiredPermission: 'canManageUsers' },
+  { path: '/schedule', label: 'Sessions', icon: CalendarClock, requiredPermission: 'canManageSessions' },
+  { path: '/resources', label: 'Resources', icon: FolderOpen },
+  { path: '/fees', label: 'Fees', icon: CreditCard, requiredPermission: 'canManageFinance' },
+  { path: '/notifications', label: 'Alerts', icon: Bell, requiredPermission: 'canSendNotifications' },
+];
 
 const navConfig: Record<string, NavItem[]> = {
   super_admin: [
@@ -51,6 +80,7 @@ const navConfig: Record<string, NavItem[]> = {
     { path: '/students', label: 'Squad', icon: Shirt },
     { path: '/teams', label: 'Team', icon: Shield },
     { path: '/coaches', label: 'Coaches', icon: UserCog },
+    { path: '/employees', label: 'Employees', icon: Users },
     { path: '/schedule', label: 'Sessions', icon: CalendarClock },
     { path: '/resources', label: 'Resources', icon: FolderOpen },
     { path: '/fees', label: 'Fees', icon: CreditCard },
@@ -64,6 +94,7 @@ const navConfig: Record<string, NavItem[]> = {
     { path: '/resources', label: 'Resources', icon: FolderOpen },
     { path: '/notifications', label: 'Alerts', icon: Bell },
   ],
+  employee: EMPLOYEE_NAV,
 };
 
 export const Sidebar: React.FC = () => {
@@ -82,9 +113,10 @@ export const Sidebar: React.FC = () => {
 
   const navItems = (navConfig[user?.role || 'manager'] || [])
     .filter((item) => item.path !== '/transfer-wall' || transferWallEnabled)
+    .filter((item) => !item.requiredPermission || !!user?.permissions?.[item.requiredPermission])
     .filter((item) => {
       if (isCurrentlyAtHeadOffice) {
-        return ['/dashboard', '/franchises', '/teams', '/coaches', '/resources', '/notifications', '/settings'].includes(item.path);
+        return ['/dashboard', '/franchises', '/teams', '/coaches', '/employees', '/resources', '/notifications', '/settings'].includes(item.path);
       }
       return true;
     });

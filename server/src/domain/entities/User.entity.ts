@@ -1,5 +1,5 @@
 // src/domain/entities/User.entity.ts
-export type UserRole = 'super_admin' | 'manager' | 'coach' | 'student' | 'guardian';
+export type UserRole = 'super_admin' | 'manager' | 'coach' | 'student' | 'guardian' | 'employee';
 
 export interface UserPermissions {
   canManageUsers: boolean;
@@ -88,6 +88,22 @@ export const defaultPermissions: Record<UserRole, UserPermissions> = {
     canSendNotifications: false,
   },
   guardian: {
+    canManageUsers: false,
+    canManageFranchises: false,
+    canManageSessions: false,
+    canManageFinance: false,
+    canViewReports: false,
+    canManageAttendance: false,
+    canManagePerformance: false,
+    canManageSelection: false,
+    canSendNotifications: false,
+  },
+  // Every permission starts false — an employee's actual grants come
+  // entirely from their assigned EmployeeRole (see EmployeeUseCases),
+  // copied onto their User.permissions at account-creation time. There's
+  // no sensible "default" employee access the way there is for the
+  // fixed system roles above.
+  employee: {
     canManageUsers: false,
     canManageFranchises: false,
     canManageSessions: false,

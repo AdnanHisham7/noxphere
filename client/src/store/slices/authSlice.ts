@@ -4,7 +4,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 export interface AuthUser {
   id: string;
   email: string;
-  role: 'super_admin' | 'manager' | 'coach' | 'student' | 'guardian';
+  role: 'super_admin' | 'manager' | 'coach' | 'student' | 'guardian' | 'employee';
   firstName: string;
   lastName: string;
   avatar?: string;

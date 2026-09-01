@@ -67,6 +67,8 @@ import { ConsentController } from "./interfaces/http/controllers/ConsentControll
 import { ConsentUseCases } from "./application/use-cases/consent/ConsentUseCases";
 import { PublicPlayerController } from "./interfaces/http/controllers/PublicPlayerController";
 import { PublicPlayerUseCases } from "./application/use-cases/public-player/PublicPlayerUseCases";
+import { EmployeeController } from "./interfaces/http/controllers/EmployeeController";
+import { EmployeeUseCases } from "./application/use-cases/employee/EmployeeUseCases";
 
 const app = express();
 const httpServer = createServer(app);
@@ -209,6 +211,8 @@ const academyController = new AcademyController(academyUseCases);
   const consentController = new ConsentController(consentUseCases);
   const publicPlayerUseCases = new PublicPlayerUseCases();
   const publicPlayerController = new PublicPlayerController(publicPlayerUseCases);
+  const employeeUseCases = new EmployeeUseCases(academySubscriptionUseCases);
+  const employeeController = new EmployeeController(employeeUseCases);
 
   app.locals.controllers = {
     auth: authController,
@@ -235,6 +239,7 @@ const academyController = new AcademyController(academyUseCases);
     academySubscription: academySubscriptionController,
     consent: consentController,
     publicPlayer: publicPlayerController,
+    employee: employeeController,
   };
 }
 

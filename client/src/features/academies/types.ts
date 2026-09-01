@@ -23,6 +23,7 @@ export interface Academy {
   ageGroups: string[];
   maxStudents: number;
   subscriptionRateOverride?: number;
+  staffRateOverride?: number;
   dataProtectionContactEmail?: string;
   isActive: boolean;
   transferWallEnabled: boolean;
@@ -60,6 +61,7 @@ export interface AcademyConfigPayload {
   location?: Partial<Location>;
   maxStudents?: number;
   subscriptionRateOverride?: number;
+  staffRateOverride?: number;
   dataProtectionContactEmail?: string;
   ageGroups?: string[];
   alertBeforeMinutes?: number;

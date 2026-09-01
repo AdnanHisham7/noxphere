@@ -23,6 +23,7 @@ import { resourceRouter } from './resource.routes';
 import { academySubscriptionRouter } from './academySubscription.routes';
 import { consentRouter } from './consent.routes';
 import { publicPlayerRouter } from './publicPlayer.routes';
+import { employeeRouter } from './employee.routes';
 
 export const apiRouter = Router();
 
@@ -49,3 +50,4 @@ apiRouter.use('/resources', resourceRouter);
 apiRouter.use('/academy-subscriptions', academySubscriptionRouter);
 apiRouter.use('/consent', consentRouter);
 apiRouter.use('/public/players', publicPlayerRouter);
+apiRouter.use('/employees', employeeRouter);
