@@ -21,6 +21,7 @@ import { franchiseRouter } from './franchise.routes';
 import { uploadRouter } from './upload.routes';
 import { resourceRouter } from './resource.routes';
 import { academySubscriptionRouter } from './academySubscription.routes';
+import { consentRouter } from './consent.routes';
 
 export const apiRouter = Router();
 
@@ -45,3 +46,4 @@ apiRouter.use('/dashboard', dashboardRouter);
 apiRouter.use('/uploads', uploadRouter);
 apiRouter.use('/resources', resourceRouter);
 apiRouter.use('/academy-subscriptions', academySubscriptionRouter);
+apiRouter.use('/consent', consentRouter);

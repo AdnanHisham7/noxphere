@@ -7,6 +7,7 @@ import { RootState } from "../../store";
 import { clearCredentials } from "../../store/slices/authSlice";
 import { useSocket } from "../../hooks/useSocket";
 import { PortalNotificationBell } from "./PortalNotificationBell";
+import { ConsentGate } from "./ConsentGate";
 
 export interface PortalNavItem {
   to: string;
@@ -130,7 +131,9 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ navItems, portalLabe
           <PortalNotificationBell />
         </div>
         <div className="max-w-6xl mx-auto px-5 md:px-8 py-8">
-          <Outlet />
+          <ConsentGate>
+            <Outlet />
+          </ConsentGate>
         </div>
       </main>
     </div>

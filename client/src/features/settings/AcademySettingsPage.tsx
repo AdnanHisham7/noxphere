@@ -21,6 +21,7 @@ const AcademySettingsPage: React.FC = () => {
   const [newSkill, setNewSkill] = useState("");
   const [absentAlertDays, setAbsentAlertDays] = useState(5);
   const [dueDateAlertDays, setDueDateAlertDays] = useState(3);
+  const [dataProtectionContactEmail, setDataProtectionContactEmail] = useState("");
 
   useEffect(() => {
     if (!academy) return;
@@ -29,6 +30,7 @@ const AcademySettingsPage: React.FC = () => {
     setSkillParameters(academy.skillParameters || []);
     setAbsentAlertDays(academy.absentAlertDays);
     setDueDateAlertDays(academy.dueDateAlertDays);
+    setDataProtectionContactEmail(academy.dataProtectionContactEmail ?? "");
   }, [academy]);
 
   const addSkill = () => {
@@ -60,6 +62,10 @@ const AcademySettingsPage: React.FC = () => {
       toast.error("Due-date alert threshold can't be negative");
       return;
     }
+    if (dataProtectionContactEmail.trim() && !/^\S+@\S+\.\S+$/.test(dataProtectionContactEmail.trim())) {
+      toast.error("Enter a valid data protection contact email, or leave it blank");
+      return;
+    }
     try {
       await updateConfig({
         id: academyId,
@@ -70,6 +76,7 @@ const AcademySettingsPage: React.FC = () => {
           skillParameters,
           absentAlertDays,
           dueDateAlertDays,
+          dataProtectionContactEmail: dataProtectionContactEmail.trim() || undefined,
         },
       }).unwrap();
       toast.success("Settings saved");
@@ -224,6 +231,22 @@ const AcademySettingsPage: React.FC = () => {
             onChange={(e) => setDueDateAlertDays(parseInt(e.target.value, 10) || 0)}
           />
         </div>
+      </Card>
+
+      <Card>
+        <h2 className="font-display text-sm font-bold text-white uppercase tracking-wide mb-1">Data protection contact</h2>
+        <p className="text-xs text-slate-400 mb-4">
+          Shown to guardians on the consent notice as the contact for reviewing, correcting, or withdrawing consent
+          for their child's data, per the DPDP Act. Leave blank to use your own manager account's email.
+        </p>
+        <Input
+          label="Contact email"
+          type="email"
+          value={dataProtectionContactEmail}
+          onChange={(e) => setDataProtectionContactEmail(e.target.value)}
+          placeholder="privacy@youracademy.com"
+          className="max-w-sm"
+        />
       </Card>
     </div>
   );

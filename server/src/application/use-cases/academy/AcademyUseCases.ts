@@ -235,6 +235,7 @@ export class AcademyUseCases {
         dueDateAlertDays: dto.dueDateAlertDays,
         feeQrImageUrl: dto.feeQrImageUrl,
         skillParameters: dto.skillParameters,
+        dataProtectionContactEmail: dto.dataProtectionContactEmail,
       };
     }
 

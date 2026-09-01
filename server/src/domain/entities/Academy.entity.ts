@@ -27,6 +27,10 @@ export interface AcademyEntity {
   // academy's subscription checkout — e.g. a negotiated rate. Unset means
   // "use the platform default".
   subscriptionRateOverride?: number;
+  // Surfaced in the DPDP consent notice as the contact for exercising
+  // data-principal rights (access, correction, erasure, grievance) and
+  // for consent withdrawal — Rule 3(c) requires a communication link.
+  dataProtectionContactEmail?: string;
   isActive: boolean;
   transferWallEnabled: boolean;
   alertBeforeMinutes: number;

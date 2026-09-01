@@ -63,6 +63,8 @@ import { ResourceController } from "./interfaces/http/controllers/ResourceContro
 import { ResourceUseCases } from "./application/use-cases/resource/ResourceUseCases";
 import { AcademySubscriptionController } from "./interfaces/http/controllers/AcademySubscriptionController";
 import { AcademySubscriptionUseCases } from "./application/use-cases/subscription/AcademySubscriptionUseCases";
+import { ConsentController } from "./interfaces/http/controllers/ConsentController";
+import { ConsentUseCases } from "./application/use-cases/consent/ConsentUseCases";
 
 const app = express();
 const httpServer = createServer(app);
@@ -201,6 +203,8 @@ const academyController = new AcademyController(academyUseCases);
   const resourceUseCases = new ResourceUseCases(cloudinaryService);
   const resourceController = new ResourceController(resourceUseCases);
   const academySubscriptionController = new AcademySubscriptionController(academySubscriptionUseCases);
+  const consentUseCases = new ConsentUseCases();
+  const consentController = new ConsentController(consentUseCases);
 
   app.locals.controllers = {
     auth: authController,
@@ -225,6 +229,7 @@ const academyController = new AcademyController(academyUseCases);
     upload: uploadController,
     resource: resourceController,
     academySubscription: academySubscriptionController,
+    consent: consentController,
   };
 }
 

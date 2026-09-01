@@ -22,6 +22,7 @@ import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import { useConfirm } from "../../hooks/useConfirm";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
 import { SubscriptionModal } from "../subscription/SubscriptionModal";
+import { useGetFranchiseConsentStatusQuery } from "../../store/api/consentApi";
 import {
   useGetStudentsQuery,
   useCreateStudentMutation,
@@ -35,6 +36,7 @@ interface PlayerCardContentProps {
   teamName: string;
   getRatingColor: (r: number) => string;
   selectionBadge: typeof selectionBadge;
+  hasConsent?: boolean;
 }
 
 const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
@@ -42,6 +44,7 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
   teamName,
   getRatingColor,
   selectionBadge,
+  hasConsent,
 }) => {
   return (
     <>
@@ -111,6 +114,9 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
             </Badge>
             {student.status !== "active" && (
               <Badge variant="gray" size="sm">{student.status.replace("_", " ")}</Badge>
+            )}
+            {hasConsent === false && (
+              <Badge variant="yellow" size="sm">Consent pending</Badge>
             )}
           </div>
 
@@ -185,6 +191,7 @@ const StudentsPage: React.FC = () => {
     { skip: !franchiseId },
   );
   const students = data?.items ?? [];
+  const { data: consentStatus } = useGetFranchiseConsentStatusQuery(franchiseId ?? "", { skip: !franchiseId });
 
   const [createStudent, { isLoading: creating }] = useCreateStudentMutation();
   const [deleteStudent] = useDeleteStudentMutation();
@@ -381,6 +388,7 @@ const StudentsPage: React.FC = () => {
                     teamName={teamNameOf(student.teamId)}
                     getRatingColor={getRatingColor}
                     selectionBadge={selectionBadge}
+                    hasConsent={consentStatus?.[student.id]}
                   />
                 </div>
 
@@ -403,6 +411,7 @@ const StudentsPage: React.FC = () => {
                     teamName={teamNameOf(student.teamId)}
                     getRatingColor={getRatingColor}
                     selectionBadge={selectionBadge}
+                    hasConsent={consentStatus?.[student.id]}
                   />
                 </div>
               </div>
@@ -457,6 +466,9 @@ const StudentsPage: React.FC = () => {
                       </Badge>
                       {student.status !== "active" && (
                         <Badge variant="gray">{student.status.replace("_", " ")}</Badge>
+                      )}
+                      {consentStatus?.[student.id] === false && (
+                        <Badge variant="yellow">Consent pending</Badge>
                       )}
                     </div>
                   </td>
