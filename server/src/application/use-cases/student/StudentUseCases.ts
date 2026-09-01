@@ -25,11 +25,13 @@ import { CoachRemarkModel } from "../../../infrastructure/database/models/CoachR
 import { TeamModel } from "../../../infrastructure/database/models/Team.model";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
 import { FranchiseTransferLogModel } from "../../../infrastructure/database/models/FranchiseTransferLog.model";
+import { AcademySubscriptionUseCases } from "../subscription/AcademySubscriptionUseCases";
 
 export class StudentUseCases {
   constructor(
     private studentRepo: IStudentRepository,
     private userRepo: IUserRepository,
+    private academySubscriptionUseCases: AcademySubscriptionUseCases,
   ) {}
 
   private async validateTeamAssignment(franchiseId: string, teamId: string): Promise<void> {
@@ -69,6 +71,13 @@ export class StudentUseCases {
     dto: CreateStudentDto,
     createdBy: string,
   ): Promise<StudentEntity> {
+    // 0. Enforce subscription/capacity before creating anything — fail
+    // fast so we never create a guardian/student login account and then
+    // have to roll it back because the academy can't add another player.
+    const franchise = await FranchiseModel.findById(dto.franchiseId).select("academyId").lean();
+    if (!franchise) throw new NotFoundError("Franchise");
+    await this.academySubscriptionUseCases.assertCanAddStudent(franchise.academyId.toString());
+
     // 1. Create (or reuse) a guardian-role account for the guardian's email.
     // This is what the Guardian Portal logs into, and it's what every
     // guardian notification (schedule alerts, selection updates, fee

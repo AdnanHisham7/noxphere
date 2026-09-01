@@ -24,7 +24,6 @@ export const CreateAcademySchema = z.object({
   academyCode: z.string().min(1).max(20).optional(), // will generate if omitted
   location: LocationSchema,
   ageGroups: z.array(z.string()).default([]),
-  maxStudents: z.number().min(1).default(100),
   alertBeforeMinutes: z.number().min(0).default(60),
   notificationAlertAfterMinutes: z.number().min(0).default(15),
   absentAlertDays: z.number().int().min(1).max(30).default(5),
@@ -59,6 +58,7 @@ export const AcademyConfigSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   location: LocationSchema.partial().optional(),
   maxStudents: z.number().min(1).optional(),
+  subscriptionRateOverride: z.number().min(0).optional(),
   ageGroups: z.array(z.string()).optional(),
   alertBeforeMinutes: z.number().min(0).optional(),
   notificationAlertAfterMinutes: z.number().min(0).optional(),

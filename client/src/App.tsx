@@ -40,6 +40,12 @@ const UsersManagementPage = lazy(
   () => import("./features/users/UsersManagementPage"),
 );
 const FinancePage = lazy(() => import("./features/finance/FinancePage"));
+const SubscriptionSuccessPage = lazy(
+  () => import("./features/subscription/SubscriptionSuccessPage"),
+);
+const SubscriptionCancelledPage = lazy(
+  () => import("./features/subscription/SubscriptionCancelledPage"),
+);
 const FranchiseManagementPage = lazy(
   () => import("./features/franchises/FranchiseManagementPage"),
 );
@@ -131,6 +137,14 @@ const App: React.FC = () => (
 
           {/* Authenticated */}
           <Route element={<ProtectedRoute />}>
+            {/* Outside MainLayout deliberately — these are Stripe checkout
+                return pages and must render even when the academy's
+                subscription is still "incomplete" or lapsed, which is
+                exactly the state SubscriptionGate (inside MainLayout)
+                would otherwise block on. */}
+            <Route path="/subscription/success" element={<SubscriptionSuccessPage />} />
+            <Route path="/subscription/cancelled" element={<SubscriptionCancelledPage />} />
+
             <Route element={<MainLayout />}>
               {/* Everyone logged in */}
               <Route path="/dashboard" element={<DashboardRouter />} />

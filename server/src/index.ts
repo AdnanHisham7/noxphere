@@ -61,6 +61,8 @@ import { UploadController } from "./interfaces/http/controllers/UploadController
 import { CloudinaryService } from "./infrastructure/services/CloudinaryService";
 import { ResourceController } from "./interfaces/http/controllers/ResourceController";
 import { ResourceUseCases } from "./application/use-cases/resource/ResourceUseCases";
+import { AcademySubscriptionController } from "./interfaces/http/controllers/AcademySubscriptionController";
+import { AcademySubscriptionUseCases } from "./application/use-cases/subscription/AcademySubscriptionUseCases";
 
 const app = express();
 const httpServer = createServer(app);
@@ -100,6 +102,19 @@ const limiter = rateLimit({
 // ─── General Middleware ────────────────────────────────────────────────────────
 app.use(compression());
 app.use(morgan(config.env === "development" ? "dev" : "combined"));
+
+// Stripe webhook — mounted before express.json() and with express.raw()
+// instead, because Stripe's signature verification needs the exact raw
+// request bytes. Every other route in this app gets its body parsed as
+// JSON below; this one deliberately doesn't.
+app.post(
+  `${config.apiPrefix}/academy-subscriptions/webhook`,
+  express.raw({ type: "application/json" }),
+  (req, res, next) => {
+    req.app.locals.controllers.academySubscription.webhook(req, res, next);
+  },
+);
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
@@ -123,7 +138,8 @@ async function bootstrapDI() {
 
   // Use Cases
   const authUseCases = new AuthUseCases(userRepository as any);
-  const studentUseCases = new StudentUseCases(studentRepository, userRepository);
+  const academySubscriptionUseCases = new AcademySubscriptionUseCases();
+  const studentUseCases = new StudentUseCases(studentRepository, userRepository, academySubscriptionUseCases);
 
   // Controllers
   const authController = new AuthController(authUseCases);
@@ -184,6 +200,7 @@ const academyController = new AcademyController(academyUseCases);
   const uploadController = new UploadController(cloudinaryService);
   const resourceUseCases = new ResourceUseCases(cloudinaryService);
   const resourceController = new ResourceController(resourceUseCases);
+  const academySubscriptionController = new AcademySubscriptionController(academySubscriptionUseCases);
 
   app.locals.controllers = {
     auth: authController,
@@ -207,6 +224,7 @@ const academyController = new AcademyController(academyUseCases);
     franchise: franchiseController,
     upload: uploadController,
     resource: resourceController,
+    academySubscription: academySubscriptionController,
   };
 }
 

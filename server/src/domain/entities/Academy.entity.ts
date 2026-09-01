@@ -23,6 +23,10 @@ export interface AcademyEntity {
   location: Location;
   ageGroups: string[];
   maxStudents: number;
+  // Overrides PlatformSettings.defaultRatePerStudentPerDay for this
+  // academy's subscription checkout — e.g. a negotiated rate. Unset means
+  // "use the platform default".
+  subscriptionRateOverride?: number;
   isActive: boolean;
   transferWallEnabled: boolean;
   alertBeforeMinutes: number;

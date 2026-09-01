@@ -18,8 +18,10 @@ import { toast } from "react-hot-toast";
 import mannequinPng from "../../assets/players/mannequin.png";
 import { PlayerPlaceholder } from "@/components/ui/PlayerPlaceholder";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
+import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import { useConfirm } from "../../hooks/useConfirm";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
+import { SubscriptionModal } from "../subscription/SubscriptionModal";
 import {
   useGetStudentsQuery,
   useCreateStudentMutation,
@@ -187,6 +189,8 @@ const StudentsPage: React.FC = () => {
   const [createStudent, { isLoading: creating }] = useCreateStudentMutation();
   const [deleteStudent] = useDeleteStudentMutation();
   const { confirm, ConfirmDialog } = useConfirm();
+  const academyId = useCurrentAcademyId();
+  const [subscriptionModalMode, setSubscriptionModalMode] = useState<"subscribe" | "upgrade" | null>(null);
 
   const handleDelete = async (id: string, name: string) => {
     const ok = await confirm({
@@ -489,11 +493,27 @@ const StudentsPage: React.FC = () => {
             toast.success("Player enrolled! A guardian account has been created.");
             setShowAddModal(false);
           } catch (err: any) {
-            toast.error(err?.data?.message || "Couldn't enroll player — try again");
+            const code = err?.data?.code;
+            if (code === "SUBSCRIPTION_REQUIRED") {
+              setShowAddModal(false);
+              setSubscriptionModalMode("subscribe");
+            } else if (code === "SUBSCRIPTION_CAPACITY_EXCEEDED") {
+              setShowAddModal(false);
+              setSubscriptionModalMode("upgrade");
+            } else {
+              toast.error(err?.data?.message || "Couldn't enroll player — try again");
+            }
           }
         }}
         creating={creating}
       />
+      {subscriptionModalMode && academyId && (
+        <SubscriptionModal
+          academyId={academyId}
+          mode={subscriptionModalMode}
+          onClose={() => setSubscriptionModalMode(null)}
+        />
+      )}
       {ConfirmDialog}
     </div>
   );

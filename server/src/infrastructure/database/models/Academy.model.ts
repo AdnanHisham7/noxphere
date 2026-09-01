@@ -11,6 +11,7 @@ export interface AcademyDocument extends Document {
   location: Location;
   ageGroups: string[];
   maxStudents: number;
+  subscriptionRateOverride?: number;
   isActive: boolean;
   transferWallEnabled: boolean;
   alertBeforeMinutes: number;
@@ -55,6 +56,10 @@ const AcademySchema = new Schema<AcademyDocument>(
     location: { type: LocationSchema, required: true },
     ageGroups: [{ type: String }],
     maxStudents: { type: Number, default: 100 },
+    // Per-academy override of PlatformSettings.defaultRatePerStudentPerDay
+    // for this academy's subscription — e.g. a negotiated rate. Set only
+    // by super_admin; unset means "use the platform default".
+    subscriptionRateOverride: { type: Number, min: 0 },
     isActive: { type: Boolean, default: true, index: true },
     transferWallEnabled: { type: Boolean, default: true },
     alertBeforeMinutes: { type: Number, default: 60 },

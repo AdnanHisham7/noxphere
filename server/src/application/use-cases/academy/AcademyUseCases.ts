@@ -95,14 +95,18 @@ export class AcademyUseCases {
       academyCode = await this.generateUniqueCode(dto.name);
     }
 
-    // 5. Create academy
+    // 5. Create academy. maxStudents is no longer collected here — player
+    // capacity is now set when the manager subscribes (see
+    // AcademySubscriptionUseCases), not at academy signup, since a new
+    // academy has no students yet and shouldn't need to guess a cap
+    // before it has ever added one.
     const academy = await this.academyRepository.create({
       name: dto.name,
       academyCode,
       managerId: managerUser.id,
       location: dto.location,
       ageGroups: dto.ageGroups,
-      maxStudents: dto.maxStudents,
+      maxStudents: 0,
       isActive: true,
       alertBeforeMinutes: dto.alertBeforeMinutes,
       notificationAlertAfterMinutes: dto.notificationAlertAfterMinutes,
@@ -123,7 +127,6 @@ export class AcademyUseCases {
       managerId: managerUser.id,
       location: dto.location,
       ageGroups: dto.ageGroups,
-      maxStudents: dto.maxStudents,
       isActive: true,
       alertBeforeMinutes: dto.alertBeforeMinutes,
       notificationAlertAfterMinutes: dto.notificationAlertAfterMinutes,

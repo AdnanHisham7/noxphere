@@ -22,6 +22,7 @@ export interface Academy {
   location: Location;
   ageGroups: string[];
   maxStudents: number;
+  subscriptionRateOverride?: number;
   isActive: boolean;
   transferWallEnabled: boolean;
   alertBeforeMinutes: number;
@@ -39,7 +40,6 @@ export interface CreateAcademyPayload {
   academyCode?: string;
   location: Location;
   ageGroups: string[];
-  maxStudents: number;
   alertBeforeMinutes: number;
   notificationAlertAfterMinutes: number;
   absentAlertDays?: number;
@@ -58,6 +58,7 @@ export interface AcademyConfigPayload {
   name?: string;
   location?: Partial<Location>;
   maxStudents?: number;
+  subscriptionRateOverride?: number;
   ageGroups?: string[];
   alertBeforeMinutes?: number;
   notificationAlertAfterMinutes?: number;

@@ -20,6 +20,7 @@ import { dashboardRouter } from './dashboard.routes';
 import { franchiseRouter } from './franchise.routes';
 import { uploadRouter } from './upload.routes';
 import { resourceRouter } from './resource.routes';
+import { academySubscriptionRouter } from './academySubscription.routes';
 
 export const apiRouter = Router();
 
@@ -43,3 +44,4 @@ apiRouter.use('/finance', financeRouter);
 apiRouter.use('/dashboard', dashboardRouter);
 apiRouter.use('/uploads', uploadRouter);
 apiRouter.use('/resources', resourceRouter);
+apiRouter.use('/academy-subscriptions', academySubscriptionRouter);

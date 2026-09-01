@@ -57,3 +57,15 @@ export class PaymentError extends AppError {
     super(message, 402, 'PAYMENT_ERROR');
   }
 }
+
+export class SubscriptionRequiredError extends AppError {
+  constructor(message = 'An active subscription is required for this academy') {
+    super(message, 402, 'SUBSCRIPTION_REQUIRED');
+  }
+}
+
+export class SubscriptionCapacityExceededError extends AppError {
+  constructor(message = 'This academy has reached its subscribed player capacity') {
+    super(message, 402, 'SUBSCRIPTION_CAPACITY_EXCEEDED');
+  }
+}

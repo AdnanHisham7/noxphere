@@ -17,6 +17,7 @@ import {
   Ban,
 } from "lucide-react";
 import { Button, Input, Modal, Badge, StatCard } from "../../components/ui";
+import { PlatformBillingCard } from "./PlatformBillingCard";
 import { baseApi } from "../../store/api/baseApi";
 import { academyApi } from "@/store/api/academyApi";
 import { Academy, AcademyConfigPayload, CreateAcademyPayload } from "./types";
@@ -108,7 +109,6 @@ const AcademiesManagement: React.FC = () => {
       fieldNumber: "",
     },
     ageGroups: "",
-    maxStudents: 100,
     alertBeforeMinutes: 60,
     notificationAlertAfterMinutes: 15,
     skillParameters:
@@ -135,7 +135,6 @@ const AcademiesManagement: React.FC = () => {
         .split(",")
         .map((g) => g.trim())
         .filter(Boolean),
-      maxStudents: Number(newAcademyForm.maxStudents),
       alertBeforeMinutes: Number(newAcademyForm.alertBeforeMinutes),
       notificationAlertAfterMinutes: Number(
         newAcademyForm.notificationAlertAfterMinutes,
@@ -163,7 +162,6 @@ const AcademiesManagement: React.FC = () => {
           fieldNumber: "",
         },
         ageGroups: "",
-        maxStudents: 100,
         alertBeforeMinutes: 60,
         notificationAlertAfterMinutes: 15,
         skillParameters:
@@ -298,6 +296,8 @@ const AcademiesManagement: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <PlatformBillingCard />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -699,18 +699,7 @@ const AcademiesManagement: React.FC = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Max Students"
-              type="number"
-              value={newAcademyForm.maxStudents}
-              onChange={(e) =>
-                setNewAcademyForm({
-                  ...newAcademyForm,
-                  maxStudents: parseInt(e.target.value) || 0,
-                })
-              }
-            />
+          <div>
             <Input
               label="Age Groups (comma separated)"
               value={newAcademyForm.ageGroups}
@@ -790,19 +779,26 @@ const AcademiesManagement: React.FC = () => {
         >
           <div className="space-y-5">
             <div className="space-y-3">
-              <p className="section-title">Capacity & Eligibility</p>
-              <div className="grid grid-cols-2 gap-4">
+              <p className="section-title">Subscription Billing</p>
+              <div>
                 <Input
-                  label="Max Students"
+                  label={`Rate override (₹/student/day) — platform default applies if blank`}
                   type="number"
-                  value={configForm.maxStudents ?? selectedAcademy.maxStudents}
+                  step="0.01"
+                  value={configForm.subscriptionRateOverride ?? selectedAcademy.subscriptionRateOverride ?? ""}
                   onChange={(e) =>
                     setConfigForm({
                       ...configForm,
-                      maxStudents: parseInt(e.target.value) || 0,
+                      subscriptionRateOverride: e.target.value === "" ? undefined : parseFloat(e.target.value),
                     })
                   }
+                  placeholder="Platform default"
                 />
+              </div>
+            </div>
+            <div className="space-y-3">
+              <p className="section-title">Capacity & Eligibility</p>
+              <div className="grid grid-cols-2 gap-4">
                 <Input
                   label="Age Groups (Comma separated)"
                   value={
