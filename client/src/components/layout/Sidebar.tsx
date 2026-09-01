@@ -22,6 +22,7 @@ import {
   ChevronRight,
   FolderOpen,
   Settings,
+  MessageSquareWarning,
   type LucideIcon,
 } from 'lucide-react';
 import { RootState } from '../../store';
@@ -81,6 +82,7 @@ const navConfig: Record<string, NavItem[]> = {
     { path: '/teams', label: 'Team', icon: Shield },
     { path: '/coaches', label: 'Coaches', icon: UserCog },
     { path: '/employees', label: 'Employees', icon: Users },
+    { path: '/complaints', label: 'Complaints', icon: MessageSquareWarning },
     { path: '/schedule', label: 'Sessions', icon: CalendarClock },
     { path: '/resources', label: 'Resources', icon: FolderOpen },
     { path: '/fees', label: 'Fees', icon: CreditCard },
@@ -116,7 +118,7 @@ export const Sidebar: React.FC = () => {
     .filter((item) => !item.requiredPermission || !!user?.permissions?.[item.requiredPermission])
     .filter((item) => {
       if (isCurrentlyAtHeadOffice) {
-        return ['/dashboard', '/franchises', '/teams', '/coaches', '/employees', '/resources', '/notifications', '/settings'].includes(item.path);
+        return ['/dashboard', '/franchises', '/teams', '/coaches', '/employees', '/complaints', '/resources', '/notifications', '/settings'].includes(item.path);
       }
       return true;
     });

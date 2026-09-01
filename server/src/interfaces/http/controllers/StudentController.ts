@@ -92,6 +92,19 @@ export class StudentController {
     } catch (err) { next(err); }
   };
 
+  getReport = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = await this.studentUseCases.getStudentReport(req.params.id, {
+        userId: req.user!.sub,
+        role: req.user!.role,
+        academyId: req.user!.academyId,
+        franchiseId: req.user!.franchiseId,
+        permissions: req.user!.permissions,
+      });
+      ResponseHandler.success(res, data, 'Student report data');
+    } catch (err) { next(err); }
+  };
+
   updateStatus = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dto = UpdateStudentStatusSchema.parse(req.body);

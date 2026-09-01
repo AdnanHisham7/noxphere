@@ -15,7 +15,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { clsx } from "clsx";
-import { Repeat2, Mail, Pencil, ArrowLeftRight, History } from "lucide-react";
+import { Repeat2, Mail, Pencil, ArrowLeftRight, History, FileText } from "lucide-react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
 import { Button, Badge, Avatar, Modal, Skeleton, EmptyState, Input, DocumentUploadField } from "../../components/ui";
@@ -454,6 +454,15 @@ const StudentDetailPage: React.FC = () => {
 
                 <Button size="sm" variant="secondary" icon={<Pencil size={14} />} onClick={() => setEditModal(true)}>
                   Edit details
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={<FileText size={14} />}
+                  onClick={() => window.open(`/students/${student.id}/report`, "_blank")}
+                >
+                  Generate Report
                 </Button>
 
                 {canTransferFranchise && (

@@ -97,6 +97,7 @@ export const baseApi = createApi({
     "EmployeeRole",
     "Employee",
     "SalaryPayment",
+    "Complaint",
   ],
   endpoints: () => ({}),
 });

@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { ArrowLeft, CalendarCheck, Wallet, TrendingUp, QrCode, Copy } from "lucide-react";
+import { ArrowLeft, CalendarCheck, Wallet, TrendingUp, QrCode, Copy, FileText } from "lucide-react";
 import {
   useGetChildProfileQuery,
   useGetChildAttendanceQuery,
@@ -62,6 +62,16 @@ const GuardianChildDetailPage: React.FC = () => {
             <NoxStatCard label="Rating" value={profile.overallRating?.toFixed(1) ?? "—"} accent="plasma" />
           </div>
         </div>
+      )}
+
+      {profile && (
+        <button
+          onClick={() => window.open(`/students/${studentId}/report`, "_blank")}
+          className="inline-flex items-center gap-2 text-xs text-core-400 hover:underline mb-8"
+        >
+          <FileText size={13} />
+          Download full report (performance, attendance, fees)
+        </button>
       )}
 
       {profile && <PublicProfileToggleCard studentId={studentId} profile={profile} />}

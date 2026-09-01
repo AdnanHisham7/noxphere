@@ -44,3 +44,7 @@ studentRouter.post('/:id/remarks', authenticate, requirePermission('canManagePer
 studentRouter.get('/:id/playercard', authenticate, (req, res, next) => {
   req.app.locals.controllers.student.getPlayerCard(req, res, next);
 });
+
+studentRouter.get('/:id/report', authenticate, (req, res, next) => {
+  req.app.locals.controllers.student.getReport(req, res, next);
+});

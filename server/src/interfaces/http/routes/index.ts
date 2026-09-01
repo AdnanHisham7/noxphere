@@ -24,6 +24,7 @@ import { academySubscriptionRouter } from './academySubscription.routes';
 import { consentRouter } from './consent.routes';
 import { publicPlayerRouter } from './publicPlayer.routes';
 import { employeeRouter } from './employee.routes';
+import { complaintRouter } from './complaint.routes';
 
 export const apiRouter = Router();
 
@@ -51,3 +52,4 @@ apiRouter.use('/academy-subscriptions', academySubscriptionRouter);
 apiRouter.use('/consent', consentRouter);
 apiRouter.use('/public/players', publicPlayerRouter);
 apiRouter.use('/employees', employeeRouter);
+apiRouter.use('/complaints', complaintRouter);

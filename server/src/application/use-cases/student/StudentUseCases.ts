@@ -27,6 +27,7 @@ import { TeamModel } from "../../../infrastructure/database/models/Team.model";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
 import { FranchiseTransferLogModel } from "../../../infrastructure/database/models/FranchiseTransferLog.model";
 import { AcademySubscriptionUseCases } from "../subscription/AcademySubscriptionUseCases";
+import { FeeModel } from "../../../infrastructure/database/models/Fee.model";
 
 export class StudentUseCases {
   constructor(
@@ -429,5 +430,73 @@ export class StudentUseCases {
     );
     const remarks = await this.studentRepo.getRemarks(studentId);
     return { student, performances, attendance, remarks };
+  }
+
+  // Backs the printable per-student report (performance, attendance,
+  // fees) reachable from the player's page — pulls a longer history than
+  // getPlayerCard (which is tuned for the at-a-glance ID-card view) since
+  // a report is meant to be a fuller record, not a summary.
+  //
+  // Unlike getPlayerCard (loosely authenticate-only — see its route
+  // comment), this returns full fee/payment history and coach remarks,
+  // so it gets its own real authorization check rather than inheriting
+  // that same looseness: manager/coach of the student's own
+  // academy/franchise, the student's own guardian, an employee with
+  // canViewReports, or super_admin.
+  async getStudentReport(
+    studentId: string,
+    requester: { userId: string; role: string; academyId?: string; franchiseId?: string; permissions?: Record<string, boolean> },
+  ): Promise<any> {
+    const student = await this.getStudentById(studentId);
+    const franchise = await FranchiseModel.findById(student.franchiseId).select("academyId").lean();
+    const studentAcademyId = franchise?.academyId?.toString();
+
+    const isSuperAdmin = requester.role === "super_admin";
+    const isSameAcademyStaff =
+      (requester.role === "manager" || requester.role === "coach") &&
+      (requester.academyId === studentAcademyId || requester.franchiseId === student.franchiseId);
+    const isOwnGuardian = requester.role === "guardian" && student.guardianIds.includes(requester.userId);
+    const isPermittedEmployee =
+      requester.role === "employee" && requester.academyId === studentAcademyId && !!requester.permissions?.canViewReports;
+
+    if (!isSuperAdmin && !isSameAcademyStaff && !isOwnGuardian && !isPermittedEmployee) {
+      throw new ForbiddenError("You don't have access to this player's report");
+    }
+
+    const [performances, attendance, remarks, fees] = await Promise.all([
+      this.studentRepo.getPerformanceHistory(studentId, 100),
+      this.studentRepo.getAttendanceHistory(studentId, 180),
+      this.studentRepo.getRemarks(studentId),
+      FeeModel.find({ studentId }).sort({ createdAt: -1 }).lean(),
+    ]);
+
+    const totalSessions = attendance.length;
+    const presentCount = attendance.filter((a: any) => a.status === "present" || a.status === "late").length;
+    const attendanceRate = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
+
+    const feesSummary = fees.reduce(
+      (acc, fee: any) => {
+        acc.totalBilled += fee.finalAmount;
+        acc.totalPaid += fee.installments.reduce((s: number, i: any) => s + i.paidAmount, 0);
+        return acc;
+      },
+      { totalBilled: 0, totalPaid: 0 },
+    );
+
+    return {
+      student,
+      performances,
+      attendance,
+      remarks,
+      fees,
+      summary: {
+        attendanceRate,
+        totalSessions,
+        totalBilled: feesSummary.totalBilled,
+        totalPaid: feesSummary.totalPaid,
+        totalOutstanding: feesSummary.totalBilled - feesSummary.totalPaid,
+        generatedAt: new Date(),
+      },
+    };
   }
 }

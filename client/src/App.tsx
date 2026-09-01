@@ -20,6 +20,9 @@ const StudentsPage = lazy(() => import("./features/students/StudentsPage"));
 const StudentDetailPage = lazy(
   () => import("./features/students/StudentDetailPage"),
 );
+const StudentReportPage = lazy(
+  () => import("./features/students/StudentReportPage"),
+);
 const TransferWallPage = lazy(
   () => import("./features/transfer-wall/TransferWallPage"),
 );
@@ -62,8 +65,14 @@ const AcademySettingsPage = lazy(
 const EmployeesManagementPage = lazy(
   () => import("./features/employees/EmployeesManagementPage"),
 );
+const ComplaintsInboxPage = lazy(
+  () => import("./features/complaints/ComplaintsInboxPage"),
+);
 const GuardianDashboardPage = lazy(
   () => import("./features/guardian/GuardianDashboardPage"),
+);
+const GuardianComplaintsPage = lazy(
+  () => import("./features/guardian/GuardianComplaintsPage"),
 );
 const GuardianChildDetailPage = lazy(
   () => import("./features/guardian/GuardianChildDetailPage"),
@@ -149,6 +158,9 @@ const App: React.FC = () => (
                 would otherwise block on. */}
             <Route path="/subscription/success" element={<SubscriptionSuccessPage />} />
             <Route path="/subscription/cancelled" element={<SubscriptionCancelledPage />} />
+            {/* Print-friendly, no app chrome by design (see StudentReportPage) —
+                also kept outside MainLayout for the same reason. */}
+            <Route path="/students/:id/report" element={<StudentReportPage />} />
 
             <Route element={<MainLayout />}>
               {/* Everyone logged in */}
@@ -189,6 +201,7 @@ const App: React.FC = () => (
                 <Route path="/coaches" element={<CoachesManagementPage />} />
                 <Route path="/settings" element={<AcademySettingsPage />} />
                 <Route path="/employees" element={<EmployeesManagementPage />} />
+                <Route path="/complaints" element={<ComplaintsInboxPage />} />
               </Route>
 
               {/* Manager + Super Admin */}
@@ -220,6 +233,7 @@ const App: React.FC = () => (
               >
                 <Route path="/guardian/dashboard" element={<GuardianDashboardPage />} />
                 <Route path="/guardian/children/:id" element={<GuardianChildDetailPage />} />
+                <Route path="/guardian/complaints" element={<GuardianComplaintsPage />} />
               </Route>
             </Route>
           </Route>

@@ -106,6 +106,44 @@ export interface FranchiseTransferLogEntry {
   transferredAt: string;
 }
 
+export interface StudentReportFeeInstallment {
+  installmentNumber: number;
+  amount: number;
+  dueDate: string;
+  paidAmount: number;
+  paidAt?: string;
+  status: string;
+}
+
+export interface StudentReportFee {
+  _id: string;
+  feeType: string;
+  finalAmount: number;
+  overallStatus: string;
+  installments: StudentReportFeeInstallment[];
+}
+
+export interface StudentReport {
+  student: Student;
+  performances: {
+    sessionDate: string;
+    skillScores: { parameter: string; score: number }[];
+    overallScore: number;
+    remarks?: string;
+  }[];
+  attendance: { sessionDate: string; status: string; remarks?: string }[];
+  remarks: { _id: string; text: string; date: string; coachId?: { firstName: string; lastName: string } }[];
+  fees: StudentReportFee[];
+  summary: {
+    attendanceRate: number;
+    totalSessions: number;
+    totalBilled: number;
+    totalPaid: number;
+    totalOutstanding: number;
+    generatedAt: string;
+  };
+}
+
 export const studentsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getStudents: builder.query<
@@ -159,6 +197,11 @@ export const studentsApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: PlayerCard }) => res.data,
       providesTags: (_, __, id) => [{ type: 'Performance', id }, { type: 'Student', id }],
     }),
+    getStudentReport: builder.query<StudentReport, string>({
+      query: (id) => `/students/${id}/report`,
+      transformResponse: (res: { data: StudentReport }) => res.data,
+      providesTags: (_, __, id) => [{ type: 'Performance', id }, { type: 'Student', id }],
+    }),
     updateStudentStatus: builder.mutation<Student, { id: string; status: StudentStatus }>({
       query: ({ id, status }) => ({ url: `/students/${id}/status`, method: 'PATCH', body: { status } }),
       transformResponse: (res: { data: Student }) => res.data,
@@ -194,6 +237,7 @@ export const {
   useDeleteStudentMutation,
   useAddCoachRemarkMutation,
   useGetPlayerCardQuery,
+  useGetStudentReportQuery,
   useUpdateStudentStatusMutation,
   useTransferStudentFranchiseMutation,
   useGetTransferHistoryQuery,
