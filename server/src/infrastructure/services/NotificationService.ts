@@ -13,6 +13,7 @@ import { UserModel } from '../database/models/User.model';
 import { FranchiseModel } from '../database/models/Franchise.model';
 import { AcademyModel } from '../database/models/Academy.model';
 import { whatsAppService } from './WhatsAppService';
+import { getSocketServer } from './SocketRegistry';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type NotificationType =
@@ -269,7 +270,24 @@ export class NotificationService {
         isRead: false,
         sentVia: opts.channels ?? ['push'],
       }));
-      await UserNotificationModel.insertMany(docs, { ordered: false });
+      const inserted = await UserNotificationModel.insertMany(docs, { ordered: false });
+
+      // Push the same event over the socket room each recipient joined
+      // (see index.ts's "join:user" handler) so an open tab updates its
+      // bell instantly instead of only finding out on next page load.
+      const io = getSocketServer();
+      if (io) {
+        for (const doc of inserted) {
+          io.to(`user:${doc.userId.toString()}`).emit('notification', {
+            id: doc._id.toString(),
+            title: doc.title,
+            body: doc.body,
+            type: doc.type,
+            isRead: false,
+            createdAt: (doc as any).createdAt ?? new Date().toISOString(),
+          });
+        }
+      }
     } catch (err) {
       logger.error('[NotificationService] Persist error:', err);
     }

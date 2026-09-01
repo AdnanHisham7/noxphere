@@ -29,14 +29,14 @@ export const useSocket = () => {
     });
 
     // Real-time notification events
-    socket.on('notification', (payload: { title: string; body: string; type: string }) => {
+    socket.on('notification', (payload: { id: string; title: string; body: string; type: string; createdAt: string }) => {
       dispatch(addNotification({
-        id: Date.now().toString(),
+        id: payload.id,
         title: payload.title,
         body: payload.body,
         type: payload.type,
         isRead: false,
-        createdAt: new Date().toISOString(),
+        createdAt: payload.createdAt,
       }));
     });
 

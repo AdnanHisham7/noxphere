@@ -2,7 +2,7 @@
 import { useSelector, useDispatch } from 'react-redux';
 import { Link, useLocation } from 'react-router-dom';
 import { Building2, ChevronDown, Check, Bell, Repeat2 } from 'lucide-react';
-import { markAllRead } from '../../store/slices/notificationSlice';
+import { setNotifications, markOneRead, markAllRead } from '../../store/slices/notificationSlice';
 import { setActiveFranchise, clearActiveFranchise } from '../../store/slices/uiSlice';
 import { Avatar } from '../ui';
 import { useState, useEffect } from 'react';
@@ -12,6 +12,11 @@ import { useCurrentFranchiseId } from '../../hooks/useCurrentFranchiseId';
 import { useGetFranchiseByIdQuery, useGetFranchisesQuery } from '../../store/api/franchiseApi';
 import { useGetMyFranchisesQuery } from '../../store/api/coachPortalApi';
 import { useTransferWallEnabled } from '../../hooks/useTransferWallEnabled';
+import {
+  useGetMyNotificationsQuery,
+  useMarkMyNotificationReadMutation,
+  useMarkAllMyNotificationsReadMutation,
+} from '../../store/api/myNotificationsApi';
 
 const FranchiseSwitcher: React.FC = () => {
   const dispatch = useDispatch();
@@ -193,11 +198,36 @@ const CoachFranchiseSwitcher: React.FC = () => {
 export const TopBar: React.FC = () => {
   const dispatch = useDispatch();
   const location = useLocation();
-  const { user } = useSelector((s: RootState) => s.auth);
+  const { user, isAuthenticated } = useSelector((s: RootState) => s.auth);
   const { unreadCount, items: notifications } = useSelector((s: RootState) => s.notifications);
   const [notifOpen, setNotifOpen] = useState(false);
   const transferWallEnabled = useTransferWallEnabled();
   const showTransferWallLink = user?.role === 'manager' && transferWallEnabled;
+
+  // Hydrate the bell from the server on load/login — previously this only
+  // ever reflected whatever arrived over a live socket connection during
+  // the current tab, so it always started empty on refresh.
+  const { data: myNotifications } = useGetMyNotificationsQuery(
+    { limit: 20 },
+    { skip: !isAuthenticated },
+  );
+  useEffect(() => {
+    if (myNotifications) dispatch(setNotifications(myNotifications.items));
+  }, [myNotifications, dispatch]);
+
+  const [markOneReadOnServer] = useMarkMyNotificationReadMutation();
+  const [markAllReadOnServer] = useMarkAllMyNotificationsReadMutation();
+
+  const handleOpenNotification = (id: string, isRead: boolean) => {
+    if (isRead) return;
+    dispatch(markOneRead(id));
+    markOneReadOnServer(id).catch(() => undefined);
+  };
+
+  const handleMarkAllRead = () => {
+    dispatch(markAllRead());
+    markAllReadOnServer().catch(() => undefined);
+  };
 
   // The Dashboard always shows the academy's overall data now, and a
   // franchise-specific dashboard is reached by clicking into a franchise
@@ -251,7 +281,7 @@ export const TopBar: React.FC = () => {
               <div className="flex items-center justify-between p-4 border-b border-white/5">
                 <span className="section-title">Alerts</span>
                 <button
-                  onClick={() => dispatch(markAllRead())}
+                  onClick={handleMarkAllRead}
                   className="text-2xs text-volt-400 hover:underline"
                 >
                   Mark all read
@@ -262,11 +292,15 @@ export const TopBar: React.FC = () => {
                   <p className="text-center text-slate-500 text-sm py-8">No notifications</p>
                 ) : (
                   notifications.slice(0, 10).map((n) => (
-                    <div key={n.id} className={clsx('p-4 border-b border-white/4 hover:bg-white/3', !n.isRead && 'bg-volt-400/4')}>
+                    <button
+                      key={n.id}
+                      onClick={() => handleOpenNotification(n.id, n.isRead)}
+                      className={clsx('w-full text-left p-4 border-b border-white/4 hover:bg-white/3', !n.isRead && 'bg-volt-400/4')}
+                    >
                       <p className="text-xs font-semibold text-white">{n.title}</p>
                       <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.body}</p>
-                      <p className="text-2xs text-slate-600 mt-1">{n.createdAt}</p>
-                    </div>
+                      <p className="text-2xs text-slate-600 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
+                    </button>
                   ))
                 )}
               </div>

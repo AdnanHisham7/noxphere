@@ -8,6 +8,7 @@ import rateLimit from "express-rate-limit";
 import mongoSanitize from "express-mongo-sanitize";
 import { createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
+import { setSocketServer } from "./infrastructure/services/SocketRegistry";
 import mongoose from "mongoose";
 
 import { config } from "./config/app.config";
@@ -40,6 +41,9 @@ import { AdminPerformanceController } from "./interfaces/http/controllers/AdminP
 import { AdminPerformanceUseCases } from "./application/use-cases/performance/AdminPerformanceUseCases";
 import { AdminNotificationController } from "./interfaces/http/controllers/AdminNotificationController";
 import { AdminNotificationUseCases } from "./application/use-cases/notification/AdminNotificationUseCases";
+import { UserNotificationController } from "./interfaces/http/controllers/UserNotificationController";
+import { UserNotificationUseCases } from "./application/use-cases/notification/UserNotificationUseCases";
+import { schedulerService } from "./infrastructure/services/SchedulerService";
 import { ScheduleController } from "./interfaces/http/controllers/ScheduleController";
 import { ScheduleUseCases } from "./application/use-cases/schedule/ScheduleUseCases";
 import { SelectionController } from "./interfaces/http/controllers/SelectionController";
@@ -68,6 +72,7 @@ export const io = new SocketIOServer(httpServer, {
     methods: ["GET", "POST"],
   },
 });
+setSocketServer(io);
 
 // ─── Security Middleware ───────────────────────────────────────────────────────
 app.use(helmet());
@@ -154,6 +159,8 @@ const academyController = new AcademyController(academyUseCases);
 
   const adminNotificationUseCases = new AdminNotificationUseCases();
   const notificationController = new AdminNotificationController(adminNotificationUseCases);
+  const userNotificationUseCases = new UserNotificationUseCases();
+  const userNotificationController = new UserNotificationController(userNotificationUseCases);
 
   const scheduleUseCases = new ScheduleUseCases();
   const scheduleController = new ScheduleController(scheduleUseCases);
@@ -191,6 +198,7 @@ const academyController = new AcademyController(academyUseCases);
     fees: feesController,
     performance: performanceController,
     notification: notificationController,
+    userNotification: userNotificationController,
     schedule: scheduleController,
     selection: selectionController,
     users: usersController,
@@ -242,6 +250,18 @@ async function startServer() {
 
     await bootstrapDI();
     logger.info("✅ Dependency injection bootstrapped");
+
+    // Schedules today's remaining pre/post-session guardian alerts. This
+    // was previously written but never called from anywhere, so no
+    // session reminder ever fired. It only covers the remainder of
+    // *today* — it needs to run again at the start of each day to pick
+    // up the next day's sessions, which currently requires a restart or
+    // an external daily trigger (e.g. a node-cron job or a platform-level
+    // scheduled task hitting a dedicated endpoint); wiring that
+    // recurrence is a follow-up, not done here.
+    schedulerService.initDailySchedule().catch((err) => {
+      logger.error("❌ Failed to initialize daily notification schedule:", err);
+    });
 
     httpServer.listen(config.port, () => {
       logger.info(`🚀 Server running on port ${config.port} [${config.env}]`);

@@ -6,11 +6,19 @@ import { clsx } from 'clsx';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { RootState } from '../../store';
+import { useSocket } from '../../hooks/useSocket';
 
 export const MainLayout: React.FC = () => {
   const collapsed = useSelector((s: RootState) => s.ui.sidebarCollapsed);
   const activeFranchiseId = useSelector((s: RootState) => s.ui.activeFranchiseId);
   const user = useSelector((s: RootState) => s.auth.user);
+
+  // Connects once per authenticated session and joins this user's and
+  // franchise's rooms (see index.ts) so live events — starting with the
+  // notification bell — reach the client. This previously existed only
+  // as an unused hook; nothing ever called it, so no socket connection
+  // was ever established and the bell only ever updated on next login.
+  useSocket();
 
   // Show sidebar only if a franchise is active, or if user is super admin (not tied to franchise), or if user is a manager (to support Head Office view)
   const showSidebar = !!activeFranchiseId || user?.role === 'super_admin' || user?.role === 'manager';
@@ -32,4 +40,3 @@ export const MainLayout: React.FC = () => {
     </div>
   );
 };
-

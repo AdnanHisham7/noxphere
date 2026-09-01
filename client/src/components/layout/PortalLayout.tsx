@@ -5,6 +5,8 @@ import { useSelector, useDispatch } from "react-redux";
 import { LogOut, Menu, X, type LucideIcon } from "lucide-react";
 import { RootState } from "../../store";
 import { clearCredentials } from "../../store/slices/authSlice";
+import { useSocket } from "../../hooks/useSocket";
+import { PortalNotificationBell } from "./PortalNotificationBell";
 
 export interface PortalNavItem {
   to: string;
@@ -24,6 +26,12 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ navItems, portalLabe
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Guardians and students previously had no live connection at all —
+  // joins this user's room the same way MainLayout does for staff roles,
+  // so the bell below can receive live pushes, not just what was in the
+  // feed on page load.
+  useSocket();
+
   const handleLogout = () => {
     dispatch(clearCredentials());
     navigate("/login", { replace: true });
@@ -41,9 +49,12 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ navItems, portalLabe
           </span>
           <span className="font-orbital font-semibold text-nox-high">Noxphere</span>
         </div>
-        <button onClick={() => setMobileOpen((v) => !v)} className="text-nox-mid p-2">
-          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        <div className="flex items-center gap-2">
+          <PortalNotificationBell />
+          <button onClick={() => setMobileOpen((v) => !v)} className="text-nox-mid p-2">
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </div>
 
       {/* Sidebar */}
@@ -115,6 +126,9 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ navItems, portalLabe
 
       {/* Content */}
       <main className="flex-1 min-w-0 pt-16 md:pt-0">
+        <div className="hidden md:flex items-center justify-end px-8 pt-6">
+          <PortalNotificationBell />
+        </div>
         <div className="max-w-6xl mx-auto px-5 md:px-8 py-8">
           <Outlet />
         </div>
