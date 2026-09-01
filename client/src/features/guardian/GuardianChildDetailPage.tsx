@@ -1,13 +1,16 @@
 // src/features/guardian/GuardianChildDetailPage.tsx
 import React, { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, CalendarCheck, Wallet, TrendingUp } from "lucide-react";
+import { toast } from "react-hot-toast";
+import { ArrowLeft, CalendarCheck, Wallet, TrendingUp, QrCode, Copy } from "lucide-react";
 import {
   useGetChildProfileQuery,
   useGetChildAttendanceQuery,
   useGetChildFeesQuery,
   useGetChildPerformanceQuery,
+  type GuardianChild,
 } from "../../store/api/guardianApi";
+import { useTogglePublicProfileMutation } from "../../store/api/consentApi";
 import { NoxSkeleton, NoxEmptyState, NoxStatusBadge, NoxStatCard } from "../../components/portal-ui";
 
 type Tab = "attendance" | "fees" | "performance";
@@ -61,6 +64,8 @@ const GuardianChildDetailPage: React.FC = () => {
         </div>
       )}
 
+      {profile && <PublicProfileToggleCard studentId={studentId} profile={profile} />}
+
       <div className="flex gap-2 border-b border-white/[0.06] mb-6">
         {TABS.map((t) => {
           const Icon = t.icon;
@@ -85,6 +90,75 @@ const GuardianChildDetailPage: React.FC = () => {
       {tab === "attendance" && <AttendanceTab studentId={studentId} />}
       {tab === "fees" && <FeesTab studentId={studentId} />}
       {tab === "performance" && <PerformanceTab studentId={studentId} />}
+    </div>
+  );
+};
+
+const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianChild }> = ({
+  studentId,
+  profile,
+}) => {
+  const [toggle, { isLoading }] = useTogglePublicProfileMutation();
+  const enabled = !!profile.publicProfileEnabled;
+  const publicUrl = profile.publicProfileToken
+    ? `${window.location.origin}/players/${profile.publicProfileToken}`
+    : null;
+
+  const handleToggle = async () => {
+    try {
+      await toggle({ studentId, enabled: !enabled }).unwrap();
+      toast.success(enabled ? "Public player page disabled" : "Public player page enabled");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Couldn't update this — try again");
+    }
+  };
+
+  const handleCopy = () => {
+    if (!publicUrl) return;
+    navigator.clipboard.writeText(publicUrl);
+    toast.success("Link copied");
+  };
+
+  return (
+    <div className="nox-card p-5 mb-8 space-y-3">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-core-400/[0.12] flex items-center justify-center flex-shrink-0">
+            <QrCode size={16} className="text-core-400" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-nox-high">Public player page</p>
+            <p className="text-xs text-nox-mid mt-0.5 max-w-md">
+              Turn this on to give {profile.firstName} a public page (name, photo, position, and rating only — never
+              contact info or health details) that the academy can print as a QR code or NFC tag on their ID card.
+              You can turn it off at any time.
+            </p>
+          </div>
+        </div>
+        <button
+          role="switch"
+          aria-checked={enabled}
+          onClick={handleToggle}
+          disabled={isLoading}
+          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+            enabled ? "bg-core-400" : "bg-white/10"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+              enabled ? "translate-x-5" : "translate-x-0.5"
+            }`}
+          />
+        </button>
+      </div>
+      {enabled && publicUrl && (
+        <div className="flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2">
+          <code className="text-xs text-nox-mid truncate flex-1">{publicUrl}</code>
+          <button onClick={handleCopy} className="text-core-400 hover:text-core-300 flex-shrink-0">
+            <Copy size={13} />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

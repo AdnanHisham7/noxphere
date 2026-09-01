@@ -46,6 +46,7 @@ const SubscriptionSuccessPage = lazy(
 const SubscriptionCancelledPage = lazy(
   () => import("./features/subscription/SubscriptionCancelledPage"),
 );
+const PublicPlayerPage = lazy(() => import("./features/public-player/PublicPlayerPage"));
 const FranchiseManagementPage = lazy(
   () => import("./features/franchises/FranchiseManagementPage"),
 );
@@ -134,6 +135,7 @@ const App: React.FC = () => (
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/transfer-wall" element={<TransferWallPage />} />
+          <Route path="/players/:token" element={<PublicPlayerPage />} />
 
           {/* Authenticated */}
           <Route element={<ProtectedRoute />}>

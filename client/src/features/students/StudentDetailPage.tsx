@@ -232,7 +232,13 @@ const StudentDetailPage: React.FC = () => {
     }
   };
 
-  const profileUrl = `${window.location.origin}/transfer-wall`;
+  // Only ever points at the real public player page once the guardian
+  // has opted in (see Student.publicProfileEnabled / the toggle in
+  // GuardianChildDetailPage) — printing a QR code for a page that isn't
+  // public yet would just print a 404.
+  const publicProfileUrl = student.publicProfileEnabled && student.publicProfileToken
+    ? `${window.location.origin}/players/${student.publicProfileToken}`
+    : null;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -418,12 +424,22 @@ const StudentDetailPage: React.FC = () => {
                           </div>
                         </div>
                         <div className="col-span-4 flex flex-col items-end">
-                          <div className="bg-white p-2 rounded-xl">
-                            <QRCode value={profileUrl} size={110} level="H" bgColor="#FFFFFF" fgColor="#000000" />
-                          </div>
-                          <p className="text-white/30 text-[9px] uppercase font-black mt-3 tracking-tighter text-right">
-                            Scan for full digital history<br />and video highlights
-                          </p>
+                          {publicProfileUrl ? (
+                            <>
+                              <div className="bg-white p-2 rounded-xl">
+                                <QRCode value={publicProfileUrl} size={110} level="H" bgColor="#FFFFFF" fgColor="#000000" />
+                              </div>
+                              <p className="text-white/30 text-[9px] uppercase font-black mt-3 tracking-tighter text-right">
+                                Scan for player profile
+                              </p>
+                            </>
+                          ) : (
+                            <div className="border border-dashed border-white/15 rounded-xl px-3 py-4 w-[130px] text-center">
+                              <p className="text-white/30 text-[8px] uppercase font-black tracking-tighter leading-relaxed">
+                                Public page not yet enabled by guardian
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
 

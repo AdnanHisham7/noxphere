@@ -5,11 +5,14 @@ export interface ConsentRecordDocument extends Document {
   studentId: mongoose.Types.ObjectId;
   guardianId: mongoose.Types.ObjectId;
   academyId: mongoose.Types.ObjectId;
-  // A version string for the exact notice text shown at consent time
-  // (see CONSENT_NOTICE.version in ConsentUseCases). If the notice ever
-  // changes, existing consents stay tied to the version they actually
-  // saw and agreed to — required to answer "what did they consent to"
-  // under DPDP Act Section 6(10)'s burden of proof.
+  // 'enrollment' is the base consent required to use the academy at
+  // all (see ConsentUseCases.CONSENT_NOTICE). 'public_profile' is a
+  // distinct, separately-opted-in purpose — publishing a minor's
+  // name/photo on the open internet via a public player page/QR code is
+  // a materially different exposure than the data processing needed to
+  // just run the academy, so it gets its own consent record rather than
+  // being folded into the base one.
+  consentType: "enrollment" | "public_profile";
   noticeVersion: string;
   dataCategories: string[];
   purposes: string[];
@@ -28,6 +31,12 @@ const ConsentRecordSchema = new Schema<ConsentRecordDocument>(
     studentId: { type: Schema.Types.ObjectId, ref: "Student", required: true, index: true },
     guardianId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     academyId: { type: Schema.Types.ObjectId, ref: "Academy", required: true, index: true },
+    consentType: {
+      type: String,
+      enum: ["enrollment", "public_profile"],
+      required: true,
+      default: "enrollment",
+    },
     noticeVersion: { type: String, required: true },
     dataCategories: [{ type: String }],
     purposes: [{ type: String }],
@@ -55,7 +64,7 @@ const ConsentRecordSchema = new Schema<ConsentRecordDocument>(
 // re-granting updates the same document rather than creating duplicates,
 // so there's always exactly one record to check "is this student's
 // guardian currently consented".
-ConsentRecordSchema.index({ studentId: 1, guardianId: 1 }, { unique: true });
+ConsentRecordSchema.index({ studentId: 1, guardianId: 1, consentType: 1 }, { unique: true });
 
 export const ConsentRecordModel = mongoose.model<ConsentRecordDocument>(
   "ConsentRecord",

@@ -1,7 +1,6 @@
 // src/application/use-cases/consent/ConsentUseCases.ts
 import { ConsentRecordModel } from "../../../infrastructure/database/models/ConsentRecord.model";
 import { StudentModel } from "../../../infrastructure/database/models/Student.model";
-import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
 import { NotFoundError, ForbiddenError, BadRequestError } from "../../../shared/errors/AppError";
 
@@ -60,6 +59,7 @@ export class ConsentUseCases {
 
     const records = await ConsentRecordModel.find({
       guardianId,
+      consentType: "enrollment",
       studentId: { $in: students.map((s) => s._id) },
     }).lean();
     const recordByStudent = new Map(records.map((r) => [r.studentId.toString(), r]));
@@ -82,6 +82,7 @@ export class ConsentUseCases {
     studentId: string,
     guardianId: string,
     meta: { ip?: string; userAgent?: string },
+    consentType: "enrollment" | "public_profile" = "enrollment",
   ): Promise<void> {
     await this.assertGuardianOfStudent(studentId, guardianId);
     const student = await StudentModel.findById(studentId).select("franchiseId").lean();
@@ -90,11 +91,12 @@ export class ConsentUseCases {
     if (!franchise) throw new NotFoundError("Franchise");
 
     await ConsentRecordModel.findOneAndUpdate(
-      { studentId, guardianId },
+      { studentId, guardianId, consentType },
       {
         $set: {
           studentId,
           guardianId,
+          consentType,
           academyId: franchise.academyId,
           noticeVersion: CONSENT_NOTICE.version,
           dataCategories: [...CONSENT_NOTICE.dataCategories],
@@ -114,9 +116,10 @@ export class ConsentUseCases {
     guardianId: string,
     reason: string | undefined,
     meta: { ip?: string },
+    consentType: "enrollment" | "public_profile" = "enrollment",
   ): Promise<void> {
     await this.assertGuardianOfStudent(studentId, guardianId);
-    const record = await ConsentRecordModel.findOne({ studentId, guardianId });
+    const record = await ConsentRecordModel.findOne({ studentId, guardianId, consentType });
     if (!record || record.withdrawnAt) {
       throw new BadRequestError("There's no active consent to withdraw for this player");
     }
@@ -126,6 +129,31 @@ export class ConsentUseCases {
     await record.save();
   }
 
+  // The guardian's single opt-in toggle for the public player page (see
+  // Student.publicProfileEnabled). Enabling grants 'public_profile'
+  // consent and flips the flag in one action; disabling withdraws it and
+  // flips the flag back off, which immediately 404s the public page (see
+  // PublicPlayerUseCases.getByToken).
+  async setPublicProfileEnabled(
+    studentId: string,
+    guardianId: string,
+    enabled: boolean,
+    meta: { ip?: string; userAgent?: string },
+  ): Promise<void> {
+    await this.assertGuardianOfStudent(studentId, guardianId);
+    if (enabled) {
+      await this.grantConsent(studentId, guardianId, meta, "public_profile");
+    } else {
+      const record = await ConsentRecordModel.findOne({ studentId, guardianId, consentType: "public_profile" });
+      if (record && !record.withdrawnAt) {
+        record.withdrawnAt = new Date();
+        record.withdrawnIp = meta.ip;
+        await record.save();
+      }
+    }
+    await StudentModel.findByIdAndUpdate(studentId, { publicProfileEnabled: enabled });
+  }
+
   // Used by the manager-facing Students page to show which players still
   // need a guardian to complete consent, without an N+1 query per row.
   async getStatusForFranchise(franchiseId: string): Promise<Record<string, boolean>> {
@@ -133,6 +161,7 @@ export class ConsentUseCases {
     if (students.length === 0) return {};
     const records = await ConsentRecordModel.find({
       studentId: { $in: students.map((s) => s._id) },
+      consentType: "enrollment",
       withdrawnAt: { $exists: false },
       noticeVersion: CONSENT_NOTICE.version,
     })

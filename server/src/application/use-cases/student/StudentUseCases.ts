@@ -1,5 +1,6 @@
 import { IStudentRepository } from "../../../domain/repositories/IStudentRepository";
 import { IUserRepository } from "../../../domain/repositories/IUserRepository";
+import crypto from "crypto";
 import { StudentEntity } from "../../../domain/entities/Student.entity";
 import {
   defaultPermissions,
@@ -162,6 +163,8 @@ export class StudentUseCases {
       overallRating: 0,
       selectionStatus: "pending",
       transferStatus: "not_listed",
+      publicProfileToken: crypto.randomBytes(16).toString("hex"),
+      publicProfileEnabled: false,
     };
     return await this.studentRepo.create(studentData);
   }

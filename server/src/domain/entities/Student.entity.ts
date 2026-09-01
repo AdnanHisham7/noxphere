@@ -65,6 +65,8 @@ export interface StudentEntity {
   transferPrice?: number;
   transferListedAt?: Date;
   transferNote?: string;
+  publicProfileToken: string;
+  publicProfileEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;

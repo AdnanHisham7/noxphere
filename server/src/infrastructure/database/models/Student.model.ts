@@ -31,6 +31,8 @@ export interface StudentDocument extends Document {
   transferPrice?: number;
   transferListedAt?: Date;
   transferNote?: string;
+  publicProfileToken: string;
+  publicProfileEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
@@ -131,6 +133,18 @@ const StudentSchema = new Schema<StudentDocument>(
     transferPrice: Number,
     transferListedAt: Date,
     transferNote: String,
+    // Random lookup token for the public, no-auth player page (see
+    // PublicPlayerUseCases) — deliberately not the Mongo _id, so public
+    // player URLs can't be enumerated by guessing sequential/adjacent
+    // ids across the whole platform.
+    publicProfileToken: { type: String, unique: true, index: true },
+    // Off by default. Only a guardian can turn this on (see
+    // ConsentUseCases.setPublicProfileEnabled) — it's a distinct,
+    // separately-consented purpose from base enrollment, since
+    // publishing a minor's name/photo on the open internet is a
+    // materially different exposure than the data processing needed to
+    // just run the academy.
+    publicProfileEnabled: { type: Boolean, default: false },
     deletedAt: { type: Date, index: true },
   },
   {

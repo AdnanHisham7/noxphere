@@ -39,6 +39,14 @@ export const consentApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Consent"],
     }),
+    togglePublicProfile: builder.mutation<void, { studentId: string; enabled: boolean }>({
+      query: ({ studentId, enabled }) => ({
+        url: `/consent/${studentId}/public-profile`,
+        method: "POST",
+        body: { enabled },
+      }),
+      invalidatesTags: ["Consent", "Student"],
+    }),
     getFranchiseConsentStatus: builder.query<Record<string, boolean>, string>({
       query: (franchiseId) => ({ url: "/consent/franchise-status", params: { franchiseId } }),
       transformResponse: (res: { data: Record<string, boolean> }) => res.data,
@@ -52,5 +60,6 @@ export const {
   useGetMyConsentStatusQuery,
   useGrantConsentMutation,
   useWithdrawConsentMutation,
+  useTogglePublicProfileMutation,
   useGetFranchiseConsentStatusQuery,
 } = consentApi;

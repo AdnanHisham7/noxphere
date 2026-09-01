@@ -12,6 +12,8 @@ export interface GuardianChild {
   attendancePercentage: number;
   overallRating: number;
   teamId?: { name: string; ageGroup: string };
+  publicProfileEnabled?: boolean;
+  publicProfileToken?: string;
 }
 
 export interface GuardianDashboard {

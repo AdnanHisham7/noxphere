@@ -22,6 +22,7 @@ import { uploadRouter } from './upload.routes';
 import { resourceRouter } from './resource.routes';
 import { academySubscriptionRouter } from './academySubscription.routes';
 import { consentRouter } from './consent.routes';
+import { publicPlayerRouter } from './publicPlayer.routes';
 
 export const apiRouter = Router();
 
@@ -47,3 +48,4 @@ apiRouter.use('/uploads', uploadRouter);
 apiRouter.use('/resources', resourceRouter);
 apiRouter.use('/academy-subscriptions', academySubscriptionRouter);
 apiRouter.use('/consent', consentRouter);
+apiRouter.use('/public/players', publicPlayerRouter);

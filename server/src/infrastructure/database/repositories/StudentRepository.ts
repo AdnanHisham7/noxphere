@@ -134,6 +134,8 @@ export class StudentRepository implements IStudentRepository {
       transferPrice: doc.transferPrice,
       transferListedAt: doc.transferListedAt,
       transferNote: doc.transferNote,
+      publicProfileToken: doc.publicProfileToken,
+      publicProfileEnabled: doc.publicProfileEnabled,
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
       deletedAt: doc.deletedAt,

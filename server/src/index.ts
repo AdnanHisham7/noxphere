@@ -65,6 +65,8 @@ import { AcademySubscriptionController } from "./interfaces/http/controllers/Aca
 import { AcademySubscriptionUseCases } from "./application/use-cases/subscription/AcademySubscriptionUseCases";
 import { ConsentController } from "./interfaces/http/controllers/ConsentController";
 import { ConsentUseCases } from "./application/use-cases/consent/ConsentUseCases";
+import { PublicPlayerController } from "./interfaces/http/controllers/PublicPlayerController";
+import { PublicPlayerUseCases } from "./application/use-cases/public-player/PublicPlayerUseCases";
 
 const app = express();
 const httpServer = createServer(app);
@@ -205,6 +207,8 @@ const academyController = new AcademyController(academyUseCases);
   const academySubscriptionController = new AcademySubscriptionController(academySubscriptionUseCases);
   const consentUseCases = new ConsentUseCases();
   const consentController = new ConsentController(consentUseCases);
+  const publicPlayerUseCases = new PublicPlayerUseCases();
+  const publicPlayerController = new PublicPlayerController(publicPlayerUseCases);
 
   app.locals.controllers = {
     auth: authController,
@@ -230,6 +234,7 @@ const academyController = new AcademyController(academyUseCases);
     resource: resourceController,
     academySubscription: academySubscriptionController,
     consent: consentController,
+    publicPlayer: publicPlayerController,
   };
 }
 

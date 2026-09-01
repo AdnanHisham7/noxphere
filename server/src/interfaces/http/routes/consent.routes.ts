@@ -16,6 +16,9 @@ consentRouter.post("/:studentId/grant", authenticate, (req, res, next) => {
 consentRouter.post("/:studentId/withdraw", authenticate, (req, res, next) => {
   req.app.locals.controllers.consent.withdraw(req, res, next);
 });
+consentRouter.post("/:studentId/public-profile", authenticate, (req, res, next) => {
+  req.app.locals.controllers.consent.togglePublicProfile(req, res, next);
+});
 consentRouter.get("/franchise-status", authenticate, (req, res, next) => {
   req.app.locals.controllers.consent.getFranchiseStatus(req, res, next);
 });

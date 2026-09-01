@@ -47,6 +47,8 @@ export interface Student {
   enrollmentDate: string;
   isActive: boolean;
   status: StudentStatus;
+  publicProfileToken?: string;
+  publicProfileEnabled?: boolean;
   attendancePercentage: number;
   overallRating: number;
   selectionStatus: SelectionStatus;

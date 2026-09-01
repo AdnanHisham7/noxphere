@@ -9,6 +9,10 @@ const WithdrawSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
+const TogglePublicProfileSchema = z.object({
+  enabled: z.boolean(),
+});
+
 export class ConsentController {
   constructor(private consentUseCases: ConsentUseCases) {}
 
@@ -68,6 +72,22 @@ export class ConsentController {
       if (!franchiseId) throw new BadRequestError("franchiseId is required");
       const status = await this.consentUseCases.getStatusForFranchise(franchiseId);
       ResponseHandler.success(res, status, "Consent status retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  togglePublicProfile = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (req.user!.role !== "guardian") {
+        throw new BadRequestError("Only a guardian can enable or disable a player's public page");
+      }
+      const dto = TogglePublicProfileSchema.parse(req.body);
+      await this.consentUseCases.setPublicProfileEnabled(req.params.studentId, req.user!.sub, dto.enabled, {
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+      ResponseHandler.success(res, null, dto.enabled ? "Public player page enabled" : "Public player page disabled");
     } catch (err) {
       next(err);
     }
