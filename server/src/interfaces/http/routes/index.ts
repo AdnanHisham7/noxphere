@@ -25,6 +25,8 @@ import { consentRouter } from './consent.routes';
 import { publicPlayerRouter } from './publicPlayer.routes';
 import { employeeRouter } from './employee.routes';
 import { complaintRouter } from './complaint.routes';
+import { registrationRouter } from './registration.routes';
+import { nfcCardRouter } from './nfcCard.routes';
 
 export const apiRouter = Router();
 
@@ -53,3 +55,5 @@ apiRouter.use('/consent', consentRouter);
 apiRouter.use('/public/players', publicPlayerRouter);
 apiRouter.use('/employees', employeeRouter);
 apiRouter.use('/complaints', complaintRouter);
+apiRouter.use('/registration', registrationRouter);
+apiRouter.use('/nfc', nfcCardRouter);

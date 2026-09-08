@@ -7,6 +7,14 @@ export const academySubscriptionRouter = Router();
 academySubscriptionRouter.get("/:academyId/status", authenticate, (req, res, next) => {
   req.app.locals.controllers.academySubscription.getStatus(req, res, next);
 });
+academySubscriptionRouter.get("/:academyId/billing-details", authenticate, (req, res, next) => {
+  req.app.locals.controllers.academySubscription.getBillingDetails(req, res, next);
+});
+
+academySubscriptionRouter.post("/verify-session", authenticate, (req, res, next) => {
+  req.app.locals.controllers.academySubscription.verifySession(req, res, next);
+});
+
 academySubscriptionRouter.post("/:academyId/checkout", authenticate, (req, res, next) => {
   req.app.locals.controllers.academySubscription.checkout(req, res, next);
 });

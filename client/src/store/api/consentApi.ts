@@ -16,6 +16,17 @@ export interface GuardianConsentStatus {
   withdrawnAt: string | null;
 }
 
+export interface PublicProfileSettings {
+  showPhoto?: boolean;
+  showPosition?: boolean;
+  showJerseyNumber?: boolean;
+  showAgeGroup?: boolean;
+  showRating?: boolean;
+  showTeam?: boolean;
+  bio?: string;
+  preferredFoot?: string;
+}
+
 export const consentApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getConsentNotice: builder.query<ConsentNotice, void>({
@@ -39,11 +50,11 @@ export const consentApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Consent"],
     }),
-    togglePublicProfile: builder.mutation<void, { studentId: string; enabled: boolean }>({
-      query: ({ studentId, enabled }) => ({
+    togglePublicProfile: builder.mutation<void, { studentId: string; enabled: boolean; settings?: PublicProfileSettings }>({
+      query: ({ studentId, enabled, settings }) => ({
         url: `/consent/${studentId}/public-profile`,
         method: "POST",
-        body: { enabled },
+        body: { enabled, settings },
       }),
       invalidatesTags: ["Consent", "Student"],
     }),

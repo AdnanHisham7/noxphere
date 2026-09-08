@@ -44,6 +44,18 @@ export class AcademySubscriptionController {
     }
   };
 
+  getBillingDetails = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const academyId = req.params.academyId;
+      assertAcademyAccess(req, academyId);
+      const details = await this.useCases.getBillingDetails(academyId);
+      ResponseHandler.success(res, details, "Subscription billing details retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+
   checkout = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const academyId = req.params.academyId;
@@ -101,6 +113,17 @@ export class AcademySubscriptionController {
       const dto = RateSchema.parse(req.body);
       const rate = await this.useCases.setPlatformDefaultStaffRate(dto.rate, req.user!.sub);
       ResponseHandler.success(res, { rate }, "Platform default staff rate updated");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  verifySession = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { sessionId, academyId } = req.body;
+      const targetAcademyId = academyId || req.user?.academyId;
+      const result = await this.useCases.verifyCheckoutSession(sessionId, targetAcademyId);
+      ResponseHandler.success(res, result, "Subscription checkout verified");
     } catch (err) {
       next(err);
     }

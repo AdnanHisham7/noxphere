@@ -54,4 +54,22 @@ export class StudentPortalController {
       next(err);
     }
   };
+
+  updateMyProfile = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const updated = await this.studentPortalUseCases.updateMyProfile(req.user!.sub, req.body);
+      ResponseHandler.success(res, updated, "Profile updated successfully");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  updateMyPublicProfileSettings = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await this.studentPortalUseCases.updateMyPublicProfileSettings(req.user!.sub, req.body);
+      ResponseHandler.success(res, result, "Public profile settings updated");
+    } catch (err) {
+      next(err);
+    }
+  };
 }

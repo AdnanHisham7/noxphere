@@ -21,6 +21,8 @@ export interface FeeInstallment {
   status: string;
   paymentMethod?: string;
   transactionId?: string;
+  reminderSentCount?: number;
+  lastReminderAt?: string;
 }
 
 export interface AdminFeeRecord {
@@ -55,7 +57,7 @@ export const adminFeesApi = baseApi.injectEndpoints({
     createFee: builder.mutation<AdminFeeRecord, CreateFeeBody>({
       query: (body) => ({ url: "/fees", method: "POST", body }),
       transformResponse: (res: { data: AdminFeeRecord }) => res.data,
-      invalidatesTags: ["Fee", "Student"],
+      invalidatesTags: ["Fee"],
     }),
     recordPayment: builder.mutation<
       AdminFeeRecord,
@@ -92,6 +94,16 @@ export const adminFeesApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: AdminFeeRecord }) => res.data,
       invalidatesTags: ["Fee", "Student"],
     }),
+    sendInstallmentReminder: builder.mutation<
+      { success: boolean; message: string },
+      { feeId: string; installmentNumber: number }
+    >({
+      query: ({ feeId, installmentNumber }) => ({
+        url: `/fees/${feeId}/installments/${installmentNumber}/remind`,
+        method: "POST",
+      }),
+      invalidatesTags: ["Fee"],
+    }),
   }),
 });
 
@@ -101,4 +113,5 @@ export const {
   useRecordPaymentMutation,
   useUpdatePaymentMutation,
   useUndoPaymentMutation,
+  useSendInstallmentReminderMutation,
 } = adminFeesApi;

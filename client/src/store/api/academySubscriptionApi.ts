@@ -70,15 +70,73 @@ export const academySubscriptionApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: { rate: number } }) => res.data.rate,
       invalidatesTags: ["Academy"],
     }),
+    getAcademyBillingDetails: builder.query<AcademyBillingDetails, string>({
+      query: (academyId) => `/academy-subscriptions/${academyId}/billing-details`,
+      transformResponse: (res: { data: AcademyBillingDetails }) => res.data,
+      providesTags: ["Academy"],
+    }),
+    verifySubscriptionSession: builder.mutation<
+      { status: string; isActive: boolean },
+      { sessionId: string; academyId?: string }
+    >({
+      query: (body) => ({
+        url: "/academy-subscriptions/verify-session",
+        method: "POST",
+        body,
+      }),
+      transformResponse: (res: { data: { status: string; isActive: boolean } }) => res.data,
+      invalidatesTags: ["Academy"],
+    }),
   }),
 });
 
+export interface BillingAlert {
+  type: "warning" | "danger" | "info";
+  title: string;
+  message: string;
+}
+
+export interface BillingTransaction {
+  id: string;
+  number: string | null;
+  amountPaid: number;
+  amountDue: number;
+  status: string | null;
+  created: string;
+  invoicePdf: string | null;
+  hostedInvoiceUrl: string | null;
+}
+
+export interface AcademyBillingDetails {
+  hasSubscription: boolean;
+  status: SubscriptionStatus;
+  isActive: boolean;
+  billingInterval: BillingInterval;
+  currentPeriodEnd: string | null;
+  daysRemainingInCycle: number;
+  provisionedCapacity: number;
+  activeStudentCount: number;
+  studentUtilization: number;
+  remainingStudentSlots: number;
+  provisionedStaffCapacity: number;
+  activeStaffCount: number;
+  staffUtilization: number;
+  remainingStaffSlots: number;
+  ratePerStudentPerDay: number;
+  staffRatePerStaffPerMonth: number;
+  estimatedRenewalRupees: number;
+  alerts: BillingAlert[];
+  transactions: BillingTransaction[];
+}
+
 export const {
   useGetAcademySubscriptionStatusQuery,
+  useGetAcademyBillingDetailsQuery,
   useCreateSubscriptionCheckoutMutation,
   useUpgradeSubscriptionCapacityMutation,
   useGetPlatformDefaultRateQuery,
   useSetPlatformDefaultRateMutation,
   useGetPlatformDefaultStaffRateQuery,
   useSetPlatformDefaultStaffRateMutation,
-} = academySubscriptionApi;
+  useVerifySubscriptionSessionMutation,
+} = academySubscriptionApi;

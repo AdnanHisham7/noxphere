@@ -1,7 +1,7 @@
-// src/features/landing/components/LandingNavbar.tsx
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import logoSrc from "@/assets/logo.png"; // Update this path to match your PNG location
+import logoSrc from "@/assets/logo.png";
+import { ThemeToggle } from "@/components/common/ThemeToggle";
 
 const LINKS = [
   { href: "#features", label: "Features" },
@@ -9,6 +9,7 @@ const LINKS = [
   { href: "#roles", label: "Roles" },
   { href: "#faq", label: "FAQ" },
 ];
+
 
 export const LandingNavbar: React.FC = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -50,6 +51,13 @@ export const LandingNavbar: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          <ThemeToggle size="sm" />
+          <Link
+            to="/signup/student"
+            className="hidden sm:inline text-xs font-semibold text-core-400 hover:text-core-300 transition-colors uppercase tracking-wider"
+          >
+            Player Sign Up
+          </Link>
           <Link to="/login" className="hidden sm:inline text-sm text-nox-mid hover:text-nox-high transition-colors">
             Sign in
           </Link>
@@ -57,6 +65,7 @@ export const LandingNavbar: React.FC = () => {
             Book a demo
           </a>
         </div>
+
       </nav>
     </header>
   );

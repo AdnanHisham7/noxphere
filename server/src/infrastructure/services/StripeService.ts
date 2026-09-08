@@ -97,6 +97,48 @@ class StripeService {
     });
   }
 
+  async createOneTimePaymentCheckoutSession(params: {
+    customerEmail?: string;
+    customerName?: string;
+    lineItemName: string;
+    lineItemDescription?: string;
+    unitAmountPaise: number;
+    quantity: number;
+    metadata: Record<string, string>;
+    successUrl: string;
+    cancelUrl: string;
+  }): Promise<Stripe.Checkout.Session> {
+    const stripe = this.getClient();
+    return stripe.checkout.sessions.create({
+      mode: "payment",
+      customer_email: params.customerEmail,
+      line_items: [
+        {
+          price_data: {
+            currency: "inr",
+            unit_amount: params.unitAmountPaise,
+            product_data: {
+              name: params.lineItemName,
+              description: params.lineItemDescription,
+            },
+          },
+          quantity: params.quantity,
+        },
+      ],
+      metadata: params.metadata,
+      success_url: params.successUrl,
+      cancel_url: params.cancelUrl,
+    });
+  }
+
+  async retrieveCheckoutSession(
+    sessionId: string,
+  ): Promise<Stripe.Checkout.Session> {
+    return this.getClient().checkout.sessions.retrieve(sessionId, {
+      expand: ["subscription", "customer"],
+    });
+  }
+
   async retrieveSubscription(
     subscriptionId: string,
   ): Promise<Stripe.Subscription> {
@@ -178,6 +220,36 @@ class StripeService {
     }
   }
 
+  async listInvoices(customerId: string): Promise<Array<{
+    id: string;
+    number: string | null;
+    amountPaid: number;
+    amountDue: number;
+    status: string | null;
+    created: Date;
+    invoicePdf: string | null;
+    hostedInvoiceUrl: string | null;
+  }>> {
+    try {
+      if (!config.stripe.secretKey) return [];
+      const stripe = this.getClient();
+      const invoices = await stripe.invoices.list({ customer: customerId, limit: 20 });
+      return invoices.data.map((inv) => ({
+        id: inv.id,
+        number: inv.number,
+        amountPaid: (inv.amount_paid || 0) / 100,
+        amountDue: (inv.amount_due || 0) / 100,
+        status: inv.status,
+        created: new Date(inv.created * 1000),
+        invoicePdf: inv.invoice_pdf || null,
+        hostedInvoiceUrl: inv.hosted_invoice_url || null,
+      }));
+    } catch (err) {
+      logger.warn("[StripeService] listInvoices failed or customer not found:", err);
+      return [];
+    }
+  }
+
   constructWebhookEvent(rawBody: Buffer, signature: string): Stripe.Event {
     if (!config.stripe.webhookSecret) {
       throw new Error("STRIPE_WEBHOOK_SECRET is not configured");
@@ -191,3 +263,4 @@ class StripeService {
 }
 
 export const stripeService = new StripeService();
+

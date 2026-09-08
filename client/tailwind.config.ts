@@ -16,11 +16,11 @@ const config: Config = {
           600: '#22222f',
           500: '#2d2d3d',
         },
-        // Brand accent - electric green (like eFootball score panels)
+        // Brand accent - electric green (volt), with dynamic theme adaptation
         volt: {
-          400: '#ccff00',
-          500: '#b3e600',
-          600: '#99cc00',
+          400: 'rgb(var(--color-volt-400) / <alpha-value>)',
+          500: 'rgb(var(--color-volt-500) / <alpha-value>)',
+          600: 'rgb(var(--color-volt-600) / <alpha-value>)',
         },
         // Secondary accent - cool cyan
         ice: {
@@ -59,10 +59,10 @@ const config: Config = {
         // Aliased to the volt/lime brand color (#ccff00) so the landing
         // page's primary accent matches the rest of the app exactly.
         core: {
-          300: '#e0ff66',
-          400: '#ccff00',
-          500: '#b3e600',
-          600: '#99cc00',
+          300: 'rgb(var(--color-core-300) / <alpha-value>)',
+          400: 'rgb(var(--color-volt-400) / <alpha-value>)',
+          500: 'rgb(var(--color-volt-500) / <alpha-value>)',
+          600: 'rgb(var(--color-volt-600) / <alpha-value>)',
         },
         // Ion — orbit paths, links, secondary accent
         ion: {
@@ -75,11 +75,11 @@ const config: Config = {
           400: '#a78bfa',
           500: '#8b6ae0',
         },
-        // Noxphere text scale (on ink backgrounds)
+        // Noxphere text scale (dynamic theme adaptation)
         nox: {
-          high: '#f4f5fa',
-          mid: '#9ca3c2',
-          low: '#6b7094',
+          high: 'rgb(var(--color-nox-high) / <alpha-value>)',
+          mid: 'rgb(var(--color-nox-mid) / <alpha-value>)',
+          low: 'rgb(var(--color-nox-low) / <alpha-value>)',
         },
       },
       fontFamily: {

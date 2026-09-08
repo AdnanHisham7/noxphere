@@ -9,8 +9,20 @@ const WithdrawSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
+const PublicProfileSettingsZodSchema = z.object({
+  showPhoto: z.boolean().optional(),
+  showPosition: z.boolean().optional(),
+  showJerseyNumber: z.boolean().optional(),
+  showAgeGroup: z.boolean().optional(),
+  showRating: z.boolean().optional(),
+  showTeam: z.boolean().optional(),
+  bio: z.string().max(300).optional(),
+  preferredFoot: z.string().max(20).optional(),
+}).optional();
+
 const TogglePublicProfileSchema = z.object({
   enabled: z.boolean(),
+  settings: PublicProfileSettingsZodSchema,
 });
 
 export class ConsentController {
@@ -83,10 +95,16 @@ export class ConsentController {
         throw new BadRequestError("Only a guardian can enable or disable a player's public page");
       }
       const dto = TogglePublicProfileSchema.parse(req.body);
-      await this.consentUseCases.setPublicProfileEnabled(req.params.studentId, req.user!.sub, dto.enabled, {
-        ip: req.ip,
-        userAgent: req.headers["user-agent"],
-      });
+      await this.consentUseCases.setPublicProfileEnabled(
+        req.params.studentId,
+        req.user!.sub,
+        dto.enabled,
+        {
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+        },
+        dto.settings,
+      );
       ResponseHandler.success(res, null, dto.enabled ? "Public player page enabled" : "Public player page disabled");
     } catch (err) {
       next(err);

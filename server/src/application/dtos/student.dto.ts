@@ -70,6 +70,41 @@ export const TransferStudentFranchiseSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
+export const RegisterPublicStudentSchema = z
+  .object({
+    email: z.string().email().optional(),
+    guardianEmail: z.string().email().optional(),
+    password: z.string().min(6).max(100),
+    firstName: z.string().min(1).max(50),
+    lastName: z.string().min(1).max(50),
+    phone: z.string().min(5).optional(),
+    guardianPhone: z.string().min(5).optional(),
+    guardianName: z.string().optional(),
+    dateOfBirth: z.string(),
+    gender: z.string().optional(),
+    ageGroup: z.string().optional(),
+    position: z.string().optional(),
+    positions: z.array(z.string()).optional(),
+    guardian: GuardianInfoSchema.optional(),
+  })
+  .refine((data) => !!(data.email || data.guardianEmail), {
+    message: "Email or guardianEmail is required",
+    path: ["email"],
+  })
+  .refine((data) => !!(data.phone || data.guardianPhone), {
+    message: "Phone or guardianPhone is required",
+    path: ["phone"],
+  });
+
+export const ClaimStudentSchema = z.object({
+  franchiseId: z.string().min(1),
+  teamId: z.string().optional(),
+  coachId: z.string().optional(),
+  jerseyNumber: z.number().optional(),
+  jerseySize: z.string().optional(),
+  position: z.string().optional(),
+});
+
 export type CreateStudentDto = z.infer<typeof CreateStudentSchema>;
 export type UpdateStudentDto = z.infer<typeof UpdateStudentSchema>;
 export type AddPerformanceDto = z.infer<typeof AddPerformanceSchema>;
@@ -77,3 +112,5 @@ export type MarkAttendanceDto = z.infer<typeof MarkAttendanceSchema>;
 export type AddCoachRemarkDto = z.infer<typeof AddCoachRemarkSchema>;
 export type UpdateStudentStatusDto = z.infer<typeof UpdateStudentStatusSchema>;
 export type TransferStudentFranchiseDto = z.infer<typeof TransferStudentFranchiseSchema>;
+export type RegisterPublicStudentDto = z.infer<typeof RegisterPublicStudentSchema>;
+export type ClaimStudentDto = z.infer<typeof ClaimStudentSchema>;

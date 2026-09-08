@@ -139,6 +139,7 @@ export class ConsentUseCases {
     guardianId: string,
     enabled: boolean,
     meta: { ip?: string; userAgent?: string },
+    settings?: Record<string, any>,
   ): Promise<void> {
     await this.assertGuardianOfStudent(studentId, guardianId);
     if (enabled) {
@@ -151,7 +152,11 @@ export class ConsentUseCases {
         await record.save();
       }
     }
-    await StudentModel.findByIdAndUpdate(studentId, { publicProfileEnabled: enabled });
+    const updatePayload: Record<string, any> = { publicProfileEnabled: enabled };
+    if (settings) {
+      updatePayload.publicProfileSettings = settings;
+    }
+    await StudentModel.findByIdAndUpdate(studentId, updatePayload);
   }
 
   // Used by the manager-facing Students page to show which players still

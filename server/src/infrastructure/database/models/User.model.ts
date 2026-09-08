@@ -5,6 +5,7 @@ import {
   UserRole,
   defaultPermissions,
 } from "../../../domain/entities/User.entity";
+import { normalizePhone } from "../../../shared/utils/phone";
 
 export interface UserDocument extends Omit<UserEntity, "id">, Document {}
 
@@ -85,15 +86,19 @@ UserSchema.pre(
   },
 );
 
-// Auto-set default permissions on role assignment
+// Auto-set default permissions on role assignment and normalize phone
 UserSchema.pre("save", function (next) {
   if (this.isModified("role") && !this.permissions) {
     this.permissions = defaultPermissions[this.role as UserRole];
+  }
+  if (this.isModified("phone") && this.phone) {
+    this.phone = normalizePhone(this.phone);
   }
   next();
 });
 
 UserSchema.index({ email: 1, deletedAt: 1 });
+UserSchema.index({ phone: 1, deletedAt: 1 });
 UserSchema.index({ franchiseId: 1, role: 1, isActive: 1 });
 UserSchema.index({ academyId: 1, role: 1, isActive: 1 });
 

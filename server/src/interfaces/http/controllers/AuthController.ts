@@ -65,8 +65,17 @@ export class AuthController {
 
   me = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      // Return user info from token payload (already validated by middleware)
-      ResponseHandler.success(res, req.user, 'Profile retrieved');
+      const profile = await this.authUseCases.getProfile(req.user!.sub);
+      ResponseHandler.success(res, profile, 'Profile retrieved');
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  updateProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const updated = await this.authUseCases.updateProfile(req.user!.sub, req.body);
+      ResponseHandler.success(res, updated, 'Profile updated successfully');
     } catch (err) {
       next(err);
     }

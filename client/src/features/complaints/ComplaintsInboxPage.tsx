@@ -63,7 +63,7 @@ const ComplaintsInboxPage: React.FC = () => {
               >
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-white truncate">{c.subject}</p>
-                  <Badge variant={STATUS_VARIANT[c.status]}>{c.status.replace("_", " ")}</Badge>
+                  <Badge variant={STATUS_VARIANT[c.status || "open"]}>{(c.status || "open").replace("_", " ")}</Badge>
                 </div>
                 <p className="text-2xs text-slate-500">
                   {c.raisedByName} · {c.raisedByRole} · {new Date(c.createdAt).toLocaleDateString("en-IN")}
@@ -100,8 +100,9 @@ const ComplaintDetail: React.FC<{
   const handleSend = async () => {
     if (!response.trim()) return toast.error("Enter a response");
     try {
-      const updated = await respond({ academyId, complaintId: complaint.id, response: response.trim(), status }).unwrap();
+      const res: any = await respond({ academyId, complaintId: complaint.id, response: response.trim(), status }).unwrap();
       toast.success("Response sent");
+      const updated = res?.data || res;
       onResponded(updated);
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't send response — try again");
@@ -113,7 +114,7 @@ const ComplaintDetail: React.FC<{
       <div>
         <div className="flex items-center justify-between mb-1">
           <p className="text-sm font-semibold text-white">{complaint.subject}</p>
-          <Badge variant={STATUS_VARIANT[complaint.status]}>{complaint.status.replace("_", " ")}</Badge>
+          <Badge variant={STATUS_VARIANT[complaint.status || "open"]}>{(complaint.status || "open").replace("_", " ")}</Badge>
         </div>
         <p className="text-2xs text-slate-500">
           {complaint.raisedByName} · {complaint.raisedByRole} · {new Date(complaint.createdAt).toLocaleString("en-IN")}

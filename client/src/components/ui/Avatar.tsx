@@ -5,9 +5,10 @@ interface AvatarProps {
   src?: string;
   name: string;
   size?: "sm" | "md" | "lg" | "xl";
+  className?: string;
 }
 
-export const Avatar: React.FC<AvatarProps> = ({ src, name, size = "md" }) => {
+export const Avatar: React.FC<AvatarProps> = ({ src, name, size = "md", className }) => {
   const sizes = {
     sm: "w-7 h-7 text-xs",
     md: "w-9 h-9 text-sm",
@@ -28,6 +29,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = "md" }) => {
       className={clsx(
         "rounded-full object-cover ring-1 ring-white/10",
         sizes[size],
+        className,
       )}
     />
   ) : (
@@ -35,6 +37,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = "md" }) => {
       className={clsx(
         "rounded-full bg-pitch-600 border border-white/10 flex items-center justify-center font-display font-bold text-volt-400",
         sizes[size],
+        className,
       )}
     >
       {initials}

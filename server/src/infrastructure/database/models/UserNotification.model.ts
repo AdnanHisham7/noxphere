@@ -27,7 +27,7 @@ const UserNotificationSchema = new Schema<UserNotificationDocument>(
     body: { type: String, required: true },
     data: Schema.Types.Mixed,
     isRead: { type: Boolean, default: false, index: true },
-    sentVia: [{ type: String, enum: ['push', 'email', 'sms'] }],
+    sentVia: [{ type: String, enum: ['push', 'email', 'sms', 'whatsapp'] }],
   },
   {
     timestamps: true,

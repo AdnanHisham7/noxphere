@@ -19,6 +19,7 @@ export interface AcademyEntity {
   id: string;
   name: string;
   academyCode: string;
+  managerId?: string;
   manager?: AcademyManager;
   location: Location;
   ageGroups: string[];

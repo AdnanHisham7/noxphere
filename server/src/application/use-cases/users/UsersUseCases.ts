@@ -5,6 +5,8 @@ import { UserEntity, UserRole, UserPermissions, defaultPermissions } from "../..
 import { NotFoundError, ConflictError, BadRequestError } from "../../../shared/errors/AppError";
 import { CreateUserDto, UpdateUserDto, ResetPasswordDto } from "../../dtos/users.dto";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
+import { UserModel } from "../../../infrastructure/database/models/User.model";
+import { normalizePhone, getPhoneMatchVariants } from "../../../shared/utils/phone";
 
 export interface RequestingUser {
   sub: string;
@@ -68,6 +70,15 @@ export class UsersUseCases {
     const existing = await this.userRepo.findByEmail(dto.email);
     if (existing) throw new ConflictError("A user with this email already exists");
 
+    if (dto.phone) {
+      const cleanPhone = normalizePhone(dto.phone);
+      const existingPhone = await UserModel.findOne({
+        phone: { $in: getPhoneMatchVariants(cleanPhone) },
+      });
+      if (existingPhone) throw new ConflictError("A user with this phone number already exists");
+      dto.phone = cleanPhone;
+    }
+
     // A coach belongs to an academy, not to a single franchise within it —
     // this is what lets them operate across every franchise of that
     // academy without ever being bound to one branch. A manager's own
@@ -118,6 +129,17 @@ export class UsersUseCases {
     if (updates.franchiseId === "") {
       updates.franchiseId = null;
     }
+
+    if (dto.phone) {
+      const cleanPhone = normalizePhone(dto.phone);
+      const existingPhone = await UserModel.findOne({
+        _id: { $ne: id },
+        phone: { $in: getPhoneMatchVariants(cleanPhone) },
+      });
+      if (existingPhone) throw new ConflictError("Another user with this phone number already exists");
+      updates.phone = cleanPhone;
+    }
+
     if (dto.role) {
       updates.permissions = {
         ...defaultPermissions[dto.role],

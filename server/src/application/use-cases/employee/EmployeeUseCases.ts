@@ -7,6 +7,7 @@ import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { UserPermissions } from "../../../domain/entities/User.entity";
 import { AcademySubscriptionUseCases } from "../subscription/AcademySubscriptionUseCases";
 import { NotFoundError, BadRequestError, ConflictError } from "../../../shared/errors/AppError";
+import { normalizePhone, getPhoneMatchVariants } from "../../../shared/utils/phone";
 
 const ALL_PERMISSION_KEYS: (keyof UserPermissions)[] = [
   "canManageUsers",
@@ -89,6 +90,14 @@ export class EmployeeUseCases {
       if (!dto.email) throw new BadRequestError("A staff employee needs an email to log in with");
     }
 
+    const cleanPhone = dto.phone ? normalizePhone(dto.phone) : undefined;
+    if (cleanPhone) {
+      const existingUserPhone = await UserModel.findOne({
+        phone: { $in: getPhoneMatchVariants(cleanPhone) },
+      });
+      if (existingUserPhone) throw new ConflictError("An account with this phone number already exists");
+    }
+
     let userId: string | undefined;
     if (dto.employeeType === "staff") {
       const role = await EmployeeRoleModel.findById(dto.roleId);
@@ -105,7 +114,7 @@ export class EmployeeUseCases {
         role: "employee",
         firstName: dto.firstName,
         lastName: dto.lastName,
-        phone: dto.phone,
+        phone: cleanPhone || "",
         isActive: true,
         isEmailVerified: false,
         permissions: permissionsFromKeys(role.permissions),
@@ -121,7 +130,7 @@ export class EmployeeUseCases {
       academyId: dto.academyId,
       firstName: dto.firstName,
       lastName: dto.lastName,
-      phone: dto.phone,
+      phone: cleanPhone || dto.phone,
       email: dto.email,
       employeeType: dto.employeeType,
       userId,

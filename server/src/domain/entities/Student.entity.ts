@@ -35,10 +35,21 @@ export type StudentStatus =
   | "graduated"
   | "dropped_out";
 
+export interface PublicProfileSettings {
+  showPhoto?: boolean;
+  showPosition?: boolean;
+  showJerseyNumber?: boolean;
+  showAgeGroup?: boolean;
+  showRating?: boolean;
+  showTeam?: boolean;
+  bio?: string;
+  preferredFoot?: string;
+}
+
 export interface StudentEntity {
   id: string;
   userId: string;
-  franchiseId: string;
+  franchiseId?: string;
   teamId?: string;
   coachId?: string;
   guardianIds: string[]; // additional guardian users (if any)
@@ -67,6 +78,7 @@ export interface StudentEntity {
   transferNote?: string;
   publicProfileToken: string;
   publicProfileEnabled: boolean;
+  publicProfileSettings?: PublicProfileSettings;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;

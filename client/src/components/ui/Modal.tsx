@@ -42,13 +42,13 @@ export const Modal: React.FC<ModalProps> = ({
         )}
       >
         {/* Fixed Header */}
-        <div className="flex items-center justify-between p-5 border-b border-white/5 flex-shrink-0">
-          <h2 className="font-display font-bold text-white uppercase tracking-wide">
+        <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-white/5 flex-shrink-0">
+          <h2 className="font-display font-bold text-slate-900 dark:text-white uppercase tracking-wide">
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="btn-ghost text-slate-400 hover:text-white p-1 transition-colors"
+            className="btn-ghost text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 transition-colors"
           >
             ✕
           </button>

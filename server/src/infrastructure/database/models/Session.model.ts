@@ -3,7 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface SessionDocument extends Document {
   franchiseId: mongoose.Types.ObjectId;
-  targetType: "team" | "category";
+  targetType: "team" | "category" | "batch";
   teamId?: mongoose.Types.ObjectId;
   category?: string;
   categories?: string[];
@@ -36,7 +36,7 @@ const SessionSchema = new Schema<SessionDocument>(
     franchiseId: { type: Schema.Types.ObjectId, ref: "Franchise", required: true, index: true },
     targetType: {
       type: String,
-      enum: ["team", "category"],
+      enum: ["team", "category", "batch"],
       default: "team",
       required: true,
     },
@@ -94,6 +94,12 @@ SessionSchema.pre("validate", function (this: SessionDocument, next) {
   if (this.coachIds && this.coachIds.length > 0 && !this.coachId) {
     this.coachId = this.coachIds[0];
   }
+  if (this.coachId && (!this.coachIds || this.coachIds.length === 0)) {
+    this.coachIds = [this.coachId];
+  }
+  if (this.coachId && this.coachIds && !this.coachIds.some((id) => id.toString() === this.coachId!.toString())) {
+    this.coachIds.unshift(this.coachId);
+  }
   if (this.categories && this.categories.length > 0 && !this.category) {
     this.category = this.categories[0];
   }
@@ -103,6 +109,10 @@ SessionSchema.pre("validate", function (this: SessionDocument, next) {
   }
   if (this.targetType === "category" && !this.category && (!this.categories || this.categories.length === 0)) {
     next(new Error("category or categories are required when targetType is 'category'"));
+    return;
+  }
+  if (this.targetType === "batch" && (!this.playerIds || this.playerIds.length === 0)) {
+    next(new Error("playerIds are required when targetType is 'batch'"));
     return;
   }
   next();

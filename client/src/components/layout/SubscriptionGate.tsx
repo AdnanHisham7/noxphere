@@ -24,6 +24,8 @@ export const SubscriptionGate: React.FC<{ children: React.ReactNode }> = ({ chil
     skip: !gatedRole || !academyId,
   });
 
+  console.log(status, "SubscriptionGate status");
+
   if (!gatedRole || !academyId || isLoading || !status) {
     return <>{children}</>;
   }
@@ -39,15 +41,15 @@ export const SubscriptionGate: React.FC<{ children: React.ReactNode }> = ({ chil
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-pitch-950 px-6">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-pitch-950 text-slate-900 dark:text-slate-100 px-6 transition-colors duration-200">
       <div className="max-w-md w-full text-center space-y-4">
         <div className="w-14 h-14 rounded-full bg-ember-400/10 border border-ember-400/20 flex items-center justify-center mx-auto">
-          <ShieldAlert className="text-ember-400" size={26} />
+          <ShieldAlert className="text-ember-500 dark:text-ember-400" size={26} />
         </div>
-        <h1 className="font-display font-extrabold text-white text-xl uppercase tracking-tight">
+        <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl uppercase tracking-tight">
           Subscription {status.status === "past_due" ? "Payment Failed" : "Inactive"}
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           {user?.role === "manager"
             ? "This academy's subscription needs attention before you can continue. Complete payment to restore access."
             : "This academy's subscription needs attention. Please contact your manager to resolve it."}

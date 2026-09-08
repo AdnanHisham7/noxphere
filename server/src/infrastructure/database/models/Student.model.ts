@@ -1,10 +1,11 @@
 // src/infrastructure/database/models/Student.model.ts
 import mongoose, { Schema, Document } from "mongoose";
 import { StudentEntity } from "../../../domain/entities/Student.entity";
+import { normalizePhone } from "../../../shared/utils/phone";
 
 export interface StudentDocument extends Document {
   userId: mongoose.Types.ObjectId;
-  franchiseId: mongoose.Types.ObjectId;
+  franchiseId?: mongoose.Types.ObjectId;
   teamId?: mongoose.Types.ObjectId;
   coachId?: mongoose.Types.ObjectId;
   guardianIds: mongoose.Types.ObjectId[];
@@ -33,6 +34,7 @@ export interface StudentDocument extends Document {
   transferNote?: string;
   publicProfileToken: string;
   publicProfileEnabled: boolean;
+  publicProfileSettings?: StudentEntity["publicProfileSettings"];
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
@@ -66,6 +68,20 @@ const GuardianSchema = new Schema(
   { _id: false },
 );
 
+const PublicProfileSettingsSchema = new Schema(
+  {
+    showPhoto: { type: Boolean, default: true },
+    showPosition: { type: Boolean, default: true },
+    showJerseyNumber: { type: Boolean, default: true },
+    showAgeGroup: { type: Boolean, default: true },
+    showRating: { type: Boolean, default: true },
+    showTeam: { type: Boolean, default: true },
+    bio: { type: String, default: "" },
+    preferredFoot: { type: String, default: "" },
+  },
+  { _id: false },
+);
+
 const StudentSchema = new Schema<StudentDocument>(
   {
     userId: {
@@ -77,7 +93,7 @@ const StudentSchema = new Schema<StudentDocument>(
     franchiseId: {
       type: Schema.Types.ObjectId,
       ref: "Franchise",
-      required: true,
+      required: false,
       index: true,
     },
     teamId: { type: Schema.Types.ObjectId, ref: "Team", index: true },
@@ -145,6 +161,10 @@ const StudentSchema = new Schema<StudentDocument>(
     // materially different exposure than the data processing needed to
     // just run the academy.
     publicProfileEnabled: { type: Boolean, default: false },
+    publicProfileSettings: {
+      type: PublicProfileSettingsSchema,
+      default: () => ({}),
+    },
     deletedAt: { type: Date, index: true },
   },
   {
@@ -172,6 +192,9 @@ StudentSchema.pre(
 StudentSchema.pre("save", function (next) {
   if (this.positions && this.positions.length > 0) {
     this.position = this.positions[0];
+  }
+  if (this.guardian?.phone) {
+    this.guardian.phone = normalizePhone(this.guardian.phone);
   }
   next();
 });

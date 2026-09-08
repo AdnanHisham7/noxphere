@@ -1,8 +1,8 @@
 // src/features/students/StudentsPage.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { clsx } from "clsx";
-import { Shuffle, Users, Trash2, Search, SearchX } from "lucide-react";
+import { Shuffle, Users, Trash2, Search, SearchX, Link2, UserPlus, Inbox, CreditCard } from "lucide-react";
 import {
   Button,
   Input,
@@ -17,22 +17,31 @@ import {
 import { toast } from "react-hot-toast";
 import mannequinPng from "../../assets/players/mannequin.png";
 import { PlayerPlaceholder } from "@/components/ui/PlayerPlaceholder";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import { useConfirm } from "../../hooks/useConfirm";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
+import { useGetFranchisesQuery } from "../../store/api/franchiseApi";
+import { setActiveFranchise } from "../../store/slices/uiSlice";
 import { SubscriptionModal } from "../subscription/SubscriptionModal";
 import { useGetFranchiseConsentStatusQuery } from "../../store/api/consentApi";
+import { ShareRegistrationLinkModal } from "./ShareRegistrationLinkModal";
+import { RegistrationRequestsTab } from "./RegistrationRequestsTab";
+import { ClaimUnattachedStudentModal } from "./ClaimUnattachedStudentModal";
 import {
   useGetStudentsQuery,
   useCreateStudentMutation,
   useDeleteStudentMutation,
+  useGetRegistrationRequestsQuery,
   type Student,
   type SelectionStatus,
 } from "../../store/api/studentsApi";
 
 interface PlayerCardContentProps {
   student: Student;
+
   teamName: string;
   getRatingColor: (r: number) => string;
   selectionBadge: typeof selectionBadge;
@@ -167,6 +176,7 @@ const emptyMedical = {
 };
 
 const StudentsPage: React.FC = () => {
+  const dispatch = useDispatch();
   const franchiseId = useCurrentFranchiseId();
   const [search, setSearch] = useState("");
   const [filterTeam, setFilterTeam] = useState("");
@@ -197,7 +207,60 @@ const StudentsPage: React.FC = () => {
   const [deleteStudent] = useDeleteStudentMutation();
   const { confirm, ConfirmDialog } = useConfirm();
   const academyId = useCurrentAcademyId();
+  const { data: franchises } = useGetFranchisesQuery(
+    academyId ? { academyId, isActive: true } : undefined,
+    { skip: !academyId || !!franchiseId },
+  );
+  const { user } = useSelector((s: RootState) => s.auth);
+  const isCoach = user?.role === "coach";
+  const canManageSquad = user?.role === "manager" || user?.role === "super_admin" || !!user?.permissions?.canManageFranchises;
   const [subscriptionModalMode, setSubscriptionModalMode] = useState<"subscribe" | "upgrade" | null>(null);
+
+  const [activeTab, setActiveTab] = useState<"squad" | "requests">("squad");
+  const [showShareLinkModal, setShowShareLinkModal] = useState(false);
+  const [showClaimModal, setShowClaimModal] = useState(false);
+
+  const { data: pendingRequestsData, refetch: refetchRequests } = useGetRegistrationRequestsQuery(
+    { academyId: academyId ?? undefined, status: "pending" },
+    { skip: !academyId || isCoach || !canManageSquad }
+  );
+  const pendingRequestsCount = pendingRequestsData?.requests?.length ?? 0;
+
+  useEffect(() => {
+    if ((isCoach || !canManageSquad) && activeTab === "requests") {
+      setActiveTab("squad");
+    }
+  }, [isCoach, canManageSquad, activeTab]);
+
+  // Check for any pending player creation from previous subscription flow
+  useEffect(() => {
+    const raw = sessionStorage.getItem("noxphere_pending_student_creation");
+    if (!raw) return;
+    try {
+      const pending = JSON.parse(raw);
+      if (pending && franchiseId && pending.franchiseId === franchiseId) {
+        sessionStorage.removeItem("noxphere_pending_student_creation");
+        createStudent(pending)
+          .unwrap()
+          .then(() => {
+            toast.success(`Subscription active: Player ${pending.firstName} ${pending.lastName} enrolled successfully!`, {
+              duration: 5000,
+            });
+          })
+          .catch((err: any) => {
+            console.warn("Auto-enroll error on Squad page:", err);
+            const code = err?.data?.code;
+            if (code === "SUBSCRIPTION_REQUIRED" || code === "SUBSCRIPTION_CAPACITY_EXCEEDED") {
+              sessionStorage.setItem("noxphere_pending_student_creation", raw);
+            } else {
+              toast.error(err?.data?.message || "Failed to auto-enroll pending player.");
+            }
+          });
+      }
+    } catch {
+      sessionStorage.removeItem("noxphere_pending_student_creation");
+    }
+  }, [franchiseId, createStudent]);
 
   const handleDelete = async (id: string, name: string) => {
     const ok = await confirm({
@@ -221,6 +284,22 @@ const StudentsPage: React.FC = () => {
         icon={<Users size={28} />}
         title="No franchise selected"
         description="Select a franchise from the top bar to manage its squad."
+        action={
+          franchises && franchises.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
+              {franchises.map((f) => (
+                <Button
+                  key={f.id}
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => dispatch(setActiveFranchise(f.id))}
+                >
+                  {f.name}
+                </Button>
+              ))}
+            </div>
+          ) : undefined
+        }
       />
     );
   }
@@ -228,23 +307,104 @@ const StudentsPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <p className="section-title mb-1">Management</p>
-          <h1 className="font-display font-extrabold text-white text-2xl uppercase tracking-tight">Squad</h1>
+          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-2xl uppercase tracking-tight">
+            Squad &amp; Players
+          </h1>
           <p className="text-sm text-slate-500 mt-0.5">
             {isLoading ? "Loading…" : `${data?.total ?? 0} players enrolled`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" icon={<span>+</span>} onClick={() => setShowAddModal(true)}>
-            Add Player
-          </Button>
-        </div>
+        {canManageSquad && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {academyId && (
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={<Link2 size={14} />}
+                onClick={() => setShowShareLinkModal(true)}
+                className="text-xs"
+              >
+                Registration Link
+              </Button>
+            )}
+            <Link to="/nfc-cards">
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={<CreditCard size={14} />}
+                className="text-xs"
+              >
+                NFC Cards
+              </Button>
+            </Link>
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={<UserPlus size={14} />}
+              onClick={() => setShowClaimModal(true)}
+              className="text-xs"
+            >
+              Add Free Agent
+            </Button>
+            <Button size="sm" icon={<span>+</span>} onClick={() => setShowAddModal(true)} className="text-xs">
+              Add Player
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Filters + view toggle */}
-      <div className="card p-4 flex flex-wrap gap-3 items-end">
+      {/* Navigation Tabs */}
+      {canManageSquad && (
+        <div className="flex items-center gap-2 border-b border-slate-200 dark:border-white/10 pb-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab("squad")}
+            className={clsx(
+              "px-4 py-2 text-xs font-display uppercase tracking-wider font-bold rounded-t-lg transition-colors",
+              activeTab === "squad"
+                ? "bg-slate-200 dark:bg-pitch-800 text-slate-900 dark:text-volt-400 border-b-2 border-volt-400"
+                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+            )}
+          >
+            All Players ({data?.total ?? 0})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("requests")}
+            className={clsx(
+              "px-4 py-2 text-xs font-display uppercase tracking-wider font-bold rounded-t-lg transition-colors flex items-center gap-2",
+              activeTab === "requests"
+                ? "bg-slate-200 dark:bg-pitch-800 text-slate-900 dark:text-volt-400 border-b-2 border-volt-400"
+                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+            )}
+          >
+            <span>Registration Requests</span>
+            {pendingRequestsCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-ember-500 text-white font-mono text-2xs animate-pulse">
+                {pendingRequestsCount}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
+
+      {canManageSquad && activeTab === "requests" ? (
+        <RegistrationRequestsTab
+          academyId={academyId ?? ""}
+          franchiseId={franchiseId}
+          teams={teams ?? []}
+          onApprovedStudent={() => {
+            refetchRequests();
+          }}
+        />
+      ) : (
+        <>
+          {/* Filters + view toggle */}
+          <div className="card p-4 flex flex-wrap gap-3 items-end">
+
         <div className="flex-1 min-w-48">
           <Input
             placeholder="Search players..."
@@ -477,13 +637,15 @@ const StudentsPage: React.FC = () => {
                       <Link to={`/students/${student.id}`} className="text-xs text-volt-400 hover:underline">
                         View →
                       </Link>
-                      <button
-                        onClick={() => handleDelete(student.id, `${student.firstName} ${student.lastName}`)}
-                        className="text-slate-500 hover:text-ember-400 transition-colors"
-                        aria-label="Remove player"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {canManageSquad && (
+                        <button
+                          onClick={() => handleDelete(student.id, `${student.firstName} ${student.lastName}`)}
+                          className="text-slate-500 hover:text-ember-400 transition-colors"
+                          aria-label="Remove player"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -492,42 +654,89 @@ const StudentsPage: React.FC = () => {
           </table>
         </div>
       )}
+        </>
+      )}
 
       {/* Add Student Modal */}
-      <AddPlayerModal
-        franchiseId={franchiseId}
-        teams={teams ?? []}
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onCreate={async (body) => {
-          try {
-            await createStudent(body).unwrap();
-            toast.success("Player enrolled! A guardian account has been created.");
-            setShowAddModal(false);
-          } catch (err: any) {
-            const code = err?.data?.code;
-            if (code === "SUBSCRIPTION_REQUIRED") {
+      {canManageSquad && (
+        <AddPlayerModal
+          franchiseId={franchiseId}
+          teams={teams ?? []}
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onCreate={async (body) => {
+            try {
+              await createStudent(body).unwrap();
+              toast.success("Player enrolled successfully!");
               setShowAddModal(false);
-              setSubscriptionModalMode("subscribe");
-            } else if (code === "SUBSCRIPTION_CAPACITY_EXCEEDED") {
-              setShowAddModal(false);
-              setSubscriptionModalMode("upgrade");
-            } else {
-              toast.error(err?.data?.message || "Couldn't enroll player — try again");
+              return true;
+            } catch (err: any) {
+              const code = err?.data?.code;
+              if (code === "SUBSCRIPTION_REQUIRED" || code === "SUBSCRIPTION_CAPACITY_EXCEEDED") {
+                sessionStorage.setItem("noxphere_pending_student_creation", JSON.stringify(body));
+                setShowAddModal(false);
+                setSubscriptionModalMode(code === "SUBSCRIPTION_REQUIRED" ? "subscribe" : "upgrade");
+                toast.success(
+                  `Player details for ${body.firstName} ${body.lastName} saved! They will be automatically enrolled once payment is complete.`,
+                  { duration: 6000 }
+                );
+                return true;
+              } else {
+                toast.error(err?.data?.message || "Couldn't enroll player — try again");
+                return false;
+              }
             }
-          }
-        }}
-        creating={creating}
-      />
-      {subscriptionModalMode && academyId && (
+          }}
+          creating={creating}
+        />
+      )}
+      {canManageSquad && subscriptionModalMode && academyId && (
         <SubscriptionModal
           academyId={academyId}
           mode={subscriptionModalMode}
+          onSuccess={async () => {
+            const raw = sessionStorage.getItem("noxphere_pending_student_creation");
+            if (raw) {
+              try {
+                const pending = JSON.parse(raw);
+                sessionStorage.removeItem("noxphere_pending_student_creation");
+                await createStudent(pending).unwrap();
+                toast.success(`Subscription active: Player ${pending.firstName} ${pending.lastName} enrolled successfully!`);
+              } catch (e: any) {
+                console.error("Auto-enroll error on upgrade:", e);
+                toast.error(e?.data?.message || "Failed to auto-enroll player after upgrade. Please try adding them again.");
+              }
+            }
+          }}
           onClose={() => setSubscriptionModalMode(null)}
         />
       )}
+
+      {/* Share Registration Link Modal */}
+      {canManageSquad && academyId && (
+        <ShareRegistrationLinkModal
+          isOpen={showShareLinkModal}
+          onClose={() => setShowShareLinkModal(false)}
+          academyId={academyId}
+        />
+      )}
+
+      {/* Claim Free Agent Player Modal */}
+      {canManageSquad && (
+        <ClaimUnattachedStudentModal
+          isOpen={showClaimModal}
+          onClose={() => setShowClaimModal(false)}
+          franchiseId={franchiseId}
+          teams={teams ?? []}
+          onClaimed={() => {
+            refetchRequests();
+          }}
+        />
+      )}
+
       {ConfirmDialog}
     </div>
+
   );
 };
 
@@ -556,7 +765,7 @@ const AddPlayerModal: React.FC<{
   teams: { id: string; name: string }[];
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (body: any) => void;
+  onCreate: (body: any) => Promise<boolean | void> | boolean | void;
   creating: boolean;
 }> = ({ franchiseId, teams, isOpen, onClose, onCreate, creating }) => {
   const [firstName, setFirstName] = useState("");
@@ -582,13 +791,13 @@ const AddPlayerModal: React.FC<{
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName || !lastName || !dob || !guardian.name || !guardian.phone || !guardian.email || !medical.emergencyContactName || !medical.emergencyContactPhone) {
       toast.error("Fill in all required fields");
       return;
     }
-    onCreate({
+    const success = await onCreate({
       email: guardian.email,
       firstName,
       lastName,
@@ -614,7 +823,9 @@ const AddPlayerModal: React.FC<{
         scanReportUrl: medical.scanReportUrl || undefined,
       },
     });
-    reset();
+    if (success !== false) {
+      reset();
+    }
   };
 
 

@@ -19,6 +19,7 @@ export const complaintApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     createComplaint: builder.mutation<Complaint, { subject: string; message: string }>({
       query: (body) => ({ url: "/complaints", method: "POST", body }),
+      transformResponse: (res: { data: Complaint }) => res.data,
       invalidatesTags: ["Complaint"],
     }),
     listMyComplaints: builder.query<Complaint[], void>({
@@ -40,6 +41,7 @@ export const complaintApi = baseApi.injectEndpoints({
         method: "POST",
         body,
       }),
+      transformResponse: (res: { data: Complaint }) => res.data,
       invalidatesTags: ["Complaint"],
     }),
   }),

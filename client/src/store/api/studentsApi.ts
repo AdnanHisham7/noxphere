@@ -214,6 +214,7 @@ export const studentsApi = baseApi.injectEndpoints({
         body: { toFranchiseId, reason },
       }),
       transformResponse: (res: { data: Student }) => res.data,
+
       invalidatesTags: (_, __, { id }) => [
         { type: 'Student', id },
         { type: 'Student', id: 'LIST' },
@@ -224,6 +225,132 @@ export const studentsApi = baseApi.injectEndpoints({
       query: (id) => `/students/${id}/transfer-history`,
       transformResponse: (res: { data: FranchiseTransferLogEntry[] }) => res.data,
       providesTags: (_, __, id) => [{ type: 'TransferHistory', id }],
+    }),
+    getUnattachedStudents: builder.query<
+      { students: Student[]; total: number; page: number; totalPages: number },
+      { search?: string; ageGroup?: string; page?: number; limit?: number }
+    >({
+      query: (params) => ({
+        url: '/students/unattached',
+        params,
+      }),
+      transformResponse: (res: any) => {
+        const raw = res?.data;
+        const list = raw?.students || raw?.items || (Array.isArray(raw) ? raw : []);
+        return {
+          students: list,
+          total: raw?.total ?? list.length,
+          page: raw?.page ?? 1,
+          totalPages: raw?.totalPages ?? raw?.pages ?? 1,
+        };
+      },
+      providesTags: [{ type: 'Student', id: 'LIST' }],
+    }),
+    claimUnattachedStudent: builder.mutation<
+      Student,
+      {
+        id: string;
+        data: {
+          franchiseId: string;
+          teamId?: string;
+          coachId?: string;
+          jerseyNumber?: number;
+          jerseySize?: string;
+          position?: string;
+          positions?: string[];
+        };
+      }
+    >({
+      query: ({ id, data }) => ({
+        url: `/students/${id}/claim`,
+        method: 'POST',
+        body: data,
+      }),
+      transformResponse: (res: { data: Student }) => res.data,
+      invalidatesTags: [{ type: 'Student', id: 'LIST' }, 'Franchise'],
+    }),
+    registerPublicStudent: builder.mutation<
+      { token: string; student: Student },
+      {
+        firstName: string;
+        lastName: string;
+        email?: string;
+        phone?: string;
+        dateOfBirth: string;
+        gender?: string;
+        ageGroup: string;
+        guardianEmail: string;
+        guardianPhone: string;
+        guardianName: string;
+        password?: string;
+        position?: string;
+        positions?: string[];
+        medicalInfo?: any;
+      }
+    >({
+      query: (body) => ({
+        url: '/auth/register-student',
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (res: { data: { token: string; student: Student } }) => res.data,
+    }),
+    getRegistrationRequests: builder.query<
+      { requests: any[]; total: number },
+      { academyId?: string; franchiseId?: string; status?: string }
+    >({
+      query: (params) => ({
+        url: '/registration/requests',
+        params,
+      }),
+      transformResponse: (res: any) => {
+        const raw = res?.data;
+        if (Array.isArray(raw)) {
+          return { requests: raw, total: raw.length };
+        }
+        if (raw?.requests && Array.isArray(raw.requests)) {
+          return { requests: raw.requests, total: raw.total ?? raw.requests.length };
+        }
+        return { requests: [], total: 0 };
+      },
+      providesTags: ['RegistrationRequest'],
+    }),
+    approveRegistrationRequest: builder.mutation<
+      { request: any; student: Student },
+      {
+        id: string;
+        data: {
+          franchiseId?: string;
+          teamId?: string;
+          coachId?: string;
+          jerseyNumber?: number;
+          jerseySize?: string;
+          position?: string;
+          positions?: string[];
+          studentDetails?: any;
+          guardianDetails?: any;
+        };
+      }
+    >({
+      query: ({ id, data }) => ({
+        url: `/registration/requests/${id}/approve`,
+        method: 'POST',
+        body: data,
+      }),
+      transformResponse: (res: { data: { request: any; student: Student } }) => res.data,
+      invalidatesTags: ['RegistrationRequest', { type: 'Student', id: 'LIST' }, 'Academy'],
+    }),
+    rejectRegistrationRequest: builder.mutation<
+      { request: any },
+      { id: string; reason?: string }
+    >({
+      query: ({ id, reason }) => ({
+        url: `/registration/requests/${id}/reject`,
+        method: 'POST',
+        body: { reason },
+      }),
+      transformResponse: (res: { data: { request: any } }) => res.data,
+      invalidatesTags: ['RegistrationRequest'],
     }),
   }),
 });
@@ -241,4 +368,10 @@ export const {
   useUpdateStudentStatusMutation,
   useTransferStudentFranchiseMutation,
   useGetTransferHistoryQuery,
+  useGetUnattachedStudentsQuery,
+  useClaimUnattachedStudentMutation,
+  useRegisterPublicStudentMutation,
+  useGetRegistrationRequestsQuery,
+  useApproveRegistrationRequestMutation,
+  useRejectRegistrationRequestMutation,
 } = studentsApi;

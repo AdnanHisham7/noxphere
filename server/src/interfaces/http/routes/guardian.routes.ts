@@ -31,3 +31,7 @@ guardianRouter.get("/children/:studentId/fees", (req, res, next) => {
 guardianRouter.get("/children/:studentId/performance", (req, res, next) => {
   req.app.locals.controllers.guardian.getChildPerformance(req, res, next);
 });
+
+guardianRouter.get("/children/:studentId/sessions", (req, res, next) => {
+  req.app.locals.controllers.guardian.getChildSessions(req, res, next);
+});

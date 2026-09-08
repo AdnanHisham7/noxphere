@@ -7,7 +7,7 @@ const SessionBaseSchema = z.object({
   // student in an age-group category across the franchise (including
   // students who aren't on any team yet). Exactly one of teamId/category
   // is required, enforced by the refinement on CreateSessionSchema below.
-  targetType: z.enum(["team", "category"]).default("team"),
+  targetType: z.enum(["team", "category", "batch"]).default("team"),
   teamId: z.string().min(1).optional(),
   category: z.string().min(1).optional(),
   categories: z.array(z.string()).optional(),
@@ -38,10 +38,15 @@ const SessionBaseSchema = z.object({
 });
 
 export const CreateSessionSchema = SessionBaseSchema.refine(
-  (data) => (data.targetType === "team" ? !!data.teamId : !!data.category),
+  (data) => {
+    if (data.targetType === "team") return !!data.teamId;
+    if (data.targetType === "category") return !!data.category || (!!data.categories && data.categories.length > 0);
+    if (data.targetType === "batch") return !!data.playerIds && data.playerIds.length > 0;
+    return true;
+  },
   {
-    message: "Select a team for a team session, or a category for a category session",
-    path: ["teamId"],
+    message: "Select a team for a team session, categories for a category session, or players for a batch session",
+    path: ["targetType"],
   },
 );
 

@@ -20,6 +20,9 @@ import {
   ForbiddenError,
 } from "../../../shared/errors/AppError";
 import bcrypt from "bcryptjs";
+import { logger } from "../../../shared/utils/logger";
+import { ensureWhatsAppCompatibleImageUrl } from "../../../infrastructure/services/WhatsAppService";
+import { schedulerService } from "../../../infrastructure/services/SchedulerService";
 
 function toFranchiseEntity(doc: FranchiseDocument): FranchiseEntity {
   const json = doc.toJSON() as any;
@@ -190,7 +193,7 @@ export class AcademyUseCases {
   async updateAcademyConfig(
     id: string,
     dto: AcademyConfigDto,
-    requester?: { role: string; franchiseId?: string; academyId?: string },
+    requester?: { sub?: string; role: string; franchiseId?: string; academyId?: string },
   ): Promise<AcademyEntity> {
     const academy = await this.academyRepository.findById(id);
     if (!academy) throw new NotFoundError("Academy");
@@ -212,9 +215,12 @@ export class AcademyUseCases {
     // the rest.
     const mergedLocation = dto.location ? { ...academy.location, ...dto.location } : undefined;
 
-    let effectiveDto: Partial<AcademyEntity> = { ...dto, location: mergedLocation };
+    let effectiveDto: any = {};
     if (requester && requester.role === "manager") {
-      const isOwner = requester.academyId && requester.academyId === id;
+      const isOwner =
+        (requester.academyId && requester.academyId === id) ||
+        (academy.manager?.id === requester.sub) ||
+        (academy.managerId === requester.sub);
       
       let isFranchiseManager = false;
       if (requester.franchiseId) {
@@ -227,20 +233,35 @@ export class AcademyUseCases {
       if (!isOwner && !isFranchiseManager) {
         throw new ForbiddenError("You can only configure your own academy");
       }
-      effectiveDto = {
-        name: dto.name,
-        location: mergedLocation,
-        ageGroups: dto.ageGroups,
-        absentAlertDays: dto.absentAlertDays,
-        dueDateAlertDays: dto.dueDateAlertDays,
-        feeQrImageUrl: dto.feeQrImageUrl,
-        skillParameters: dto.skillParameters,
-        dataProtectionContactEmail: dto.dataProtectionContactEmail,
-      };
+
+      if (dto.name !== undefined) effectiveDto.name = dto.name;
+      if (mergedLocation !== undefined) effectiveDto.location = mergedLocation;
+      if (dto.ageGroups !== undefined) effectiveDto.ageGroups = dto.ageGroups;
+      if (dto.absentAlertDays !== undefined) effectiveDto.absentAlertDays = dto.absentAlertDays;
+      if (dto.dueDateAlertDays !== undefined) effectiveDto.dueDateAlertDays = dto.dueDateAlertDays;
+      if (dto.feeQrImageUrl !== undefined) {
+        effectiveDto.feeQrImageUrl = dto.feeQrImageUrl ? ensureWhatsAppCompatibleImageUrl(dto.feeQrImageUrl) : dto.feeQrImageUrl;
+      }
+      if (dto.skillParameters !== undefined) effectiveDto.skillParameters = dto.skillParameters;
+      if (dto.dataProtectionContactEmail !== undefined) effectiveDto.dataProtectionContactEmail = dto.dataProtectionContactEmail;
+    } else {
+      effectiveDto = { ...dto };
+      if (effectiveDto.feeQrImageUrl) {
+        effectiveDto.feeQrImageUrl = ensureWhatsAppCompatibleImageUrl(effectiveDto.feeQrImageUrl);
+      }
+      if (mergedLocation !== undefined) effectiveDto.location = mergedLocation;
     }
 
     const updated = await this.academyRepository.update(id, effectiveDto);
     if (!updated) throw new NotFoundError("Academy");
+
+    // If dueDateAlertDays was updated, immediately check upcoming installments so newly eligible ones get alerted
+    if (dto.dueDateAlertDays !== undefined) {
+      schedulerService.checkAndSendDueSoonFeeAlerts().catch((err) => {
+        logger.error("[AcademyUseCases] Triggering fee alert check after dueDateAlertDays update failed:", err);
+      });
+    }
+
     return updated;
   }
 

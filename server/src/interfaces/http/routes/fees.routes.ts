@@ -38,3 +38,12 @@ feesRouter.post(
     req.app.locals.controllers.fees.undoPayment(req, res, next);
   },
 );
+
+feesRouter.post(
+  "/:id/installments/:installmentNumber/remind",
+  authenticate,
+  requirePermission("canManageFinance"),
+  (req, res, next) => {
+    req.app.locals.controllers.fees.sendReminder(req, res, next);
+  },
+);

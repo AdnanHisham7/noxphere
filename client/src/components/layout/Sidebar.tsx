@@ -1,6 +1,6 @@
-// src/components/layout/Sidebar.tsx
-import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { NavLink, useNavigate, Link } from 'react-router-dom';
+import logoSrc from '../../assets/logo.png';
 import { useDispatch, useSelector } from 'react-redux';
 import { clsx } from 'clsx';
 import {
@@ -28,8 +28,13 @@ import {
 import { RootState } from '../../store';
 import { clearCredentials } from '../../store/slices/authSlice';
 import { toggleSidebar, setActiveFranchise, clearActiveFranchise } from '../../store/slices/uiSlice';
-import { Avatar } from '../ui';
+import { clearNotifications } from '../../store/slices/notificationSlice';
+import { baseApi } from '../../store/api/baseApi';
+import { Avatar, Modal } from '../ui';
 import { useLogoutMutation } from '../../store/api/authApi';
+import { useGetFranchisesQuery } from '../../store/api/franchiseApi';
+import { useCurrentAcademyId } from '../../hooks/useCurrentAcademyId';
+import { isFranchiseRequiredPage } from '../../hooks/useCurrentFranchiseId';
 import { useTransferWallEnabled } from '../../hooks/useTransferWallEnabled';
 
 type EmployeePermissionKey =
@@ -74,11 +79,13 @@ const navConfig: Record<string, NavItem[]> = {
     { path: '/franchises', label: 'Franchises', icon: Building2 },
     { path: '/users', label: 'Users', icon: Users },
     { path: '/finance', label: 'Finance', icon: Wallet },
+    { path: '/nfc-cards', label: 'NFC Cards', icon: CreditCard },
   ],
   manager: [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/franchises', label: 'Franchise', icon: Building2 },
     { path: '/students', label: 'Squad', icon: Shirt },
+    { path: '/nfc-cards', label: 'NFC Cards', icon: CreditCard },
     { path: '/teams', label: 'Team', icon: Shield },
     { path: '/coaches', label: 'Coaches', icon: UserCog },
     { path: '/employees', label: 'Employees', icon: Users },
@@ -86,6 +93,7 @@ const navConfig: Record<string, NavItem[]> = {
     { path: '/schedule', label: 'Sessions', icon: CalendarClock },
     { path: '/resources', label: 'Resources', icon: FolderOpen },
     { path: '/fees', label: 'Fees', icon: CreditCard },
+    { path: '/subscription', label: 'Subscription', icon: Wallet },
     { path: '/notifications', label: 'Alerts', icon: Bell },
     { path: '/settings', label: 'Settings', icon: Settings },
   ],
@@ -111,48 +119,52 @@ export const Sidebar: React.FC = () => {
   const transferWallEnabled = useTransferWallEnabled();
 
   const isHeadOfficeUser = user?.role === 'manager' && !user?.franchiseId;
-  const isCurrentlyAtHeadOffice = user?.role === 'manager' && !activeFranchiseId;
+  const activeAcademyId = useCurrentAcademyId();
+  const { data: franchises } = useGetFranchisesQuery(
+    activeAcademyId ? { academyId: activeAcademyId, isActive: true } : undefined,
+    { skip: !activeAcademyId || !isHeadOfficeUser }
+  );
 
   const navItems = (navConfig[user?.role || 'manager'] || [])
     .filter((item) => item.path !== '/transfer-wall' || transferWallEnabled)
-    .filter((item) => !item.requiredPermission || !!user?.permissions?.[item.requiredPermission])
-    .filter((item) => {
-      if (isCurrentlyAtHeadOffice) {
-        return ['/dashboard', '/franchises', '/teams', '/coaches', '/employees', '/complaints', '/resources', '/notifications', '/settings'].includes(item.path);
-      }
-      return true;
-    });
+    .filter((item) => !item.requiredPermission || !!user?.permissions?.[item.requiredPermission]);
   const [logoutRequest] = useLogoutMutation();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleLogout = async () => {
+    setShowLogoutModal(false);
     try {
       await logoutRequest({}).unwrap();
     } catch {
       // Non-fatal — proceed to clear local session regardless
     }
     dispatch(clearCredentials());
+    dispatch(clearActiveFranchise());
+    dispatch(clearNotifications());
+    dispatch(baseApi.util.resetApiState());
     navigate('/login');
   };
 
 
   return (
-    <aside
+    <>
+      <aside
       className={clsx(
         'fixed left-0 top-0 h-full z-40 flex flex-col',
-        'bg-pitch-900 border-r border-white/5',
+        'bg-white border-r border-slate-200 text-slate-800 dark:bg-pitch-900 dark:border-white/5 dark:text-slate-200 shadow-sm dark:shadow-none',
         'transition-all duration-300 ease-in-out',
         sidebarCollapsed ? 'w-16' : 'w-60'
       )}
     >
       {/* Logo / Brand */}
-      <div className={clsx('flex items-center h-16 border-b border-white/5 px-4 gap-3', sidebarCollapsed && 'justify-center')}>
-        <div className="w-8 h-8 bg-volt-400 rounded flex items-center justify-center flex-shrink-0">
-          <span className="font-display font-900 text-pitch-900 text-sm">FC</span>
+      <div className={clsx('flex items-center h-16 border-b border-slate-200 dark:border-white/5 px-4 gap-3', sidebarCollapsed && 'justify-center')}>
+        <div className="w-8 h-8 rounded-lg bg-pitch-950/5 dark:bg-white/5 p-1 flex items-center justify-center flex-shrink-0">
+          <img src={logoSrc} alt="Noxphere" className="w-full h-full object-contain drop-shadow" />
         </div>
         {!sidebarCollapsed && (
           <div className="min-w-0">
-            <p className="font-display font-extrabold text-white uppercase tracking-wide text-sm leading-tight">Football</p>
-            <p className="font-display text-volt-400 uppercase tracking-widest text-xs">Franchise</p>
+            <p className="font-display font-black text-slate-900 dark:text-white uppercase tracking-wider text-base leading-tight">Noxphere</p>
+            <p className="text-[10px] font-semibold text-volt-600 dark:text-volt-400 uppercase tracking-widest">Academy OS</p>
           </div>
         )}
       </div>
@@ -165,7 +177,7 @@ export const Sidebar: React.FC = () => {
               dispatch(clearActiveFranchise());
               navigate('/dashboard');
             }}
-            className="flex items-center gap-3 px-3 py-2.5 mx-2 mb-4 bg-volt-400/10 border border-volt-400/20 text-volt-400 rounded text-xs font-bold hover:bg-volt-400/20 transition-all duration-150 w-[calc(100%-1rem)]"
+            className="flex items-center gap-3 px-3 py-2.5 mx-2 mb-4 bg-volt-400/10 border border-volt-400/20 text-volt-600 dark:text-volt-400 rounded text-xs font-bold hover:bg-volt-400/20 transition-all duration-150 w-[calc(100%-1rem)]"
           >
             <Building2 size={14} className="flex-shrink-0" />
             {!sidebarCollapsed && <span className="uppercase tracking-wider">Academy Overview</span>}
@@ -178,12 +190,19 @@ export const Sidebar: React.FC = () => {
               <NavLink
                 key={item.path}
                 to={item.path}
+                onClick={() => {
+                  if (isHeadOfficeUser && isFranchiseRequiredPage(item.path)) {
+                    if ((!activeFranchiseId || !franchises?.some((f) => f.id === activeFranchiseId)) && franchises && franchises.length > 0) {
+                      dispatch(setActiveFranchise(franchises[0].id));
+                    }
+                  }
+                }}
                 className={({ isActive }) =>
                   clsx(
                     'flex items-center gap-3 px-3 py-2.5 rounded text-sm transition-all duration-150 group',
                     isActive
-                      ? 'bg-volt-400/10 text-volt-400 border-l-2 border-volt-400 pl-[10px]'
-                      : 'text-slate-500 hover:text-slate-200 hover:bg-white/4 border-l-2 border-transparent'
+                      ? 'bg-volt-400/15 text-slate-900 dark:text-volt-400 border-l-2 border-volt-400 pl-[10px] font-semibold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-white/5 border-l-2 border-transparent'
                   )
                 }
               >
@@ -194,7 +213,7 @@ export const Sidebar: React.FC = () => {
                   </span>
                 )}
                 {item.label === 'Alerts' && unreadCount > 0 && !sidebarCollapsed && (
-                  <span className="ml-auto bg-ember-500 text-white text-2xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                  <span className="ml-auto bg-ember-500 text-white text-2xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center" data-keep-white>
                     {unreadCount}
                   </span>
                 )}
@@ -206,23 +225,36 @@ export const Sidebar: React.FC = () => {
 
       {/* Transfer Wall quick access */}
       {!sidebarCollapsed && transferWallEnabled && (
-        <div className="px-4 py-3 mx-2 mb-3 bg-ice-400/8 border border-ice-400/15 rounded">
-          <p className="text-2xs text-ice-400 uppercase tracking-widest font-bold mb-1">Transfer Wall</p>
+        <div className="px-4 py-3 mx-2 mb-3 bg-ice-400/10 border border-ice-400/20 dark:bg-ice-400/8 dark:border-ice-400/15 rounded">
+          <p className="text-2xs text-ice-600 dark:text-ice-400 uppercase tracking-widest font-bold mb-1">Transfer Wall</p>
           <p className="text-xs text-slate-500">Public portal active</p>
         </div>
       )}
 
       {/* User profile */}
-      <div className={clsx('border-t border-white/5 p-3', sidebarCollapsed ? 'flex justify-center' : 'flex items-center gap-3')}>
-        <Avatar name={`${user?.firstName} ${user?.lastName}`} src={user?.avatar} size="sm" />
+      <div className={clsx('border-t border-slate-200 dark:border-white/5 p-3 flex items-center', sidebarCollapsed ? 'justify-center' : 'gap-2')}>
+        <Link
+          to="/profile"
+          className={clsx(
+            'flex items-center gap-3 min-w-0 flex-1 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors',
+            sidebarCollapsed && 'justify-center flex-initial'
+          )}
+          title="View profile"
+        >
+          <Avatar name={`${user?.firstName} ${user?.lastName}`} src={user?.avatar} size="sm" />
+          {!sidebarCollapsed && (
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{user?.firstName} {user?.lastName}</p>
+              <p className="text-2xs text-slate-500 uppercase tracking-wide">{user?.role?.replace('_', ' ')}</p>
+            </div>
+          )}
+        </Link>
         {!sidebarCollapsed && (
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-white truncate">{user?.firstName} {user?.lastName}</p>
-            <p className="text-2xs text-slate-500 uppercase tracking-wide">{user?.role?.replace('_', ' ')}</p>
-          </div>
-        )}
-        {!sidebarCollapsed && (
-          <button onClick={handleLogout} className="text-slate-600 hover:text-ember-400 transition-colors" title="Logout">
+          <button
+            onClick={() => setShowLogoutModal(true)}
+            className="text-slate-400 hover:text-ember-500 transition-colors p-1"
+            title="Logout"
+          >
             <LogOut size={15} />
           </button>
         )}
@@ -231,10 +263,34 @@ export const Sidebar: React.FC = () => {
       {/* Collapse toggle */}
       <button
         onClick={() => dispatch(toggleSidebar())}
-        className="absolute -right-3 top-20 w-6 h-6 bg-pitch-800 border border-white/10 rounded-full flex items-center justify-center text-slate-500 hover:text-volt-400 transition-colors"
+        className="absolute -right-3 top-20 w-6 h-6 bg-white border border-slate-200 shadow-sm rounded-full flex items-center justify-center text-slate-500 hover:text-volt-600 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-400 dark:hover:text-volt-400 transition-colors"
       >
         {sidebarCollapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
       </button>
     </aside>
+
+    {/* Logout Confirmation Modal */}
+    {showLogoutModal && (
+      <Modal isOpen onClose={() => setShowLogoutModal(false)} title="Confirm Sign Out" size="sm">
+        <div className="space-y-4 py-2 text-sm text-slate-600 dark:text-slate-300">
+          <p>Are you sure you want to sign out of your Noxphere account?</p>
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              onClick={() => setShowLogoutModal(false)}
+              className="btn-secondary text-xs py-1.5 px-3.5"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700 text-xs font-bold shadow-sm transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </Modal>
+    )}
+  </>
   );
 };

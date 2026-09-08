@@ -8,8 +8,11 @@ import {
   AddCoachRemarkSchema,
   UpdateStudentStatusSchema,
   TransferStudentFranchiseSchema,
+  RegisterPublicStudentSchema,
+  ClaimStudentSchema,
 } from '../../../application/dtos/student.dto';
 import { ForbiddenError } from '../../../shared/errors/AppError';
+
 
 export class StudentController {
   constructor(private studentUseCases: StudentUseCases) {}
@@ -136,6 +139,37 @@ export class StudentController {
     try {
       const history = await this.studentUseCases.getFranchiseTransferHistory(req.params.id);
       ResponseHandler.success(res, history, 'Transfer history retrieved');
+    } catch (err) { next(err); }
+  };
+
+  registerPublic = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const dto = RegisterPublicStudentSchema.parse(req.body);
+      const result = await this.studentUseCases.registerPublicStudent(dto);
+      ResponseHandler.created(res, result, 'Public student account created');
+    } catch (err) { next(err); }
+  };
+
+  getUnattached = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { search, ageGroup, page = 1, limit = 50 } = req.query;
+      const result = await this.studentUseCases.getUnattachedStudents(
+        search as string,
+        ageGroup as string,
+        Number(page),
+        Number(limit),
+      );
+      ResponseHandler.success(res, result, 'Unattached students retrieved');
+    } catch (err) { next(err); }
+  };
+
+  claimUnattached = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const dto = ClaimStudentSchema.parse(req.body);
+      const academyId = (req.user as any)?.academyId;
+      if (!academyId) throw new ForbiddenError('Academy context required to add student');
+      const student = await this.studentUseCases.claimUnattachedStudent(req.params.id, dto, academyId);
+      ResponseHandler.success(res, student, 'Student enrolled into franchise');
     } catch (err) { next(err); }
   };
 }

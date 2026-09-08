@@ -64,8 +64,8 @@ function toCard(doc: any) {
       ? `${json.coachId.firstName} ${json.coachId.lastName ?? ""}`.trim()
       : undefined,
     coachId: resolveRefId(json.coachId),
-    coachIds: json.coachIds?.map((id: any) => id._id?.toString() || id.toString() || id) ?? [],
-    coaches: json.coachIds?.map((c: any) => c.firstName ? `${c.firstName} ${c.lastName || ""}`.trim() : c.toString()).filter(Boolean) ?? [],
+    coachIds: (json.coachIds || []).map((id: any) => resolveRefId(id) || id?.toString()).filter(Boolean),
+    coaches: (json.coachIds || []).map((c: any) => c.firstName ? `${c.firstName} ${c.lastName || ""}`.trim() : (c.name || resolveRefId(c) || c.toString())).filter(Boolean),
     categories: json.categories ?? [],
     startDate: json.startDate,
     endDate: json.endDate,
@@ -104,14 +104,21 @@ export class ScheduleUseCases {
     } else if (filters.academyId) {
       const franchises = await FranchiseModel.find({ academyId: filters.academyId }).select("_id").lean();
       query.franchiseId = { $in: franchises.map((f) => f._id) };
+    } else if (filters.coachId) {
+      // Allowed for a coach querying their assigned sessions across franchises
     } else {
       throw new BadRequestError("franchiseId or academyId is required");
     }
 
     if (filters.teamId) query.teamId = filters.teamId;
     if (filters.coachId) {
-      // support matching coachId in either the old coachId field or coachIds array
-      query.$or = [{ coachId: filters.coachId }, { coachIds: filters.coachId }];
+      const coachIdStr = filters.coachId.toString();
+      const coachObjId = mongoose.isValidObjectId(coachIdStr) ? new mongoose.Types.ObjectId(coachIdStr) : null;
+      const coachConditions: any[] = [{ coachId: coachIdStr }, { coachIds: coachIdStr }];
+      if (coachObjId) {
+        coachConditions.push({ coachId: coachObjId }, { coachIds: coachObjId });
+      }
+      query.$or = coachConditions;
     }
     if (filters.status) query.status = filters.status;
     if (filters.from || filters.to) {
@@ -197,7 +204,11 @@ export class ScheduleUseCases {
       throw new ForbiddenError("Coaches can only schedule sessions for a team they are assigned to");
     }
 
-    if (dto.targetType === "category") {
+    if (dto.targetType === "batch") {
+      if (!dto.playerIds || dto.playerIds.length === 0) {
+        throw new BadRequestError("playerIds are required for a batch session");
+      }
+    } else if (dto.targetType === "category") {
       if (!dto.category && (!dto.categories || dto.categories.length === 0)) {
         throw new BadRequestError("category or categories are required for a category session");
       }
@@ -232,7 +243,9 @@ export class ScheduleUseCases {
     }
 
     let resolvedPlayerIds: any[] = [];
-    if (dto.targetType === "category") {
+    if (dto.targetType === "batch") {
+      resolvedPlayerIds = (dto.playerIds || []).map((id) => new mongoose.Types.ObjectId(id));
+    } else if (dto.targetType === "category") {
       const categoriesFilter = dto.categories && dto.categories.length > 0 ? { $in: dto.categories } : dto.category;
       const baseStudents = await StudentModel.find({
         franchiseId: dto.franchiseId,
@@ -302,18 +315,58 @@ export class ScheduleUseCases {
       .populate("coachId", "firstName lastName")
       .populate("coachIds", "firstName lastName");
 
-    // A coach scheduling their own session already knows about it — only
-    // notify when a manager created it on the coach's behalf.
-    if (!requestingCoachId && dto.coachId) {
-      const target = dto.targetType === "team" ? (populated?.teamId as any)?.name : dto.category;
-      const sessionDate = new Date(dto.date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+    const sessionDate = new Date(dto.date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+    const target =
+      dto.targetType === "team"
+        ? (populated?.teamId as any)?.name
+        : dto.targetType === "batch"
+        ? "custom batch squad"
+        : dto.category;
+
+    // A coach scheduling their own session already knows about it —
+    // notify any assigned coach who did not create it.
+    const allAssignedCoachIds = Array.from(
+      new Set([
+        ...(dto.coachIds || []),
+        ...(dto.coachId ? [dto.coachId] : []),
+      ])
+    ).filter(Boolean);
+
+    const coachesToNotify = allAssignedCoachIds.filter(
+      (cid) => cid !== requestingCoachId && cid !== createdBy
+    );
+
+    for (const cid of coachesToNotify) {
       await notificationService
         .sendSessionCreatedAlert(
-          dto.coachId,
+          cid,
           `A new session has been scheduled for ${target ?? "your squad"} on ${sessionDate}, ${dto.startTime}–${dto.endTime} at ${dto.location}.`,
           dto.franchiseId,
         )
         .catch(() => undefined);
+    }
+
+    // Whoever creates the session (manager, super_admin, or coach), all players assigned/included
+    // in the session (and their guardians) must be alerted of the scheduled session.
+    if (resolvedPlayerIds.length > 0) {
+      const students = await StudentModel.find({ _id: { $in: resolvedPlayerIds } })
+        .select("userId guardianIds firstName")
+        .lean();
+      const recipientUserIds = Array.from(
+        new Set(
+          students.flatMap((s) => [s.userId?.toString(), ...(s.guardianIds || []).map((g: any) => g.toString())]).filter(Boolean)
+        )
+      );
+      if (recipientUserIds.length > 0) {
+        await notificationService.send({
+          userIds: recipientUserIds,
+          type: "session_created",
+          title: "New Session Scheduled",
+          body: `A new session has been scheduled for ${target ?? "your squad"} on ${sessionDate}, ${dto.startTime}–${dto.endTime} at ${dto.location}.`,
+          franchiseId: dto.franchiseId,
+          channels: ["push"],
+        }).catch(() => undefined);
+      }
     }
 
     return toCard(populated);

@@ -59,7 +59,10 @@ export class AdminFeesUseCases {
       })),
     });
 
-    await this.scheduleInstallmentReminders(fee);
+    // Schedule installment reminders asynchronously in the background so fee creation returns immediately
+    this.scheduleInstallmentReminders(fee).catch((err) => {
+      logger.error(`[AdminFeesUseCases] Background reminder scheduling failed for fee ${fee._id}:`, err);
+    });
 
     return fee.toJSON ? fee.toJSON() : fee;
   }
@@ -206,6 +209,71 @@ export class AdminFeesUseCases {
     return fee.toJSON ? fee.toJSON() : fee;
   }
 
+  async sendInstallmentReminder(feeId: string, installmentNumber: number, performedBy: string) {
+    const fee = await FeeModel.findById(feeId).populate("studentId", "firstName lastName guardianIds");
+    if (!fee) throw new NotFoundError("Fee record not found");
+
+    const installment = fee.installments.find((i) => i.installmentNumber === installmentNumber);
+    if (!installment) throw new NotFoundError("Installment not found");
+
+    if (installment.status === "paid") {
+      throw new BadRequestError("This installment is already marked as paid");
+    }
+
+    const student = fee.studentId as any;
+    if (!student) throw new NotFoundError("Player record not found");
+
+    if (!student.guardianIds || student.guardianIds.length === 0) {
+      throw new BadRequestError("No guardians are linked to this player. Link a guardian to send alerts.");
+    }
+
+    const guardians = await UserModel.find({ _id: { $in: student.guardianIds } }).select("_id phone firstName lastName");
+    if (!guardians || guardians.length === 0) {
+      throw new BadRequestError("No guardian user accounts found for this player.");
+    }
+
+    const franchise = await FranchiseModel.findById(fee.franchiseId).select("academyId").lean();
+    const academy = franchise ? await AcademyModel.findById(franchise.academyId).select("feeQrImageUrl").lean() : null;
+    const qrImageUrl = academy?.feeQrImageUrl;
+
+    const remainingAmount = installment.amount - installment.paidAmount;
+    const studentName = `${student.firstName} ${student.lastName}`.trim();
+    const dueDateObj = new Date(installment.dueDate);
+    const formattedDueDate = dueDateObj.toLocaleDateString("en-IN");
+    const now = new Date();
+    const daysUntilDue = Math.ceil((dueDateObj.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    await notificationService.sendFeeDueAlert(
+      guardians.map((g) => g._id.toString()),
+      studentName,
+      remainingAmount,
+      formattedDueDate,
+      daysUntilDue,
+      String(fee.franchiseId),
+      qrImageUrl,
+    );
+
+    installment.reminderSentCount = (installment.reminderSentCount || 0) + 1;
+    installment.lastReminderAt = new Date();
+
+    const user = await UserModel.findById(performedBy).select("firstName lastName").lean();
+    const performedByName = user ? `${user.firstName} ${user.lastName}` : "System";
+
+    fee.auditLog.push({
+      action: "send_reminder",
+      amount: remainingAmount,
+      installmentNumber,
+      timestamp: new Date(),
+      performedBy: performedBy as any,
+      performedByName,
+      details: `Sent payment reminder for installment #${installmentNumber} (₹${remainingAmount.toLocaleString("en-IN")}) with ${qrImageUrl ? "payment QR code" : "payment details"}. Total reminders: ${installment.reminderSentCount}.`,
+    });
+
+    await fee.save();
+
+    return FeeModel.findById(fee._id).populate("studentId", "firstName lastName photo").lean();
+  }
+
   /**
    * Scenario: when a manager records a payment, guardians get a
    * system notification plus a WhatsApp text+document message carrying
@@ -274,17 +342,31 @@ export class AdminFeesUseCases {
   }) {
     const feeId = (fee.id ?? String(fee._id)) as string;
     const franchiseId = String(fee.franchiseId);
-    for (const installment of fee.installments) {
-      try {
-        await schedulerService.scheduleFeeReminders(feeId, installment.installmentNumber, installment.dueDate, franchiseId);
-      } catch (err) {
-        // Scheduling is best-effort — a Redis hiccup shouldn't fail fee
-        // creation itself, which is a much more important operation.
-        logger.error(
-          `[AdminFeesUseCases] Couldn't schedule reminder for fee ${feeId} installment ${installment.installmentNumber}:`,
-          err,
-        );
-      }
+
+    try {
+      const franchise = await FranchiseModel.findById(franchiseId).select("academyId").lean();
+      const academy = franchise ? await AcademyModel.findById(franchise.academyId).select("dueDateAlertDays").lean() : null;
+      const daysBefore = academy?.dueDateAlertDays ?? 3;
+
+      const tasks = fee.installments.map(async (installment) => {
+        try {
+          await schedulerService.scheduleSingleFeeReminder(
+            feeId,
+            installment.installmentNumber,
+            installment.dueDate,
+            daysBefore,
+          );
+        } catch (err) {
+          logger.error(
+            `[AdminFeesUseCases] Couldn't schedule reminder for fee ${feeId} installment ${installment.installmentNumber}:`,
+            err,
+          );
+        }
+      });
+
+      await Promise.allSettled(tasks);
+    } catch (err) {
+      logger.error(`[AdminFeesUseCases] Couldn't schedule reminders for fee ${feeId}:`, err);
     }
   }
 }

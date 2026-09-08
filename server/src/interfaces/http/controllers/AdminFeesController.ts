@@ -89,4 +89,17 @@ export class AdminFeesController {
       next(err);
     }
   };
+
+  sendReminder = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const fee = await this.feesUseCases.sendInstallmentReminder(
+        req.params.id,
+        Number(req.params.installmentNumber),
+        req.user!.sub,
+      );
+      ResponseHandler.success(res, fee, "Payment reminder alert sent");
+    } catch (err) {
+      next(err);
+    }
+  };
 }

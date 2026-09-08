@@ -1,9 +1,13 @@
 // src/interfaces/http/controllers/ComplaintController.ts
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
+import mongoose from "mongoose";
 import { ComplaintUseCases } from "../../../application/use-cases/complaint/ComplaintUseCases";
 import { ResponseHandler } from "../../../shared/utils/ResponseHandler";
 import { ForbiddenError, BadRequestError } from "../../../shared/errors/AppError";
+import { UserModel } from "../../../infrastructure/database/models/User.model";
+import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
+import { StudentModel } from "../../../infrastructure/database/models/Student.model";
 
 const CreateComplaintSchema = z.object({
   subject: z.string().min(1).max(150),
@@ -26,12 +30,55 @@ export class ComplaintController {
 
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (!req.user!.academyId) {
+      let academyId = req.user?.academyId;
+
+      // If academyId is not directly in the JWT (e.g. for guardian or student accounts),
+      // resolve it through user record, user's franchise, or linked student profiles.
+      if (!academyId && req.user?.sub) {
+        const userId = req.user.sub;
+        const user = await UserModel.findById(userId).select("academyId franchiseId").lean();
+        if (user?.academyId) {
+          academyId = user.academyId.toString();
+        } else if (user?.franchiseId) {
+          const franchise = await FranchiseModel.findById(user.franchiseId).select("academyId").lean();
+          if (franchise?.academyId) {
+            academyId = franchise.academyId.toString();
+          }
+        }
+
+        if (!academyId && mongoose.Types.ObjectId.isValid(userId)) {
+          const userObjId = new mongoose.Types.ObjectId(userId);
+          const student = await StudentModel.findOne({
+            $or: [{ guardianIds: userObjId }, { userId: userObjId }],
+            isActive: true,
+          })
+            .select("franchiseId")
+            .lean();
+
+          if (student?.franchiseId) {
+            const franchise = await FranchiseModel.findById(student.franchiseId).select("academyId").lean();
+            if (franchise?.academyId) {
+              academyId = franchise.academyId.toString();
+            }
+          }
+        }
+
+        // Cache resolved academyId on user document for faster future lookups
+        if (academyId && mongoose.Types.ObjectId.isValid(userId)) {
+          UserModel.updateOne(
+            { _id: userId, academyId: { $exists: false } },
+            { $set: { academyId: new mongoose.Types.ObjectId(academyId) } }
+          ).exec().catch(() => undefined);
+        }
+      }
+
+      if (!academyId) {
         throw new BadRequestError("Your account isn't linked to an academy");
       }
+
       const dto = CreateComplaintSchema.parse(req.body);
       const complaint = await this.useCases.create({
-        academyId: req.user!.academyId,
+        academyId,
         raisedBy: req.user!.sub,
         subject: dto.subject,
         message: dto.message,

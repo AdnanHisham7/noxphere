@@ -10,9 +10,16 @@ studentRouter.post('/', authenticate, requirePermission('canManageFranchises'), 
 studentRouter.get('/', authenticate, (req, res, next) => {
   req.app.locals.controllers.student.list(req, res, next);
 });
+studentRouter.get('/unattached', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
+  req.app.locals.controllers.student.getUnattached(req, res, next);
+});
+studentRouter.post('/:id/claim', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
+  req.app.locals.controllers.student.claimUnattached(req, res, next);
+});
 studentRouter.get('/:id', authenticate, (req, res, next) => {
   req.app.locals.controllers.student.getById(req, res, next);
 });
+
 studentRouter.put('/:id', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
   req.app.locals.controllers.student.update(req, res, next);
 });

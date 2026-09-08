@@ -9,7 +9,11 @@ export const authRouter = Router();
 authRouter.post('/register', (req, res, next) => {
   (req.app.locals.controllers.auth as any).register(req, res, next);
 });
+authRouter.post('/register-student', (req, res, next) => {
+  (req.app.locals.controllers.student as any).registerPublic(req, res, next);
+});
 authRouter.post('/login', (req, res, next) => {
+
   (req.app.locals.controllers.auth as any).login(req, res, next);
 });
 authRouter.post('/refresh', (req, res, next) => {
@@ -23,4 +27,7 @@ authRouter.post('/change-password', authenticate, (req, res, next) => {
 });
 authRouter.get('/me', authenticate, (req, res, next) => {
   (req.app.locals.controllers.auth as any).me(req, res, next);
+});
+authRouter.patch('/profile', authenticate, (req, res, next) => {
+  (req.app.locals.controllers.auth as any).updateProfile(req, res, next);
 });

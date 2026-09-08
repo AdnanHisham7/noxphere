@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { clsx } from "clsx";
-import { Wallet, Plus, Trash2, Edit2, RotateCcw, AlertTriangle } from "lucide-react";
+import { Wallet, Plus, Trash2, Edit2, RotateCcw, AlertTriangle, Send, Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { Card, Badge, Button, Input, Modal, Skeleton, EmptyState, ImageUploadField } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
@@ -13,6 +13,7 @@ import {
   useRecordPaymentMutation,
   useUpdatePaymentMutation,
   useUndoPaymentMutation,
+  useSendInstallmentReminderMutation,
   type CreateFeeBody,
 } from "../../store/api/adminFeesApi";
 import { useGetStudentsQuery } from "../../store/api/studentsApi";
@@ -27,14 +28,18 @@ const STATUS_VARIANT: Record<string, "green" | "red" | "yellow" | "gray"> = {
 
 const FeeQrCodeCard: React.FC = () => {
   const academyId = useCurrentAcademyId();
-  const { data: academy } = academyApi.useGetAcademyByIdQuery(academyId ?? "", { skip: !academyId });
+  const { data: academy, isLoading } = academyApi.useGetAcademyByIdQuery(academyId ?? "", { skip: !academyId });
   const [updateConfig, { isLoading: saving }] = academyApi.useUpdateAcademyConfigMutation();
 
-  if (!academyId) return null;
+  const qrImageUrl = academy?.feeQrImageUrl ?? (academy as any)?.data?.feeQrImageUrl;
 
   const handleChange = async (url: string | undefined) => {
+    if (!academyId) {
+      toast.error("Academy identification pending. Please try again.");
+      return;
+    }
     try {
-      await updateConfig({ id: academyId, config: { feeQrImageUrl: url } }).unwrap();
+      await updateConfig({ id: academyId, config: { feeQrImageUrl: url ?? "" } }).unwrap();
       toast.success(url ? "QR code updated" : "QR code removed");
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't save the QR code — try again");
@@ -43,22 +48,28 @@ const FeeQrCodeCard: React.FC = () => {
 
   return (
     <Card className="mb-6">
-      <h2 className="font-display text-sm font-bold text-white uppercase tracking-wide mb-1">
+      <h2 className="font-display text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide mb-1">
         Due-date alert payment QR code
       </h2>
-      <p className="text-xs text-slate-400 mb-4">
+      <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
         Sent as part of the WhatsApp alert guardians get before an installment's due date.
       </p>
       <div className="max-w-xs">
-        <ImageUploadField
-          label="Payment QR code"
-          category="fee_qr"
-          value={academy?.feeQrImageUrl}
-          onChange={handleChange}
-          shape="square"
-        />
+        {isLoading && !qrImageUrl ? (
+          <div className="w-[220px] aspect-square rounded-lg bg-slate-100 dark:bg-pitch-900 animate-pulse border border-dashed border-slate-300 dark:border-white/10 flex items-center justify-center text-2xs text-slate-400">
+            Loading QR Code…
+          </div>
+        ) : (
+          <ImageUploadField
+            label="Payment QR code"
+            category="fee_qr"
+            value={qrImageUrl}
+            onChange={handleChange}
+            shape="square"
+          />
+        )}
       </div>
-      {saving && <p className="text-2xs text-slate-500 mt-2">Saving…</p>}
+      {saving && <p className="text-2xs text-slate-500 dark:text-slate-400 mt-2">Saving…</p>}
     </Card>
   );
 };
@@ -83,9 +94,24 @@ const FeesPage: React.FC = () => {
 
   const [createFee, { isLoading: creating }] = useCreateFeeMutation();
   const [undoPayment] = useUndoPaymentMutation();
+  const [sendInstallmentReminder] = useSendInstallmentReminderMutation();
+  const [remindingKey, setRemindingKey] = useState<string | null>(null);
   const { confirm, ConfirmDialog } = useConfirm();
 
   const visible = (fees ?? []).filter((f) => !statusFilter || f.overallStatus === statusFilter);
+
+  const handleSendReminder = async (feeId: string, installmentNumber: number) => {
+    const key = `${feeId}-${installmentNumber}`;
+    setRemindingKey(key);
+    try {
+      const res = await sendInstallmentReminder({ feeId, installmentNumber }).unwrap();
+      toast.success(res.message || "Payment alert & QR sent successfully");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to send payment alert — try again");
+    } finally {
+      setRemindingKey(null);
+    }
+  };
 
   const handleUndoPayment = async (feeId: string, installmentNumber: number) => {
     const ok = await confirm({
@@ -191,6 +217,12 @@ const FeesPage: React.FC = () => {
                         {inst.transactionId && ` (Txn: ${inst.transactionId})`}
                       </span>
                     )}
+                    {inst.status !== "paid" && (inst.reminderSentCount ?? 0) > 0 && (
+                      <span className="text-[10px] text-sky-400/90 font-mono mt-0.5">
+                        QR alert sent {inst.reminderSentCount} time{(inst.reminderSentCount ?? 0) > 1 ? "s" : ""}
+                        {inst.lastReminderAt && ` (last: ${new Date(inst.lastReminderAt).toLocaleDateString()})`}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-white font-mono">
@@ -225,18 +257,33 @@ const FeesPage: React.FC = () => {
                         </>
                       )}
                       {inst.status !== "paid" && (
-                        <button
-                          onClick={() =>
-                            setPayTarget({
-                              feeId: fee._id,
-                              installmentNumber: inst.installmentNumber,
-                              amount: inst.amount - inst.paidAmount,
-                            })
-                          }
-                          className="text-xs text-volt-400 hover:text-volt-300 transition-colors font-semibold bg-volt-400/10 border border-volt-400/20 rounded px-2 py-1"
-                        >
-                          Record payment
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleSendReminder(fee._id, inst.installmentNumber)}
+                            disabled={remindingKey === `${fee._id}-${inst.installmentNumber}`}
+                            className="flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 disabled:opacity-50 transition-colors font-semibold bg-sky-400/10 border border-sky-400/20 rounded px-2.5 py-1"
+                            title="Send WhatsApp & push payment alert with QR code"
+                          >
+                            {remindingKey === `${fee._id}-${inst.installmentNumber}` ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <Send size={12} />
+                            )}
+                            <span>Send QR alert</span>
+                          </button>
+                          <button
+                            onClick={() =>
+                              setPayTarget({
+                                feeId: fee._id,
+                                installmentNumber: inst.installmentNumber,
+                                amount: inst.amount - inst.paidAmount,
+                              })
+                            }
+                            className="text-xs text-volt-400 hover:text-volt-300 transition-colors font-semibold bg-volt-400/10 border border-volt-400/20 rounded px-2 py-1"
+                          >
+                            Record payment
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>

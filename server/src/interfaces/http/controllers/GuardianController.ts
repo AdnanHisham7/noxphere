@@ -67,4 +67,13 @@ export class GuardianController {
       next(err);
     }
   };
+
+  getChildSessions = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const sessions = await this.guardianUseCases.getChildSessions(req.user!.sub, req.params.studentId);
+      ResponseHandler.success(res, sessions, "Sessions retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
 }

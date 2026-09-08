@@ -3,9 +3,12 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { IUserRepository } from '../../../domain/repositories/IUserRepository';
 import { UserEntity, UserRole, defaultPermissions } from '../../../domain/entities/User.entity';
-import { AppError, UnauthorizedError, ConflictError, NotFoundError } from '../../../shared/errors/AppError';
+import { AppError, UnauthorizedError, ConflictError, NotFoundError, ForbiddenError } from '../../../shared/errors/AppError';
 import { RegisterDto, LoginDto, RefreshTokenDto } from '../../dtos/auth.dto';
 import { config } from '../../../config/app.config';
+import { FranchiseModel } from '../../../infrastructure/database/models/Franchise.model';
+import { StudentModel } from '../../../infrastructure/database/models/Student.model';
+import { AcademyModel } from '../../../infrastructure/database/models/Academy.model';
 
 export interface AuthTokens {
   accessToken: string;
@@ -72,6 +75,43 @@ export class AuthUseCases {
     if (dto.fcmToken) {
       await this.userRepository.addFcmToken(user.id, dto.fcmToken);
     }
+
+    // Ensure academyId & franchiseId are populated for guardians and students
+    if (!user.academyId && user.franchiseId) {
+      try {
+        const franchise = await FranchiseModel.findById(user.franchiseId).select('academyId').lean();
+        if (franchise?.academyId) {
+          user.academyId = franchise.academyId.toString();
+          await this.userRepository.update(user.id, { academyId: user.academyId } as Partial<UserEntity>);
+        }
+      } catch {}
+    } else if (!user.academyId && (user.role === 'guardian' || user.role === 'student')) {
+      try {
+        const student = await StudentModel.findOne({
+          $or: [{ guardianIds: user.id }, { userId: user.id }],
+          isActive: true,
+        }).select('franchiseId').lean();
+        if (student?.franchiseId) {
+          const franchise = await FranchiseModel.findById(student.franchiseId).select('academyId').lean();
+          if (franchise?.academyId) {
+            user.academyId = franchise.academyId.toString();
+            user.franchiseId = student.franchiseId.toString();
+            await this.userRepository.update(user.id, {
+              academyId: user.academyId,
+              franchiseId: user.franchiseId,
+            } as Partial<UserEntity>);
+          }
+        }
+      } catch {}
+    } else if (!user.academyId && user.role === 'manager') {
+      try {
+        const managedAcademy = await AcademyModel.findOne({ managerId: user.id }).select('_id').lean();
+        if (managedAcademy) {
+          user.academyId = managedAcademy._id.toString();
+          await this.userRepository.update(user.id, { academyId: user.academyId } as Partial<UserEntity>);
+        }
+      } catch {}
+    }
     
     const tokens = this.generateTokens(user);
     console.log('Tokens generated during login:', tokens);
@@ -106,6 +146,119 @@ export class AuthUseCases {
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
     await this.userRepository.update(userId, { passwordHash } as Partial<UserEntity>);
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.userRepository.findById(userId);
+    if (!user) throw new NotFoundError('User');
+
+    let academyName: string | undefined;
+    let franchiseName: string | undefined;
+    let studentDetails: Record<string, any> | undefined;
+
+    if (user.academyId) {
+      const academy = await AcademyModel.findById(user.academyId).select('name').lean();
+      if (academy) academyName = academy.name;
+    } else if (user.role === 'manager') {
+      const managedAcademy = await AcademyModel.findOne({ managerId: user.id }).select('name').lean();
+      if (managedAcademy) {
+        user.academyId = managedAcademy._id.toString();
+        academyName = managedAcademy.name;
+      }
+    }
+    if (user.franchiseId) {
+      const franchise = await FranchiseModel.findById(user.franchiseId).select('name academyId').lean();
+      if (franchise) {
+        franchiseName = franchise.name;
+        if (!academyName && franchise.academyId) {
+          const academy = await AcademyModel.findById(franchise.academyId).select('name').lean();
+          if (academy) academyName = academy.name;
+        }
+      }
+    }
+
+    if (user.role === 'student') {
+      const student = await StudentModel.findOne({
+        $or: [{ userId: user.id }, { _id: user.id }],
+        deletedAt: { $exists: false },
+      }).lean();
+
+      if (student) {
+        const isEnrolledInAcademy = !!student.franchiseId;
+        if (student.franchiseId && !franchiseName) {
+          const franchise = await FranchiseModel.findById(student.franchiseId).select('name academyId').lean();
+          if (franchise) {
+            franchiseName = franchise.name;
+            if (!academyName && franchise.academyId) {
+              const academy = await AcademyModel.findById(franchise.academyId).select('name').lean();
+              if (academy) academyName = academy.name;
+            }
+          }
+        }
+
+        studentDetails = {
+          studentId: student._id.toString(),
+          isEnrolledInAcademy,
+          jerseyNumber: student.jerseyNumber,
+          position: student.position,
+          positions: student.positions,
+          ageGroup: student.ageGroup,
+          dateOfBirth: student.dateOfBirth,
+          guardian: student.guardian,
+          emergencyContactName: student.medicalInfo?.emergencyContactName,
+          emergencyContactPhone: student.medicalInfo?.emergencyContactPhone,
+          publicProfileEnabled: student.publicProfileEnabled,
+          publicProfileToken: student.publicProfileToken,
+          attendancePercentage: student.attendancePercentage,
+          overallRating: student.overallRating,
+          franchiseId: student.franchiseId ? student.franchiseId.toString() : null,
+        };
+      }
+    }
+
+    const { passwordHash, ...safeUser } = user as any;
+    return {
+      ...safeUser,
+      academyName,
+      franchiseName,
+      studentDetails,
+    };
+  }
+
+  async updateProfile(
+    userId: string,
+    dto: { firstName?: string; lastName?: string; avatar?: string }
+  ) {
+    const user = await this.userRepository.findById(userId);
+    if (!user) throw new NotFoundError('User');
+
+    if (user.role === 'student') {
+      const student = await StudentModel.findOne({
+        $or: [{ userId: user.id }, { _id: user.id }],
+        deletedAt: { $exists: false },
+      });
+
+      if (student && student.franchiseId) {
+        throw new ForbiddenError(
+          'Profile editing is disabled for academy-enrolled students. Your academy administers all player records. Please contact your coach or manager to update any information.'
+        );
+      }
+
+      if (student) {
+        if (dto.firstName) student.firstName = dto.firstName.trim();
+        if (dto.lastName) student.lastName = dto.lastName.trim();
+        if (dto.avatar) student.photo = dto.avatar;
+        await student.save();
+      }
+    }
+
+    const updates: Partial<UserEntity> = {};
+    if (dto.firstName) updates.firstName = dto.firstName.trim();
+    if (dto.lastName) updates.lastName = dto.lastName.trim();
+    if (dto.avatar !== undefined) updates.avatar = dto.avatar;
+
+    await this.userRepository.update(userId, updates);
+    return this.getProfile(userId);
   }
 
   private generateTokens(user: UserEntity): AuthTokens {

@@ -15,14 +15,22 @@ export class MongoAcademyRepository implements IAcademyRepository {
       name: doc.name,
       academyCode: doc.academyCode,
 
+      managerId: doc.managerId ? (typeof manager === "object" && manager._id ? manager._id.toString() : doc.managerId.toString()) : undefined,
       manager:
-        typeof manager === "object" && manager.firstName
-          ? {
-              id: manager._id.toString(),
-              firstName: manager.firstName,
-              lastName: manager.lastName,
-              email: manager.email,
-            }
+        manager
+          ? typeof manager === "object" && manager.firstName
+            ? {
+                id: (manager._id || manager.id).toString(),
+                firstName: manager.firstName,
+                lastName: manager.lastName,
+                email: manager.email,
+              }
+            : {
+                id: doc.managerId.toString(),
+                firstName: "",
+                lastName: "",
+                email: "",
+              }
           : undefined,
 
       location: doc.location,
@@ -99,9 +107,14 @@ export class MongoAcademyRepository implements IAcademyRepository {
 
   async update(
     id: string,
-    updates: Partial<AcademyEntity>,
+    updates: Partial<AcademyEntity> & { $unset?: Record<string, any> },
   ): Promise<AcademyEntity | null> {
-    const doc = await AcademyModel.findByIdAndUpdate(id, updates, {
+    const updateObj: any = { ...updates };
+    if (updateObj.feeQrImageUrl === null) {
+      delete updateObj.feeQrImageUrl;
+      updateObj.$unset = { ...(updateObj.$unset || {}), feeQrImageUrl: 1 };
+    }
+    const doc = await AcademyModel.findByIdAndUpdate(id, updateObj, {
       new: true,
       runValidators: true,
     });

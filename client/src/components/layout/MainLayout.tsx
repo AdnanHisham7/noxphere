@@ -26,7 +26,7 @@ export const MainLayout: React.FC = () => {
 
   return (
     <SubscriptionGate>
-      <div className="h-screen bg-pitch-950 flex overflow-hidden">
+      <div className="h-screen bg-slate-50 dark:bg-pitch-950 text-slate-900 dark:text-slate-100 flex overflow-hidden transition-colors duration-200">
         {showSidebar && <Sidebar />}
         <div
           className={clsx(

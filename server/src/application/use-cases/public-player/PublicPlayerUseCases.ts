@@ -11,11 +11,14 @@ export interface PublicPlayerProfile {
   photo?: string;
   position?: string;
   jerseyNumber?: number;
-  ageGroup: string;
-  overallRating: number;
+  ageGroup?: string;
+  overallRating?: number;
   teamName?: string;
-  franchiseName: string;
-  academyName: string;
+  franchiseName?: string;
+  academyName?: string;
+  bio?: string;
+  preferredFoot?: string;
+  isFreeAgent: boolean;
 }
 
 export class PublicPlayerUseCases {
@@ -26,30 +29,57 @@ export class PublicPlayerUseCases {
   // exposure surface in the whole app, so this stays an explicit
   // allowlist rather than "everything except a blocklist".
   async getByToken(token: string): Promise<PublicPlayerProfile> {
-    const student = await StudentModel.findOne({ publicProfileToken: token, publicProfileEnabled: true })
-      .select("firstName lastName photo position jerseyNumber ageGroup overallRating teamId franchiseId")
+    const student = await StudentModel.findOne({
+      publicProfileToken: token,
+      publicProfileEnabled: true,
+    })
+      .select(
+        "firstName lastName photo position jerseyNumber ageGroup overallRating teamId franchiseId publicProfileSettings",
+      )
       .lean();
     if (!student) throw new NotFoundError("Player page");
 
-    const [team, franchise] = await Promise.all([
-      student.teamId ? TeamModel.findById(student.teamId).select("name").lean() : null,
-      FranchiseModel.findById(student.franchiseId).select("name academyId").lean(),
-    ]);
-    if (!franchise) throw new NotFoundError("Player page");
+    const settings = student.publicProfileSettings || {};
+    const showPhoto = settings.showPhoto !== false;
+    const showPosition = settings.showPosition !== false;
+    const showJerseyNumber = settings.showJerseyNumber !== false;
+    const showAgeGroup = settings.showAgeGroup !== false;
+    const showRating = settings.showRating !== false;
+    const showTeam = settings.showTeam !== false;
 
-    const academy = await AcademyModel.findById(franchise.academyId).select("name").lean();
+    const isFreeAgent = !student.franchiseId;
+    let franchiseName: string | undefined = isFreeAgent ? "Independent" : undefined;
+    let academyName: string | undefined = isFreeAgent ? "Free Agent" : undefined;
+    let teamName: string | undefined;
+
+    if (showTeam && student.franchiseId) {
+      const franchise = await FranchiseModel.findById(student.franchiseId).select("name academyId").lean();
+      if (franchise) {
+        franchiseName = franchise.name;
+        const academy = await AcademyModel.findById(franchise.academyId).select("name").lean();
+        if (academy) academyName = academy.name;
+      }
+    }
+
+    if (showTeam && student.teamId) {
+      const team = await TeamModel.findById(student.teamId).select("name").lean();
+      teamName = team?.name;
+    }
 
     return {
       firstName: student.firstName,
       lastName: student.lastName,
-      photo: student.photo,
-      position: student.position,
-      jerseyNumber: student.jerseyNumber,
-      ageGroup: student.ageGroup,
-      overallRating: student.overallRating,
-      teamName: team?.name,
-      franchiseName: franchise.name,
-      academyName: academy?.name ?? "",
+      photo: showPhoto ? student.photo : undefined,
+      position: showPosition ? student.position : undefined,
+      jerseyNumber: showJerseyNumber ? student.jerseyNumber : undefined,
+      ageGroup: showAgeGroup ? student.ageGroup : undefined,
+      overallRating: showRating ? student.overallRating : undefined,
+      teamName,
+      franchiseName,
+      academyName,
+      bio: settings.bio?.trim() || undefined,
+      preferredFoot: settings.preferredFoot?.trim() || undefined,
+      isFreeAgent,
     };
   }
 }

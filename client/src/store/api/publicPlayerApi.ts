@@ -7,11 +7,14 @@ export interface PublicPlayerProfile {
   photo?: string;
   position?: string;
   jerseyNumber?: number;
-  ageGroup: string;
-  overallRating: number;
+  ageGroup?: string;
+  overallRating?: number;
   teamName?: string;
-  franchiseName: string;
-  academyName: string;
+  franchiseName?: string;
+  academyName?: string;
+  bio?: string;
+  preferredFoot?: string;
+  isFreeAgent: boolean;
 }
 
 export const publicPlayerApi = baseApi.injectEndpoints({

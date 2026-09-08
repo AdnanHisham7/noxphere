@@ -66,7 +66,7 @@ export const AcademyConfigSchema = z.object({
   notificationAlertAfterMinutes: z.number().min(0).optional(),
   absentAlertDays: z.number().int().min(1).max(30).optional(),
   dueDateAlertDays: z.number().int().min(0).max(30).optional(),
-  feeQrImageUrl: z.string().url().optional(),
+  feeQrImageUrl: z.string().url().nullable().optional().or(z.literal("")).transform(v => (v === "" || v === null) ? null : v),
   skillParameters: z.array(z.string()).optional(),
   isActive: z.boolean().optional(),
 });

@@ -8,9 +8,11 @@ import { PlatformSettingsModel } from "../../../infrastructure/database/models/P
 import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
 import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { StudentModel } from "../../../infrastructure/database/models/Student.model";
+import { NfcCardRequestModel } from "../../../infrastructure/database/models/NfcCardRequest.model";
 import { EmployeeModel } from "../../../infrastructure/database/models/Employee.model";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
 import { stripeService } from "../../../infrastructure/services/StripeService";
+import { notificationService } from "../../../infrastructure/services/NotificationService";
 import { config } from "../../../config/app.config";
 import {
   NotFoundError,
@@ -107,6 +109,105 @@ export class AcademySubscriptionUseCases {
       isActive: subscription?.status === "active",
     };
   }
+
+  async getBillingDetails(academyId: string) {
+    const [subscription, rate, staffRate, activeStudentCount, activeStaffCount] = await Promise.all([
+      AcademySubscriptionModel.findOne({ academyId }).lean(),
+      this.getEffectiveRate(academyId),
+      this.getEffectiveStaffRate(academyId),
+      this.countActiveStudents(academyId),
+      this.countActiveStaff(academyId),
+    ]);
+
+    const provisionedCapacity = subscription?.provisionedCapacity ?? 0;
+    const provisionedStaffCapacity = subscription?.provisionedStaffCapacity ?? 0;
+    const studentUtilization = provisionedCapacity > 0 ? Math.round((activeStudentCount / provisionedCapacity) * 100) : 0;
+    const staffUtilization = provisionedStaffCapacity > 0 ? Math.round((activeStaffCount / provisionedStaffCapacity) * 100) : 0;
+
+    const interval = subscription?.billingInterval ?? "month";
+    const currentRate = subscription?.ratePerStudentPerDay ?? rate;
+    const currentStaffRate = subscription?.staffRatePerStaffPerMonth ?? staffRate;
+
+    const estimatedRenewalRupees =
+      studentRupeeAmount(currentRate, provisionedCapacity, interval) +
+      staffRupeeAmount(currentStaffRate, provisionedStaffCapacity, interval);
+
+    let daysRemainingInCycle = 0;
+    if (subscription?.currentPeriodEnd) {
+      const now = new Date();
+      const diffMs = new Date(subscription.currentPeriodEnd).getTime() - now.getTime();
+      daysRemainingInCycle = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    }
+
+    const alerts: Array<{ type: "warning" | "danger" | "info"; title: string; message: string }> = [];
+    if (subscription?.status === "past_due") {
+      alerts.push({
+        type: "danger",
+        title: "Payment Past Due",
+        message: "Your latest subscription renewal payment failed. Please update your billing method to avoid service interruption.",
+      });
+    }
+
+    if (provisionedCapacity > 0) {
+      if (activeStudentCount >= provisionedCapacity) {
+        alerts.push({
+          type: "danger",
+          title: "Student Capacity Limit Reached (100%)",
+          message: `Your academy has reached its maximum limit of ${provisionedCapacity} enrolled students. New enrollments and registrations cannot be approved until you upgrade your plan capacity.`,
+        });
+      } else if (studentUtilization >= 80) {
+        alerts.push({
+          type: "warning",
+          title: "Student Capacity Warning (>80%)",
+          message: `Student capacity is at ${studentUtilization}% (${activeStudentCount}/${provisionedCapacity} students). We recommend upgrading your plan soon to prevent enrollment blocks.`,
+        });
+      }
+    }
+
+    if (provisionedStaffCapacity > 0) {
+      if (activeStaffCount >= provisionedStaffCapacity) {
+        alerts.push({
+          type: "danger",
+          title: "Staff Capacity Limit Reached (100%)",
+          message: `Your academy has reached its limit of ${provisionedStaffCapacity} staff members. You must upgrade your staff capacity before adding more staff.`,
+        });
+      } else if (staffUtilization >= 80) {
+        alerts.push({
+          type: "warning",
+          title: "Staff Capacity Warning (>80%)",
+          message: `Staff capacity is at ${staffUtilization}% (${activeStaffCount}/${provisionedStaffCapacity} staff members).`,
+        });
+      }
+    }
+
+    let invoices: any[] = [];
+    if (subscription?.stripeCustomerId) {
+      invoices = await stripeService.listInvoices(subscription.stripeCustomerId);
+    }
+
+    return {
+      hasSubscription: !!subscription,
+      status: subscription?.status ?? null,
+      isActive: subscription?.status === "active",
+      billingInterval: interval,
+      currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
+      daysRemainingInCycle,
+      provisionedCapacity,
+      activeStudentCount,
+      studentUtilization,
+      remainingStudentSlots: Math.max(0, provisionedCapacity - activeStudentCount),
+      provisionedStaffCapacity,
+      activeStaffCount,
+      staffUtilization,
+      remainingStaffSlots: Math.max(0, provisionedStaffCapacity - activeStaffCount),
+      ratePerStudentPerDay: currentRate,
+      staffRatePerStaffPerMonth: currentStaffRate,
+      estimatedRenewalRupees,
+      alerts,
+      transactions: invoices,
+    };
+  }
+
 
   // The gate every mutating route that adds a player relies on (see
   // StudentUseCases.createStudent). Kept as its own method so it can be
@@ -260,19 +361,96 @@ export class AcademySubscriptionUseCases {
     };
   }
 
+  async verifyCheckoutSession(sessionId: string, academyId?: string): Promise<{ status: string; isActive: boolean }> {
+    if (!sessionId) {
+      throw new BadRequestError("Session ID is required to verify checkout");
+    }
+
+    const session = await stripeService.retrieveCheckoutSession(sessionId);
+    const resolvedAcademyId = session.metadata?.academyId || academyId;
+    if (!resolvedAcademyId) {
+      throw new BadRequestError("Academy ID could not be identified from checkout session");
+    }
+
+    const isPaid = session.payment_status === "paid" || session.status === "complete";
+    if (!isPaid) {
+      return { status: "incomplete", isActive: false };
+    }
+
+    const subscription = await AcademySubscriptionModel.findOne({ academyId: resolvedAcademyId });
+    if (!subscription) {
+      throw new NotFoundError("Academy subscription not found");
+    }
+
+    const subId = typeof session.subscription === "string" ? session.subscription : (session.subscription as any)?.id;
+    subscription.status = "active";
+    if (subId) subscription.stripeSubscriptionId = subId;
+
+    if (!subscription.currentPeriodEnd) {
+      const days = subscription.billingInterval === "year" ? 365 : 30;
+      subscription.currentPeriodEnd = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    }
+    await subscription.save();
+
+    // Alert Super Admins about the payment received!
+    const academy = await AcademyModel.findById(resolvedAcademyId).select("name").lean();
+    const amountRupees = session.amount_total ? session.amount_total / 100 : 0;
+    await notificationService.notifySuperAdmins({
+      type: "payment_received",
+      title: "Academy Subscription Payment Received",
+      body: `${academy?.name || "An academy"} has completed payment of ₹${amountRupees.toLocaleString("en-IN")} for their ${subscription.billingInterval}ly subscription (${subscription.provisionedCapacity} students, ${subscription.provisionedStaffCapacity} staff).`,
+      metadata: { academyId: resolvedAcademyId, amount: String(amountRupees), sessionId },
+    });
+
+    return { status: "active", isActive: true };
+  }
+
   async handleWebhookEvent(event: Stripe.Event): Promise<void> {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        const nfcRequestId = session.metadata?.nfcRequestId;
+        if (nfcRequestId) {
+          const nfcRequest = await NfcCardRequestModel.findById(nfcRequestId);
+          if (nfcRequest && ["pending", "approved"].includes(nfcRequest.status)) {
+            nfcRequest.status = "paid";
+            nfcRequest.paidAt = new Date();
+            nfcRequest.stripePaymentIntentId =
+              typeof session.payment_intent === "string"
+                ? session.payment_intent
+                : (session.payment_intent as any)?.id;
+            await nfcRequest.save();
+
+            await notificationService.send({
+              userIds: [nfcRequest.requesterId.toString()],
+              type: "nfc_order_paid",
+              title: "Payment Confirmed — NFC Order Initiated!",
+              body: `Payment of ₹${nfcRequest.totalAmount} for ${nfcRequest.quantity} card(s) was received. Production has started.`,
+              data: { requestId: nfcRequest._id.toString() },
+            });
+          }
+          break;
+        }
+
         const academyId = session.metadata?.academyId;
-        if (!academyId || typeof session.subscription !== "string") break;
-        await AcademySubscriptionModel.findOneAndUpdate(
+        if (!academyId) break;
+        const subId = typeof session.subscription === "string" ? session.subscription : undefined;
+        const subscription = await AcademySubscriptionModel.findOneAndUpdate(
           { academyId },
           {
-            stripeSubscriptionId: session.subscription,
+            ...(subId && { stripeSubscriptionId: subId }),
             status: "active",
           },
+          { new: true },
         );
+        const academy = await AcademyModel.findById(academyId).select("name").lean();
+        const amountRupees = session.amount_total ? session.amount_total / 100 : 0;
+        await notificationService.notifySuperAdmins({
+          type: "payment_received",
+          title: "Academy Subscription Payment Received",
+          body: `${academy?.name || "An academy"} has completed payment of ₹${amountRupees.toLocaleString("en-IN")} for their ${subscription?.billingInterval || "month"}ly subscription (${subscription?.provisionedCapacity || 0} students, ${subscription?.provisionedStaffCapacity || 0} staff).`,
+          metadata: { academyId, amount: String(amountRupees), sessionId: session.id },
+        });
         break;
       }
       case "customer.subscription.updated":

@@ -2,6 +2,7 @@
 import { ComplaintModel } from "../../../infrastructure/database/models/Complaint.model";
 import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { NotFoundError, ForbiddenError } from "../../../shared/errors/AppError";
+import { notificationService } from "../../../infrastructure/services/NotificationService";
 
 export class ComplaintUseCases {
   async create(dto: {
@@ -16,7 +17,7 @@ export class ComplaintUseCases {
     // raisedByName/raisedByRole.
     const user = await UserModel.findById(dto.raisedBy).select("firstName lastName role").lean();
     if (!user) throw new NotFoundError("User");
-    return ComplaintModel.create({
+    const complaint = await ComplaintModel.create({
       academyId: dto.academyId,
       raisedBy: dto.raisedBy,
       raisedByRole: user.role,
@@ -24,6 +25,28 @@ export class ComplaintUseCases {
       subject: dto.subject,
       message: dto.message,
     });
+
+    // Notify academy managers about the new complaint
+    const managers = await UserModel.find({
+      academyId: dto.academyId,
+      role: "manager",
+      isActive: true,
+    })
+      .select("_id")
+      .lean();
+
+    if (managers.length > 0) {
+      const managerIds = managers.map((m) => m._id.toString());
+      await notificationService.send({
+        userIds: managerIds,
+        type: "complaint_received",
+        title: "New Complaint Submitted",
+        body: `${user.firstName} ${user.lastName} submitted a complaint: "${dto.subject}"`,
+        channels: ["push"],
+      }).catch(() => undefined);
+    }
+
+    return complaint;
   }
 
   // The manager's inbox for their own academy.
@@ -57,6 +80,16 @@ export class ComplaintUseCases {
     complaint.respondedAt = new Date();
     complaint.respondedBy = responderId as any;
     await complaint.save();
+
+    // Send internal alert to the user who raised the complaint
+    await notificationService.send({
+      userIds: [complaint.raisedBy.toString()],
+      type: "complaint_response",
+      title: `Complaint Updated: ${complaint.subject}`,
+      body: `Your complaint has been marked as ${status.replace("_", " ")}. Response: "${response}"`,
+      channels: ["push", "email"],
+    }).catch(() => undefined);
+
     return complaint;
   }
 }

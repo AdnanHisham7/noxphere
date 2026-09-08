@@ -10,9 +10,11 @@ import {
 import { Card, Badge, Button, Input, Modal, Skeleton, EmptyState, Avatar } from '../../components/ui';
 import { RootState } from '../../store';
 import { toast } from 'react-hot-toast';
+import logoSrc from '../../assets/logo.png';
+import { ThemeToggle } from '../../components/common/ThemeToggle';
 
 const getRatingColor = (r: number) =>
-  r >= 9 ? 'text-volt-400' : r >= 8 ? 'text-field-400' : r >= 7 ? 'text-ice-400' : 'text-slate-400';
+  r >= 9 ? 'text-volt-400' : r >= 8 ? 'text-field-400' : r >= 7 ? 'text-ice-500 dark:text-ice-400' : 'text-slate-400';
 
 const formatCurrency = (amount: number, currency: string) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
@@ -64,25 +66,24 @@ const TransferWallPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-pitch-950">
+    <div className="min-h-screen bg-slate-50 dark:bg-pitch-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* Public header */}
-      <header className="bg-pitch-900 border-b border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 z-40 backdrop-blur-sm">
+      <header className="bg-white/90 dark:bg-pitch-900/90 border-b border-slate-200 dark:border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 z-40 backdrop-blur-sm transition-colors duration-200">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-volt-400 rounded flex items-center justify-center">
-              <span className="font-display font-900 text-pitch-900 text-sm">FC</span>
-            </div>
-            <span className="font-display font-extrabold text-white uppercase tracking-widest text-sm hidden sm:block">Football Franchise</span>
+            <img src={logoSrc} alt="Noxphere" className="h-8 w-8 object-contain drop-shadow" />
+            <span className="font-display font-black text-slate-900 dark:text-white uppercase tracking-wider text-base hidden sm:block">Noxphere</span>
           </div>
-          <div className="w-px h-6 bg-white/10" />
+          <div className="w-px h-6 bg-slate-200 dark:bg-white/10" />
           <div className="flex items-center gap-2">
-            <span className="text-ice-400">↔</span>
-            <span className="font-display font-bold text-white uppercase tracking-wide text-sm">Transfer Wall</span>
+            <span className="text-ice-500 dark:text-ice-400">↔</span>
+            <span className="font-display font-bold text-slate-900 dark:text-white uppercase tracking-wide text-sm">Transfer Wall</span>
             <span className="pill-blue text-2xs ml-1">PUBLIC</span>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-2xs text-slate-500 hidden md:block">{data?.meta?.total ?? listings.length} players listed</span>
+          <ThemeToggle size="sm" />
           {isAuthenticated ? (
             <a href="/dashboard" className="btn-secondary text-xs py-1.5 px-3">← Dashboard</a>
           ) : (
@@ -93,23 +94,23 @@ const TransferWallPage: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         {/* Hero banner */}
-        <div className="relative overflow-hidden rounded-lg bg-pitch-800 border border-ice-400/15 p-6 sm:p-8">
-          <div className="absolute inset-0 bg-ice-glow opacity-50" />
+        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-pitch-800 border border-slate-200 dark:border-ice-400/15 p-6 sm:p-8 shadow-sm dark:shadow-none transition-colors">
+          <div className="absolute inset-0 bg-ice-glow opacity-30 dark:opacity-50 pointer-events-none" />
           <div className="relative z-10">
-            <p className="section-title text-ice-400 mb-2">Open Market</p>
-            <h1 className="font-display font-900 text-white text-3xl sm:text-4xl uppercase tracking-tight leading-none">
+            <p className="section-title text-ice-600 dark:text-ice-400 mb-2">Open Market</p>
+            <h1 className="font-display font-900 text-slate-900 dark:text-white text-3xl sm:text-4xl uppercase tracking-tight leading-none">
               Transfer Wall
             </h1>
-            <p className="text-slate-400 text-sm mt-2 max-w-xl">
+            <p className="text-slate-600 dark:text-slate-400 text-sm mt-2 max-w-xl">
               Browse talented players available for transfer across football franchises. Managers can submit acquisition requests directly to the listing franchise.
             </p>
             <div className="flex flex-wrap items-center gap-4 mt-4">
-              <div className="flex items-center gap-2 text-xs text-slate-400">
+              <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-field-400 animate-pulse" />
                 Live listings
               </div>
-              <span className="text-slate-600 text-xs">Verified franchise players only</span>
-              <span className="text-slate-600 text-xs">Secure manager-to-manager transfers</span>
+              <span className="text-slate-500 dark:text-slate-400 text-xs">Verified franchise players only</span>
+              <span className="text-slate-500 dark:text-slate-400 text-xs">Secure manager-to-manager transfers</span>
             </div>
           </div>
         </div>
@@ -165,11 +166,11 @@ const TransferWallPage: React.FC = () => {
             {listings.map((listing) => (
               <div
                 key={listing.id}
-                className="card border border-white/5 hover:border-ice-400/25 transition-all duration-200 cursor-pointer overflow-hidden group"
+                className="card border border-slate-200/90 dark:border-white/5 hover:border-ice-400/40 dark:hover:border-ice-400/25 transition-all duration-200 cursor-pointer overflow-hidden group shadow-sm hover:shadow-md"
                 onClick={() => setSelectedListing(listing)}
               >
                 {/* Card header */}
-                <div className="p-5 border-b border-white/5">
+                <div className="p-5 border-b border-slate-100 dark:border-white/5">
                   <div className="flex items-start gap-3">
                     <Avatar
                       name={`${listing.student?.firstName} ${listing.student?.lastName}`}
@@ -179,10 +180,10 @@ const TransferWallPage: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="font-display font-extrabold text-white text-lg leading-tight">
+                          <p className="font-display font-extrabold text-slate-900 dark:text-white text-lg leading-tight">
                             {listing.student?.firstName}<br />{listing.student?.lastName}
                           </p>
-                          <p className="text-xs text-slate-400 mt-0.5">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                             {listing.student?.position ?? '—'} · {listing.student?.ageGroup}
                           </p>
                         </div>
@@ -199,11 +200,11 @@ const TransferWallPage: React.FC = () => {
                   {/* Quick stats */}
                   <div className="flex items-center gap-3 mt-3 flex-wrap">
                     {listing.student?.attendancePercentage !== undefined && (
-                      <span className="stat-badge text-field-400">
+                      <span className="stat-badge text-field-500 dark:text-field-400">
                         ✓ {listing.student.attendancePercentage}% att
                       </span>
                     )}
-                    <span className="stat-badge text-slate-400">
+                    <span className="stat-badge text-slate-600 dark:text-slate-400">
                       👁 {listing.viewCount} views
                     </span>
                     {listing.fromFranchise?.name && (
@@ -224,12 +225,12 @@ const TransferWallPage: React.FC = () => {
                     </div>
                   )}
                   {listing.note && (
-                    <p className="text-xs text-slate-500 line-clamp-2">{listing.note}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">{listing.note}</p>
                   )}
                 </div>
 
                 {/* Price + CTA */}
-                <div className="px-5 py-4 bg-pitch-700/50 flex items-center justify-between">
+                <div className="px-5 py-4 bg-slate-50/80 dark:bg-pitch-700/50 border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
                   <div>
                     <p className="text-2xs text-slate-500 uppercase tracking-wide">Transfer Fee</p>
                     <p className="font-display font-extrabold text-volt-400 text-lg">
@@ -240,7 +241,7 @@ const TransferWallPage: React.FC = () => {
                     variant="secondary"
                     size="sm"
                     onClick={(e) => { e.stopPropagation(); setSelectedListing(listing); }}
-                    className="group-hover:border-ice-400/40 group-hover:text-ice-400"
+                    className="group-hover:border-ice-400/40 group-hover:text-ice-500 dark:group-hover:text-ice-400"
                   >
                     View Profile
                   </Button>
@@ -254,10 +255,10 @@ const TransferWallPage: React.FC = () => {
       {/* Player Detail Modal */}
       {selectedListing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedListing(null)} />
-          <div className="relative card shadow-panel w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-slide-up">
+          <div className="absolute inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm" onClick={() => setSelectedListing(null)} />
+          <div className="relative card shadow-panel w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-slide-up bg-white dark:bg-pitch-800 border border-slate-200 dark:border-white/10">
             {/* Header */}
-            <div className="sticky top-0 bg-pitch-800 border-b border-white/5 p-5 flex items-start justify-between z-10">
+            <div className="sticky top-0 bg-white/95 dark:bg-pitch-800/95 backdrop-blur-xs border-b border-slate-200 dark:border-white/5 p-5 flex items-start justify-between z-10">
               <div className="flex items-center gap-4">
                 <Avatar
                   name={`${selectedListing.student?.firstName} ${selectedListing.student?.lastName}`}
@@ -265,17 +266,17 @@ const TransferWallPage: React.FC = () => {
                   size="xl"
                 />
                 <div>
-                  <p className="font-display font-900 text-white text-2xl uppercase">
+                  <p className="font-display font-900 text-slate-900 dark:text-white text-2xl uppercase">
                     {selectedListing.student?.firstName} {selectedListing.student?.lastName}
                   </p>
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
                     {selectedListing.student?.position ?? '—'} · {selectedListing.student?.ageGroup}
                   </p>
                   <div className="flex items-center gap-2 mt-1.5">
                     {selectedListing.fromFranchise?.name && (
                       <>
                         <span className="text-2xs text-slate-500">{selectedListing.fromFranchise.name}</span>
-                        <span className="text-slate-700">·</span>
+                        <span className="text-slate-300 dark:text-slate-700">·</span>
                       </>
                     )}
                     <span className="text-2xs text-slate-500">
@@ -284,25 +285,25 @@ const TransferWallPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <button onClick={() => setSelectedListing(null)} className="btn-ghost p-1 text-slate-400 text-sm">✕</button>
+              <button onClick={() => setSelectedListing(null)} className="btn-ghost p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white text-sm">✕</button>
             </div>
 
             <div className="p-5 space-y-6">
               {/* Overall rating + stats */}
               <div className="grid grid-cols-3 gap-3">
-                <div className="card p-4 text-center">
+                <div className="card p-4 text-center bg-slate-50 dark:bg-pitch-700/50 border border-slate-200/80 dark:border-white/5">
                   <p className={clsx('font-display font-900 text-3xl', getRatingColor(selectedListing.overallRating))}>
                     {selectedListing.overallRating.toFixed(1)}
                   </p>
                   <p className="text-2xs text-slate-500 mt-1 uppercase tracking-wide">Overall</p>
                 </div>
-                <div className="card p-4 text-center">
-                  <p className="font-display font-900 text-3xl text-field-400">
+                <div className="card p-4 text-center bg-slate-50 dark:bg-pitch-700/50 border border-slate-200/80 dark:border-white/5">
+                  <p className="font-display font-900 text-3xl text-field-500 dark:text-field-400">
                     {selectedListing.student?.attendancePercentage !== undefined ? `${selectedListing.student.attendancePercentage}%` : '—'}
                   </p>
                   <p className="text-2xs text-slate-500 mt-1 uppercase tracking-wide">Attendance</p>
                 </div>
-                <div className="card p-4 text-center">
+                <div className="card p-4 text-center bg-slate-50 dark:bg-pitch-700/50 border border-slate-200/80 dark:border-white/5">
                   <p className="font-display font-900 text-3xl text-volt-400">{formatCurrency(selectedListing.price, selectedListing.currency)}</p>
                   <p className="text-2xs text-slate-500 mt-1 uppercase tracking-wide">Fee</p>
                 </div>
@@ -324,8 +325,8 @@ const TransferWallPage: React.FC = () => {
               {selectedListing.note && (
                 <div>
                   <p className="section-title mb-2">Coach Note</p>
-                  <div className="bg-pitch-700 border border-white/5 rounded p-4">
-                    <p className="text-sm text-slate-300 leading-relaxed italic">"{selectedListing.note}"</p>
+                  <div className="bg-slate-50 dark:bg-pitch-700 border border-slate-200 dark:border-white/5 rounded-lg p-4">
+                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed italic">"{selectedListing.note}"</p>
                   </div>
                 </div>
               )}
@@ -349,9 +350,9 @@ const TransferWallPage: React.FC = () => {
                     Submit Transfer Request
                   </Button>
                 ) : (
-                  <div className="flex-1 card p-4 text-center">
+                  <div className="flex-1 card p-4 text-center bg-slate-50 dark:bg-pitch-700/40 border border-slate-200 dark:border-white/5">
                     <p className="text-xs text-slate-500">
-                      <a href="/login" className="text-volt-400 hover:underline">Login as Manager</a> to submit a transfer request
+                      <a href="/login" className="text-volt-500 dark:text-volt-400 font-semibold hover:underline">Login as Manager</a> to submit a transfer request
                     </p>
                   </div>
                 )}
@@ -365,9 +366,9 @@ const TransferWallPage: React.FC = () => {
       {/* Transfer Request Modal */}
       <Modal isOpen={requestModal} onClose={() => setRequestModal(false)} title="Submit Transfer Request" size="md">
         <div className="space-y-4">
-          <div className="bg-pitch-700 rounded p-4">
-            <p className="text-xs text-slate-400">Requesting transfer for:</p>
-            <p className="font-display font-bold text-white mt-1">
+          <div className="bg-slate-50 dark:bg-pitch-700 border border-slate-200 dark:border-white/5 rounded-lg p-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Requesting transfer for:</p>
+            <p className="font-display font-bold text-slate-900 dark:text-white mt-1">
               {selectedListing?.student?.firstName} {selectedListing?.student?.lastName}
             </p>
             <p className="text-xs text-slate-500">{selectedListing?.fromFranchise?.name}</p>
@@ -398,9 +399,9 @@ const TransferWallPage: React.FC = () => {
       </Modal>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 mt-12 py-6 px-6 text-center">
-        <p className="text-2xs text-slate-600">
-          Football Franchise Platform · Transfer Wall is a public portal · All transfers are processed franchise-to-franchise
+      <footer className="border-t border-slate-200 dark:border-white/5 mt-12 py-6 px-6 text-center">
+        <p className="text-2xs text-slate-500">
+          Noxphere Platform · Transfer Wall is a public portal · All transfers are processed franchise-to-franchise
         </p>
       </footer>
     </div>

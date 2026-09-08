@@ -4,7 +4,7 @@ import { baseApi } from "./baseApi";
 export interface Session {
   id: string;
   franchiseId: string;
-  targetType: "team" | "category";
+  targetType: "team" | "category" | "batch";
   teamId?: string;
   teamName?: string;
   category?: string;
@@ -35,7 +35,7 @@ export interface Session {
 
 export interface CreateSessionInput {
   franchiseId: string;
-  targetType: "team" | "category";
+  targetType: "team" | "category" | "batch";
   teamId?: string;
   category?: string;
   categories?: string[];

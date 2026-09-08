@@ -25,9 +25,17 @@ export class ScheduleController {
   private async assertCoachOwnsSession(req: Request, sessionId: string): Promise<void> {
     if (req.user!.role !== "coach") return;
     const session = (await this.scheduleUseCases.getSessionById(sessionId)) as any;
-    const isAssigned = session.coachIds && session.coachIds.length > 0
-      ? session.coachIds.includes(req.user!.sub)
-      : session.coachId === req.user!.sub;
+    const userId = req.user!.sub;
+    const coachIdsList = (session.coachIds || []).map((id: any) =>
+      typeof id === "object" ? (id._id?.toString() || id.id?.toString() || id.toString()) : id.toString()
+    );
+    const coachIdStr = session.coachId
+      ? (typeof session.coachId === "object"
+          ? (session.coachId._id?.toString() || session.coachId.id?.toString() || session.coachId.toString())
+          : session.coachId.toString())
+      : undefined;
+
+    const isAssigned = coachIdsList.includes(userId) || coachIdStr === userId;
     if (!isAssigned) {
       throw new ForbiddenError("You can only manage sessions assigned to you");
     }
@@ -35,16 +43,21 @@ export class ScheduleController {
 
   list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { franchiseId, academyId, from, to, teamId, status } = req.query;
+      const { franchiseId, from, to, teamId, status } = req.query;
+      let academyId = req.query.academyId as string | undefined;
       if (!franchiseId && !academyId) {
-        throw new BadRequestError("franchiseId or academyId is required");
+        if (req.user?.role === "coach" && req.user.academyId) {
+          academyId = req.user.academyId;
+        } else {
+          throw new BadRequestError("franchiseId or academyId is required");
+        }
       }
       // A coach only ever sees their own sessions — regardless of what
       // (if anything) was passed in the coachId query param.
       const coachId = req.user!.role === "coach" ? req.user!.sub : (req.query.coachId as string);
       const sessions = await this.scheduleUseCases.listSessions({
         franchiseId: franchiseId as string | undefined,
-        academyId: academyId as string | undefined,
+        academyId,
         from: from as string,
         to: to as string,
         teamId: teamId as string,
@@ -61,9 +74,17 @@ export class ScheduleController {
     try {
       const session = (await this.scheduleUseCases.getSessionById(req.params.id)) as any;
       if (req.user!.role === "coach") {
-        const isAssigned = session.coachIds && session.coachIds.length > 0
-          ? session.coachIds.includes(req.user!.sub)
-          : session.coachId === req.user!.sub;
+        const userId = req.user!.sub;
+        const coachIdsList = (session.coachIds || []).map((id: any) =>
+          typeof id === "object" ? (id._id?.toString() || id.id?.toString() || id.toString()) : id.toString()
+        );
+        const coachIdStr = session.coachId
+          ? (typeof session.coachId === "object"
+              ? (session.coachId._id?.toString() || session.coachId.id?.toString() || session.coachId.toString())
+              : session.coachId.toString())
+          : undefined;
+
+        const isAssigned = coachIdsList.includes(userId) || coachIdStr === userId;
         if (!isAssigned) {
           throw new ForbiddenError("You can only view sessions assigned to you");
         }
@@ -110,6 +131,7 @@ export class ScheduleController {
         // (time, location, notes, type) but can never re-target it to a
         // different team/category/franchise or hand it to another coach.
         delete dto.coachId;
+        delete (dto as any).coachIds;
         delete dto.teamId;
         delete dto.category;
         delete dto.targetType;
@@ -175,9 +197,17 @@ export class ScheduleController {
 
       const session = roster.session as any;
       if (req.user!.role === "coach") {
-        const isAssigned = session.coachIds && session.coachIds.length > 0
-          ? session.coachIds.includes(req.user!.sub)
-          : session.coachId === req.user!.sub;
+        const userId = req.user!.sub;
+        const coachIdsList = (session.coachIds || []).map((id: any) =>
+          typeof id === "object" ? (id._id?.toString() || id.id?.toString() || id.toString()) : id.toString()
+        );
+        const coachIdStr = session.coachId
+          ? (typeof session.coachId === "object"
+              ? (session.coachId._id?.toString() || session.coachId.id?.toString() || session.coachId.toString())
+              : session.coachId.toString())
+          : undefined;
+
+        const isAssigned = coachIdsList.includes(userId) || coachIdStr === userId;
         if (!isAssigned) {
           throw new ForbiddenError("You can only view sessions assigned to you");
         }

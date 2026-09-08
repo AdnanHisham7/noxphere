@@ -1,10 +1,11 @@
-// src/features/student-portal/StudentProgressPage.tsx
 import React, { useState } from "react";
-import { CalendarCheck, Wallet, TrendingUp } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Compass, ArrowRight, CalendarCheck, Wallet, TrendingUp } from "lucide-react";
 import {
   useGetMyAttendanceQuery,
   useGetMyFeesQuery,
   useGetMyPerformanceQuery,
+  useGetMyDashboardQuery,
 } from "../../store/api/studentPortalApi";
 import { NoxPageHeader, NoxSkeleton, NoxEmptyState, NoxStatusBadge, NoxStatCard } from "../../components/portal-ui";
 
@@ -18,6 +19,42 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 
 const StudentProgressPage: React.FC = () => {
   const [tab, setTab] = useState<Tab>("attendance");
+  const { data: dashboard, isLoading: isDashLoading } = useGetMyDashboardQuery();
+
+  if (isDashLoading) {
+    return <NoxSkeleton className="h-64" />;
+  }
+
+  const isFreeAgent = dashboard && !dashboard.profile?.franchiseId;
+  if (isFreeAgent) {
+    return (
+      <div className="space-y-6">
+        <NoxPageHeader eyebrow="Student portal" title="My progress" />
+        <div className="nox-card p-8 text-center max-w-xl mx-auto space-y-4 border-amber-400/20 bg-amber-400/[0.02]">
+          <div className="w-12 h-12 rounded-full bg-amber-400/10 text-amber-400 flex items-center justify-center mx-auto">
+            <Compass size={24} />
+          </div>
+          <div>
+            <span className="text-2xs font-mono uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full font-semibold">
+              Free Agent • Unattached
+            </span>
+            <h3 className="font-orbital font-semibold text-lg text-nox-high mt-2">
+              Academy Progress Not Active
+            </h3>
+            <p className="text-xs text-nox-low mt-1 leading-relaxed">
+              Attendance tracking, fee plans, and coach evaluation notes become active once you join an academy squad. In the meantime, you can manage your verified public player card and privacy settings from your dashboard.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link to="/student/dashboard" className="nox-btn-primary inline-flex items-center gap-2 text-xs">
+              <span>Go to Free Agent Dashboard</span>
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

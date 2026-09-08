@@ -29,10 +29,12 @@ export const academyApi = baseApi.injectEndpoints({
     }),
     getAcademyById: builder.query<Academy, string>({
       query: (id) => `/academies/${id}`,
+      transformResponse: (res: any) => res?.data ?? res,
       providesTags: (_, __, id) => [{ type: "Academy", id }],
     }),
     createAcademy: builder.mutation<Academy, CreateAcademyPayload>({
       query: (body) => ({ url: "/academies", method: "POST", body }),
+      transformResponse: (res: any) => res?.data ?? res,
       invalidatesTags: [{ type: "Academy", id: "LIST" }],
     }),
     updateAcademy: builder.mutation<
@@ -44,6 +46,7 @@ export const academyApi = baseApi.injectEndpoints({
         method: "PUT",
         body: data,
       }),
+      transformResponse: (res: any) => res?.data ?? res,
       invalidatesTags: (_, __, { id }) => [{ type: "Academy", id }],
     }),
     updateAcademyConfig: builder.mutation<
@@ -55,6 +58,7 @@ export const academyApi = baseApi.injectEndpoints({
         method: "PATCH",
         body: config,
       }),
+      transformResponse: (res: any) => res?.data ?? res,
       invalidatesTags: (result, error, { id }) => [{ type: "Academy", id }],
     }),
     toggleAcademyStatus: builder.mutation<Academy, string>({
@@ -62,8 +66,7 @@ export const academyApi = baseApi.injectEndpoints({
         url: `/academies/${id}/toggle-status`,
         method: "PATCH",
       }),
-      // This will now correctly trigger a refetch of getAcademies 
-      // because the IDs will match.
+      transformResponse: (res: any) => res?.data ?? res,
       invalidatesTags: (result, error, id) => [{ type: "Academy", id }],
     }),
     toggleTransferWall: builder.mutation<Academy, string>({
@@ -71,6 +74,7 @@ export const academyApi = baseApi.injectEndpoints({
         url: `/academies/${id}/transfer-wall`,
         method: "PATCH",
       }),
+      transformResponse: (res: any) => res?.data ?? res,
       invalidatesTags: (result, error, id) => [{ type: "Academy", id }],
     }),
     deleteAcademy: builder.mutation<void, string>({

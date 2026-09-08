@@ -54,10 +54,19 @@ export class CoachPortalUseCases {
    */
   async getMyFranchises(coachUserId: string) {
     const coachObjectId = new mongoose.Types.ObjectId(coachUserId);
+    const coachSessionFilter = {
+      $or: [
+        { coachId: coachObjectId },
+        { coachId: coachUserId },
+        { coachIds: coachObjectId },
+        { coachIds: coachUserId },
+      ],
+      deletedAt: { $exists: false },
+    };
     const [teamFranchiseIds, sessionFranchiseIds] = await Promise.all([
       TeamModel.find({ coachId: coachObjectId, deletedAt: { $exists: false } })
         .distinct("franchiseId"),
-      SessionModel.find({ coachId: coachObjectId, deletedAt: { $exists: false } })
+      SessionModel.find(coachSessionFilter)
         .distinct("franchiseId"),
     ]);
     const franchiseIds = Array.from(
@@ -94,8 +103,14 @@ export class CoachPortalUseCases {
     weekEnd.setDate(weekEnd.getDate() + 7);
     weekEnd.setHours(23, 59, 59, 999);
 
+    const coachObjectId = new mongoose.Types.ObjectId(coachUserId);
     const sessions = await SessionModel.find({
-      coachId: new mongoose.Types.ObjectId(coachUserId),
+      $or: [
+        { coachId: coachObjectId },
+        { coachId: coachUserId },
+        { coachIds: coachObjectId },
+        { coachIds: coachUserId },
+      ],
       status: { $ne: "cancelled" },
     })
       .populate("teamId", "name")

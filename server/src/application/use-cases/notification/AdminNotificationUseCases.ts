@@ -17,6 +17,8 @@ export interface CreateNotificationInput {
   imageUrl?: string;
   documentUrl?: string;
   documentFilename?: string;
+  attachments?: { name: string; url: string }[];
+  channels?: string[];
 }
 
 export class AdminNotificationUseCases {
@@ -132,10 +134,11 @@ export class AdminNotificationUseCases {
     return Array.from(recipientIds);
   }
 
-  async create(input: CreateNotificationInput & { channels?: string[]; attachments?: { name: string; url: string }[] }, createdBy: string) {
+  async create(input: CreateNotificationInput, createdBy: string) {
     if (!input.title || !input.body) throw new BadRequestError("title and body are required");
 
     const recipientIds = await this.resolveRecipients(input.franchiseId, input.audience, input.teamId);
+    const selectedChannels = input.channels && input.channels.length > 0 ? input.channels : ["push", "whatsapp"];
 
     const notification = await NotificationModel.create({
       franchiseId: input.franchiseId,
@@ -147,7 +150,7 @@ export class AdminNotificationUseCases {
       documentUrl: input.documentUrl,
       documentFilename: input.documentFilename,
       attachments: input.attachments,
-      channels: input.channels,
+      channels: selectedChannels,
       createdBy,
       readBy: [],
     });
@@ -159,10 +162,13 @@ export class AdminNotificationUseCases {
         title: input.title,
         body: input.body,
         franchiseId: input.franchiseId,
-        channels: (input.channels && input.channels.length > 0 ? input.channels : ["push", "whatsapp"]) as any,
+        channels: selectedChannels as any,
+        emailSubject: input.title,
         whatsappImageUrl: input.imageUrl,
         whatsappDocumentUrl: input.documentUrl || (input.attachments && input.attachments[0]?.url),
         whatsappDocumentFilename: input.documentFilename || (input.attachments && input.attachments[0]?.name),
+        imageUrl: input.imageUrl,
+        attachments: input.attachments,
       });
     }
 

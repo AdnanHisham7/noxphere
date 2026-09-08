@@ -1,5 +1,5 @@
-// src/store/api/studentPortalApi.ts
 import { baseApi } from "./baseApi";
+import type { PublicProfileSettings } from "./consentApi";
 
 export interface MyDashboard {
   profile: {
@@ -11,8 +11,21 @@ export interface MyDashboard {
     overallRating: number;
     team?: { name: string; ageGroup: string };
     position?: string;
+    positions?: string[];
     jerseyNumber?: number;
+    dateOfBirth?: string;
+    ageGroup?: string;
+    guardian?: { name: string; phone: string; email: string };
+    medicalInfo?: {
+      emergencyContactName?: string;
+      emergencyContactPhone?: string;
+    };
+    publicProfileToken?: string;
+    publicProfileEnabled?: boolean;
+    publicProfileSettings?: PublicProfileSettings;
+    franchiseId?: string | null;
   };
+
   todayStatus: string | null;
   upcomingFees: { installmentNumber: number; amount: number; dueDate: string }[];
   overdueFees: { installmentNumber: number; amount: number; dueDate: string }[];
@@ -84,6 +97,41 @@ export const studentPortalApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: PerformanceBundle }) => res.data,
       providesTags: ["Performance"],
     }),
+    updateMyProfile: builder.mutation<
+      MyDashboard,
+      {
+        firstName?: string;
+        lastName?: string;
+        dateOfBirth?: string;
+        position?: string;
+        positions?: string[];
+        jerseyNumber?: number;
+        photo?: string;
+        guardian?: { name?: string; phone?: string; email?: string };
+        emergencyContactName?: string;
+        emergencyContactPhone?: string;
+        bio?: string;
+        preferredFoot?: string;
+      }
+    >({
+      query: (body) => ({
+        url: "/me/profile",
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["Student"],
+    }),
+    updateMyPublicProfileSettings: builder.mutation<
+      { publicProfileEnabled: boolean; publicProfileSettings: PublicProfileSettings },
+      { enabled?: boolean; settings?: PublicProfileSettings }
+    >({
+      query: (body) => ({
+        url: "/me/public-profile-settings",
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["Student"],
+    }),
   }),
 });
 
@@ -92,4 +140,6 @@ export const {
   useGetMyAttendanceQuery,
   useGetMyFeesQuery,
   useGetMyPerformanceQuery,
+  useUpdateMyProfileMutation,
+  useUpdateMyPublicProfileSettingsMutation,
 } = studentPortalApi;

@@ -12,6 +12,7 @@ import {
 interface SubscriptionModalProps {
   academyId: string;
   onClose: () => void;
+  onSuccess?: () => void;
   // When the modal was triggered by hitting an existing subscription's
   // capacity (rather than having none at all), we skip straight to the
   // upgrade flow instead of offering to pick a billing interval again.
@@ -20,7 +21,7 @@ interface SubscriptionModalProps {
 
 const formatCurrency = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
-export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId, onClose, mode }) => {
+export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId, onClose, onSuccess, mode }) => {
   const { data: status, isLoading } = useGetAcademySubscriptionStatusQuery(academyId);
   const [checkout, { isLoading: checkingOut }] = useCreateSubscriptionCheckoutMutation();
   const [upgrade, { isLoading: upgrading }] = useUpgradeSubscriptionCapacityMutation();
@@ -61,6 +62,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId,
     try {
       await upgrade({ academyId, capacity, staffCapacity }).unwrap();
       toast.success("Subscription capacity updated");
+      if (onSuccess) {
+        onSuccess();
+      }
       onClose();
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't upgrade capacity — try again");

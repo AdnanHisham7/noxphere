@@ -1,4 +1,4 @@
-// src/index.ts
+// src/index.ts - Noxphere Server
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -71,8 +71,13 @@ import { EmployeeController } from "./interfaces/http/controllers/EmployeeContro
 import { EmployeeUseCases } from "./application/use-cases/employee/EmployeeUseCases";
 import { ComplaintController } from "./interfaces/http/controllers/ComplaintController";
 import { ComplaintUseCases } from "./application/use-cases/complaint/ComplaintUseCases";
+import { RegistrationController } from "./interfaces/http/controllers/RegistrationController";
+import { RegistrationUseCases } from "./application/use-cases/student/RegistrationUseCases";
+import { NfcCardController } from "./interfaces/http/controllers/NfcCardController";
+import { NfcCardUseCases } from "./application/use-cases/nfc/NfcCardUseCases";
 
 const app = express();
+
 const httpServer = createServer(app);
 
 // Socket.IO for real-time features
@@ -217,6 +222,10 @@ const academyController = new AcademyController(academyUseCases);
   const employeeController = new EmployeeController(employeeUseCases);
   const complaintUseCases = new ComplaintUseCases();
   const complaintController = new ComplaintController(complaintUseCases);
+  const registrationUseCases = new RegistrationUseCases(academySubscriptionUseCases);
+  const registrationController = new RegistrationController(registrationUseCases);
+  const nfcCardUseCases = new NfcCardUseCases();
+  const nfcCardController = new NfcCardController(nfcCardUseCases);
 
   app.locals.controllers = {
     auth: authController,
@@ -245,8 +254,11 @@ const academyController = new AcademyController(academyUseCases);
     publicPlayer: publicPlayerController,
     employee: employeeController,
     complaint: complaintController,
+    registration: registrationController,
+    nfcCard: nfcCardController,
   };
 }
+
 
 // ─── Routes ────────────────────────────────────────────────────────────────────
 app.use(config.apiPrefix, apiRouter);

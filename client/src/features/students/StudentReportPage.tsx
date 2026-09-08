@@ -51,8 +51,8 @@ const StudentReportPage: React.FC = () => {
         }
       `}</style>
 
-      <div className="no-print sticky top-0 z-10 bg-pitch-950 border-b border-white/10 px-6 py-3 flex items-center justify-between">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white">
+      <div className="no-print sticky top-0 z-10 bg-slate-100 dark:bg-pitch-950 border-b border-slate-200 dark:border-white/10 px-6 py-3 flex items-center justify-between transition-colors duration-200">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
           <ArrowLeft size={14} /> Back
         </button>
         <Button size="sm" icon={<Printer size={14} />} onClick={() => window.print()}>

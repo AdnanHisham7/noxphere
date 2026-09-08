@@ -12,6 +12,8 @@ import RoleProtectedRoute from "./components/layout/RoleProtectedRoute";
 import { GUARDIAN_NAV_ITEMS } from "./features/guardian/guardianNav";
 import { STUDENT_NAV_ITEMS } from "./features/student-portal/studentNav";
 
+import logoSrc from "./assets/logo.png";
+
 // Lazy loaded pages
 const LandingPage = lazy(() => import("./features/landing/LandingPage"));
 const LoginPage = lazy(() => import("./features/auth/LoginPage"));
@@ -50,6 +52,9 @@ const SubscriptionCancelledPage = lazy(
   () => import("./features/subscription/SubscriptionCancelledPage"),
 );
 const PublicPlayerPage = lazy(() => import("./features/public-player/PublicPlayerPage"));
+const StudentSignupPage = lazy(() => import("./features/auth/StudentSignupPage"));
+const AcademyRegistrationPage = lazy(() => import("./features/registration/AcademyRegistrationPage"));
+const SubscriptionManagementPage = lazy(() => import("./features/subscription/SubscriptionManagementPage"));
 const FranchiseManagementPage = lazy(
   () => import("./features/franchises/FranchiseManagementPage"),
 );
@@ -89,14 +94,24 @@ const CoachDashboardPage = lazy(
 const CoachStudentPanelPage = lazy(
   () => import("./features/coach-portal/CoachStudentPanelPage"),
 );
+const AcademyNfcManagementPage = lazy(() => import("./features/nfc/AcademyNfcManagementPage"));
+const SuperAdminNfcManagementPage = lazy(() => import("./features/nfc/SuperAdminNfcManagementPage"));
+const NfcOrderSuccessPage = lazy(() => import("./features/nfc/NfcOrderSuccessPage"));
+const NfcOrderCancelledPage = lazy(() => import("./features/nfc/NfcOrderCancelledPage"));
+const ProfilePage = lazy(() => import("./features/profile/ProfilePage"));
 
 const PageLoader = () => (
-  <div className="min-h-screen bg-pitch-950 flex items-center justify-center">
-    <div className="flex flex-col items-center gap-4">
-      <div className="w-10 h-10 bg-volt-400 rounded flex items-center justify-center">
-        <span className="font-display font-900 text-pitch-900 text-base">
-          FC
-        </span>
+  <div className="min-h-screen bg-slate-50 dark:bg-pitch-950 flex items-center justify-center transition-colors duration-200">
+    <div className="flex flex-col items-center gap-5">
+      <div className="relative flex items-center justify-center">
+        <div className="absolute -inset-2 rounded-2xl bg-volt-400/20 blur-lg animate-pulse" />
+        <div className="relative w-16 h-16 rounded-2xl bg-white dark:bg-pitch-900 border border-slate-200/80 dark:border-white/10 shadow-lg dark:shadow-volt/10 flex items-center justify-center p-2.5">
+          <img
+            src={logoSrc}
+            alt="Noxphere"
+            className="w-full h-full object-contain drop-shadow"
+          />
+        </div>
       </div>
       <Spinner size="md" />
     </div>
@@ -112,12 +127,25 @@ const RoleAwareRedirect: React.FC = () => {
   return <Navigate to="/dashboard" replace />;
 };
 
+const NfcCardsRouter: React.FC = () => {
+  const user = useSelector((s: RootState) => s.auth.user);
+  if (user?.role === "super_admin") return <SuperAdminNfcManagementPage />;
+  return <AcademyNfcManagementPage />;
+};
+
 const DashboardRouter: React.FC = () => {
   const user = useSelector((s: RootState) => s.auth.user);
   if (user?.role === "guardian") return <Navigate to="/guardian/dashboard" replace />;
   if (user?.role === "student") return <Navigate to="/student/dashboard" replace />;
   if (user?.role === "coach") return <Navigate to="/coach/dashboard" replace />;
   return <DashboardPage />;
+};
+
+const ProfileRouter: React.FC = () => {
+  const user = useSelector((s: RootState) => s.auth.user);
+  if (user?.role === "guardian") return <Navigate to="/guardian/profile" replace />;
+  if (user?.role === "student") return <Navigate to="/student/profile" replace />;
+  return <ProfilePage />;
 };
 
 const App: React.FC = () => (
@@ -146,6 +174,8 @@ const App: React.FC = () => (
           {/* Public */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup/student" element={<StudentSignupPage />} />
+          <Route path="/register/academy/:academyId" element={<AcademyRegistrationPage />} />
           <Route path="/transfer-wall" element={<TransferWallPage />} />
           <Route path="/players/:token" element={<PublicPlayerPage />} />
 
@@ -158,6 +188,8 @@ const App: React.FC = () => (
                 would otherwise block on. */}
             <Route path="/subscription/success" element={<SubscriptionSuccessPage />} />
             <Route path="/subscription/cancelled" element={<SubscriptionCancelledPage />} />
+            <Route path="/nfc-orders/success" element={<NfcOrderSuccessPage />} />
+            <Route path="/nfc-orders/cancelled" element={<NfcOrderCancelledPage />} />
             {/* Print-friendly, no app chrome by design (see StudentReportPage) —
                 also kept outside MainLayout for the same reason. */}
             <Route path="/students/:id/report" element={<StudentReportPage />} />
@@ -166,6 +198,7 @@ const App: React.FC = () => (
               {/* Everyone logged in */}
               <Route path="/dashboard" element={<DashboardRouter />} />
               <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/profile" element={<ProfileRouter />} />
 
               {/* Manager + Coach */}
               <Route
@@ -212,6 +245,8 @@ const App: React.FC = () => (
               >
                 <Route path="/franchises" element={<FranchiseManagementPage />} />
                 <Route path="/franchises/:franchiseId" element={<FranchiseDashboardPage />} />
+                <Route path="/subscription" element={<SubscriptionManagementPage />} />
+                <Route path="/nfc-cards" element={<NfcCardsRouter />} />
               </Route>
 
               {/* Super Admin only */}
@@ -234,6 +269,7 @@ const App: React.FC = () => (
                 <Route path="/guardian/dashboard" element={<GuardianDashboardPage />} />
                 <Route path="/guardian/children/:id" element={<GuardianChildDetailPage />} />
                 <Route path="/guardian/complaints" element={<GuardianComplaintsPage />} />
+                <Route path="/guardian/profile" element={<ProfilePage />} />
               </Route>
             </Route>
           </Route>
@@ -246,6 +282,7 @@ const App: React.FC = () => (
               >
                 <Route path="/student/dashboard" element={<StudentDashboardPage />} />
                 <Route path="/student/progress" element={<StudentProgressPage />} />
+                <Route path="/student/profile" element={<ProfilePage />} />
               </Route>
             </Route>
           </Route>

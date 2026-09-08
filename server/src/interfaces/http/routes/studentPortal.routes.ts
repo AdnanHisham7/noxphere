@@ -16,6 +16,14 @@ studentPortalRouter.get("/profile", (req, res, next) => {
   req.app.locals.controllers.studentPortal.getMyProfile(req, res, next);
 });
 
+studentPortalRouter.patch("/profile", (req, res, next) => {
+  req.app.locals.controllers.studentPortal.updateMyProfile(req, res, next);
+});
+
+studentPortalRouter.patch("/public-profile-settings", (req, res, next) => {
+  req.app.locals.controllers.studentPortal.updateMyPublicProfileSettings(req, res, next);
+});
+
 studentPortalRouter.get("/attendance", (req, res, next) => {
   req.app.locals.controllers.studentPortal.getMyAttendance(req, res, next);
 });
