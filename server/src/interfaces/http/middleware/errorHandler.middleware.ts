@@ -48,9 +48,15 @@ export const errorHandler = (
 
   // Mongoose validation error
   if (err.name === 'ValidationError') {
+    const details = (err as any).errors
+      ? Object.values((err as any).errors)
+          .map((e: any) => e.message)
+          .join(', ')
+      : err.message;
+    logger.error('Mongoose validation error:', details, err);
     res.status(400).json({
       success: false,
-      message: 'Database validation failed',
+      message: details || 'Database validation failed',
       code: 'VALIDATION_ERROR',
       timestamp: new Date().toISOString(),
     });

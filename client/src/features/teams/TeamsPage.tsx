@@ -20,6 +20,7 @@ import { useGetUsersQuery } from "../../store/api/usersApi";
 import { academyApi } from "../../store/api/academyApi";
 import { useGetFranchisesQuery } from "../../store/api/franchiseApi";
 import { useGetStudentsQuery, useUpdateStudentMutation } from "../../store/api/studentsApi";
+import { useConfirm } from "../../hooks/useConfirm";
 
 const TeamsPage: React.FC = () => {
   const { user } = useSelector((s: RootState) => s.auth);
@@ -94,7 +95,17 @@ const TeamsPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const { confirm, ConfirmDialog } = useConfirm();
+
+  const handleDelete = async (id: string, teamName?: string) => {
+    const ok = await confirm({
+      title: "Delete Team",
+      message: `Are you sure you want to delete ${teamName ? `"${teamName}"` : "this team"}? All players in this team will become unassigned, but will remain enrolled in the academy.`,
+      confirmLabel: "Delete Team",
+      danger: true,
+    });
+    if (!ok) return;
+
     try {
       await deleteTeam(id).unwrap();
       toast.success("Team removed");
@@ -202,7 +213,7 @@ const TeamsPage: React.FC = () => {
                   </div>
                   {!isHeadOffice && (
                     <button
-                      onClick={() => handleDelete(team.id)}
+                      onClick={() => handleDelete(team.id, team.name)}
                       className="text-slate-500 hover:text-ember-400 transition-colors p-1"
                       aria-label="Delete team"
                     >
@@ -336,6 +347,8 @@ const TeamsPage: React.FC = () => {
           onClose={() => setBrandingTeamId(null)}
         />
       )}
+
+      {ConfirmDialog}
     </div>
   );
 };
@@ -347,6 +360,7 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({ te
   const currentAcademyId = useCurrentAcademyId();
   const { data: team, isLoading: teamLoading } = useGetTeamByIdQuery(teamId);
   const [updateStudent] = useUpdateStudentMutation();
+  const { confirm, ConfirmDialog } = useConfirm();
   const { data: franchises } = useGetFranchisesQuery(
     currentAcademyId ? { academyId: currentAcademyId, isActive: true } : undefined,
     { skip: !currentAcademyId }
@@ -376,7 +390,15 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({ te
   const teamStudentIds = new Set(team?.students?.map((s) => s._id) ?? []);
   const filteredAvailable = availableStudents.filter((s) => !teamStudentIds.has(s.id));
 
-  const handleRemove = async (studentId: string) => {
+  const handleRemove = async (studentId: string, studentName?: string) => {
+    const ok = await confirm({
+      title: "Remove Player from Team",
+      message: `Are you sure you want to remove ${studentName || "this player"} from ${team?.name ? `"${team.name}"` : "the team roster"}? The player will remain enrolled in the academy.`,
+      confirmLabel: "Remove Player",
+      danger: true,
+    });
+    if (!ok) return;
+
     try {
       await updateStudent({ id: studentId, data: { teamId: null } }).unwrap();
       toast.success("Player removed from team");
@@ -449,7 +471,7 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({ te
                         <p className="text-[10px] text-slate-500 font-mono mt-0.5">{s.attendancePercentage}% attendance</p>
                       </div>
                       <button
-                        onClick={() => handleRemove(s._id)}
+                        onClick={() => handleRemove(s._id, `${s.firstName} ${s.lastName}`)}
                         className="text-slate-500 hover:text-ember-400 transition-colors p-1"
                         title="Remove player"
                       >
@@ -535,6 +557,7 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({ te
           </div>
         )
       )}
+      {ConfirmDialog}
     </Modal>
   );
 };

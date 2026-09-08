@@ -16,6 +16,8 @@ import {
   UserCheck,
   Lock,
   X,
+  Mail,
+  Check,
 } from "lucide-react";
 import QRCode from "react-qr-code";
 import toast from "react-hot-toast";
@@ -25,19 +27,37 @@ import {
   useUpdateMyProfileMutation,
   useUpdateMyPublicProfileSettingsMutation,
 } from "../../store/api/studentPortalApi";
+import {
+  useGetMySquadInvitationsQuery,
+  useRespondToSquadInvitationMutation,
+  type SquadInvitation,
+} from "../../store/api/squadInvitationApi";
+import { useConfirm } from "../../hooks/useConfirm";
 import { NoxPageHeader, NoxStatCard, NoxSkeleton, NoxEmptyState, NoxStatusBadge } from "../../components/portal-ui";
+import { ImageUploadField } from "../../components/ui";
 import { NfcPlayerCardSection } from "./NfcPlayerCardSection";
+import { AcceptSquadInvitationModal } from "./AcceptSquadInvitationModal";
 
 const StudentDashboardPage: React.FC = () => {
   const user = useSelector((s: RootState) => s.auth.user);
-  const { data, isLoading, isError } = useGetMyDashboardQuery();
+  const { data, isLoading, isError, refetch: refetchDashboard } = useGetMyDashboardQuery();
   const [copied, setCopied] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [acceptModalInvite, setAcceptModalInvite] = useState<SquadInvitation | null>(null);
+
+  const { confirm, ConfirmDialog } = useConfirm();
+  const {
+    data: squadInvitations,
+    isLoading: isLoadingInvitations,
+    refetch: refetchInvitations,
+  } = useGetMySquadInvitationsQuery();
+  const [respondToInvitation, { isLoading: isResponding }] = useRespondToSquadInvitationMutation();
 
   const [updateProfile, { isLoading: isUpdatingProfile }] = useUpdateMyProfileMutation();
   const [updateSettings, { isLoading: isUpdatingSettings }] = useUpdateMyPublicProfileSettingsMutation();
 
   const isFreeAgent = data ? !data.profile.franchiseId : false;
+  const pendingInvitations = squadInvitations?.filter((inv) => inv.status === "pending") || [];
 
   // Free Agent Visibility State
   const [visibilitySettings, setVisibilitySettings] = useState({
@@ -58,6 +78,7 @@ const StudentDashboardPage: React.FC = () => {
     dateOfBirth: "",
     position: "",
     jerseyNumber: "",
+    photo: "",
     emergencyContactName: "",
     emergencyContactPhone: "",
   });
@@ -84,6 +105,7 @@ const StudentDashboardPage: React.FC = () => {
           : "",
         position: data.profile.position || "",
         jerseyNumber: data.profile.jerseyNumber !== undefined ? String(data.profile.jerseyNumber) : "",
+        photo: data.profile.photo || "",
         emergencyContactName: data.profile.medicalInfo?.emergencyContactName || "",
         emergencyContactPhone: data.profile.medicalInfo?.emergencyContactPhone || "",
       });
@@ -137,12 +159,49 @@ const StudentDashboardPage: React.FC = () => {
         dateOfBirth: profileForm.dateOfBirth || undefined,
         position: profileForm.position || undefined,
         jerseyNumber: profileForm.jerseyNumber ? parseInt(profileForm.jerseyNumber, 10) : undefined,
+        photo: profileForm.photo !== undefined ? profileForm.photo : undefined,
         emergencyContactName: profileForm.emergencyContactName.trim() || undefined,
         emergencyContactPhone: profileForm.emergencyContactPhone.trim() || undefined,
       }).unwrap();
       toast.success("Player profile updated successfully!");
     } catch (err: any) {
       toast.error(err?.data?.message || "Failed to update profile");
+    }
+  };
+
+  const handleAcceptInvite = (invitation: SquadInvitation) => {
+    const inviteId = invitation.id || (invitation as any)._id;
+    if (!inviteId) {
+      toast.error("Invalid invitation reference");
+      return;
+    }
+    setAcceptModalInvite(invitation);
+  };
+
+  const handleDeclineInvite = async (invitation: SquadInvitation) => {
+    const inviteId = invitation.id || (invitation as any)._id;
+    if (!inviteId) {
+      toast.error("Invalid invitation reference");
+      return;
+    }
+    const academyName =
+      typeof invitation.academyId === "object" && invitation.academyId
+        ? invitation.academyId.name
+        : "the academy";
+    const confirmed = await confirm({
+      title: "Decline Invitation",
+      message: `Are you sure you want to decline the invitation from ${academyName}?`,
+      confirmLabel: "Decline Offer",
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      await respondToInvitation({ id: inviteId, action: "reject" }).unwrap();
+      toast.success("Invitation declined");
+      refetchInvitations();
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to decline invitation");
     }
   };
 
@@ -157,6 +216,96 @@ const StudentDashboardPage: React.FC = () => {
             : "Your attendance, fees and coach feedback, all in one place."
         }
       />
+
+      {/* Incoming Squad Recruitment Invitations Banner */}
+      {pendingInvitations.length > 0 && (
+        <div className="nox-card p-5 mb-8 border-volt-400/40 bg-gradient-to-r from-volt-400/[0.08] via-pitch-800/40 to-transparent shadow-lg animate-fade-in">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="p-1.5 rounded-lg bg-volt-400/20 text-volt-500 dark:text-volt-400">
+              <Mail size={16} />
+            </span>
+            <h3 className="font-orbital font-bold text-slate-900 dark:text-white text-base">
+              Squad Recruitment Invitations ({pendingInvitations.length})
+            </h3>
+            <span className="pill pill-green font-mono text-2xs animate-pulse">Action Required</span>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
+            You have received an official squad recruitment invitation. Review the terms below and choose whether to accept or decline.
+          </p>
+
+          <div className="space-y-3">
+            {pendingInvitations.map((inv) => {
+              const academy = typeof inv.academyId === "object" ? inv.academyId : null;
+              const franchise = typeof inv.franchiseId === "object" ? inv.franchiseId : null;
+              const team = typeof inv.teamId === "object" ? inv.teamId : null;
+
+              return (
+                <div
+                  key={inv.id || (inv as any)._id}
+                  className="p-4 rounded-xl bg-white dark:bg-pitch-900/80 border border-slate-200 dark:border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm"
+                >
+                  <div className="space-y-1.5 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-display font-extrabold text-sm text-slate-900 dark:text-white">
+                        {academy?.name || "Academy"}
+                      </span>
+                      {franchise && (
+                        <span className="text-2xs font-medium text-slate-500 bg-slate-100 dark:bg-pitch-800 px-2 py-0.5 rounded">
+                          {franchise.name}
+                        </span>
+                      )}
+                      {team && (
+                        <span className="pill pill-blue !py-0 !px-2 text-2xs font-mono">
+                          Team: {team.name}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-2xs text-slate-500 dark:text-slate-400 flex items-center gap-3 flex-wrap">
+                      {inv.position && (
+                        <span>
+                          Position: <strong className="text-slate-700 dark:text-slate-200">{inv.position}</strong>
+                        </span>
+                      )}
+                      {inv.jerseyNumber && (
+                        <span>
+                          Jersey: <strong className="text-slate-700 dark:text-slate-200">#{inv.jerseyNumber}</strong>
+                        </span>
+                      )}
+                      <span>Received {new Date(inv.createdAt).toLocaleDateString()}</span>
+                    </div>
+
+                    {inv.notes && (
+                      <div className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-pitch-800/60 p-2.5 rounded-lg border border-slate-200/60 dark:border-white/[0.04] italic max-w-2xl">
+                        &quot;{inv.notes}&quot;
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full md:w-auto shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => handleDeclineInvite(inv)}
+                      disabled={isResponding}
+                      className="nox-btn-secondary !py-2 !px-3 text-xs flex-1 md:flex-initial text-rose-500 hover:text-rose-600 hover:border-rose-300"
+                    >
+                      <X size={14} /> Decline
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAcceptInvite(inv)}
+                      disabled={isResponding}
+                      className="nox-btn-primary !py-2 !px-4 text-xs flex-1 md:flex-initial font-bold"
+                    >
+                      <Check size={14} /> Accept &amp; Join
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {isLoading && (
         <div className="grid sm:grid-cols-3 gap-4 mb-8">
@@ -454,6 +603,15 @@ const StudentDashboardPage: React.FC = () => {
                   </p>
 
                   <form onSubmit={handleSaveProfile} className="space-y-3.5">
+                    <ImageUploadField
+                      label="Player Card Headshot"
+                      category="player_photo"
+                      value={profileForm.photo}
+                      onChange={(url) => setProfileForm((p) => ({ ...p, photo: url || "" }))}
+                      shape="circle"
+                      helperText="Official player headshot shown on your verified digital FUT card, scout searches, and NFC ID pass."
+                    />
+
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-2xs uppercase tracking-wider text-nox-low font-mono block mb-1">
@@ -684,6 +842,16 @@ const StudentDashboardPage: React.FC = () => {
           )}
         </>
       )}
+      <AcceptSquadInvitationModal
+        isOpen={!!acceptModalInvite}
+        onClose={() => setAcceptModalInvite(null)}
+        invitation={acceptModalInvite}
+        onSuccess={() => {
+          refetchDashboard();
+          refetchInvitations();
+        }}
+      />
+      {ConfirmDialog}
     </div>
   );
 };

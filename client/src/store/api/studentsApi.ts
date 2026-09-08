@@ -82,12 +82,23 @@ export interface CreateStudentBody {
 
 export interface StudentPerformanceRecord {
   _id: string;
+  sessionId?: {
+    _id?: string;
+    id?: string;
+    title?: string;
+    type?: string;
+    date?: string;
+    startTime?: string;
+    endTime?: string;
+    location?: string;
+    notes?: string;
+  } | string;
   sessionDate: string;
   skillScores: { parameter: string; score: number }[];
   overallScore: number;
   remarks?: string;
   videoUrl?: string;
-  coachId?: { firstName: string; lastName: string };
+  coachId?: { _id?: string; firstName: string; lastName: string } | string;
 }
 
 export interface PlayerCard {
@@ -274,14 +285,14 @@ export const studentsApi = baseApi.injectEndpoints({
       {
         firstName: string;
         lastName: string;
-        email?: string;
+        email: string;
         phone?: string;
         dateOfBirth: string;
         gender?: string;
         ageGroup: string;
-        guardianEmail: string;
-        guardianPhone: string;
-        guardianName: string;
+        guardianEmail?: string;
+        guardianPhone?: string;
+        guardianName?: string;
         password?: string;
         position?: string;
         positions?: string[];

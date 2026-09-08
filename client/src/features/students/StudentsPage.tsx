@@ -29,7 +29,8 @@ import { SubscriptionModal } from "../subscription/SubscriptionModal";
 import { useGetFranchiseConsentStatusQuery } from "../../store/api/consentApi";
 import { ShareRegistrationLinkModal } from "./ShareRegistrationLinkModal";
 import { RegistrationRequestsTab } from "./RegistrationRequestsTab";
-import { ClaimUnattachedStudentModal } from "./ClaimUnattachedStudentModal";
+import { InviteUnattachedStudentModal } from "./ClaimUnattachedStudentModal";
+import { FreeAgentsTab } from "./FreeAgentsTab";
 import {
   useGetStudentsQuery,
   useCreateStudentMutation,
@@ -216,7 +217,7 @@ const StudentsPage: React.FC = () => {
   const canManageSquad = user?.role === "manager" || user?.role === "super_admin" || !!user?.permissions?.canManageFranchises;
   const [subscriptionModalMode, setSubscriptionModalMode] = useState<"subscribe" | "upgrade" | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"squad" | "requests">("squad");
+  const [activeTab, setActiveTab] = useState<"squad" | "free_agents" | "requests">("squad");
   const [showShareLinkModal, setShowShareLinkModal] = useState(false);
   const [showClaimModal, setShowClaimModal] = useState(false);
 
@@ -227,7 +228,7 @@ const StudentsPage: React.FC = () => {
   const pendingRequestsCount = pendingRequestsData?.requests?.length ?? 0;
 
   useEffect(() => {
-    if ((isCoach || !canManageSquad) && activeTab === "requests") {
+    if ((isCoach || !canManageSquad) && activeTab !== "squad") {
       setActiveTab("squad");
     }
   }, [isCoach, canManageSquad, activeTab]);
@@ -344,10 +345,10 @@ const StudentsPage: React.FC = () => {
               size="sm"
               variant="secondary"
               icon={<UserPlus size={14} />}
-              onClick={() => setShowClaimModal(true)}
+              onClick={() => setActiveTab("free_agents")}
               className="text-xs"
             >
-              Add Free Agent
+              Free Agents
             </Button>
             <Button size="sm" icon={<span>+</span>} onClick={() => setShowAddModal(true)} className="text-xs">
               Add Player
@@ -370,6 +371,19 @@ const StudentsPage: React.FC = () => {
             )}
           >
             All Players ({data?.total ?? 0})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("free_agents")}
+            className={clsx(
+              "px-4 py-2 text-xs font-display uppercase tracking-wider font-bold rounded-t-lg transition-colors flex items-center gap-1.5",
+              activeTab === "free_agents"
+                ? "bg-slate-200 dark:bg-pitch-800 text-slate-900 dark:text-volt-400 border-b-2 border-volt-400"
+                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+            )}
+          >
+            <UserPlus size={13} />
+            <span>Free Agents</span>
           </button>
           <button
             type="button"
@@ -399,6 +413,11 @@ const StudentsPage: React.FC = () => {
           onApprovedStudent={() => {
             refetchRequests();
           }}
+        />
+      ) : canManageSquad && activeTab === "free_agents" ? (
+        <FreeAgentsTab
+          franchiseId={franchiseId}
+          teams={teams ?? []}
         />
       ) : (
         <>
@@ -721,14 +740,14 @@ const StudentsPage: React.FC = () => {
         />
       )}
 
-      {/* Claim Free Agent Player Modal */}
+      {/* Invite Free Agent Player Modal */}
       {canManageSquad && (
-        <ClaimUnattachedStudentModal
+        <InviteUnattachedStudentModal
           isOpen={showClaimModal}
           onClose={() => setShowClaimModal(false)}
           franchiseId={franchiseId}
           teams={teams ?? []}
-          onClaimed={() => {
+          onInvited={() => {
             refetchRequests();
           }}
         />

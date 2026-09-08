@@ -590,20 +590,37 @@ export class StudentUseCases {
   async registerPublicStudent(dto: RegisterPublicStudentDto): Promise<{
     user: any;
     tokens: { accessToken: string; refreshToken: string; expiresIn: number };
+    token: string;
     student: any;
   }> {
     const cleanEmail = (dto.email || dto.guardianEmail)!.trim().toLowerCase();
-    const cleanPhone = normalizePhone((dto.phone || dto.guardianPhone)!.trim());
+    const rawPhone = (dto.phone || dto.guardianPhone || "").trim();
+    const cleanPhone = rawPhone ? normalizePhone(rawPhone) : "";
     const existing = await this.userRepo.findByEmail(cleanEmail);
     if (existing) {
-      throw new ConflictError("An account with this email already exists. Please log in.");
+      const existingStudent = await StudentModel.findOne({
+        userId: existing.id || (existing as any)._id,
+      });
+      if (!existingStudent) {
+        // Orphaned user from previous failed registration attempt - delete so user can re-register cleanly
+        await UserModel.deleteOne({ _id: existing.id || (existing as any)._id });
+      } else {
+        throw new ConflictError("An account with this email already exists. Please log in.");
+      }
     }
     if (cleanPhone) {
       const existingPhone = await UserModel.findOne({
         phone: { $in: getPhoneMatchVariants(cleanPhone) },
       });
       if (existingPhone) {
-        throw new ConflictError("An account with this phone number already exists. Please log in.");
+        const existingStudent = await StudentModel.findOne({
+          userId: existingPhone.id || (existingPhone as any)._id,
+        });
+        if (!existingStudent) {
+          await UserModel.deleteOne({ _id: existingPhone.id || (existingPhone as any)._id });
+        } else {
+          throw new ConflictError("An account with this phone number already exists. Please log in.");
+        }
       }
     }
 
@@ -614,7 +631,7 @@ export class StudentUseCases {
       role: "student",
       firstName: dto.firstName.trim(),
       lastName: dto.lastName.trim(),
-      phone: cleanPhone,
+      phone: cleanPhone || undefined,
       isActive: true,
       isEmailVerified: true,
       permissions: defaultPermissions["student" as UserRole],
@@ -625,33 +642,39 @@ export class StudentUseCases {
     const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
     const ageGroup = dto.ageGroup || `U-${Math.max(6, Math.min(25, age + 1))}`;
 
-    const student = await StudentModel.create({
-      userId: user.id,
-      firstName: dto.firstName.trim(),
-      lastName: dto.lastName.trim(),
-      dateOfBirth: birthDate,
-      ageGroup,
-      position: dto.position || "Forward",
-      guardian: dto.guardian || {
-        name: dto.guardianName || `${dto.firstName} ${dto.lastName}`,
-        phone: cleanPhone,
-        email: cleanEmail,
-      },
-      guardianIds: [user.id],
-      medicalInfo: {
-        emergencyContactName: dto.guardianName || `${dto.firstName} ${dto.lastName}`,
-        emergencyContactPhone: cleanPhone,
-      },
-      enrollmentDate: new Date(),
-      isActive: true,
-      status: "active",
-      attendancePercentage: 0,
-      overallRating: 0,
-      selectionStatus: "pending",
-      transferStatus: "not_listed",
-      publicProfileToken: crypto.randomBytes(16).toString("hex"),
-      publicProfileEnabled: true,
-    });
+    let student;
+    try {
+      student = await StudentModel.create({
+        userId: user.id,
+        firstName: dto.firstName.trim(),
+        lastName: dto.lastName.trim(),
+        dateOfBirth: birthDate,
+        ageGroup,
+        position: dto.position || "Forward",
+        guardian: dto.guardian || {
+          name: dto.guardianName || `${dto.firstName} ${dto.lastName}`,
+          phone: cleanPhone || "",
+          email: "",
+        },
+        guardianIds: [],
+        medicalInfo: {
+          emergencyContactName: dto.guardianName || `${dto.firstName} ${dto.lastName}`,
+          emergencyContactPhone: cleanPhone || "",
+        },
+        enrollmentDate: new Date(),
+        isActive: true,
+        status: "active",
+        attendancePercentage: 0,
+        overallRating: 0,
+        selectionStatus: "pending",
+        transferStatus: "not_listed",
+        publicProfileToken: crypto.randomBytes(16).toString("hex"),
+        publicProfileEnabled: true,
+      });
+    } catch (err) {
+      await UserModel.deleteOne({ _id: user.id }).catch(() => undefined);
+      throw err;
+    }
 
     const tokens = {
       accessToken: jwt.sign(
@@ -675,6 +698,7 @@ export class StudentUseCases {
         firstName: user.firstName,
         lastName: user.lastName,
       },
+      token: tokens.accessToken,
       tokens,
       student,
     };

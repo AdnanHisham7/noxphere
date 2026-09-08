@@ -22,8 +22,10 @@ export const LandingNavbar: React.FC = () => {
 
   return (
     <header
-      className={`fixed top-0 inset-x-0 z-50 transition-colors duration-300 ${
-        scrolled ? "bg-ink-950/85 backdrop-blur-md border-b border-white/[0.06]" : "bg-transparent"
+      className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? "bg-white/85 dark:bg-ink-950/85 backdrop-blur-md border-b border-slate-200/80 dark:border-white/[0.06] shadow-sm dark:shadow-none"
+          : "bg-transparent"
       }`}
     >
       <nav className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
@@ -54,7 +56,7 @@ export const LandingNavbar: React.FC = () => {
           <ThemeToggle size="sm" />
           <Link
             to="/signup/student"
-            className="hidden sm:inline text-xs font-semibold text-core-400 hover:text-core-300 transition-colors uppercase tracking-wider"
+            className="hidden sm:inline text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-core-400 dark:hover:text-core-300 transition-colors uppercase tracking-wider"
           >
             Player Sign Up
           </Link>

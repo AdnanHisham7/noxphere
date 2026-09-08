@@ -72,10 +72,34 @@ export interface FeeRecord {
 
 export interface PerformanceRecord {
   _id: string;
+  sessionId?: {
+    _id?: string;
+    id?: string;
+    title?: string;
+    type?: string;
+    date?: string;
+    startTime?: string;
+    endTime?: string;
+    location?: string;
+    notes?: string;
+  } | string;
+  sessionDate: string;
+  skillScores?: { parameter: string; score: number }[];
+  overallScore: number;
+  remarks?: string;
+  videoUrl?: string;
+  coachId?: { _id?: string; firstName: string; lastName: string } | string;
   createdAt: string;
   overallRating?: number;
   notes?: string;
   [key: string]: unknown;
+}
+
+export interface GuardianCoachRemark {
+  _id: string;
+  text: string;
+  date: string;
+  coachId?: { _id?: string; firstName: string; lastName: string } | string;
 }
 
 export const guardianApi = baseApi.injectEndpoints({
@@ -113,6 +137,11 @@ export const guardianApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: PerformanceRecord[] }) => res.data,
       providesTags: (_r, _e, studentId) => [{ type: "Performance", id: studentId }],
     }),
+    getChildRemarks: builder.query<GuardianCoachRemark[], string>({
+      query: (studentId) => `/guardian/children/${studentId}/remarks`,
+      transformResponse: (res: { data: GuardianCoachRemark[] }) => res.data,
+      providesTags: (_r, _e, studentId) => [{ type: "Student", id: studentId }],
+    }),
     getChildSessions: builder.query<Session[], string>({
       query: (studentId) => `/guardian/children/${studentId}/sessions`,
       transformResponse: (res: { data: Session[] } | Session[]) =>
@@ -129,5 +158,6 @@ export const {
   useGetChildAttendanceQuery,
   useGetChildFeesQuery,
   useGetChildPerformanceQuery,
+  useGetChildRemarksQuery,
   useGetChildSessionsQuery,
 } = guardianApi;

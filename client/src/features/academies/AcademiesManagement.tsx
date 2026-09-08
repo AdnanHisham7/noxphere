@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { clsx } from "clsx";
 import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 import {
   LayoutGrid,
   List,
@@ -15,11 +16,13 @@ import {
   Loader2,
   Repeat2,
   Ban,
+  LayoutDashboard,
 } from "lucide-react";
 import { Button, Input, Modal, Badge, StatCard } from "../../components/ui";
 import { PlatformBillingCard } from "./PlatformBillingCard";
 import { baseApi } from "../../store/api/baseApi";
 import { academyApi } from "@/store/api/academyApi";
+import { useConfirm } from "../../hooks/useConfirm";
 import { Academy, AcademyConfigPayload, CreateAcademyPayload } from "./types";
 
 // Hooks
@@ -39,6 +42,8 @@ const getManagerName = (academy: Academy): string => {
 
 // ==================== Component ====================
 const AcademiesManagement: React.FC = () => {
+  const navigate = useNavigate();
+  const { confirm, ConfirmDialog } = useConfirm();
   const [viewMode, setViewMode] = useState<"card" | "table">("table");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedAcademy, setSelectedAcademy] = useState<Academy | null>(null);
@@ -79,7 +84,17 @@ const AcademiesManagement: React.FC = () => {
   const totalStudents = "—";
 
   // Toggle status handler
-  const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+  const handleToggleStatus = async (id: string, currentStatus: boolean, academyName?: string) => {
+    const ok = await confirm({
+      title: currentStatus ? "Deactivate Academy" : "Activate Academy",
+      message: currentStatus
+        ? `Are you sure you want to deactivate ${academyName ? `"${academyName}"` : "this academy"}? Staff and coaches will temporarily lose access to their portal.`
+        : `Activate ${academyName ? `"${academyName}"` : "this academy"}? Staff will regain full portal operations.`,
+      confirmLabel: currentStatus ? "Deactivate" : "Activate",
+      danger: currentStatus,
+    });
+    if (!ok) return;
+
     try {
       await toggleStatus(id).unwrap();
       toast.success(`Academy ${currentStatus ? "deactivated" : "activated"}`);
@@ -341,16 +356,25 @@ const AcademiesManagement: React.FC = () => {
               {academies.map((academy) => (
                 <tr
                   key={academy.id}
-                  className="border-b border-white/4 hover:bg-white/2 transition-colors"
+                  className="border-b border-white/4 hover:bg-white/2 transition-colors group"
                 >
                   <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded bg-pitch-700 flex items-center justify-center text-xs font-bold text-volt-400 border border-white/5">
+                    <div
+                      className="flex items-center gap-3 cursor-pointer group-hover:text-volt-400 transition-colors"
+                      onClick={() => navigate(`/academies/${academy.id}/dashboard`)}
+                      title="Open Academy Dashboard"
+                    >
+                      <div className="w-8 h-8 rounded bg-pitch-700 flex items-center justify-center text-xs font-bold text-volt-400 border border-white/5 group-hover:border-volt-400/40 transition-colors">
                         {academy.name.charAt(0)}
                       </div>
-                      <span className="text-sm font-semibold text-white">
-                        {academy.name}
-                      </span>
+                      <div>
+                        <span className="text-sm font-semibold text-white group-hover:text-volt-400 transition-colors block">
+                          {academy.name}
+                        </span>
+                        <span className="text-3xs text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                          <LayoutDashboard size={10} /> View Dashboard
+                        </span>
+                      </div>
                     </div>
                   </td>
                   <td className="px-5 py-4 text-sm font-mono text-slate-400">
@@ -367,8 +391,15 @@ const AcademiesManagement: React.FC = () => {
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2 justify-end">
                       <button
+                        onClick={() => navigate(`/academies/${academy.id}/dashboard`)}
+                        className="p-2 rounded border border-volt-400/20 text-volt-400 bg-volt-400/5 hover:bg-volt-400/15 transition-all"
+                        title="View Academy Dashboard"
+                      >
+                        <LayoutDashboard size={14} />
+                      </button>
+                      <button
                         onClick={() =>
-                          handleToggleStatus(academy.id, academy.isActive)
+                          handleToggleStatus(academy.id, academy.isActive, academy.name)
                         }
                         disabled={isToggling}
                         className={clsx(
@@ -438,15 +469,19 @@ const AcademiesManagement: React.FC = () => {
           {academies.map((academy) => (
             <div
               key={academy.id}
-              className="card p-5 border border-white/5 hover:border-white/10 transition-all"
+              className="card p-5 border border-white/5 hover:border-white/15 transition-all"
             >
               <div className="flex justify-between items-start">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded bg-pitch-700 flex items-center justify-center font-display font-black text-volt-400 text-xl">
+                <div
+                  className="flex items-center gap-3 cursor-pointer group"
+                  onClick={() => navigate(`/academies/${academy.id}/dashboard`)}
+                  title="Open Academy Dashboard"
+                >
+                  <div className="w-12 h-12 rounded bg-pitch-700 flex items-center justify-center font-display font-black text-volt-400 text-xl border border-white/5 group-hover:border-volt-400/40 transition-colors">
                     {academy.name.charAt(0)}
                   </div>
                   <div>
-                    <h3 className="text-white font-bold">{academy.name}</h3>
+                    <h3 className="text-white font-bold group-hover:text-volt-400 transition-colors">{academy.name}</h3>
                     <p className="text-2xs text-slate-500 uppercase tracking-widest">
                       {academy.academyCode}
                     </p>
@@ -459,10 +494,19 @@ const AcademiesManagement: React.FC = () => {
               {!academy.transferWallEnabled && (
                 <Badge variant="gray" className="mt-2">Transfer Wall Disabled</Badge>
               )}
-              <div className="mt-6 flex gap-2">
+              <div className="mt-6 flex flex-wrap gap-2">
+                <Button
+                  variant="primary"
+                  className="flex-1 text-xs"
+                  size="sm"
+                  onClick={() => navigate(`/academies/${academy.id}/dashboard`)}
+                  icon={<LayoutDashboard size={14} />}
+                >
+                  Dashboard
+                </Button>
                 <Button
                   variant="secondary"
-                  className="flex-1 text-xs"
+                  className="text-xs"
                   size="sm"
                   onClick={() => {
                     setSelectedAcademy(academy);
@@ -470,15 +514,15 @@ const AcademiesManagement: React.FC = () => {
                   }}
                   icon={<Settings size={14} />}
                 >
-                  Configuration
+                  Config
                 </Button>
                 <button
                   onClick={() =>
-                    handleToggleStatus(academy.id, academy.isActive)
+                    handleToggleStatus(academy.id, academy.isActive, academy.name)
                   }
                   disabled={isToggling}
                   className={clsx(
-                    "px-4 rounded border transition-all text-xs font-bold uppercase flex items-center gap-2",
+                    "px-3 rounded border transition-all text-xs font-bold uppercase flex items-center gap-2",
                     academy.isActive
                       ? "border-ember-400/20 text-ember-400 bg-ember-400/5 hover:bg-ember-400/10"
                       : "border-field-400/20 text-field-400 bg-field-400/5 hover:bg-field-400/10",
@@ -953,6 +997,7 @@ const AcademiesManagement: React.FC = () => {
           </div>
         </Modal>
       )}
+      {ConfirmDialog}
     </div>
   );
 };

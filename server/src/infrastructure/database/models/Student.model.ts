@@ -45,8 +45,8 @@ const MedicalInfoSchema = new Schema(
     bloodGroup: String,
     allergies: [String],
     medicalConditions: [String],
-    emergencyContactName: { type: String, required: true },
-    emergencyContactPhone: { type: String, required: true },
+    emergencyContactName: { type: String, default: "" },
+    emergencyContactPhone: { type: String, default: "" },
     medicalCondition: String,
     medicalNotes: String,
     medicalReportUrl: String,
@@ -61,9 +61,9 @@ const MedicalInfoSchema = new Schema(
 
 const GuardianSchema = new Schema(
   {
-    name: { type: String, required: true },
-    phone: { type: String, required: true },
-    email: { type: String, required: true, lowercase: true },
+    name: { type: String, default: "" },
+    phone: { type: String, default: "" },
+    email: { type: String, default: "", lowercase: true },
   },
   { _id: false },
 );
@@ -108,7 +108,10 @@ const StudentSchema = new Schema<StudentDocument>(
     position: String,
     positions: [String],
     photo: String,
-    medicalInfo: { type: MedicalInfoSchema, required: true },
+    medicalInfo: {
+      type: MedicalInfoSchema,
+      default: () => ({ emergencyContactName: "", emergencyContactPhone: "" }),
+    },
     enrollmentDate: { type: Date, default: Date.now },
     isActive: { type: Boolean, default: true, index: true },
     // Manager-selectable lifecycle status for the player, independent of
@@ -145,7 +148,7 @@ const StudentSchema = new Schema<StudentDocument>(
       default: "not_listed",
       index: true,
     },
-    guardian: { type: GuardianSchema, required: true },
+    guardian: { type: GuardianSchema, default: () => ({ name: "", phone: "", email: "" }) },
     transferPrice: Number,
     transferListedAt: Date,
     transferNote: String,

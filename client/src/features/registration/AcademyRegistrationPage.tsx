@@ -8,6 +8,7 @@ import {
   useSubmitRegistrationRequestMutation,
 } from "@/store/api/registrationApi";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
+import { ImageUploadField } from "@/components/ui";
 import {
   Building2,
   CheckCircle2,
@@ -24,20 +25,40 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-const AGE_GROUPS = ["U-7", "U-9", "U-11", "U-13", "U-15", "U-17", "U-19", "Senior"];
-const POSITIONS = ["Forward", "Winger", "Midfielder", "Defensive Midfielder", "Defender", "Full Back", "Goalkeeper"];
+const AGE_GROUPS = [
+  "U-7",
+  "U-9",
+  "U-11",
+  "U-13",
+  "U-15",
+  "U-17",
+  "U-19",
+  "Senior",
+];
+const POSITIONS = [
+  "Forward",
+  "Winger",
+  "Midfielder",
+  "Defensive Midfielder",
+  "Defender",
+  "Full Back",
+  "Goalkeeper",
+];
 
 export const AcademyRegistrationPage: React.FC = () => {
   const { academyId } = useParams<{ academyId: string }>();
 
-  const { data: academyInfo, isLoading: loadingInfo, error: infoError } = useGetAcademyPublicInfoQuery(
-    academyId || "",
-    { skip: !academyId }
-  );
+  const {
+    data: academyInfo,
+    isLoading: loadingInfo,
+    error: infoError,
+  } = useGetAcademyPublicInfoQuery(academyId || "", { skip: !academyId });
 
   const [sendOtp, { isLoading: sendingOtp }] = useSendRegistrationOtpMutation();
-  const [verifyOtp, { isLoading: verifyingOtp }] = useVerifyRegistrationOtpMutation();
-  const [submitRequest, { isLoading: submitting }] = useSubmitRegistrationRequestMutation();
+  const [verifyOtp, { isLoading: verifyingOtp }] =
+    useVerifyRegistrationOtpMutation();
+  const [submitRequest, { isLoading: submitting }] =
+    useSubmitRegistrationRequestMutation();
 
   // Mode: "new" or "existing"
   const [hasExistingProfile, setHasExistingProfile] = useState(false);
@@ -60,6 +81,7 @@ export const AcademyRegistrationPage: React.FC = () => {
     position: "Midfielder",
     jerseyNumber: "",
     jerseySize: "M",
+    photo: "",
     emergencyContactName: "",
     emergencyContactPhone: "",
     medicalNotes: "",
@@ -115,16 +137,24 @@ export const AcademyRegistrationPage: React.FC = () => {
       }).unwrap();
 
       if (res.verified && res.student) {
-        toast.success(`Verified: ${res.student.firstName} ${res.student.lastName}`);
-        setVerifiedStudent({ ...res.student, id: (res as any).studentId || res.student.id });
+        toast.success(
+          `Verified: ${res.student.firstName} ${res.student.lastName}`,
+        );
+        setVerifiedStudent({
+          ...res.student,
+          id: (res as any).studentId || res.student.id,
+        });
         // Pre-fill student info
         setStudentDetails((prev) => ({
           ...prev,
           firstName: res.student.firstName || prev.firstName,
           lastName: res.student.lastName || prev.lastName,
-          dateOfBirth: res.student.dateOfBirth ? res.student.dateOfBirth.split("T")[0] : prev.dateOfBirth,
+          dateOfBirth: res.student.dateOfBirth
+            ? res.student.dateOfBirth.split("T")[0]
+            : prev.dateOfBirth,
           ageGroup: res.student.ageGroup || prev.ageGroup,
           position: res.student.position || prev.position,
+          photo: res.student.photo || prev.photo,
         }));
         if (res.student.guardian) {
           setGuardianDetails((prev) => ({
@@ -155,13 +185,19 @@ export const AcademyRegistrationPage: React.FC = () => {
       toast.error("Student date of birth is required");
       return;
     }
-    if (!guardianDetails.name.trim() || !guardianDetails.phone.trim() || !guardianDetails.email.trim()) {
+    if (
+      !guardianDetails.name.trim() ||
+      !guardianDetails.phone.trim() ||
+      !guardianDetails.email.trim()
+    ) {
       toast.error("Guardian contact name, phone, and email are required");
       return;
     }
 
     if (hasExistingProfile && !verifiedStudent) {
-      toast.error("Please verify your existing student profile OTP before submitting");
+      toast.error(
+        "Please verify your existing student profile OTP before submitting",
+      );
       return;
     }
 
@@ -177,11 +213,18 @@ export const AcademyRegistrationPage: React.FC = () => {
           gender: studentDetails.gender,
           ageGroup: studentDetails.ageGroup,
           position: studentDetails.position,
-          jerseyNumber: studentDetails.jerseyNumber ? Number(studentDetails.jerseyNumber) : undefined,
+          jerseyNumber: studentDetails.jerseyNumber
+            ? Number(studentDetails.jerseyNumber)
+            : undefined,
           jerseySize: studentDetails.jerseySize,
+          photo: studentDetails.photo ? studentDetails.photo : undefined,
           medicalInfo: {
-            emergencyContactName: studentDetails.emergencyContactName.trim() || guardianDetails.name,
-            emergencyContactPhone: studentDetails.emergencyContactPhone.trim() || guardianDetails.phone,
+            emergencyContactName:
+              studentDetails.emergencyContactName.trim() ||
+              guardianDetails.name,
+            emergencyContactPhone:
+              studentDetails.emergencyContactPhone.trim() ||
+              guardianDetails.phone,
             medicalNotes: studentDetails.medicalNotes.trim(),
           },
         },
@@ -219,7 +262,9 @@ export const AcademyRegistrationPage: React.FC = () => {
           Academy Registration Link Invalid
         </h1>
         <p className="text-sm text-slate-500 mt-2 max-w-md">
-          This registration link appears to be invalid, closed, or the academy could not be found. Please check the URL with your academy administrator.
+          This registration link appears to be invalid, closed, or the academy
+          could not be found. Please check the URL with your academy
+          administrator.
         </p>
         <Link to="/" className="btn-primary mt-6 text-xs">
           Return to Noxphere Home
@@ -270,18 +315,32 @@ export const AcademyRegistrationPage: React.FC = () => {
                 Application Received!
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-                Thank you for applying to <strong>{academyInfo.academy.name}</strong>. Your registration request has been submitted to the academy management team.
+                Thank you for applying to{" "}
+                <strong>{academyInfo.academy.name}</strong>. Your registration
+                request has been submitted to the academy management team.
               </p>
             </div>
 
             <div className="p-4 rounded-xl bg-slate-100 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-left text-xs space-y-2 max-w-lg mx-auto">
               <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                <Sparkles size={14} className="text-volt-500" /> What happens next?
+                <Sparkles size={14} className="text-volt-500" /> What happens
+                next?
               </div>
               <ul className="list-disc pl-5 space-y-1 text-slate-600 dark:text-slate-400">
-                <li>The academy manager will review your application, age category, and squad placement.</li>
-                <li>Upon approval, a confirmation alert and portal login credentials will be dispatched to <strong>{guardianDetails.email}</strong>.</li>
-                <li>If you linked an existing player profile, your previous match history and ratings will transfer into the academy squad automatically.</li>
+                <li>
+                  The academy manager will review your application, age
+                  category, and squad placement.
+                </li>
+                <li>
+                  Upon approval, a confirmation alert and portal login
+                  credentials will be dispatched to{" "}
+                  <strong>{guardianDetails.email}</strong>.
+                </li>
+                <li>
+                  If you linked an existing player profile, your previous match
+                  history and ratings will transfer into the academy squad
+                  automatically.
+                </li>
               </ul>
             </div>
 
@@ -301,7 +360,8 @@ export const AcademyRegistrationPage: React.FC = () => {
                 Player Registration & Enrollment Form
               </h1>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                Fill out the player details below to request enrollment under <strong>{academyInfo.academy.name}</strong>.
+                Fill out the player details below to request enrollment under{" "}
+                <strong>{academyInfo.academy.name}</strong>.
               </p>
             </div>
 
@@ -313,7 +373,8 @@ export const AcademyRegistrationPage: React.FC = () => {
                     Already registered as a free agent or public player?
                   </span>
                   <span className="text-2xs text-slate-500">
-                    Connect your existing Noxphere profile to retain match stats and player card.
+                    Connect your existing Noxphere profile to retain match stats
+                    and player card.
                   </span>
                 </div>
                 <button
@@ -329,14 +390,17 @@ export const AcademyRegistrationPage: React.FC = () => {
                       : "bg-slate-200 dark:bg-pitch-800 text-slate-700 dark:text-slate-300"
                   }`}
                 >
-                  {hasExistingProfile ? "Connecting Profile" : "Connect Profile"}
+                  {hasExistingProfile
+                    ? "Connecting Profile"
+                    : "Connect Profile"}
                 </button>
               </div>
 
               {hasExistingProfile && !verifiedStudent && (
                 <div className="pt-3 border-t border-slate-200 dark:border-white/10 space-y-3">
                   <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                    Verify account ownership via 6-digit OTP sent to your registered phone or email:
+                    Verify account ownership via 6-digit OTP sent to your
+                    registered phone or email:
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <input
@@ -362,7 +426,8 @@ export const AcademyRegistrationPage: React.FC = () => {
                       disabled={sendingOtp}
                       className="btn-secondary text-xs !py-1.5 !px-3"
                     >
-                      <Send size={13} /> {sendingOtp ? "Sending OTP…" : "Send Verification OTP"}
+                      <Send size={13} />{" "}
+                      {sendingOtp ? "Sending OTP…" : "Send Verification OTP"}
                     </button>
                   ) : (
                     <div className="flex items-center gap-2 pt-1">
@@ -380,7 +445,8 @@ export const AcademyRegistrationPage: React.FC = () => {
                         disabled={verifyingOtp}
                         className="btn-primary text-xs !py-1.5 !px-3"
                       >
-                        <KeyRound size={13} /> {verifyingOtp ? "Verifying…" : "Verify OTP"}
+                        <KeyRound size={13} />{" "}
+                        {verifyingOtp ? "Verifying…" : "Verify OTP"}
                       </button>
                       <button
                         type="button"
@@ -399,7 +465,11 @@ export const AcademyRegistrationPage: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <UserCheck size={16} />
                     <span>
-                      Verified profile linked: <strong>{verifiedStudent.firstName} {verifiedStudent.lastName}</strong> ({verifiedStudent.ageGroup})
+                      Verified profile linked:{" "}
+                      <strong>
+                        {verifiedStudent.firstName} {verifiedStudent.lastName}
+                      </strong>{" "}
+                      ({verifiedStudent.ageGroup})
                     </span>
                   </div>
                   <button
@@ -416,7 +486,9 @@ export const AcademyRegistrationPage: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Franchise selection */}
               <div className="space-y-2">
-                <label className="label">Select Preferred Branch / Franchise *</label>
+                <label className="label">
+                  Select Preferred Branch / Franchise *
+                </label>
                 <select
                   value={selectedFranchiseId}
                   onChange={(e) => setSelectedFranchiseId(e.target.value)}
@@ -426,11 +498,17 @@ export const AcademyRegistrationPage: React.FC = () => {
                   <option value="" disabled>
                     Choose training center…
                   </option>
-                  {academyInfo.franchises.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name} {f.location ? `— ${f.location}` : ""}
-                    </option>
-                  ))}
+                  {academyInfo.franchises.map((f) => {
+                    const locationLabel =
+                      typeof f.location === "object"
+                        ? f.location?.name || f.location?.address
+                        : f.location;
+                    return (
+                      <option key={f.id} value={f.id}>
+                        {f.name} {locationLabel ? `— ${locationLabel}` : ""}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -442,6 +520,17 @@ export const AcademyRegistrationPage: React.FC = () => {
                   </h3>
                 </div>
 
+                <ImageUploadField
+                  label="Player Card Photo (optional)"
+                  category="player_photo"
+                  value={studentDetails.photo}
+                  onChange={(url) =>
+                    setStudentDetails((prev) => ({ ...prev, photo: url || "" }))
+                  }
+                  shape="circle"
+                  helperText="Official player headshot shown on public player cards, rosters, and NFC ID passes."
+                />
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="label">First Name *</label>
@@ -449,7 +538,12 @@ export const AcademyRegistrationPage: React.FC = () => {
                       type="text"
                       required
                       value={studentDetails.firstName}
-                      onChange={(e) => setStudentDetails({ ...studentDetails, firstName: e.target.value })}
+                      onChange={(e) =>
+                        setStudentDetails({
+                          ...studentDetails,
+                          firstName: e.target.value,
+                        })
+                      }
                       placeholder="First name"
                       className="input"
                     />
@@ -460,7 +554,12 @@ export const AcademyRegistrationPage: React.FC = () => {
                       type="text"
                       required
                       value={studentDetails.lastName}
-                      onChange={(e) => setStudentDetails({ ...studentDetails, lastName: e.target.value })}
+                      onChange={(e) =>
+                        setStudentDetails({
+                          ...studentDetails,
+                          lastName: e.target.value,
+                        })
+                      }
                       placeholder="Last name"
                       className="input"
                     />
@@ -474,7 +573,12 @@ export const AcademyRegistrationPage: React.FC = () => {
                       type="date"
                       required
                       value={studentDetails.dateOfBirth}
-                      onChange={(e) => setStudentDetails({ ...studentDetails, dateOfBirth: e.target.value })}
+                      onChange={(e) =>
+                        setStudentDetails({
+                          ...studentDetails,
+                          dateOfBirth: e.target.value,
+                        })
+                      }
                       className="input"
                     />
                   </div>
@@ -482,7 +586,12 @@ export const AcademyRegistrationPage: React.FC = () => {
                     <label className="label">Gender</label>
                     <select
                       value={studentDetails.gender}
-                      onChange={(e) => setStudentDetails({ ...studentDetails, gender: e.target.value })}
+                      onChange={(e) =>
+                        setStudentDetails({
+                          ...studentDetails,
+                          gender: e.target.value,
+                        })
+                      }
                       className="input"
                     >
                       <option value="male">Male</option>
@@ -494,7 +603,12 @@ export const AcademyRegistrationPage: React.FC = () => {
                     <label className="label">Age Group *</label>
                     <select
                       value={studentDetails.ageGroup}
-                      onChange={(e) => setStudentDetails({ ...studentDetails, ageGroup: e.target.value })}
+                      onChange={(e) =>
+                        setStudentDetails({
+                          ...studentDetails,
+                          ageGroup: e.target.value,
+                        })
+                      }
                       className="input"
                     >
                       {AGE_GROUPS.map((ag) => (
@@ -511,7 +625,12 @@ export const AcademyRegistrationPage: React.FC = () => {
                     <label className="label">Preferred Position</label>
                     <select
                       value={studentDetails.position}
-                      onChange={(e) => setStudentDetails({ ...studentDetails, position: e.target.value })}
+                      onChange={(e) =>
+                        setStudentDetails({
+                          ...studentDetails,
+                          position: e.target.value,
+                        })
+                      }
                       className="input"
                     >
                       {POSITIONS.map((p) => (
@@ -528,7 +647,12 @@ export const AcademyRegistrationPage: React.FC = () => {
                       min={1}
                       max={99}
                       value={studentDetails.jerseyNumber}
-                      onChange={(e) => setStudentDetails({ ...studentDetails, jerseyNumber: e.target.value })}
+                      onChange={(e) =>
+                        setStudentDetails({
+                          ...studentDetails,
+                          jerseyNumber: e.target.value,
+                        })
+                      }
                       placeholder="e.g. 10"
                       className="input"
                     />
@@ -537,7 +661,12 @@ export const AcademyRegistrationPage: React.FC = () => {
                     <label className="label">Jersey Size</label>
                     <select
                       value={studentDetails.jerseySize}
-                      onChange={(e) => setStudentDetails({ ...studentDetails, jerseySize: e.target.value })}
+                      onChange={(e) =>
+                        setStudentDetails({
+                          ...studentDetails,
+                          jerseySize: e.target.value,
+                        })
+                      }
                       className="input"
                     >
                       <option value="XS">XS</option>
@@ -565,7 +694,12 @@ export const AcademyRegistrationPage: React.FC = () => {
                       type="text"
                       required
                       value={guardianDetails.name}
-                      onChange={(e) => setGuardianDetails({ ...guardianDetails, name: e.target.value })}
+                      onChange={(e) =>
+                        setGuardianDetails({
+                          ...guardianDetails,
+                          name: e.target.value,
+                        })
+                      }
                       placeholder="Guardian name"
                       className="input"
                     />
@@ -574,7 +708,12 @@ export const AcademyRegistrationPage: React.FC = () => {
                     <label className="label">Relation to Player</label>
                     <select
                       value={guardianDetails.relation}
-                      onChange={(e) => setGuardianDetails({ ...guardianDetails, relation: e.target.value })}
+                      onChange={(e) =>
+                        setGuardianDetails({
+                          ...guardianDetails,
+                          relation: e.target.value,
+                        })
+                      }
                       className="input"
                     >
                       <option value="Father">Father</option>
@@ -587,12 +726,19 @@ export const AcademyRegistrationPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="label">Email Address (for portal alerts) *</label>
+                    <label className="label">
+                      Email Address (for portal alerts) *
+                    </label>
                     <input
                       type="email"
                       required
                       value={guardianDetails.email}
-                      onChange={(e) => setGuardianDetails({ ...guardianDetails, email: e.target.value })}
+                      onChange={(e) =>
+                        setGuardianDetails({
+                          ...guardianDetails,
+                          email: e.target.value,
+                        })
+                      }
                       placeholder="guardian@example.com"
                       className="input"
                     />
@@ -603,7 +749,12 @@ export const AcademyRegistrationPage: React.FC = () => {
                       type="tel"
                       required
                       value={guardianDetails.phone}
-                      onChange={(e) => setGuardianDetails({ ...guardianDetails, phone: e.target.value })}
+                      onChange={(e) =>
+                        setGuardianDetails({
+                          ...guardianDetails,
+                          phone: e.target.value,
+                        })
+                      }
                       placeholder="+91 9876543210"
                       className="input"
                     />
@@ -611,11 +762,18 @@ export const AcademyRegistrationPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="label">Emergency Medical Notes / Allergies (Optional)</label>
+                  <label className="label">
+                    Emergency Medical Notes / Allergies (Optional)
+                  </label>
                   <input
                     type="text"
                     value={studentDetails.medicalNotes}
-                    onChange={(e) => setStudentDetails({ ...studentDetails, medicalNotes: e.target.value })}
+                    onChange={(e) =>
+                      setStudentDetails({
+                        ...studentDetails,
+                        medicalNotes: e.target.value,
+                      })
+                    }
                     placeholder="Any health notes, allergies, or emergency details"
                     className="input"
                   />
@@ -629,10 +787,13 @@ export const AcademyRegistrationPage: React.FC = () => {
                   disabled={submitting}
                   className="btn-primary w-full py-3 text-sm font-semibold"
                 >
-                  {submitting ? "Submitting Application…" : "Submit Registration Application"}
+                  {submitting
+                    ? "Submitting Application…"
+                    : "Submit Registration Application"}
                 </button>
                 <p className="text-2xs text-center text-slate-500 mt-2">
-                  Upon submission, academy management will evaluate squad capacity and finalize your registration.
+                  Upon submission, academy management will evaluate squad
+                  capacity and finalize your registration.
                 </p>
               </div>
             </form>

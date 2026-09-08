@@ -77,8 +77,8 @@ export const RegisterPublicStudentSchema = z
     password: z.string().min(6).max(100),
     firstName: z.string().min(1).max(50),
     lastName: z.string().min(1).max(50),
-    phone: z.string().min(5).optional(),
-    guardianPhone: z.string().min(5).optional(),
+    phone: z.string().optional(),
+    guardianPhone: z.string().optional(),
     guardianName: z.string().optional(),
     dateOfBirth: z.string(),
     gender: z.string().optional(),
@@ -88,13 +88,24 @@ export const RegisterPublicStudentSchema = z
     guardian: GuardianInfoSchema.optional(),
   })
   .refine((data) => !!(data.email || data.guardianEmail), {
-    message: "Email or guardianEmail is required",
+    message: "Student email is required",
     path: ["email"],
-  })
-  .refine((data) => !!(data.phone || data.guardianPhone), {
-    message: "Phone or guardianPhone is required",
-    path: ["phone"],
   });
+
+export const SendGuardianOtpSchema = z.object({
+  guardianEmail: z.string().email("A valid guardian email is required"),
+  invitationId: z.string().min(1, "Invitation ID is required"),
+});
+
+export const RespondSquadInvitationSchema = z.object({
+  action: z.enum(["accept", "reject"]),
+  rejectionReason: z.string().max(500).optional(),
+  guardianEmail: z.string().email().optional(),
+  guardianName: z.string().optional(),
+  guardianPhone: z.string().optional(),
+  guardianPassword: z.string().min(6).optional(),
+  otp: z.string().optional(),
+});
 
 export const ClaimStudentSchema = z.object({
   franchiseId: z.string().min(1),
@@ -113,4 +124,6 @@ export type AddCoachRemarkDto = z.infer<typeof AddCoachRemarkSchema>;
 export type UpdateStudentStatusDto = z.infer<typeof UpdateStudentStatusSchema>;
 export type TransferStudentFranchiseDto = z.infer<typeof TransferStudentFranchiseSchema>;
 export type RegisterPublicStudentDto = z.infer<typeof RegisterPublicStudentSchema>;
+export type SendGuardianOtpDto = z.infer<typeof SendGuardianOtpSchema>;
+export type RespondSquadInvitationDto = z.infer<typeof RespondSquadInvitationSchema>;
 export type ClaimStudentDto = z.infer<typeof ClaimStudentSchema>;

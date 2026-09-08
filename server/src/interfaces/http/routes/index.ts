@@ -27,6 +27,7 @@ import { employeeRouter } from './employee.routes';
 import { complaintRouter } from './complaint.routes';
 import { registrationRouter } from './registration.routes';
 import { nfcCardRouter } from './nfcCard.routes';
+import { squadInvitationRouter } from './squadInvitation.routes';
 
 export const apiRouter = Router();
 
@@ -57,3 +58,4 @@ apiRouter.use('/employees', employeeRouter);
 apiRouter.use('/complaints', complaintRouter);
 apiRouter.use('/registration', registrationRouter);
 apiRouter.use('/nfc', nfcCardRouter);
+apiRouter.use('/squad-invitations', squadInvitationRouter);

@@ -70,6 +70,8 @@ export const ProfilePage: React.FC = () => {
   const [phone, setPhone] = useState("");
   const [avatar, setAvatar] = useState<string | undefined>(undefined);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [cardPhoto, setCardPhoto] = useState<string | undefined>(undefined);
+  const [showCardPhotoModal, setShowCardPhotoModal] = useState(false);
 
   // Password reset fields
   const [currentPassword, setCurrentPassword] = useState("");
@@ -89,6 +91,9 @@ export const ProfilePage: React.FC = () => {
       setLastName(profile.lastName || "");
       setPhone(profile.phone || "");
       setAvatar(profile.avatar || undefined);
+      if (profile.studentDetails?.photo) {
+        setCardPhoto(profile.studentDetails.photo);
+      }
     } else if (authUser) {
       setFirstName(authUser.firstName || "");
       setLastName(authUser.lastName || "");
@@ -136,6 +141,20 @@ export const ProfilePage: React.FC = () => {
       setShowAvatarModal(false);
     } catch (err: any) {
       toast.error(err?.data?.message || "Failed to update profile");
+    }
+  };
+
+  // Save student player card photo
+  const handleSaveCardPhoto = async () => {
+    try {
+      await updateProfileMutation({
+        photo: cardPhoto || "",
+      }).unwrap();
+      toast.success("Player card photo updated successfully!");
+      setShowCardPhotoModal(false);
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to update player card photo");
     }
   };
 
@@ -469,6 +488,46 @@ export const ProfilePage: React.FC = () => {
                 )}
               </div>
 
+              {/* Player Card Headshot Banner */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-slate-50 dark:bg-pitch-800/40 border border-slate-200/60 dark:border-white/5">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-14 h-14 rounded-full overflow-hidden bg-pitch-900 border-2 border-volt-400 flex items-center justify-center shrink-0 shadow-sm">
+                    {cardPhoto || studentDetails?.photo ? (
+                      <img src={cardPhoto || studentDetails?.photo} alt="Player Card" className="w-full h-full object-cover object-top" />
+                    ) : (
+                      <Shirt size={24} className="text-slate-400" />
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>Official Player Card Photo</span>
+                      {!isEnrolledInAcademy && (
+                        <span className="text-3xs font-mono uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-semibold">
+                          Editable Free Agent
+                        </span>
+                      )}
+                    </h4>
+                    <p className="text-2xs text-slate-500 max-w-md">
+                      Headshot displayed on your verified digital FUT card, public scout profile, and smart NFC ID card.
+                    </p>
+                  </div>
+                </div>
+                {!isEnrolledInAcademy ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="text-xs shrink-0"
+                    onClick={() => setShowCardPhotoModal(true)}
+                  >
+                    Change Card Photo
+                  </Button>
+                ) : (
+                  <span className="text-2xs text-slate-400 font-mono shrink-0">
+                    Managed by Academy
+                  </span>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-pitch-800/50 border border-slate-200/70 dark:border-white/5">
                   <span className="text-2xs font-bold uppercase tracking-wider text-slate-400">Position</span>
@@ -495,7 +554,7 @@ export const ProfilePage: React.FC = () => {
                   <span className="text-2xs font-bold uppercase tracking-wider text-slate-400">Coach Rating</span>
                   <p className="text-base font-bold text-volt-500 mt-1 flex items-center gap-1">
                     <Award size={16} />
-                    <span>{studentDetails?.overallRating ? `${studentDetails.overallRating}/10` : "8.5/10"}</span>
+                    <span>{studentDetails?.overallRating ? `${studentDetails.overallRating}/10` : "—"}</span>
                   </p>
                 </div>
               </div>
@@ -856,6 +915,39 @@ export const ProfilePage: React.FC = () => {
                 className="btn-primary text-xs py-1.5 px-4"
               >
                 Save Photo
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Student Card Photo Upload Modal */}
+      {showCardPhotoModal && (
+        <Modal isOpen onClose={() => setShowCardPhotoModal(false)} title="Update Player Card Photo" size="sm">
+          <div className="space-y-4 py-2">
+            <ImageUploadField
+              label="Player Card Headshot"
+              category="player_photo"
+              value={cardPhoto}
+              onChange={(url) => setCardPhoto(url)}
+              shape="circle"
+              helperText="Upload a sharp headshot. This is used on your public FUT card and NFC pass."
+            />
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCardPhotoModal(false)}
+                className="btn-secondary text-xs py-1.5 px-3"
+              >
+                Cancel
+              </button>
+              <Button
+                type="button"
+                loading={isSavingProfile}
+                onClick={handleSaveCardPhoto}
+                className="btn-primary text-xs py-1.5 px-4"
+              >
+                Save Card Photo
               </Button>
             </div>
           </div>

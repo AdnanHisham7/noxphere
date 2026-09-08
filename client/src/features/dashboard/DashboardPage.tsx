@@ -10,7 +10,8 @@ import { clsx } from 'clsx';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { Shirt, LayoutDashboard, CheckCircle2,
   CreditCard,
-  Star, Users, Shield, CalendarClock, Building2, School } from 'lucide-react';
+  Star, Users, Shield, CalendarClock, Building2, School,
+  UserPlus, CalendarCheck, Wallet, Repeat2, Settings, Radio } from 'lucide-react';
 import { StatCard, Skeleton, Avatar, EmptyState, Button } from '../../components/ui';
 import { useCurrentFranchiseId } from '../../hooks/useCurrentFranchiseId';
 import { RootState } from '../../store';
@@ -491,48 +492,93 @@ const DashboardPage: React.FC = () => {
 
       {/* Quick Actions row */}
       {!isSuperAdmin && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-fade-in">
-          {isConsolidated ? (
-          [
-            { label: 'Manage Franchises', icon: '🏢', to: '/franchises', color: 'border-field-400/20 hover:border-field-400/40 hover:bg-field-400/5' },
-            { label: 'System Users', icon: '👥', to: '/users', color: 'border-ice-400/20 hover:border-ice-400/40 hover:bg-ice-400/5' },
-            { label: 'Finance Hub', icon: '💳', to: '/finance', color: 'border-volt-400/20 hover:border-volt-400/40 hover:bg-volt-400/5' },
-            { label: 'Academy Setup', icon: '🏫', to: '/academies', color: 'border-ember-400/20 hover:border-ember-400/40 hover:bg-ember-400/5' },
-          ].map((action) => (
-            <Link
-              key={action.label}
-              to={action.to}
-              className={clsx(
-                'card p-4 flex items-center gap-3 border transition-all duration-150',
-                action.color
-              )}
-            >
-              <span className="text-xl">{action.icon}</span>
-              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wide">{action.label}</span>
-            </Link>
-          ))
-        ) : (
-          [
-            { label: 'Mark Attendance', icon: '✓', to: '/schedule', color: 'border-field-400/20 hover:border-field-400/40 hover:bg-field-400/5' },
-            { label: 'Log Performance', icon: '📈', to: '/schedule', color: 'border-ice-400/20 hover:border-ice-400/40 hover:bg-ice-400/5' },
-            { label: 'Collect Fee', icon: '💳', to: '/fees', color: 'border-volt-400/20 hover:border-volt-400/40 hover:bg-volt-400/5' },
-            { label: 'Transfer Wall', icon: '↔', to: '/transfer-wall', color: 'border-ember-400/20 hover:border-ember-400/40 hover:bg-ember-400/5' },
-          ].map((action) => (
-            <Link
-              key={action.label}
-              to={action.to}
-              className={clsx(
-                'card p-4 flex items-center gap-3 border transition-all duration-150',
-                action.color
-              )}
-            >
-              <span className="text-xl">{action.icon}</span>
-              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wide">{action.label}</span>
-            </Link>
-          ))
-        )}
-      </div>
-    )}
+        <div className="space-y-2.5 animate-fade-in">
+          <p className="text-2xs font-mono uppercase tracking-widest text-slate-500 font-bold px-1">
+            Operational Shortcuts
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              {
+                label: 'Register Player',
+                icon: UserPlus,
+                to: '/students',
+                desc: 'Add new athlete to squad',
+                badgeStyle: 'text-volt-500 dark:text-volt-400 bg-volt-400/10 border-volt-400/25',
+              },
+              {
+                label: 'Session Roster',
+                icon: CalendarCheck,
+                to: '/schedule',
+                desc: 'Live attendance & drills',
+                badgeStyle: 'text-field-500 dark:text-field-400 bg-field-400/10 border-field-400/25',
+              },
+              {
+                label: 'Fee Ledger',
+                icon: Wallet,
+                to: '/fees',
+                desc: 'Collect installments & dues',
+                badgeStyle: 'text-ice-500 dark:text-ice-400 bg-ice-400/10 border-ice-400/25',
+              },
+              {
+                label: 'Squad & Teams',
+                icon: Users,
+                to: '/teams',
+                desc: 'Formation & rosters',
+                badgeStyle: 'text-purple-400 bg-purple-500/10 border-purple-500/25',
+              },
+              {
+                label: 'Training Branches',
+                icon: Building2,
+                to: '/franchises',
+                desc: 'Centres & pitch locations',
+                badgeStyle: 'text-amber-500 bg-amber-500/10 border-amber-500/25',
+              },
+              {
+                label: 'Transfer Wall',
+                icon: Repeat2,
+                to: '/transfer-wall',
+                desc: 'Scouting & recruitment',
+                badgeStyle: 'text-ember-500 bg-ember-500/10 border-ember-500/25',
+              },
+              {
+                label: 'Smart NFC Passes',
+                icon: Radio,
+                to: '/nfc-cards',
+                desc: 'Order & manage ID cards',
+                badgeStyle: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/25',
+              },
+              {
+                label: 'Academy Settings',
+                icon: Settings,
+                to: '/settings',
+                desc: 'Branding & billing tier',
+                badgeStyle: 'text-slate-400 bg-slate-500/10 border-slate-500/25',
+              },
+            ].map((action) => {
+              const IconComp = action.icon;
+              return (
+                <Link
+                  key={action.label}
+                  to={action.to}
+                  className="card p-3.5 flex items-center gap-3 border border-slate-200/80 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/15 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-all group"
+                >
+                  <div className={clsx('w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 transition-transform group-hover:scale-105', action.badgeStyle)}>
+                    <IconComp size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate group-hover:text-volt-500 dark:group-hover:text-volt-400 transition-colors">
+                      {action.label}
+                    </span>
+                    <span className="text-[10px] text-slate-400 truncate block">
+                      {action.desc}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

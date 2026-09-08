@@ -36,9 +36,8 @@ export const StudentSignupPage: React.FC = () => {
     gender: "male",
     ageGroup: "U-15",
     position: "Midfielder",
-    guardianName: "",
-    guardianEmail: "",
-    guardianPhone: "",
+    email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
   });
@@ -54,15 +53,15 @@ export const StudentSignupPage: React.FC = () => {
     e.preventDefault();
 
     if (!formData.firstName.trim() || !formData.lastName.trim()) {
-      toast.error("Please enter student name");
+      toast.error("Please enter player name");
       return;
     }
     if (!formData.dateOfBirth) {
       toast.error("Please enter date of birth");
       return;
     }
-    if (!formData.guardianEmail.trim() || !formData.guardianPhone.trim()) {
-      toast.error("Guardian email and phone are required for login and communication");
+    if (!formData.email.trim()) {
+      toast.error("Student email is required for login");
       return;
     }
     if (formData.password.length < 6) {
@@ -78,32 +77,30 @@ export const StudentSignupPage: React.FC = () => {
       const res = await registerPublicStudent({
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
-        email: formData.guardianEmail.trim().toLowerCase(),
-        phone: formData.guardianPhone.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phone: formData.phone.trim() || undefined,
         dateOfBirth: formData.dateOfBirth,
         gender: formData.gender,
         ageGroup: formData.ageGroup,
         position: formData.position,
-        guardianName: formData.guardianName.trim() || `${formData.firstName} Guardian`,
-        guardianEmail: formData.guardianEmail.trim().toLowerCase(),
-        guardianPhone: formData.guardianPhone.trim(),
         password: formData.password,
       }).unwrap();
 
       toast.success("Player account created successfully!");
       setCreatedStudent(res.student);
-      if (res.token) {
+      const token = res.token || (res as any).tokens?.accessToken;
+      if (token) {
         // Auto-login if auth payload is provided
         dispatch(
           setCredentials({
             user: {
               id: res.student.userId,
-              email: formData.guardianEmail.trim().toLowerCase(),
+              email: formData.email.trim().toLowerCase(),
               role: "student",
               firstName: formData.firstName,
               lastName: formData.lastName,
             },
-            accessToken: res.token,
+            accessToken: token,
           } as any)
         );
       }
@@ -335,38 +332,25 @@ export const StudentSignupPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Section 2: Guardian / Contact Information */}
+              {/* Section 2: Student Account Credentials */}
               <div className="space-y-4">
                 <div className="border-b border-slate-200 dark:border-white/10 pb-2">
                   <h3 className="text-xs font-mono uppercase tracking-widest text-slate-500 font-semibold">
-                    2. Guardian & Account Credentials
+                    2. Student Account Credentials
                   </h3>
-                </div>
-
-                <div>
-                  <label className="label">Guardian / Manager Name *</label>
-                  <input
-                    type="text"
-                    name="guardianName"
-                    required
-                    value={formData.guardianName}
-                    onChange={handleChange}
-                    placeholder="Parent or guardian full name"
-                    className="input"
-                  />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="label">Email Address (Login ID) *</label>
+                    <label className="label">Student Email (Login ID) *</label>
                     <div className="relative">
                       <input
                         type="email"
-                        name="guardianEmail"
+                        name="email"
                         required
-                        value={formData.guardianEmail}
+                        value={formData.email}
                         onChange={handleChange}
-                        placeholder="guardian@example.com"
+                        placeholder="player@example.com"
                         className="input pl-9"
                       />
                       <Mail size={15} className="absolute left-3 top-3 text-slate-400" />
@@ -374,13 +358,12 @@ export const StudentSignupPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="label">Phone / WhatsApp *</label>
+                    <label className="label">Phone / WhatsApp (Optional)</label>
                     <div className="relative">
                       <input
                         type="tel"
-                        name="guardianPhone"
-                        required
-                        value={formData.guardianPhone}
+                        name="phone"
+                        value={formData.phone}
                         onChange={handleChange}
                         placeholder="+91 9876543210"
                         className="input pl-9"
@@ -421,6 +404,16 @@ export const StudentSignupPage: React.FC = () => {
                       />
                       <Shield size={15} className="absolute left-3 top-3 text-slate-400" />
                     </div>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-700 dark:text-sky-300 text-xs flex items-start gap-2.5">
+                  <Shield size={16} className="shrink-0 mt-0.5 text-sky-500" />
+                  <div>
+                    <p className="font-semibold mb-0.5">Parent / Guardian Portal Connection</p>
+                    <p className="text-sky-600 dark:text-sky-400">
+                      When you accept an invitation to join an academy squad, your parent or guardian will be verified via email OTP to connect or create their official Guardian Portal account.
+                    </p>
                   </div>
                 </div>
               </div>

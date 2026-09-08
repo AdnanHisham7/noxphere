@@ -28,7 +28,7 @@ export class DashboardUseCases {
   }
 
   async getStats(params: { franchiseId?: string; academyId?: string; isSuperAdmin?: boolean }) {
-    if (params.isSuperAdmin) {
+    if (params.isSuperAdmin && !params.academyId && !params.franchiseId) {
       const [totalAcademies, totalFranchises, totalStudents, totalCoaches, totalTeams] = await Promise.all([
         AcademyModel.countDocuments({ deletedAt: { $exists: false } }),
         FranchiseModel.countDocuments({ deletedAt: { $exists: false } }),

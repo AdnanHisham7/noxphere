@@ -99,6 +99,7 @@ const SuperAdminNfcManagementPage = lazy(() => import("./features/nfc/SuperAdmin
 const NfcOrderSuccessPage = lazy(() => import("./features/nfc/NfcOrderSuccessPage"));
 const NfcOrderCancelledPage = lazy(() => import("./features/nfc/NfcOrderCancelledPage"));
 const ProfilePage = lazy(() => import("./features/profile/ProfilePage"));
+const AcademyDashboardPage = lazy(() => import("./features/academies/AcademyDashboardPage"));
 
 const PageLoader = () => (
   <div className="min-h-screen bg-slate-50 dark:bg-pitch-950 flex items-center justify-center transition-colors duration-200">
@@ -254,6 +255,7 @@ const App: React.FC = () => (
                 element={<RoleProtectedRoute allowedRoles={["super_admin"]} />}
               >
                 <Route path="/academies" element={<AcademiesManagement />} />
+                <Route path="/academies/:academyId/dashboard" element={<AcademyDashboardPage />} />
                 <Route path="/users" element={<UsersManagementPage />} />
                 <Route path="/finance" element={<FinancePage />} />
               </Route>

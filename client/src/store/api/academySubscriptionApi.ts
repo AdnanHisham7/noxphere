@@ -17,6 +17,8 @@ export interface AcademySubscriptionStatus {
   currentDefaultStaffRate: number;
   activeStudentCount: number;
   activeStaffCount: number;
+  pendingInvitationCount?: number;
+  remainingInviteSlots?: number;
   isActive: boolean;
 }
 
@@ -118,6 +120,8 @@ export interface AcademyBillingDetails {
   activeStudentCount: number;
   studentUtilization: number;
   remainingStudentSlots: number;
+  pendingInvitationCount?: number;
+  remainingInviteSlots?: number;
   provisionedStaffCapacity: number;
   activeStaffCount: number;
   staffUtilization: number;

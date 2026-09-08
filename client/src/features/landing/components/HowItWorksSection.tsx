@@ -34,7 +34,7 @@ export const HowItWorksSection: React.FC = () => {
                 transition={{ duration: 0.45, delay: i * 0.1 }}
                 className="relative"
               >
-                <div className="relative z-10 flex items-center justify-center w-12 h-12 rounded-full bg-ink-800 border border-core-400/40 text-core-400 font-mono text-xs">
+                <div className="relative z-10 flex items-center justify-center w-12 h-12 rounded-full bg-white dark:bg-ink-800 border border-core-400/40 text-core-400 font-mono text-xs shadow-sm">
                   {step.step}
                 </div>
                 <h3 className="mt-5 font-orbital text-base font-medium text-nox-high">

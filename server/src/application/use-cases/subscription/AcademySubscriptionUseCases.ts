@@ -1,4 +1,4 @@
-// src/application/use-cases/subscription/AcademySubscriptionUseCases.ts
+import mongoose from "mongoose";
 import Stripe from "stripe";
 import {
   AcademySubscriptionModel,
@@ -8,6 +8,7 @@ import { PlatformSettingsModel } from "../../../infrastructure/database/models/P
 import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
 import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { StudentModel } from "../../../infrastructure/database/models/Student.model";
+import { SquadInvitationModel } from "../../../infrastructure/database/models/SquadInvitation.model";
 import { NfcCardRequestModel } from "../../../infrastructure/database/models/NfcCardRequest.model";
 import { EmployeeModel } from "../../../infrastructure/database/models/Employee.model";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
@@ -85,19 +86,26 @@ export class AcademySubscriptionUseCases {
   }
 
   async getStatus(academyId: string) {
-    const [subscription, rate, staffRate, activeStudentCount, activeStaffCount] = await Promise.all([
+    const [subscription, rate, staffRate, activeStudentCount, activeStaffCount, pendingInvitationCount] = await Promise.all([
       AcademySubscriptionModel.findOne({ academyId }).lean(),
       this.getEffectiveRate(academyId),
       this.getEffectiveStaffRate(academyId),
       this.countActiveStudents(academyId),
       this.countActiveStaff(academyId),
+      SquadInvitationModel.countDocuments({
+        academyId: new mongoose.Types.ObjectId(academyId),
+        status: "pending",
+      }),
     ]);
+
+    const provisionedCapacity = subscription?.provisionedCapacity ?? 0;
+    const remainingInviteSlots = Math.max(0, provisionedCapacity - (activeStudentCount + pendingInvitationCount));
 
     return {
       hasSubscription: !!subscription,
       status: subscription?.status ?? null,
       billingInterval: subscription?.billingInterval ?? null,
-      provisionedCapacity: subscription?.provisionedCapacity ?? 0,
+      provisionedCapacity,
       provisionedStaffCapacity: subscription?.provisionedStaffCapacity ?? 0,
       currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
       ratePerStudentPerDay: subscription?.ratePerStudentPerDay ?? rate,
@@ -105,24 +113,31 @@ export class AcademySubscriptionUseCases {
       currentDefaultRate: rate,
       currentDefaultStaffRate: staffRate,
       activeStudentCount,
+      pendingInvitationCount,
+      remainingInviteSlots,
       activeStaffCount,
       isActive: subscription?.status === "active",
     };
   }
 
   async getBillingDetails(academyId: string) {
-    const [subscription, rate, staffRate, activeStudentCount, activeStaffCount] = await Promise.all([
+    const [subscription, rate, staffRate, activeStudentCount, activeStaffCount, pendingInvitationCount] = await Promise.all([
       AcademySubscriptionModel.findOne({ academyId }).lean(),
       this.getEffectiveRate(academyId),
       this.getEffectiveStaffRate(academyId),
       this.countActiveStudents(academyId),
       this.countActiveStaff(academyId),
+      SquadInvitationModel.countDocuments({
+        academyId: new mongoose.Types.ObjectId(academyId),
+        status: "pending",
+      }),
     ]);
 
     const provisionedCapacity = subscription?.provisionedCapacity ?? 0;
     const provisionedStaffCapacity = subscription?.provisionedStaffCapacity ?? 0;
     const studentUtilization = provisionedCapacity > 0 ? Math.round((activeStudentCount / provisionedCapacity) * 100) : 0;
     const staffUtilization = provisionedStaffCapacity > 0 ? Math.round((activeStaffCount / provisionedStaffCapacity) * 100) : 0;
+    const remainingInviteSlots = Math.max(0, provisionedCapacity - (activeStudentCount + pendingInvitationCount));
 
     const interval = subscription?.billingInterval ?? "month";
     const currentRate = subscription?.ratePerStudentPerDay ?? rate;
@@ -196,6 +211,8 @@ export class AcademySubscriptionUseCases {
       activeStudentCount,
       studentUtilization,
       remainingStudentSlots: Math.max(0, provisionedCapacity - activeStudentCount),
+      pendingInvitationCount,
+      remainingInviteSlots,
       provisionedStaffCapacity,
       activeStaffCount,
       staffUtilization,
@@ -222,6 +239,27 @@ export class AcademySubscriptionUseCases {
     if (activeStudentCount >= subscription.provisionedCapacity) {
       throw new SubscriptionCapacityExceededError(
         `This academy is subscribed for ${subscription.provisionedCapacity} students and already has ${activeStudentCount}. Increase your plan to add more.`,
+      );
+    }
+  }
+
+  // Ensures that sending an invitation does not exceed the remaining capacity,
+  // taking into account both currently enrolled students and pending invitations.
+  async assertCanInviteStudent(academyId: string): Promise<void> {
+    const subscription = await AcademySubscriptionModel.findOne({ academyId }).lean();
+    if (!subscription || subscription.status !== "active") {
+      throw new SubscriptionRequiredError();
+    }
+    const activeStudentCount = await this.countActiveStudents(academyId);
+    const pendingInvitationCount = await SquadInvitationModel.countDocuments({
+      academyId: new mongoose.Types.ObjectId(academyId),
+      status: "pending",
+    });
+
+    if (activeStudentCount + pendingInvitationCount >= subscription.provisionedCapacity) {
+      const allowedNewInvites = Math.max(0, subscription.provisionedCapacity - activeStudentCount);
+      throw new SubscriptionCapacityExceededError(
+        `Player limit reached. Your subscription plan allows up to ${subscription.provisionedCapacity} players. You currently have ${activeStudentCount} enrolled players and ${pendingInvitationCount} pending invitation${pendingInvitationCount === 1 ? "" : "s"}. You can only invite up to ${allowedNewInvites} player${allowedNewInvites === 1 ? "" : "s"} total. Please upgrade your subscription plan or cancel a pending invitation to invite more players.`
       );
     }
   }

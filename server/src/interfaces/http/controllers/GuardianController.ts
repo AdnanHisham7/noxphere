@@ -59,6 +59,18 @@ export class GuardianController {
     }
   };
 
+  getChildRemarks = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const remarks = await this.guardianUseCases.getChildRemarks(
+        req.user!.sub,
+        req.params.studentId,
+      );
+      ResponseHandler.success(res, remarks, "Remarks retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
+
   getChildProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const student = await this.guardianUseCases.getChildProfile(req.user!.sub, req.params.studentId);

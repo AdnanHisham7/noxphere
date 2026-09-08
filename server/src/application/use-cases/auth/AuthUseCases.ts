@@ -204,6 +204,7 @@ export class AuthUseCases {
           positions: student.positions,
           ageGroup: student.ageGroup,
           dateOfBirth: student.dateOfBirth,
+          photo: student.photo,
           guardian: student.guardian,
           emergencyContactName: student.medicalInfo?.emergencyContactName,
           emergencyContactPhone: student.medicalInfo?.emergencyContactPhone,
@@ -227,7 +228,7 @@ export class AuthUseCases {
 
   async updateProfile(
     userId: string,
-    dto: { firstName?: string; lastName?: string; avatar?: string }
+    dto: { firstName?: string; lastName?: string; avatar?: string; photo?: string }
   ) {
     const user = await this.userRepository.findById(userId);
     if (!user) throw new NotFoundError('User');
@@ -247,7 +248,8 @@ export class AuthUseCases {
       if (student) {
         if (dto.firstName) student.firstName = dto.firstName.trim();
         if (dto.lastName) student.lastName = dto.lastName.trim();
-        if (dto.avatar) student.photo = dto.avatar;
+        if (dto.photo !== undefined) student.photo = dto.photo;
+        else if (dto.avatar) student.photo = dto.avatar;
         await student.save();
       }
     }

@@ -75,6 +75,8 @@ import { RegistrationController } from "./interfaces/http/controllers/Registrati
 import { RegistrationUseCases } from "./application/use-cases/student/RegistrationUseCases";
 import { NfcCardController } from "./interfaces/http/controllers/NfcCardController";
 import { NfcCardUseCases } from "./application/use-cases/nfc/NfcCardUseCases";
+import { SquadInvitationController } from "./interfaces/http/controllers/SquadInvitationController";
+import { SquadInvitationUseCases } from "./application/use-cases/student/SquadInvitationUseCases";
 
 const app = express();
 
@@ -226,6 +228,8 @@ const academyController = new AcademyController(academyUseCases);
   const registrationController = new RegistrationController(registrationUseCases);
   const nfcCardUseCases = new NfcCardUseCases();
   const nfcCardController = new NfcCardController(nfcCardUseCases);
+  const squadInvitationUseCases = new SquadInvitationUseCases(academySubscriptionUseCases);
+  const squadInvitationController = new SquadInvitationController(squadInvitationUseCases);
 
   app.locals.controllers = {
     auth: authController,
@@ -256,6 +260,7 @@ const academyController = new AcademyController(academyUseCases);
     complaint: complaintController,
     registration: registrationController,
     nfcCard: nfcCardController,
+    squadInvitation: squadInvitationController,
   };
 }
 

@@ -5,13 +5,13 @@ export interface AcademyPublicInfo {
   academy: {
     id: string;
     name: string;
-    location?: string;
+    location?: string | { name?: string; address?: string };
     ageGroups?: string[];
   };
   franchises: Array<{
     id: string;
     name: string;
-    location?: string;
+    location?: string | { name?: string; address?: string };
     ageGroups?: string[];
   }>;
 }

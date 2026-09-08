@@ -72,6 +72,8 @@ export class StudentRepository implements IStudentRepository {
     limit = 30,
   ): Promise<PerformanceDocument[]> {
     return await PerformanceModel.find({ studentId })
+      .populate("sessionId", "title date startTime endTime location type notes")
+      .populate("coachId", "firstName lastName")
       .sort({ sessionDate: -1 })
       .limit(limit);
   }
@@ -100,7 +102,9 @@ export class StudentRepository implements IStudentRepository {
   }
 
   async getRemarks(studentId: string): Promise<CoachRemarkDocument[]> {
-    return await CoachRemarkModel.find({ studentId }).sort({ date: -1 });
+    return await CoachRemarkModel.find({ studentId })
+      .populate("coachId", "firstName lastName")
+      .sort({ date: -1 });
   }
 
   private toEntity(doc: any): StudentEntity {

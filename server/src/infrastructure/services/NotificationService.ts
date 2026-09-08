@@ -748,6 +748,75 @@ export class NotificationService {
       logger.error('[NotificationService] Failed to send student linked email:', err);
     }
   }
+
+  /**
+   * Send OTP verification email to a guardian during squad recruitment acceptance
+   */
+  async sendGuardianVerificationOtpEmail(params: {
+    to: string;
+    recipientName?: string;
+    otp: string;
+    studentName: string;
+    academyName: string;
+  }): Promise<void> {
+    const transporter = createMailTransporter();
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+        <div style="background: #0a0a0f; padding: 24px; text-align: center;">
+          <h1 style="color: #ccff00; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1px;">NOXPHERE</h1>
+          <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 12px; text-transform: uppercase;">Guardian Verification & Consent</p>
+        </div>
+        <div style="padding: 30px; color: #1e293b;">
+          <h2 style="font-size: 18px; font-weight: 700; margin-top: 0;">Academy Enrollment Authorization</h2>
+          <p style="font-size: 14px; line-height: 1.6; color: #475569;">
+            ${params.recipientName ? `Hello ${params.recipientName},<br/><br/>` : ''}
+            Your child <strong>${params.studentName}</strong> is accepting a squad recruitment invitation to join <strong>${params.academyName}</strong> on Noxphere.
+          </p>
+          <p style="font-size: 14px; line-height: 1.6; color: #475569;">
+            Please share the verification code below with them to confirm your guardianship and link this player profile to your Guardian Portal:
+          </p>
+
+          <div style="background: #0a0a0f; border-radius: 8px; padding: 24px; text-align: center; margin: 28px 0;">
+            <span style="font-family: monospace; font-size: 34px; font-weight: 800; color: #ccff00; letter-spacing: 8px; display: inline-block;">
+              ${params.otp}
+            </span>
+            <p style="color: #94a3b8; font-size: 12px; margin: 10px 0 0 0; text-transform: uppercase; letter-spacing: 1px;">
+              Valid for 10 minutes
+            </p>
+          </div>
+
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 18px; margin: 20px 0;">
+            <p style="margin: 0; font-size: 13px; color: #475569; line-height: 1.5;">
+              🛡️ <strong>Guardian Portal Access:</strong> Once verified, you will be able to track attendance, schedules, coach feedback, and fee payments from your portal dashboard.
+            </p>
+          </div>
+
+          <p style="font-size: 12px; color: #94a3b8; line-height: 1.5; border-top: 1px solid #f1f5f9; padding-top: 16px; margin-top: 24px;">
+            If you did not authorize this enrollment or have questions, please ignore this email or contact support.
+          </p>
+        </div>
+      </div>
+    `;
+
+    logger.info(`[NotificationService] Guardian verification OTP for ${params.to}: ${params.otp}`);
+
+    if (!config.email.user) {
+      logger.info(`[NotificationService] (Dev simulation) Guardian OTP for ${params.to}: ${params.otp}`);
+      return;
+    }
+
+    try {
+      await transporter.sendMail({
+        from: `"${config.email.fromName}" <${config.email.user || config.email.from}>`,
+        to: params.to,
+        subject: `${params.otp} is your Noxphere Guardian Verification Code for ${params.studentName}`,
+        html,
+      });
+      logger.info(`[NotificationService] Guardian verification OTP email sent to ${params.to}`);
+    } catch (err) {
+      logger.error('[NotificationService] Failed to send guardian verification OTP email:', err);
+    }
+  }
 }
 
 // Export singleton instance

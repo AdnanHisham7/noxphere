@@ -5,6 +5,7 @@ import { AttendanceModel } from "../../../infrastructure/database/models/Attenda
 import { FeeModel } from "../../../infrastructure/database/models/Fee.model";
 import { PerformanceModel } from "../../../infrastructure/database/models/Performance.model";
 import { SessionModel } from "../../../infrastructure/database/models/Session.model";
+import { CoachRemarkModel } from "../../../infrastructure/database/models/CoachRemark.model";
 import { ForbiddenError } from "../../../shared/errors/AppError";
 
 export class GuardianUseCases {
@@ -135,8 +136,22 @@ export class GuardianUseCases {
 
   async getChildPerformance(guardianUserId: string, studentId: string) {
     await this.assertOwnsStudent(guardianUserId, studentId);
-    const records = await PerformanceModel.find({ studentId }).sort({ createdAt: -1 }).limit(20).lean();
+    const records = await PerformanceModel.find({ studentId })
+      .populate("sessionId", "title date startTime endTime location type notes")
+      .populate("coachId", "firstName lastName")
+      .sort({ sessionDate: -1, createdAt: -1 })
+      .limit(50)
+      .lean();
     return records;
+  }
+
+  async getChildRemarks(guardianUserId: string, studentId: string) {
+    await this.assertOwnsStudent(guardianUserId, studentId);
+    const remarks = await CoachRemarkModel.find({ studentId })
+      .populate("coachId", "firstName lastName")
+      .sort({ date: -1 })
+      .lean();
+    return remarks;
   }
 
   async getChildProfile(guardianUserId: string, studentId: string) {

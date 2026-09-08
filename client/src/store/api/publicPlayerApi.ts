@@ -1,6 +1,15 @@
 // src/store/api/publicPlayerApi.ts
 import { baseApi } from "./baseApi";
 
+export interface TacticalAttributes {
+  pace: number;
+  shooting: number;
+  passing: number;
+  dribbling: number;
+  defending: number;
+  physical: number;
+}
+
 export interface PublicPlayerProfile {
   firstName: string;
   lastName: string;
@@ -15,6 +24,8 @@ export interface PublicPlayerProfile {
   bio?: string;
   preferredFoot?: string;
   isFreeAgent: boolean;
+  attributes?: TacticalAttributes | null;
+  totalEvaluations?: number;
 }
 
 export const publicPlayerApi = baseApi.injectEndpoints({

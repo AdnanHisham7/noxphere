@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   X,
   Globe,
+  Lock,
+  Check,
 } from "lucide-react";
 import QRCode from "react-qr-code";
 import {
@@ -23,6 +25,7 @@ import {
   useGetChildAttendanceQuery,
   useGetChildFeesQuery,
   useGetChildPerformanceQuery,
+  useGetChildRemarksQuery,
   useGetChildSessionsQuery,
   type GuardianChild,
 } from "../../store/api/guardianApi";
@@ -306,7 +309,7 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
                         : "border-white/20 bg-transparent"
                     }`}
                   >
-                    {active && "✓"}
+                    {active && <Check size={11} className="text-pitch-950 stroke-[3]" />}
                   </div>
                 </button>
               );
@@ -346,7 +349,7 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
 
           {/* Academy Verified Record Notice */}
           <div className="p-3.5 rounded-xl bg-amber-400/[0.06] border border-amber-400/20 flex items-start gap-3">
-            <span className="text-amber-400 text-sm font-bold">🔒</span>
+            <Lock size={15} className="text-amber-400 shrink-0 mt-0.5" />
             <div>
               <p className="text-xs font-semibold text-amber-300">
                 Official Academy Roster Player · Data Locked
@@ -580,35 +583,211 @@ const FeesTab: React.FC<{ studentId: string }> = ({ studentId }) => {
 };
 
 const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
-  const { data, isLoading } = useGetChildPerformanceQuery(studentId);
+  const { data: performanceRecords, isLoading: loadingPerformance } = useGetChildPerformanceQuery(studentId);
+  const { data: remarks, isLoading: loadingRemarks } = useGetChildRemarksQuery(studentId);
 
-  if (isLoading) return <NoxSkeleton className="h-64" />;
-  if (!data || data.length === 0) {
-    return (
-      <NoxEmptyState
-        title="No performance records yet"
-        body="Coach assessments and session notes will show up here as they're added."
-      />
-    );
-  }
+  if (loadingPerformance || loadingRemarks) return <NoxSkeleton className="h-64" />;
 
   return (
-    <div className="nox-card divide-y divide-white/[0.06]">
-      {data.map((p) => (
-        <div key={p._id} className="px-5 py-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-nox-high">
-              {new Date(p.createdAt).toLocaleDateString()}
-            </span>
-            {typeof p.overallRating === "number" && (
-              <span className="font-orbital text-sm font-semibold text-core-400">
-                {p.overallRating.toFixed(1)}
-              </span>
-            )}
+    <div className="space-y-6">
+      {/* Coach Feedback & Notes Space */}
+      <div className="nox-card p-5 space-y-4">
+        <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+          <div>
+            <h3 className="font-orbital text-sm font-semibold text-nox-high flex items-center gap-2">
+              <FileText size={16} className="text-core-400" />
+              Coach Remarks &amp; Developmental Notes
+            </h3>
+            <p className="text-xs text-nox-mid mt-0.5">
+              Personalized developmental guidance and progress updates from your child's coaches.
+            </p>
           </div>
-          {p.notes && <p className="text-xs text-nox-mid mt-1.5">{String(p.notes)}</p>}
+          <span className="text-xs font-mono text-nox-low">
+            {remarks?.length ?? 0} note{(remarks?.length ?? 0) === 1 ? "" : "s"}
+          </span>
         </div>
-      ))}
+
+        {!remarks || remarks.length === 0 ? (
+          <p className="text-xs text-nox-mid italic py-2">No coach remarks or notes added yet.</p>
+        ) : (
+          <div className="space-y-2.5">
+            {remarks.map((r) => {
+              const coachName =
+                r.coachId && typeof r.coachId === "object"
+                  ? `${r.coachId.firstName} ${r.coachId.lastName}`
+                  : "Squad Coach";
+              return (
+                <div
+                  key={r._id}
+                  className="bg-white/[0.02] border-l-2 border-core-400 border-t border-r border-b border-white/[0.06] rounded-r-lg p-3.5 space-y-1"
+                >
+                  <div className="flex items-center justify-between text-2xs">
+                    <span className="text-core-400 font-semibold">{coachName}</span>
+                    <span className="text-nox-low font-mono">
+                      {new Date(r.date).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                  <p className="text-xs text-nox-high italic leading-relaxed">"{r.text}"</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Detailed Session Performance Log */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-orbital text-sm font-semibold text-nox-high flex items-center gap-2">
+              <TrendingUp size={16} className="text-core-400" />
+              Session Performance Breakdown
+            </h3>
+            <p className="text-xs text-nox-mid mt-0.5">
+              Individual technical scores and coach assessments for each attended session.
+            </p>
+          </div>
+          <span className="text-xs font-mono text-nox-low">
+            {performanceRecords?.length ?? 0} session{(performanceRecords?.length ?? 0) === 1 ? "" : "s"} logged
+          </span>
+        </div>
+
+        {!performanceRecords || performanceRecords.length === 0 ? (
+          <NoxEmptyState
+            title="No session performance records yet"
+            body="Scores and technical assessments will appear here as coaches evaluate your child during training sessions and matches."
+          />
+        ) : (
+          <div className="space-y-4">
+            {performanceRecords.map((p) => {
+              const sessionObj = typeof p.sessionId === "object" ? p.sessionId : null;
+              const sessionTitle = sessionObj?.title || `${sessionObj?.type ? sessionObj.type.toUpperCase() : "Training"} Session`;
+              const sessionDate = p.sessionDate || p.createdAt;
+              const coachName =
+                p.coachId && typeof p.coachId === "object"
+                  ? `${p.coachId.firstName} ${p.coachId.lastName}`
+                  : null;
+              const score = typeof p.overallScore === "number" ? p.overallScore : p.overallRating;
+
+              return (
+                <div key={p._id} className="nox-card p-5 space-y-4 hover:border-core-400/30 transition-colors">
+                  {/* Session Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.06] pb-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-orbital text-sm font-semibold text-nox-high">{sessionTitle}</h4>
+                        {sessionObj?.type && (
+                          <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-core-400/10 text-core-400 border border-core-400/20 font-semibold">
+                            {sessionObj.type}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-nox-mid">
+                        <span className="flex items-center gap-1">
+                          <CalendarCheck size={12} className="text-core-400" />
+                          {new Date(sessionDate).toLocaleDateString(undefined, {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                        {sessionObj?.startTime && (
+                          <span className="flex items-center gap-1">
+                            <Clock size={12} className="text-core-400" />
+                            {sessionObj.startTime} - {sessionObj.endTime}
+                          </span>
+                        )}
+                        {sessionObj?.location && (
+                          <span className="flex items-center gap-1">
+                            <MapPin size={12} className="text-core-400" />
+                            {sessionObj.location}
+                          </span>
+                        )}
+                        {coachName && (
+                          <span>
+                            Evaluated by: <strong className="text-nox-high font-medium">{coachName}</strong>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {typeof score === "number" && (
+                      <div className="flex items-center gap-2 self-end sm:self-center">
+                        <div className="text-right">
+                          <span className="text-2xs text-nox-low uppercase tracking-widest font-bold block">Rating</span>
+                          <span className="font-orbital text-xl font-bold text-core-400">
+                            {score.toFixed(1)} <span className="text-xs text-nox-mid font-normal">/ 10</span>
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Skill Parameters Breakdown */}
+                  {p.skillScores && p.skillScores.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-2xs uppercase font-mono tracking-wider text-nox-mid font-semibold">
+                        Skill Parameter Breakdown
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                        {p.skillScores.map((skill) => (
+                          <div
+                            key={skill.parameter}
+                            className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-2.5 flex flex-col justify-between gap-1.5"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-nox-high font-medium truncate">{skill.parameter}</span>
+                              <span className="font-orbital font-semibold text-xs text-core-400">
+                                {skill.score} / 10
+                              </span>
+                            </div>
+                            <div className="h-1.5 w-full bg-white/[0.06] rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-core-400 transition-all duration-300"
+                                style={{ width: `${Math.min(100, Math.max(0, (skill.score / 10) * 100))}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Evaluator Remarks / Session Notes */}
+                  {(p.remarks || p.notes) && (
+                    <div className="p-3 bg-white/[0.02] border border-white/[0.06] rounded-lg space-y-1">
+                      <span className="text-2xs font-mono uppercase tracking-widest text-core-400 font-semibold block">
+                        Coach's Session Notes:
+                      </span>
+                      <p className="text-xs text-nox-high italic leading-relaxed">
+                        "{String(p.remarks || p.notes)}"
+                      </p>
+                    </div>
+                  )}
+
+                  {p.videoUrl && (
+                    <div>
+                      <a
+                        href={String(p.videoUrl)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-core-400 hover:underline inline-flex items-center gap-1.5"
+                      >
+                        <ExternalLink size={12} /> View Attached Session Video
+                      </a>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

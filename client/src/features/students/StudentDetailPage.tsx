@@ -15,7 +15,26 @@ import {
   CartesianGrid,
 } from "recharts";
 import { clsx } from "clsx";
-import { Repeat2, Mail, Pencil, ArrowLeftRight, History, FileText } from "lucide-react";
+import {
+  Repeat2,
+  Mail,
+  Pencil,
+  ArrowLeftRight,
+  History,
+  FileText,
+  Camera,
+  Loader2,
+  Calendar,
+  Clock,
+  MapPin,
+  User,
+  Video,
+  Eye,
+  Check,
+  TrendingUp,
+  FolderOpen,
+  AlertTriangle,
+} from "lucide-react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
 import { Button, Badge, Avatar, Modal, Skeleton, EmptyState, Input, DocumentUploadField } from "../../components/ui";
@@ -34,6 +53,7 @@ import {
   useUpdateStudentStatusMutation,
   useTransferStudentFranchiseMutation,
   useGetTransferHistoryQuery,
+  useAddCoachRemarkMutation,
   type Student,
   type StudentStatus,
 } from "../../store/api/studentsApi";
@@ -42,7 +62,6 @@ import { useListTeamsQuery } from "../../store/api/teamsApi";
 import { academyApi } from "../../store/api/academyApi";
 import { useListPlayerMutation } from "../../store/api/transferApi";
 import { useUploadImageMutation } from "../../store/api/uploadApi";
-import { Camera, Loader2 } from "lucide-react";
 
 const getRatingColor = (r: number) =>
   r >= 9 ? "text-volt-400" : r >= 8 ? "text-field-400" : r >= 7 ? "text-ice-400" : "text-slate-400";
@@ -95,6 +114,26 @@ const StudentDetailPage: React.FC = () => {
   // player between franchises — matches the backend authorization check.
   const canTransferFranchise = user?.role === "super_admin" || (user?.role === "manager" && !user?.franchiseId);
   const canEditStatus = user?.role === "manager" || user?.role === "super_admin";
+  const canManagePerformance =
+    user?.role === "super_admin" ||
+    user?.role === "manager" ||
+    user?.role === "coach" ||
+    !!user?.permissions?.canManagePerformance;
+
+  const [newRemarkText, setNewRemarkText] = useState("");
+  const [addCoachRemark, { isLoading: isAddingRemark }] = useAddCoachRemarkMutation();
+
+  const handleAddRemark = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRemarkText.trim() || !id) return;
+    try {
+      await addCoachRemark({ id, data: { text: newRemarkText.trim() } }).unwrap();
+      toast.success("Note added successfully");
+      setNewRemarkText("");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to add note");
+    }
+  };
 
   const handleStatusChange = async (status: StudentStatus) => {
     if (!id) return;
@@ -298,7 +337,10 @@ const StudentDetailPage: React.FC = () => {
 
               {/* Quick stat chips */}
               <div className="flex flex-wrap items-center gap-3 mt-4">
-                <span className="stat-badge text-field-400">✓ {student.attendancePercentage}% attendance</span>
+                <span className="stat-badge text-field-400 flex items-center gap-1.5">
+                  <Check size={12} className="text-field-400" />
+                  {student.attendancePercentage}% attendance
+                </span>
                 <span className="stat-badge text-slate-400">Enrolled {new Date(student.enrollmentDate).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}</span>
               </div>
 
@@ -307,7 +349,7 @@ const StudentDetailPage: React.FC = () => {
                 <Button
                   size="sm"
                   variant="secondary"
-                  icon={isDownloading ? <span className="animate-spin">🌀</span> : <span>📄</span>}
+                  icon={isDownloading ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
                   onClick={handleDownloadCard}
                   disabled={isDownloading}
                 >
@@ -665,28 +707,220 @@ const StudentDetailPage: React.FC = () => {
 
       {/* Performance tab */}
       {activeTab === "performance" && (
-        <div className="space-y-4">
-          {performances.length === 0 ? (
-            <EmptyState title="No sessions logged yet" description="Coaches can log performance from the coach portal." />
-          ) : (
-            [...performances]
-              .sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime())
-              .map((session) => (
-                <div key={session._id} className="card p-4 flex items-center justify-between">
-                  <span className="text-sm text-slate-300">
-                    {new Date(session.sessionDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <div className="w-32 h-1.5 bg-pitch-600 rounded-full overflow-hidden">
-                      <div className="h-full bg-volt-400" style={{ width: `${(session.overallScore / 10) * 100}%` }} />
-                    </div>
-                    <span className="font-display font-extrabold text-volt-400 text-lg w-8 text-right">
-                      {session.overallScore.toFixed(1)}
-                    </span>
-                  </div>
+        <div className="space-y-6">
+          {/* Notes & Remarks Space */}
+          <div className="card p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="section-title text-volt-400 flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-volt-400" />
+                  Coach &amp; Staff Notes
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Developmental feedback, match observations, and evaluator remarks.
+                </p>
+              </div>
+              <span className="text-xs font-mono text-slate-500">
+                {remarks.length} note{remarks.length === 1 ? "" : "s"}
+              </span>
+            </div>
+
+            {canManagePerformance && (
+              <form onSubmit={handleAddRemark} className="space-y-3 bg-pitch-900/50 p-4 rounded-xl border border-white/5">
+                <textarea
+                  value={newRemarkText}
+                  onChange={(e) => setNewRemarkText(e.target.value)}
+                  placeholder="Write a coach or staff note for this player (e.g. key areas to improve, match feedback, tactical discipline)..."
+                  className="input min-h-20 w-full resize-none text-xs"
+                  rows={3}
+                />
+                <div className="flex items-center justify-between">
+                  <span className="text-2xs text-slate-500">Visible to academy coaches, staff, and in official reports.</span>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={isAddingRemark || !newRemarkText.trim()}
+                    className="bg-volt-400 text-pitch-900 font-bold hover:bg-volt-300"
+                  >
+                    {isAddingRemark ? "Saving Note..." : "Add Note / Remark"}
+                  </Button>
                 </div>
-              ))
-          )}
+              </form>
+            )}
+
+            <div className="space-y-2">
+              {remarks.length === 0 ? (
+                <p className="text-xs text-slate-500 italic">No notes or remarks added yet.</p>
+              ) : (
+                remarks.map((r) => {
+                  const coachName =
+                    r.coachId && typeof r.coachId === "object"
+                      ? `${r.coachId.firstName} ${r.coachId.lastName}`
+                      : "Coach / Evaluator";
+                  return (
+                    <div key={r._id} className="bg-pitch-800/60 rounded-xl p-3.5 border-l-2 border-volt-400 space-y-1">
+                      <div className="flex items-center justify-between text-2xs">
+                        <span className="text-volt-400 font-bold">{coachName}</span>
+                        <span className="text-slate-500 font-mono">
+                          {new Date(r.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-200 leading-relaxed italic">"{r.text}"</p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Detailed Performance History per Session */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="section-title flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-volt-400" />
+                  Session-by-Session Performance Logs
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Detailed technical evaluations and scores recorded during scheduled squad sessions.
+                </p>
+              </div>
+              <span className="text-xs font-mono text-slate-500">
+                {performances.length} session{performances.length === 1 ? "" : "s"} logged
+              </span>
+            </div>
+
+            {performances.length === 0 ? (
+              <EmptyState
+                title="No sessions logged yet"
+                description="When coaches record evaluations for scheduled training sessions or matches, detailed score breakdowns and remarks will appear here."
+              />
+            ) : (
+              [...performances]
+                .sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime())
+                .map((session) => {
+                  const sessionObj = typeof session.sessionId === "object" ? session.sessionId : null;
+                  const sessionTitle = sessionObj?.title || `${sessionObj?.type ? sessionObj.type.toUpperCase() : "Training"} Session`;
+                  const coachName =
+                    session.coachId && typeof session.coachId === "object"
+                      ? `${session.coachId.firstName} ${session.coachId.lastName}`
+                      : null;
+
+                  return (
+                    <div key={session._id} className="card p-5 space-y-4 hover:border-volt-400/30 transition-colors">
+                      {/* Session Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-display font-bold text-white text-base">
+                              {sessionTitle}
+                            </span>
+                            {sessionObj?.type && (
+                              <span className="text-2xs uppercase tracking-wider font-mono font-bold px-2 py-0.5 rounded bg-volt-400/10 text-volt-400 border border-volt-400/20">
+                                {sessionObj.type}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 text-2xs text-slate-400 flex-wrap">
+                            <span className="inline-flex items-center gap-1.5">
+                              <Calendar className="h-3.5 w-3.5 text-volt-400 shrink-0" />
+                              {new Date(session.sessionDate).toLocaleDateString("en-IN", {
+                                weekday: "short",
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
+                            {sessionObj?.startTime && (
+                              <span className="inline-flex items-center gap-1.5">
+                                <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                {sessionObj.startTime} - {sessionObj.endTime}
+                              </span>
+                            )}
+                            {sessionObj?.location && (
+                              <span className="inline-flex items-center gap-1.5">
+                                <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                {sessionObj.location}
+                              </span>
+                            )}
+                            {coachName && (
+                              <span className="inline-flex items-center gap-1.5">
+                                <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                Evaluator: <strong className="text-slate-300">{coachName}</strong>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Overall Score */}
+                        <div className="flex items-center gap-3 self-end sm:self-center">
+                          <div className="text-right">
+                            <span className="text-2xs text-slate-500 uppercase tracking-widest block font-bold">Overall Rating</span>
+                            <span className={clsx("font-display font-black text-2xl", getRatingColor(session.overallScore))}>
+                              {session.overallScore.toFixed(1)} <span className="text-xs text-slate-500">/ 10</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Parameter Scores Breakdown */}
+                      {session.skillScores && session.skillScores.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-2xs uppercase font-mono tracking-wider text-slate-400 font-semibold">
+                            Technical &amp; Tactical Skill Scores
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                            {session.skillScores.map((skill) => (
+                              <div
+                                key={skill.parameter}
+                                className="bg-pitch-900/60 p-2.5 rounded-lg border border-white/5 flex flex-col justify-between gap-1.5"
+                              >
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="text-slate-300 font-medium truncate">{skill.parameter}</span>
+                                  <span className={clsx("font-mono font-bold text-xs", getRatingColor(skill.score))}>
+                                    {skill.score} / 10
+                                  </span>
+                                </div>
+                                <div className="h-1.5 w-full bg-pitch-700 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-volt-400 transition-all duration-300"
+                                    style={{ width: `${Math.min(100, Math.max(0, (skill.score / 10) * 100))}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Session Remarks / Notes */}
+                      {session.remarks && (
+                        <div className="p-3 bg-white/[0.02] border border-white/10 rounded-lg space-y-1">
+                          <span className="text-2xs font-mono uppercase tracking-widest text-volt-400 font-semibold block">
+                            Session Coach Notes:
+                          </span>
+                          <p className="text-xs text-slate-300 italic leading-relaxed">"{session.remarks}"</p>
+                        </div>
+                      )}
+
+                      {session.videoUrl && (
+                        <div>
+                          <a
+                            href={session.videoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-volt-400 hover:underline inline-flex items-center gap-1.5 font-medium"
+                          >
+                            <Video className="h-3.5 w-3.5 text-volt-400 shrink-0" />
+                            View Session Drill Video
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+            )}
+          </div>
         </div>
       )}
 
@@ -745,8 +979,8 @@ const StudentDetailPage: React.FC = () => {
                           {doc.url?.split("/").pop() || "view-document"}
                         </p>
                       </div>
-                      <span className="text-2xs font-bold text-volt-400 uppercase tracking-wider flex items-center gap-1 mt-3">
-                        👁 View Document
+                      <span className="text-2xs font-bold text-volt-400 uppercase tracking-wider flex items-center gap-1.5 mt-3">
+                        <Eye size={13} /> View Document
                       </span>
                     </div>
                   ))}
@@ -832,7 +1066,9 @@ const StudentDetailPage: React.FC = () => {
               />
             ) : (
               <div className="text-center p-6 space-y-4">
-                <span className="text-4xl">📁</span>
+                <div className="flex justify-center">
+                  <FolderOpen className="w-12 h-12 text-slate-400" />
+                </div>
                 <p className="text-sm text-slate-300">
                   This document format cannot be previewed directly in the browser.
                 </p>
@@ -1010,8 +1246,8 @@ const FranchiseTransferModal: React.FC<{
             onChange={(e) => setReason(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2 p-3 bg-ember-400/5 border border-ember-400/15 rounded">
-          <span className="text-ember-400 text-sm">⚠</span>
+        <div className="flex items-center gap-2.5 p-3 bg-ember-400/5 border border-ember-400/15 rounded">
+          <AlertTriangle className="h-4 w-4 text-ember-400 shrink-0" />
           <p className="text-xs text-ember-400">Their current team and coach assignment will be cleared as part of the move.</p>
         </div>
         <div className="flex gap-3">
