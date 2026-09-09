@@ -38,6 +38,10 @@ export interface RegistrationRequestDocument extends Document {
   reviewedBy?: mongoose.Types.ObjectId;
   reviewedAt?: Date;
   enrolledStudentId?: mongoose.Types.ObjectId;
+  dpdpConsent: boolean;
+  dpdpConsentAt?: Date;
+  dpdpConsentIp?: string;
+  dpdpConsentUserAgent?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -102,6 +106,20 @@ const RegistrationRequestSchema = new Schema<RegistrationRequestDocument>(
     enrolledStudentId: {
       type: Schema.Types.ObjectId,
       ref: "Student",
+    },
+    dpdpConsent: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+    dpdpConsentAt: {
+      type: Date,
+    },
+    dpdpConsentIp: {
+      type: String,
+    },
+    dpdpConsentUserAgent: {
+      type: String,
     },
   },
   {

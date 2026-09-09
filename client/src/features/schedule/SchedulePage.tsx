@@ -22,11 +22,12 @@ import { toast } from "react-hot-toast";
 import { Button, Badge, Modal, Input, Skeleton, EmptyState, DocumentUploadField } from "../../components/ui";
 import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
+import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import { useConfirm } from "../../hooks/useConfirm";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
 import { useGetUsersQuery } from "../../store/api/usersApi";
 import { useGetFranchiseByIdQuery, useGetFranchisesQuery } from "../../store/api/franchiseApi";
-import { useGetStudentsQuery } from "../../store/api/studentsApi";
+import { useGetStudentsQuery, useGetAgeCategoriesQuery } from "../../store/api/studentsApi";
 import { academyApi } from "../../store/api/academyApi";
 import { clsx } from "clsx";
 import {
@@ -105,11 +106,11 @@ const SchedulePage: React.FC = () => {
     ? (allTeams ?? []).filter((t) => (t.coach?._id?.toString() || (t.coach as any)?.id?.toString()) === user?.id)
     : allTeams ?? [];
 
-  const { data: academy } = academyApi.useGetAcademyByIdQuery(resolvedAcademyId ?? "", { skip: !resolvedAcademyId });
-  const categoriesList = Array.from({ length: 21 }, (_, i) => `U-${i + 5}`);
-  const categories = Array.from(new Set([...(academy?.ageGroups ?? []), ...categoriesList])).sort(
-    (a, b) => parseInt(a.replace('U-', '')) - parseInt(b.replace('U-', ''))
+  const { data: existingAgeCategories = [] } = useGetAgeCategoriesQuery(
+    franchiseId ? { franchiseId } : { academyId: resolvedAcademyId ?? "" },
+    { skip: !franchiseId && !resolvedAcademyId }
   );
+  const categories = existingAgeCategories;
   const { data: coachesResult } = useGetUsersQuery(
     { roles: "coach", academyId: resolvedAcademyId ?? "", isActive: "true", limit: 100 },
     { skip: !resolvedAcademyId || isCoach }
@@ -609,6 +610,16 @@ const CreateSessionModal: React.FC<{
   const [fieldNumber, setFieldNumber] = useState("");
   const [notes, setNotes] = useState("");
 
+  const currentAcademyId = useCurrentAcademyId();
+  const activeFranchise = academyFranchises?.find((f) => f.id === selectedFranchiseId);
+  const effectiveAcademyId = user?.academyId || activeFranchise?.academyId || currentAcademyId;
+  const { data: academyData } = academyApi.useGetAcademyByIdQuery(
+    effectiveAcademyId ?? "",
+    { skip: !effectiveAcademyId }
+  );
+  const academyPitches = (academyData?.pitches || []).filter((p) => p.isActive !== false);
+  const [selectedPitchId, setSelectedPitchId] = useState<string>("manual");
+
   const [playerIds, setPlayerIds] = useState<string[]>([]);
   const [documents, setDocuments] = useState<{ name: string; url: string }[]>([]);
 
@@ -757,32 +768,38 @@ const CreateSessionModal: React.FC<{
             <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1">
               Age Categories (Select all that apply)
             </label>
-            <div className="flex flex-wrap gap-1.5 mt-1 border border-slate-200 dark:border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-slate-50 dark:bg-pitch-900">
-              {categories.map((c) => {
-                const isSelected = categoriesState.includes(c);
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => {
-                      if (isSelected) {
-                        setCategoriesState(categoriesState.filter((cat) => cat !== c));
-                      } else {
-                        setCategoriesState([...categoriesState, c]);
-                      }
-                    }}
-                    className={clsx(
-                      "px-2 py-0.5 rounded text-[10px] font-semibold border transition-all duration-150",
-                      isSelected
-                        ? "bg-volt-400 border-volt-400 text-pitch-900 font-extrabold"
-                        : "bg-white dark:bg-pitch-800 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/10 hover:text-slate-900 dark:hover:text-white"
-                    )}
-                  >
-                    {c}
-                  </button>
-                );
-              })}
-            </div>
+            {categories.length === 0 ? (
+              <div className="p-3 rounded border border-amber-500/20 bg-amber-500/10 text-amber-500 text-xs">
+                No players with assigned age categories exist in this franchise yet. Age categories are automatically registered when players enroll with their birthdates.
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5 mt-1 border border-slate-200 dark:border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-slate-50 dark:bg-pitch-900">
+                {categories.map((c) => {
+                  const isSelected = categoriesState.includes(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setCategoriesState(categoriesState.filter((cat) => cat !== c));
+                        } else {
+                          setCategoriesState([...categoriesState, c]);
+                        }
+                      }}
+                      className={clsx(
+                        "px-2 py-0.5 rounded text-[10px] font-semibold border transition-all duration-150",
+                        isSelected
+                          ? "bg-volt-400 border-volt-400 text-pitch-900 font-extrabold"
+                          : "bg-white dark:bg-pitch-800 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/10 hover:text-slate-900 dark:hover:text-white"
+                      )}
+                    >
+                      {c}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-2 border border-volt-500/30 bg-volt-400/[0.04] dark:border-volt-400/20 dark:bg-volt-400/[0.03] p-3 rounded-lg">
@@ -976,9 +993,67 @@ const CreateSessionModal: React.FC<{
         </div>
 
         {/* Location / Field Info */}
-        <div className="grid grid-cols-2 gap-3">
-          <Input label="Location / Venue" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Turf 1" required />
-          <Input label="Field Number (Optional)" value={fieldNumber} onChange={(e) => setFieldNumber(e.target.value)} placeholder="e.g. Field B" />
+        <div className="space-y-2">
+          {academyPitches.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                  Venue / Pitch Picker
+                </label>
+                <span className="text-[10px] text-volt-500 dark:text-volt-400 font-medium">
+                  {academyPitches.length} academy {academyPitches.length === 1 ? "venue" : "venues"} available
+                </span>
+              </div>
+              <select
+                value={selectedPitchId}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedPitchId(val);
+                  if (val !== "manual") {
+                    const found = academyPitches.find((p) => p.id === val);
+                    if (found) {
+                      setLocation(found.name);
+                      setFieldNumber(found.fieldNumber || "");
+                    }
+                  }
+                }}
+                className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-volt-400 text-xs"
+              >
+                <option value="manual">Enter Manually / Custom Venue</option>
+                <optgroup label="Registered Academy Pitches & Venues">
+                  {academyPitches.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.fieldNumber ? `(Field ${p.fieldNumber})` : ""} {p.surfaceType ? `· ${p.surfaceType}` : ""}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label={academyPitches.length > 0 && selectedPitchId !== "manual" ? "Location / Venue (Selected)" : "Location / Venue"}
+              value={location}
+              onChange={(e) => {
+                setLocation(e.target.value);
+                const matching = academyPitches.find((p) => p.name.toLowerCase() === e.target.value.toLowerCase());
+                if (matching) {
+                  setSelectedPitchId(matching.id);
+                } else if (selectedPitchId !== "manual") {
+                  setSelectedPitchId("manual");
+                }
+              }}
+              placeholder="e.g. Turf 1, North Arena"
+              required
+            />
+            <Input
+              label="Field Number (Optional)"
+              value={fieldNumber}
+              onChange={(e) => setFieldNumber(e.target.value)}
+              placeholder="e.g. Field B, Pitch 2"
+            />
+          </div>
         </div>
 
         {/* Notes */}
@@ -1158,6 +1233,22 @@ const EditSessionModal: React.FC<{
     { skip: !user?.academyId }
   );
 
+  const currentAcademyId = useCurrentAcademyId();
+  const sessionFranchise = academyFranchises?.find((f) => f.id === session.franchiseId);
+  const effectiveAcademyId = user?.academyId || sessionFranchise?.academyId || currentAcademyId;
+  const { data: academyData } = academyApi.useGetAcademyByIdQuery(
+    effectiveAcademyId ?? "",
+    { skip: !effectiveAcademyId }
+  );
+  const academyPitches = (academyData?.pitches || []).filter((p) => p.isActive !== false);
+
+  const matchedPitch = academyPitches.find(
+    (p) => p.name.toLowerCase() === (session.location || "").toLowerCase()
+  );
+  const [selectedPitchId, setSelectedPitchId] = useState<string>(
+    matchedPitch ? matchedPitch.id : "manual"
+  );
+
   const [crossFranchiseId, setCrossFranchiseId] = useState("");
   const { data: crossStudentsResult } = useGetStudentsQuery(
     { franchiseId: crossFranchiseId, limit: 100 },
@@ -1224,32 +1315,38 @@ const EditSessionModal: React.FC<{
             <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1">
               Age Categories (Select all that apply)
             </label>
-            <div className="flex flex-wrap gap-1.5 mt-1 border border-slate-200 dark:border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-slate-50 dark:bg-pitch-900">
-              {categories.map((c) => {
-                const isSelected = categoriesState.includes(c);
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => {
-                      if (isSelected) {
-                        setCategoriesState(categoriesState.filter((cat) => cat !== c));
-                      } else {
-                        setCategoriesState([...categoriesState, c]);
-                      }
-                    }}
-                    className={clsx(
-                      "px-2 py-0.5 rounded text-[10px] font-semibold border transition-all duration-150",
-                      isSelected
-                        ? "bg-volt-400 border-volt-400 text-pitch-900 font-extrabold shadow-sm"
-                        : "bg-white dark:bg-pitch-800 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/10 hover:text-slate-900 dark:hover:text-white"
-                    )}
-                  >
-                    {c}
-                  </button>
-                );
-              })}
-            </div>
+            {Array.from(new Set([...categories, ...categoriesState])).length === 0 ? (
+              <div className="p-3 rounded border border-amber-500/20 bg-amber-500/10 text-amber-500 text-xs">
+                No players with assigned age categories exist in this franchise yet.
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5 mt-1 border border-slate-200 dark:border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-slate-50 dark:bg-pitch-900">
+                {Array.from(new Set([...categories, ...categoriesState])).map((c) => {
+                  const isSelected = categoriesState.includes(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setCategoriesState(categoriesState.filter((cat) => cat !== c));
+                        } else {
+                          setCategoriesState([...categoriesState, c]);
+                        }
+                      }}
+                      className={clsx(
+                        "px-2 py-0.5 rounded text-[10px] font-semibold border transition-all duration-150",
+                        isSelected
+                          ? "bg-volt-400 border-volt-400 text-pitch-900 font-extrabold shadow-sm"
+                          : "bg-white dark:bg-pitch-800 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/10 hover:text-slate-900 dark:hover:text-white"
+                      )}
+                    >
+                      {c}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -1366,9 +1463,67 @@ const EditSessionModal: React.FC<{
         </div>
 
         {/* Location / Field Info */}
-        <div className="grid grid-cols-2 gap-3">
-          <Input label="Location / Venue" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Turf 1" required />
-          <Input label="Field Number (Optional)" value={fieldNumber} onChange={(e) => setFieldNumber(e.target.value)} placeholder="e.g. Field B" />
+        <div className="space-y-2">
+          {academyPitches.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                  Venue / Pitch Picker
+                </label>
+                <span className="text-[10px] text-volt-500 dark:text-volt-400 font-medium">
+                  {academyPitches.length} academy {academyPitches.length === 1 ? "venue" : "venues"} available
+                </span>
+              </div>
+              <select
+                value={selectedPitchId}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedPitchId(val);
+                  if (val !== "manual") {
+                    const found = academyPitches.find((p) => p.id === val);
+                    if (found) {
+                      setLocation(found.name);
+                      setFieldNumber(found.fieldNumber || "");
+                    }
+                  }
+                }}
+                className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-volt-400 text-xs"
+              >
+                <option value="manual">Enter Manually / Custom Venue</option>
+                <optgroup label="Registered Academy Pitches & Venues">
+                  {academyPitches.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.fieldNumber ? `(Field ${p.fieldNumber})` : ""} {p.surfaceType ? `· ${p.surfaceType}` : ""}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label={academyPitches.length > 0 && selectedPitchId !== "manual" ? "Location / Venue (Selected)" : "Location / Venue"}
+              value={location}
+              onChange={(e) => {
+                setLocation(e.target.value);
+                const matching = academyPitches.find((p) => p.name.toLowerCase() === e.target.value.toLowerCase());
+                if (matching) {
+                  setSelectedPitchId(matching.id);
+                } else if (selectedPitchId !== "manual") {
+                  setSelectedPitchId("manual");
+                }
+              }}
+              placeholder="e.g. Turf 1, North Arena"
+              required
+            />
+            <Input
+              label="Field Number (Optional)"
+              value={fieldNumber}
+              onChange={(e) => setFieldNumber(e.target.value)}
+              placeholder="e.g. Field B, Pitch 2"
+            />
+          </div>
         </div>
 
         {/* Notes */}

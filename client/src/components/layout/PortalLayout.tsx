@@ -1,6 +1,6 @@
 // src/components/layout/PortalLayout.tsx
-import React, { useState } from "react";
-import { NavLink, Outlet, useNavigate, Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { NavLink, Outlet, useNavigate, Link, useLocation } from "react-router-dom";
 import logoSrc from "../../assets/logo.png";
 import { useSelector, useDispatch } from "react-redux";
 import { LogOut, Menu, X, type LucideIcon } from "lucide-react";
@@ -35,6 +35,24 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ navItems, portalLabe
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+
+  // Close mobile drawer whenever route changes (matching Manager portal Sidebar)
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
+  // Lock body scroll when mobile drawer is open to prevent background page bounce
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
 
   const isStudent = user?.role === "student";
   const { data: studentDashboard } = useGetMyDashboardQuery(undefined, { skip: !isStudent });
@@ -75,7 +93,7 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ navItems, portalLabe
   return (
     <div className="nox-landing min-h-screen flex">
       {/* Mobile topbar */}
-      <div className="md:hidden fixed top-0 inset-x-0 z-40 flex items-center justify-between px-4 py-3 bg-white/95 border-b border-slate-200 text-slate-900 dark:bg-ink-950/95 dark:border-white/[0.06] dark:text-white backdrop-blur">
+      <div className="md:hidden fixed top-0 inset-x-0 z-30 flex items-center justify-between px-4 py-3 bg-white/95 border-b border-slate-200 text-slate-900 dark:bg-ink-950/95 dark:border-white/[0.06] dark:text-white backdrop-blur">
         <Link to="/" className="flex items-center gap-2.5">
           <img src={logoSrc} alt="Noxphere" className="w-7 h-7 object-contain drop-shadow" />
           <span className="font-orbital font-bold text-slate-900 dark:text-nox-high">Noxphere</span>
@@ -83,26 +101,51 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ navItems, portalLabe
         <div className="flex items-center gap-2">
           <ThemeToggle size="sm" />
           <PortalNotificationBell />
-          <button onClick={() => setMobileOpen((v) => !v)} className="text-slate-500 hover:text-slate-900 dark:text-nox-mid dark:hover:text-white p-2">
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          <button
+            type="button"
+            onClick={() => setMobileOpen((v) => !v)}
+            className="flex items-center justify-center w-9 h-9 rounded-lg bg-slate-100 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white shrink-0 transition-colors"
+            aria-label="Toggle navigation menu"
+          >
+            <Menu size={18} />
           </button>
         </div>
       </div>
 
+      {/* Mobile Drawer Backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden animate-fade-in"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
-        className={`fixed md:sticky md:top-0 inset-y-0 left-0 z-30 w-64 h-screen flex-shrink-0 border-r border-slate-200 bg-white text-slate-800 dark:border-white/[0.06] dark:bg-ink-900 dark:text-slate-200 flex flex-col transition-transform duration-200 shadow-sm dark:shadow-none ${
+        className={`fixed md:sticky md:top-0 inset-y-0 left-0 z-50 flex flex-col h-full md:h-screen flex-shrink-0 bg-white border-r border-slate-200 text-slate-800 dark:border-white/[0.06] dark:bg-ink-900 dark:text-slate-200 shadow-xl md:shadow-none transition-all duration-300 ease-in-out w-72 max-w-[85vw] md:w-64 md:max-w-none ${
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
-        <div className="hidden md:flex items-center gap-3 px-6 py-6 border-b border-slate-100 dark:border-white/[0.06] flex-shrink-0">
-          <div className="w-9 h-9 rounded-xl bg-white dark:bg-white/5 p-1 flex items-center justify-center border border-slate-200/60 dark:border-white/10 shadow-sm flex-shrink-0">
-            <img src={logoSrc} alt="Noxphere" className="w-full h-full object-contain drop-shadow" />
+        {/* Brand Header with mobile close button */}
+        <div className="flex items-center justify-between px-4 sm:px-6 h-16 border-b border-slate-100 dark:border-white/[0.06] flex-shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 p-1 flex items-center justify-center border border-slate-200/60 dark:border-white/10 shadow-sm flex-shrink-0">
+              <img src={logoSrc} alt="Noxphere" className="w-full h-full object-contain drop-shadow" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-orbital font-bold text-slate-900 dark:text-nox-high leading-tight">Noxphere</div>
+              <div className="text-[10px] font-mono uppercase tracking-wide text-slate-500 dark:text-nox-low truncate">{portalLabel}</div>
+            </div>
           </div>
-          <div>
-            <div className="font-orbital font-bold text-slate-900 dark:text-nox-high leading-tight">Noxphere</div>
-            <div className="text-[10px] font-mono uppercase tracking-wide text-slate-500 dark:text-nox-low">{portalLabel}</div>
-          </div>
+          {/* Mobile Close Button */}
+          <button
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+            aria-label="Close menu"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         <nav className="flex-1 px-3 mt-4 md:mt-0 space-y-1 overflow-y-auto min-h-0 custom-scrollbar">
@@ -155,13 +198,6 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ navItems, portalLabe
           </button>
         </div>
       </aside>
-
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-30 md:hidden transition-opacity"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
 
       {/* Content */}
       <main className="flex-1 min-w-0 pt-16 md:pt-0">

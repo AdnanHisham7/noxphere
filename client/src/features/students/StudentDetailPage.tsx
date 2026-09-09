@@ -1,5 +1,5 @@
 // src/features/students/StudentDetailPage.tsx
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useMemo } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import {
   RadarChart,
@@ -34,6 +34,15 @@ import {
   TrendingUp,
   FolderOpen,
   AlertTriangle,
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Star,
+  Award,
+  Target,
+  Zap,
+  SlidersHorizontal,
+  Plus,
 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
@@ -65,6 +74,13 @@ import { useUploadImageMutation } from "../../store/api/uploadApi";
 
 const getRatingColor = (r: number) =>
   r >= 9 ? "text-volt-400" : r >= 8 ? "text-field-400" : r >= 7 ? "text-ice-400" : "text-slate-400";
+
+const getRatingTier = (score: number) => {
+  if (score >= 9) return { label: "Elite", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30" };
+  if (score >= 8) return { label: "Strong", color: "text-volt-400 bg-volt-400/10 border-volt-400/30" };
+  if (score >= 7) return { label: "Good", color: "text-amber-400 bg-amber-400/10 border-amber-400/30" };
+  return { label: "Developing", color: "text-rose-400 bg-rose-500/10 border-rose-500/30" };
+};
 
 const attendanceColors: Record<string, string> = {
   present: "bg-field-400",
@@ -100,6 +116,12 @@ const StudentDetailPage: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewName, setPreviewName] = useState<string>("");
   const { confirm, ConfirmDialog } = useConfirm();
+
+  // Performance Tab State
+  const [performanceChartView, setPerformanceChartView] = useState<"trend" | "radar">("trend");
+  const [sessionRatingFilter, setSessionRatingFilter] = useState<"all" | "high" | "low">("all");
+  const [expandedSessionIds, setExpandedSessionIds] = useState<Record<string, boolean>>({});
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
 
   const { data: card, isLoading, isError } = useGetPlayerCardQuery(id ?? "", { skip: !id });
   const [listPlayer, { isLoading: listing }] = useListPlayerMutation();
@@ -191,7 +213,7 @@ const StudentDetailPage: React.FC = () => {
       <EmptyState
         title="Player not found"
         description="This player may have been removed, or you don't have access."
-        action={<Link to="/students" className="text-volt-400 hover:underline text-sm">← Back to Squad</Link>}
+        action={<Link to="/students" className="inline-flex items-center gap-1.5 text-volt-400 hover:underline text-sm"><ArrowLeft size={14} /> Back to Squad</Link>}
       />
     );
   }
@@ -226,6 +248,65 @@ const StudentDetailPage: React.FC = () => {
     late: attendance.filter((a) => a.status === "late").length,
     absent: attendance.filter((a) => a.status === "absent").length,
     excused: attendance.filter((a) => a.status === "excused").length,
+  };
+
+  // Performance analytics calculations
+  const performanceStats = useMemo(() => {
+    if (!performances || performances.length === 0) {
+      return {
+        avgScore: 0,
+        highestSkill: null as { parameter: string; score: number } | null,
+        lowestSkill: null as { parameter: string; score: number } | null,
+        totalSessions: 0,
+        peakScore: 0,
+        latestDate: null as string | null,
+      };
+    }
+
+    const total = performances.reduce((acc, p) => acc + (p.overallScore || 0), 0);
+    const avg = total / performances.length;
+    const peak = Math.max(...performances.map((p) => p.overallScore || 0));
+
+    // Sort skills by average score
+    const sortedSkills = [...skillScores].sort((a, b) => b.score - a.score);
+    const highestSkill = sortedSkills.length > 0 ? sortedSkills[0] : null;
+    const lowestSkill = sortedSkills.length > 0 ? sortedSkills[sortedSkills.length - 1] : null;
+
+    const sortedByDate = [...performances].sort(
+      (a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime()
+    );
+    const latestDate = sortedByDate[0]?.sessionDate
+      ? new Date(sortedByDate[0].sessionDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+      : null;
+
+    return {
+      avgScore: Math.round(avg * 10) / 10,
+      highestSkill,
+      lowestSkill,
+      totalSessions: performances.length,
+      peakScore: Math.round(peak * 10) / 10,
+      latestDate,
+    };
+  }, [performances, skillScores]);
+
+  const filteredSessions = useMemo(() => {
+    const list = [...performances].sort(
+      (a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime()
+    );
+    if (sessionRatingFilter === "high") {
+      return list.filter((s) => (s.overallScore || 0) >= 8);
+    }
+    if (sessionRatingFilter === "low") {
+      return list.filter((s) => (s.overallScore || 0) < 7);
+    }
+    return list;
+  }, [performances, sessionRatingFilter]);
+
+  const toggleSessionExpand = (sessionId: string) => {
+    setExpandedSessionIds((prev) => ({
+      ...prev,
+      [sessionId]: !prev[sessionId],
+    }));
   };
 
   const handleDownloadCard = async () => {
@@ -705,32 +786,459 @@ const StudentDetailPage: React.FC = () => {
         </div>
       )}
 
-      {/* Performance tab */}
+      {/* Performance tab - Simplified & Analytical View */}
       {activeTab === "performance" && (
         <div className="space-y-6">
-          {/* Notes & Remarks Space */}
+          {/* 1. Executive Performance Analytics Summary */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {/* OVR Rating Card */}
+            <div className="card p-4 bg-gradient-to-br from-pitch-800 to-pitch-900/90 border border-white/10 relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-2xs font-mono uppercase tracking-wider text-slate-400 font-semibold">Average Rating</span>
+                <span className="w-7 h-7 rounded-lg bg-volt-400/10 text-volt-400 flex items-center justify-center">
+                  <Star size={14} className="fill-volt-400/30 text-volt-400" />
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className={clsx("font-display font-black text-3xl", getRatingColor(performanceStats.avgScore))}>
+                  {performanceStats.avgScore > 0 ? performanceStats.avgScore.toFixed(1) : "—"}
+                </span>
+                <span className="text-xs text-slate-500 font-mono">/ 10</span>
+                {performanceStats.avgScore > 0 && (
+                  <span className={clsx("text-2xs font-bold px-2 py-0.5 rounded-full border ml-auto", getRatingTier(performanceStats.avgScore).color)}>
+                    {getRatingTier(performanceStats.avgScore).label}
+                  </span>
+                )}
+              </div>
+              <p className="text-2xs text-slate-500 mt-1 font-mono">
+                {performanceStats.totalSessions > 0
+                  ? `Peak: ${performanceStats.peakScore.toFixed(1)} / 10 across ${performanceStats.totalSessions} sessions`
+                  : "No sessions evaluated"}
+              </p>
+            </div>
+
+            {/* Key Strength Card */}
+            <div className="card p-4 bg-gradient-to-br from-pitch-800 to-pitch-900/90 border border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-2xs font-mono uppercase tracking-wider text-slate-400 font-semibold">Top Strength</span>
+                <span className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                  <Zap size={14} />
+                </span>
+              </div>
+              <div className="mt-2">
+                <div className="font-display font-bold text-base text-white truncate">
+                  {performanceStats.highestSkill?.parameter ?? "—"}
+                </div>
+                <div className="text-xs font-mono text-emerald-400 font-bold mt-0.5">
+                  {performanceStats.highestSkill ? `${performanceStats.highestSkill.score.toFixed(1)} / 10 Avg` : "Awaiting evaluations"}
+                </div>
+              </div>
+              <p className="text-2xs text-slate-500 mt-1">Player's highest-rated technical skill</p>
+            </div>
+
+            {/* Development Focus Card */}
+            <div className="card p-4 bg-gradient-to-br from-pitch-800 to-pitch-900/90 border border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-2xs font-mono uppercase tracking-wider text-slate-400 font-semibold">Growth Focus</span>
+                <span className="w-7 h-7 rounded-lg bg-amber-400/10 text-amber-400 flex items-center justify-center">
+                  <Target size={14} />
+                </span>
+              </div>
+              <div className="mt-2">
+                <div className="font-display font-bold text-base text-white truncate">
+                  {performanceStats.lowestSkill?.parameter ?? "—"}
+                </div>
+                <div className="text-xs font-mono text-amber-400 font-bold mt-0.5">
+                  {performanceStats.lowestSkill ? `${performanceStats.lowestSkill.score.toFixed(1)} / 10 Avg` : "Awaiting evaluations"}
+                </div>
+              </div>
+              <p className="text-2xs text-slate-500 mt-1">Key area for coaching development</p>
+            </div>
+
+            {/* Total Evaluations Card */}
+            <div className="card p-4 bg-gradient-to-br from-pitch-800 to-pitch-900/90 border border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-2xs font-mono uppercase tracking-wider text-slate-400 font-semibold">Track Record</span>
+                <span className="w-7 h-7 rounded-lg bg-ice-400/10 text-ice-400 flex items-center justify-center">
+                  <Award size={14} />
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <span className="font-display font-bold text-2xl text-white">
+                  {performanceStats.totalSessions}
+                </span>
+                <span className="text-xs text-slate-400">Sessions</span>
+              </div>
+              <p className="text-2xs text-slate-500 mt-1 font-mono truncate">
+                {performanceStats.latestDate ? `Latest: ${performanceStats.latestDate}` : "No evaluations on file"}
+              </p>
+            </div>
+          </div>
+
+          {/* 2. Visual Skill Profile & Progression Trend (2 Columns) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Skill Mastery Breakdown */}
+            <div className="card p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <div>
+                  <h3 className="section-title text-white flex items-center gap-2">
+                    <SlidersHorizontal size={15} className="text-volt-400" />
+                    Skill Mastery Breakdown
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Average proficiency rating across all completed evaluations.</p>
+                </div>
+                <span className="text-2xs font-mono text-slate-500 uppercase">{skillScores.length} Skills</span>
+              </div>
+
+              {skillScores.length === 0 ? (
+                <EmptyState title="No skill data yet" description="Ratings will aggregate here as coaches log session evaluations." />
+              ) : (
+                <div className="space-y-3 pt-1">
+                  {skillScores.map((s) => {
+                    const ratingTier = getRatingTier(s.score);
+                    return (
+                      <div key={s.parameter} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-300 font-medium">{s.parameter}</span>
+                          <div className="flex items-center gap-2">
+                            <span className={clsx("text-2xs font-bold px-1.5 py-0.5 rounded border", ratingTier.color)}>
+                              {ratingTier.label}
+                            </span>
+                            <span className="font-mono font-bold text-volt-400 w-12 text-right">
+                              {s.score.toFixed(1)} <span className="text-slate-500 text-2xs font-normal">/10</span>
+                            </span>
+                          </div>
+                        </div>
+                        <div className="h-2 w-full bg-pitch-900 rounded-full overflow-hidden border border-white/5">
+                          <div
+                            className={clsx(
+                              "h-full transition-all duration-500 rounded-full",
+                              s.score >= 8.5 ? "bg-emerald-400" : s.score >= 7.0 ? "bg-volt-400" : s.score >= 5.5 ? "bg-amber-400" : "bg-rose-500"
+                            )}
+                            style={{ width: `${Math.min(100, Math.max(0, (s.score / 10) * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Visual Chart Card with Interactive Toggle */}
+            <div className="card p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <div>
+                  <h3 className="section-title text-white flex items-center gap-2">
+                    <TrendingUp size={15} className="text-volt-400" />
+                    Performance Visualizer
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Analyze player growth trajectory and skill balance.</p>
+                </div>
+                <div className="flex items-center bg-pitch-900 p-0.5 rounded-lg border border-white/10 text-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setPerformanceChartView("trend")}
+                    className={clsx(
+                      "px-2.5 py-1 rounded font-semibold transition-all",
+                      performanceChartView === "trend" ? "bg-volt-400 text-pitch-900 font-bold" : "text-slate-400 hover:text-white"
+                    )}
+                  >
+                    Progression
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPerformanceChartView("radar")}
+                    className={clsx(
+                      "px-2.5 py-1 rounded font-semibold transition-all",
+                      performanceChartView === "radar" ? "bg-volt-400 text-pitch-900 font-bold" : "text-slate-400 hover:text-white"
+                    )}
+                  >
+                    Radar
+                  </button>
+                </div>
+              </div>
+
+              {sessionHistory.length === 0 ? (
+                <EmptyState title="No trend data yet" description="Visual insights appear once session ratings are recorded." />
+              ) : performanceChartView === "trend" ? (
+                <div className="pt-2">
+                  <div className="text-2xs font-mono text-slate-400 flex items-center justify-between mb-2">
+                    <span>Session Rating Timeline (Oldest → Latest)</span>
+                    <span className="text-volt-400 font-bold">1–10 Scale</span>
+                  </div>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={sessionHistory} margin={{ top: 10, right: 10, bottom: 5, left: -20 }}>
+                      <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+                      <XAxis dataKey="session" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} />
+                      <YAxis domain={[0, 10]} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} ticks={[0, 2, 4, 6, 8, 10]} />
+                      <Tooltip
+                        contentStyle={{ background: "#09090b", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, fontSize: 12, color: "#fff" }}
+                        formatter={(val: any) => [`${val} / 10`, "Overall Rating"]}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="score"
+                        stroke="#ccff00"
+                        strokeWidth={2.5}
+                        dot={{ fill: "#ccff00", r: 4, strokeWidth: 0 }}
+                        activeDot={{ fill: "#ffffff", r: 6, stroke: "#ccff00", strokeWidth: 2 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="pt-2">
+                  <div className="text-2xs font-mono text-slate-400 text-center mb-2">
+                    Technical Attribute Distribution
+                  </div>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <RadarChart data={skillScores}>
+                      <PolarGrid stroke="rgba(255,255,255,0.08)" />
+                      <PolarAngleAxis dataKey="parameter" tick={{ fill: "#94a3b8", fontSize: 10 }} />
+                      <Radar dataKey="score" stroke="#ccff00" fill="#ccff00" fillOpacity={0.15} strokeWidth={2} dot={{ fill: "#ccff00", r: 3, strokeWidth: 0 }} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 3. Streamlined Session Evaluations Log */}
+          <div className="card p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
+              <div>
+                <h3 className="section-title text-white flex items-center gap-2">
+                  <Calendar size={15} className="text-volt-400" />
+                  Session Performance Log
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Compact session history with expandable granular skill breakdowns.
+                </p>
+              </div>
+
+              {/* Rating Filter Tabs */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-2xs text-slate-500 font-mono mr-1">Filter:</span>
+                {[
+                  { id: "all", label: `All (${performances.length})` },
+                  { id: "high", label: `Top Rated (8+)` },
+                  { id: "low", label: `Needs Focus (<7)` },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setSessionRatingFilter(f.id as any)}
+                    className={clsx(
+                      "px-2.5 py-1 rounded text-2xs font-mono font-semibold transition-all border",
+                      sessionRatingFilter === f.id
+                        ? "bg-volt-400 text-pitch-900 border-volt-400 font-bold"
+                        : "bg-pitch-900/60 text-slate-400 border-white/10 hover:text-white"
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {filteredSessions.length === 0 ? (
+              <EmptyState
+                title="No matching sessions"
+                description={
+                  sessionRatingFilter !== "all"
+                    ? "No sessions match the selected filter. Try switching back to 'All Sessions'."
+                    : "No session performance evaluations have been logged for this athlete yet."
+                }
+              />
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-white/10 divide-y divide-white/5">
+                {filteredSessions.map((session) => {
+                  const isExpanded = !!expandedSessionIds[session._id];
+                  const sessionObj = typeof session.sessionId === "object" ? session.sessionId : null;
+                  const sessionTitle = sessionObj?.title || `${sessionObj?.type ? sessionObj.type.toUpperCase() : "Training"} Session`;
+                  const coachName =
+                    session.coachId && typeof session.coachId === "object"
+                      ? `${session.coachId.firstName} ${session.coachId.lastName}`
+                      : "Evaluator";
+
+                  // Extract top 2 skills for this session
+                  const sortedSessionSkills = session.skillScores
+                    ? [...session.skillScores].sort((a, b) => b.score - a.score)
+                    : [];
+                  const topHighlights = sortedSessionSkills.slice(0, 2);
+
+                  const tier = getRatingTier(session.overallScore);
+
+                  return (
+                    <div key={session._id} className="bg-pitch-900/40 hover:bg-pitch-900/70 transition-colors">
+                      {/* Compact Primary Row */}
+                      <div
+                        onClick={() => toggleSessionExpand(session._id)}
+                        className="p-3.5 sm:px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none"
+                      >
+                        {/* Session Identity */}
+                        <div className="space-y-1 min-w-[200px]">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-display font-bold text-white text-sm">
+                              {sessionTitle}
+                            </span>
+                            {sessionObj?.type && (
+                              <span className="text-3xs uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-white/5 text-slate-300 border border-white/10">
+                                {sessionObj.type}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2.5 text-2xs text-slate-400 font-mono">
+                            <span>
+                              {new Date(session.sessionDate).toLocaleDateString("en-IN", {
+                                weekday: "short",
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
+                            <span>•</span>
+                            <span className="text-slate-300">{coachName}</span>
+                          </div>
+                        </div>
+
+                        {/* Middle: Highlights Pills */}
+                        <div className="hidden md:flex items-center gap-1.5 flex-wrap flex-1 max-w-sm">
+                          {topHighlights.map((sk) => (
+                            <span
+                              key={sk.parameter}
+                              className="text-2xs px-2 py-0.5 rounded bg-white/5 border border-white/5 text-slate-300 font-mono"
+                            >
+                              {sk.parameter}: <strong className="text-volt-400">{sk.score}</strong>
+                            </span>
+                          ))}
+                          {session.remarks && (
+                            <span className="text-2xs text-slate-400 truncate max-w-[120px] italic" title={session.remarks}>
+                              "{session.remarks}"
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Right: Score & Expand Toggle */}
+                        <div className="flex items-center gap-3 self-end sm:self-center">
+                          <div className="text-right">
+                            <div className="flex items-center gap-1.5">
+                              <span className={clsx("font-display font-black text-lg", getRatingColor(session.overallScore))}>
+                                {session.overallScore.toFixed(1)}
+                              </span>
+                              <span className="text-3xs text-slate-500 font-mono">/10</span>
+                              <span className={clsx("text-3xs font-bold px-1.5 py-0.5 rounded border ml-1", tier.color)}>
+                                {tier.label}
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                            aria-label={isExpanded ? "Collapse session details" : "Expand session details"}
+                          >
+                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Expandable Granular Breakdown */}
+                      {isExpanded && (
+                        <div className="px-4 pb-4 pt-2 border-t border-white/5 bg-pitch-950/60 space-y-3 animate-fade-in">
+                          {/* Granular Parameter Badges */}
+                          {session.skillScores && session.skillScores.length > 0 && (
+                            <div>
+                              <span className="text-3xs uppercase tracking-wider text-slate-400 font-mono block mb-2">
+                                Technical Evaluation Details:
+                              </span>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                                {session.skillScores.map((skill) => (
+                                  <div
+                                    key={skill.parameter}
+                                    className="p-2 rounded-lg bg-pitch-900/80 border border-white/5 text-center"
+                                  >
+                                    <span className="text-3xs text-slate-400 block truncate font-medium">{skill.parameter}</span>
+                                    <span className={clsx("font-mono font-black text-sm", getRatingColor(skill.score))}>
+                                      {skill.score} <span className="text-3xs text-slate-600 font-normal">/10</span>
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Coach Note & Video Link */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs pt-1">
+                            {session.remarks ? (
+                              <p className="text-slate-300 text-xs italic bg-white/[0.02] p-2 rounded-lg border border-white/5 flex-1">
+                                <span className="text-volt-400 font-semibold not-italic text-2xs font-mono mr-1.5">Coach Remark:</span>
+                                "{session.remarks}"
+                              </p>
+                            ) : (
+                              <span className="text-2xs text-slate-500 italic">No written remarks for this session.</span>
+                            )}
+
+                            {session.videoUrl && (
+                              <a
+                                href={session.videoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-volt-400 hover:underline inline-flex items-center gap-1.5 font-medium shrink-0 ml-auto"
+                              >
+                                <Video size={13} className="text-volt-400" />
+                                Drill Video
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 4. Coach & Staff Notes Accordion */}
           <div className="card p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="section-title text-volt-400 flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-volt-400" />
-                  Coach &amp; Staff Notes
-                </p>
+                <h3 className="section-title text-volt-400 flex items-center gap-2">
+                  <FileText size={15} className="text-volt-400" />
+                  Staff Developmental Notes &amp; Observations
+                </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Developmental feedback, match observations, and evaluator remarks.
+                  General coaching notes, scouting reports, and developmental recommendations.
                 </p>
               </div>
-              <span className="text-xs font-mono text-slate-500">
-                {remarks.length} note{remarks.length === 1 ? "" : "s"}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono text-slate-500">
+                  {remarks.length} note{remarks.length === 1 ? "" : "s"}
+                </span>
+                {canManagePerformance && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setIsNotesOpen((v) => !v)}
+                    className="text-xs"
+                    icon={<Plus size={13} />}
+                  >
+                    {isNotesOpen ? "Close Form" : "Add Note"}
+                  </Button>
+                )}
+              </div>
             </div>
 
-            {canManagePerformance && (
-              <form onSubmit={handleAddRemark} className="space-y-3 bg-pitch-900/50 p-4 rounded-xl border border-white/5">
+            {/* Note Composer Form (Collapsible) */}
+            {canManagePerformance && isNotesOpen && (
+              <form onSubmit={handleAddRemark} className="space-y-3 bg-pitch-900/50 p-4 rounded-xl border border-white/5 animate-fade-in">
                 <textarea
                   value={newRemarkText}
                   onChange={(e) => setNewRemarkText(e.target.value)}
-                  placeholder="Write a coach or staff note for this player (e.g. key areas to improve, match feedback, tactical discipline)..."
+                  placeholder="Write an evaluator note for this player (e.g. key areas to improve, match feedback, tactical discipline)..."
                   className="input min-h-20 w-full resize-none text-xs"
                   rows={3}
                 />
@@ -742,15 +1250,16 @@ const StudentDetailPage: React.FC = () => {
                     disabled={isAddingRemark || !newRemarkText.trim()}
                     className="bg-volt-400 text-pitch-900 font-bold hover:bg-volt-300"
                   >
-                    {isAddingRemark ? "Saving Note..." : "Add Note / Remark"}
+                    {isAddingRemark ? "Saving Note..." : "Save Note"}
                   </Button>
                 </div>
               </form>
             )}
 
+            {/* Notes List */}
             <div className="space-y-2">
               {remarks.length === 0 ? (
-                <p className="text-xs text-slate-500 italic">No notes or remarks added yet.</p>
+                <p className="text-xs text-slate-500 italic py-1">No staff notes or remarks recorded yet.</p>
               ) : (
                 remarks.map((r) => {
                   const coachName =
@@ -771,155 +1280,6 @@ const StudentDetailPage: React.FC = () => {
                 })
               )}
             </div>
-          </div>
-
-          {/* Detailed Performance History per Session */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="section-title flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-volt-400" />
-                  Session-by-Session Performance Logs
-                </p>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Detailed technical evaluations and scores recorded during scheduled squad sessions.
-                </p>
-              </div>
-              <span className="text-xs font-mono text-slate-500">
-                {performances.length} session{performances.length === 1 ? "" : "s"} logged
-              </span>
-            </div>
-
-            {performances.length === 0 ? (
-              <EmptyState
-                title="No sessions logged yet"
-                description="When coaches record evaluations for scheduled training sessions or matches, detailed score breakdowns and remarks will appear here."
-              />
-            ) : (
-              [...performances]
-                .sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime())
-                .map((session) => {
-                  const sessionObj = typeof session.sessionId === "object" ? session.sessionId : null;
-                  const sessionTitle = sessionObj?.title || `${sessionObj?.type ? sessionObj.type.toUpperCase() : "Training"} Session`;
-                  const coachName =
-                    session.coachId && typeof session.coachId === "object"
-                      ? `${session.coachId.firstName} ${session.coachId.lastName}`
-                      : null;
-
-                  return (
-                    <div key={session._id} className="card p-5 space-y-4 hover:border-volt-400/30 transition-colors">
-                      {/* Session Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-display font-bold text-white text-base">
-                              {sessionTitle}
-                            </span>
-                            {sessionObj?.type && (
-                              <span className="text-2xs uppercase tracking-wider font-mono font-bold px-2 py-0.5 rounded bg-volt-400/10 text-volt-400 border border-volt-400/20">
-                                {sessionObj.type}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3 text-2xs text-slate-400 flex-wrap">
-                            <span className="inline-flex items-center gap-1.5">
-                              <Calendar className="h-3.5 w-3.5 text-volt-400 shrink-0" />
-                              {new Date(session.sessionDate).toLocaleDateString("en-IN", {
-                                weekday: "short",
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              })}
-                            </span>
-                            {sessionObj?.startTime && (
-                              <span className="inline-flex items-center gap-1.5">
-                                <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                                {sessionObj.startTime} - {sessionObj.endTime}
-                              </span>
-                            )}
-                            {sessionObj?.location && (
-                              <span className="inline-flex items-center gap-1.5">
-                                <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                                {sessionObj.location}
-                              </span>
-                            )}
-                            {coachName && (
-                              <span className="inline-flex items-center gap-1.5">
-                                <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                                Evaluator: <strong className="text-slate-300">{coachName}</strong>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Overall Score */}
-                        <div className="flex items-center gap-3 self-end sm:self-center">
-                          <div className="text-right">
-                            <span className="text-2xs text-slate-500 uppercase tracking-widest block font-bold">Overall Rating</span>
-                            <span className={clsx("font-display font-black text-2xl", getRatingColor(session.overallScore))}>
-                              {session.overallScore.toFixed(1)} <span className="text-xs text-slate-500">/ 10</span>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Parameter Scores Breakdown */}
-                      {session.skillScores && session.skillScores.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-2xs uppercase font-mono tracking-wider text-slate-400 font-semibold">
-                            Technical &amp; Tactical Skill Scores
-                          </p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                            {session.skillScores.map((skill) => (
-                              <div
-                                key={skill.parameter}
-                                className="bg-pitch-900/60 p-2.5 rounded-lg border border-white/5 flex flex-col justify-between gap-1.5"
-                              >
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="text-slate-300 font-medium truncate">{skill.parameter}</span>
-                                  <span className={clsx("font-mono font-bold text-xs", getRatingColor(skill.score))}>
-                                    {skill.score} / 10
-                                  </span>
-                                </div>
-                                <div className="h-1.5 w-full bg-pitch-700 rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full bg-volt-400 transition-all duration-300"
-                                    style={{ width: `${Math.min(100, Math.max(0, (skill.score / 10) * 100))}%` }}
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Session Remarks / Notes */}
-                      {session.remarks && (
-                        <div className="p-3 bg-white/[0.02] border border-white/10 rounded-lg space-y-1">
-                          <span className="text-2xs font-mono uppercase tracking-widest text-volt-400 font-semibold block">
-                            Session Coach Notes:
-                          </span>
-                          <p className="text-xs text-slate-300 italic leading-relaxed">"{session.remarks}"</p>
-                        </div>
-                      )}
-
-                      {session.videoUrl && (
-                        <div>
-                          <a
-                            href={session.videoUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-volt-400 hover:underline inline-flex items-center gap-1.5 font-medium"
-                          >
-                            <Video className="h-3.5 w-3.5 text-volt-400 shrink-0" />
-                            View Session Drill Video
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-            )}
           </div>
         </div>
       )}

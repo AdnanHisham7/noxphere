@@ -45,6 +45,9 @@ const UsersManagementPage = lazy(
   () => import("./features/users/UsersManagementPage"),
 );
 const FinancePage = lazy(() => import("./features/finance/FinancePage"));
+const PlatformTicketsAdminPage = lazy(
+  () => import("./features/super-admin/PlatformTicketsAdminPage")
+);
 const SubscriptionSuccessPage = lazy(
   () => import("./features/subscription/SubscriptionSuccessPage"),
 );
@@ -258,6 +261,7 @@ const App: React.FC = () => (
                 <Route path="/academies/:academyId/dashboard" element={<AcademyDashboardPage />} />
                 <Route path="/users" element={<UsersManagementPage />} />
                 <Route path="/finance" element={<FinancePage />} />
+                <Route path="/admin/support" element={<PlatformTicketsAdminPage />} />
               </Route>
             </Route>
           </Route>

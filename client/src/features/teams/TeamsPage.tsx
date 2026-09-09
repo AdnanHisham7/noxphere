@@ -19,7 +19,7 @@ import {
 import { useGetUsersQuery } from "../../store/api/usersApi";
 import { academyApi } from "../../store/api/academyApi";
 import { useGetFranchisesQuery } from "../../store/api/franchiseApi";
-import { useGetStudentsQuery, useUpdateStudentMutation } from "../../store/api/studentsApi";
+import { useGetStudentsQuery, useUpdateStudentMutation, useGetAgeCategoriesQuery } from "../../store/api/studentsApi";
 import { useConfirm } from "../../hooks/useConfirm";
 
 const TeamsPage: React.FC = () => {
@@ -38,8 +38,11 @@ const TeamsPage: React.FC = () => {
   );
   const coaches = coachesResult?.data ?? [];
   const { data: academy } = academyApi.useGetAcademyByIdQuery(academyId ?? "", { skip: !academyId });
-  const categoriesList = Array.from({ length: 21 }, (_, i) => `U-${i + 5}`);
-  const categories = Array.from(new Set([...(academy?.ageGroups ?? []), ...categoriesList])).sort(
+  const { data: existingAgeCategories = [] } = useGetAgeCategoriesQuery(
+    franchiseId ? { franchiseId } : { academyId: academyId ?? "" },
+    { skip: !franchiseId && !academyId },
+  );
+  const categories = Array.from(new Set([...existingAgeCategories, ...(academy?.ageGroups ?? [])])).sort(
     (a, b) => parseInt(a.replace('U-', '')) - parseInt(b.replace('U-', ''))
   );
   const [createTeam, { isLoading: creating }] = useCreateTeamMutation();

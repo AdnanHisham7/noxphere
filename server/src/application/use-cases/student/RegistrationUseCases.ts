@@ -15,11 +15,17 @@ import { defaultPermissions, UserRole } from "../../../domain/entities/User.enti
 import { config } from "../../../config/app.config";
 import { NotFoundError, BadRequestError, ForbiddenError, ConflictError } from "../../../shared/errors/AppError";
 import { normalizePhone, getPhoneMatchVariants } from "../../../shared/utils/phone";
+import { ConsentRecordModel } from "../../../infrastructure/database/models/ConsentRecord.model";
+import { CONSENT_NOTICE } from "../consent/ConsentUseCases";
+import { calculateAgeCategory } from "../../../shared/utils/ageCategory";
 
 export interface SubmitRegistrationDto {
   academyId: string;
   franchiseId: string;
   existingStudentId?: string;
+  dpdpConsent?: boolean;
+  ip?: string;
+  userAgent?: string;
   studentDetails: {
     firstName: string;
     lastName: string;
@@ -179,6 +185,13 @@ export class RegistrationUseCases {
   }
 
   async submitRequest(dto: SubmitRegistrationDto) {
+    if (!dto.franchiseId || typeof dto.franchiseId !== "string" || !dto.franchiseId.trim()) {
+      throw new BadRequestError("Please choose a preferred training branch / franchise");
+    }
+    if (!dto.dpdpConsent) {
+      throw new BadRequestError("Parental/guardian consent under the Digital Personal Data Protection (DPDP) Act is mandatory for enrollment");
+    }
+
     const [academy, franchise] = await Promise.all([
       AcademyModel.findById(dto.academyId).select("name").lean(),
       FranchiseModel.findById(dto.franchiseId).select("name academyId").lean(),
@@ -284,6 +297,9 @@ export class RegistrationUseCases {
       }
     }
 
+    const derivedAgeGroup =
+      dto.studentDetails.ageGroup || calculateAgeCategory(dto.studentDetails.dateOfBirth);
+
     const request = await RegistrationRequestModel.create({
       academyId: new mongoose.Types.ObjectId(dto.academyId),
       franchiseId: new mongoose.Types.ObjectId(dto.franchiseId),
@@ -293,7 +309,7 @@ export class RegistrationUseCases {
         lastName: dto.studentDetails.lastName.trim(),
         dateOfBirth: new Date(dto.studentDetails.dateOfBirth),
         gender: dto.studentDetails.gender,
-        ageGroup: dto.studentDetails.ageGroup,
+        ageGroup: derivedAgeGroup,
         position: dto.studentDetails.position,
         positions: dto.studentDetails.positions,
         jerseyNumber: dto.studentDetails.jerseyNumber,
@@ -307,8 +323,19 @@ export class RegistrationUseCases {
         email: dto.guardianDetails.email.trim().toLowerCase(),
         relation: dto.guardianDetails.relation,
       },
+      dpdpConsent: Boolean(dto.dpdpConsent),
+      dpdpConsentAt: new Date(),
+      dpdpConsentIp: dto.ip,
+      dpdpConsentUserAgent: dto.userAgent,
       status: "pending",
     });
+
+    if (derivedAgeGroup) {
+      await Promise.all([
+        FranchiseModel.findByIdAndUpdate(dto.franchiseId, { $addToSet: { ageGroups: derivedAgeGroup } }),
+        AcademyModel.findByIdAndUpdate(dto.academyId, { $addToSet: { ageGroups: derivedAgeGroup } }),
+      ]).catch(() => undefined);
+    }
 
     // Notify academy managers about the new registration request
     const managers = await UserModel.find({
@@ -597,6 +624,25 @@ export class RegistrationUseCases {
           publicProfileToken: crypto.randomBytes(16).toString("hex"),
           publicProfileEnabled: true,
         });
+
+        if (request.dpdpConsent) {
+          try {
+            await ConsentRecordModel.create({
+              studentId: enrolledStudentDoc._id,
+              guardianId: guardianUser._id,
+              academyId: request.academyId,
+              consentType: "enrollment",
+              noticeVersion: CONSENT_NOTICE.version,
+              dataCategories: [...CONSENT_NOTICE.dataCategories],
+              purposes: [...CONSENT_NOTICE.purposes],
+              grantedAt: request.dpdpConsentAt || new Date(),
+              grantedIp: request.dpdpConsentIp,
+              grantedUserAgent: request.dpdpConsentUserAgent,
+            });
+          } catch (consentErr) {
+            console.error("[approveRequest] Failed to record DPDP ConsentRecord:", consentErr);
+          }
+        }
       } catch (err) {
         if (isNewGuardianUser) {
           await UserModel.deleteOne({ _id: guardianUser._id }).catch(() => undefined);
@@ -638,6 +684,15 @@ export class RegistrationUseCases {
     request.reviewedBy = new mongoose.Types.ObjectId(reviewedBy);
     request.reviewedAt = new Date();
     await request.save();
+
+    const finalAgeGroup =
+      enrolledStudentDoc.ageGroup || calculateAgeCategory(enrolledStudentDoc.dateOfBirth);
+    if (finalAgeGroup) {
+      await Promise.all([
+        FranchiseModel.findByIdAndUpdate(targetFranchiseId, { $addToSet: { ageGroups: finalAgeGroup } }),
+        AcademyModel.findByIdAndUpdate(franchise.academyId, { $addToSet: { ageGroups: finalAgeGroup } }),
+      ]).catch(() => undefined);
+    }
 
     // ── Dispatch internal system alerts ──
     if (enrolledStudentDoc.userId) {

@@ -251,21 +251,21 @@ export class DashboardUseCases {
         type: "attendance",
         message: `${a.studentId?.firstName ?? "A student"} marked ${a.status}`,
         time: a.createdAt,
-        icon: "✓",
+        icon: "attendance",
       })),
       ...performance.map((p: any) => ({
         id: p._id.toString(),
         type: "performance",
         message: `Performance recorded for ${p.studentId?.firstName ?? "a student"}`,
         time: p.createdAt,
-        icon: "📈",
+        icon: "performance",
       })),
       ...fees.map((f: any) => ({
         id: f._id.toString(),
         type: "fee",
         message: `Payment recorded for ${f.studentId?.firstName ?? "a student"}`,
         time: f.updatedAt,
-        icon: "💳",
+        icon: "fee",
       })),
     ];
 

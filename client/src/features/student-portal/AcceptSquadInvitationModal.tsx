@@ -167,7 +167,7 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
         guardianPassword: isExistingGuardian ? undefined : guardianPassword,
       }).unwrap();
 
-      toast.success(`🎉 Congratulations! You have officially joined ${academyName}!`);
+      toast.success(`Congratulations! You have officially joined ${academyName}!`);
       onSuccess();
       onClose();
     } catch (err: any) {

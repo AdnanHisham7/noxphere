@@ -529,7 +529,7 @@ const StudentDashboardPage: React.FC = () => {
                                   : "border-white/20 bg-transparent"
                               }`}
                             >
-                              {active && "✓"}
+                              {active && <Check size={11} strokeWidth={3} />}
                             </div>
                           </button>
                         );

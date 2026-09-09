@@ -1,5 +1,6 @@
 // src/components/ui/StatCard.tsx
 import { clsx } from "clsx";
+import { TrendingUp, TrendingDown } from "lucide-react";
 
 interface StatCardProps {
   label: string;
@@ -54,7 +55,7 @@ export const StatCard: React.FC<StatCardProps> = ({
             trend.positive ? "text-field-400" : "text-ember-400",
           )}
         >
-          <span>{trend.positive ? "▲" : "▼"}</span>
+          {trend.positive ? <TrendingUp size={12} className="shrink-0" /> : <TrendingDown size={12} className="shrink-0" />}
           <span>{Math.abs(trend.value)}% vs last week</span>
         </div>
       )}

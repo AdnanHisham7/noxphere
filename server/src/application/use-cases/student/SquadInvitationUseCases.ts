@@ -117,7 +117,7 @@ export class SquadInvitationUseCases {
     await UserNotificationModel.create({
       userId: student.userId,
       type: 'squad_invitation_received',
-      title: 'Squad Recruitment Invitation! ⚽',
+      title: 'Squad Recruitment Invitation',
       body: `${academy?.name || 'An academy'} has invited you to join their squad! Check your dashboard to view and accept the offer.`,
       data: {
         invitationId: invitation.id,
@@ -470,7 +470,7 @@ export class SquadInvitationUseCases {
     await UserNotificationModel.create({
       userId: invitation.invitedBy,
       type: 'squad_invitation_accepted',
-      title: 'Squad Invitation Accepted! 🎉',
+      title: 'Squad Invitation Accepted',
       body: `${student.firstName} ${student.lastName} accepted your invitation and has been officially added to the squad!`,
       data: {
         invitationId: invitation.id,

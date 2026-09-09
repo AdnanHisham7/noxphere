@@ -11,7 +11,7 @@ import { formatDistanceToNowStrict } from 'date-fns';
 import { Shirt, LayoutDashboard, CheckCircle2,
   CreditCard,
   Star, Users, Shield, CalendarClock, Building2, School,
-  UserPlus, CalendarCheck, Wallet, Repeat2, Settings, Radio } from 'lucide-react';
+  UserPlus, CalendarCheck, Wallet, Repeat2, Settings, Radio, TrendingUp, Activity } from 'lucide-react';
 import { StatCard, Skeleton, Avatar, EmptyState, Button } from '../../components/ui';
 import { useCurrentFranchiseId } from '../../hooks/useCurrentFranchiseId';
 import { RootState } from '../../store';
@@ -37,6 +37,19 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 
 const formatCurrency = (n: number) =>
   n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : `₹${n.toLocaleString('en-IN')}`;
+
+const renderActivityIcon = (type: string) => {
+  switch (type) {
+    case 'attendance':
+      return <CheckCircle2 size={14} className="text-volt-400" />;
+    case 'performance':
+      return <TrendingUp size={14} className="text-ice-400" />;
+    case 'fee':
+      return <CreditCard size={14} className="text-field-400" />;
+    default:
+      return <Activity size={14} className="text-slate-400" />;
+  }
+};
 
 const DashboardPage: React.FC = () => {
   const dispatch = useDispatch();
@@ -473,8 +486,8 @@ const DashboardPage: React.FC = () => {
               <div className="space-y-0">
                 {recentActivity.map((item, i) => (
                   <div key={item.id} className={clsx('flex gap-3 py-3', i < recentActivity.length - 1 && 'border-b border-white/4')}>
-                    <div className="w-7 h-7 rounded bg-pitch-700 flex items-center justify-center text-sm flex-shrink-0">
-                      {item.icon}
+                    <div className="w-7 h-7 rounded bg-pitch-700 flex items-center justify-center flex-shrink-0">
+                      {renderActivityIcon(item.type)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-slate-300 leading-tight">{item.message}</p>

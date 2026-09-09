@@ -6,6 +6,15 @@ export interface Location {
   fieldNumber?: string;
 }
 
+export interface AcademyPitch {
+  id: string;
+  name: string;
+  fieldNumber?: string;
+  surfaceType?: string;
+  address?: string;
+  isActive?: boolean;
+}
+
 export interface Manager {
   id: string;
   firstName: string;
@@ -20,6 +29,7 @@ export interface Academy {
   managerId: string;
   manager?: Manager; // populated from backend
   location: Location;
+  pitches?: AcademyPitch[];
   ageGroups: string[];
   maxStudents: number;
   subscriptionRateOverride?: number;
@@ -59,6 +69,7 @@ export interface CreateAcademyPayload {
 export interface AcademyConfigPayload {
   name?: string;
   location?: Partial<Location>;
+  pitches?: AcademyPitch[];
   maxStudents?: number;
   subscriptionRateOverride?: number;
   staffRateOverride?: number;

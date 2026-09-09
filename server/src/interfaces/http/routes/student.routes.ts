@@ -10,6 +10,9 @@ studentRouter.post('/', authenticate, requirePermission('canManageFranchises'), 
 studentRouter.get('/', authenticate, (req, res, next) => {
   req.app.locals.controllers.student.list(req, res, next);
 });
+studentRouter.get('/age-categories', authenticate, (req, res, next) => {
+  req.app.locals.controllers.student.getAgeCategories(req, res, next);
+});
 studentRouter.get('/unattached', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
   req.app.locals.controllers.student.getUnattached(req, res, next);
 });

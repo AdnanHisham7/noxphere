@@ -15,6 +15,7 @@ import { baseApi } from '../../store/api/baseApi';
 import { RootState } from '../../store';
 import { Button, Input } from '../../components/ui';
 import { ThemeToggle } from '../../components/common/ThemeToggle';
+import { ArrowRight } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -233,7 +234,7 @@ const LoginPage: React.FC = () => {
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-ice-400 hover:underline"
             >
               <span>Explore Public Transfer Wall</span>
-              <span>→</span>
+              <ArrowRight size={13} />
             </a>
           </div>
         </div>

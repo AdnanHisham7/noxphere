@@ -1,6 +1,7 @@
 // src/components/ui/Modal.tsx
 import React from "react";
 import { clsx } from "clsx";
+import { X } from "lucide-react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -49,8 +50,9 @@ export const Modal: React.FC<ModalProps> = ({
           <button
             onClick={onClose}
             className="btn-ghost text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 transition-colors"
+            aria-label="Close"
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
         

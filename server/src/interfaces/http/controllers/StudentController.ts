@@ -45,6 +45,17 @@ export class StudentController {
     } catch (err) { next(err); }
   };
 
+  getAgeCategories = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { franchiseId, academyId } = req.query;
+      const categories = await this.studentUseCases.getDistinctAgeCategories(
+        franchiseId as string | undefined,
+        academyId as string | undefined,
+      );
+      ResponseHandler.success(res, categories, 'Age categories retrieved');
+    } catch (err) { next(err); }
+  };
+
   getById = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const student = await this.studentUseCases.getStudentById(req.params.id);

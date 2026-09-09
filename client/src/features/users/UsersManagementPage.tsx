@@ -1,7 +1,7 @@
 // src/features/users/UsersManagementPage.tsx
 import React, { useState } from "react";
 import { clsx } from "clsx";
-import { Users, Plus, Trash2, KeyRound, Power } from "lucide-react";
+import { Users, Plus, Trash2, KeyRound, Power, Search } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { Button, Input, Badge, Avatar, Modal, Skeleton, EmptyState } from "../../components/ui";
 import { useConfirm } from "../../hooks/useConfirm";
@@ -89,7 +89,7 @@ const UsersManagementPage: React.FC = () => {
       {/* Filters */}
       <div className="card p-3.5 sm:p-4 flex flex-col sm:flex-row flex-wrap gap-3 sm:items-end">
         <div className="w-full sm:flex-1 sm:min-w-48">
-          <Input placeholder="Search name or email..." value={search} onChange={(e) => setSearch(e.target.value)} icon={<span className="text-xs">🔍</span>} />
+          <Input placeholder="Search name or email..." value={search} onChange={(e) => setSearch(e.target.value)} icon={<Search size={14} className="text-slate-400" />} />
         </div>
         <div className="w-full sm:w-auto sm:min-w-40">
           <select className="input w-full" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>

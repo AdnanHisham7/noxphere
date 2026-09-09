@@ -49,7 +49,9 @@ export type NotificationType =
   | 'nfc_request_rejected'
   | 'nfc_order_paid'
   | 'nfc_order_dispatched'
-  | 'nfc_order_delivered';
+  | 'nfc_order_delivered'
+  | 'platform_ticket_created'
+  | 'platform_ticket_response';
 
 export interface SendNotificationOptions {
   userIds: string[];
@@ -302,7 +304,7 @@ export class NotificationService {
                 ${attachments
                   .map(
                     (at) =>
-                      `<div style="margin-bottom: 6px;"><a href="${at.url}" target="_blank" style="color: #2563eb; text-decoration: underline; font-size: 13px; font-weight: 500;">📎 ${at.name}</a></div>`
+                      `<div style="margin-bottom: 6px;"><a href="${at.url}" target="_blank" style="color: #2563eb; text-decoration: underline; font-size: 13px; font-weight: 500;">${at.name}</a></div>`
                   )
                   .join('')}
               </div>`
@@ -546,7 +548,7 @@ export class NotificationService {
     await this.send({
       userIds: guardianIds,
       type: 'session_location_change',
-      title: '⚠️ Location Changed',
+      title: 'Location Changed',
       body: `Today's session location has changed to: ${newLocation}`,
       franchiseId,
       channels: ['push'],
@@ -787,7 +789,7 @@ export class NotificationService {
 
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 18px; margin: 20px 0;">
             <p style="margin: 0; font-size: 13px; color: #475569; line-height: 1.5;">
-              🛡️ <strong>Guardian Portal Access:</strong> Once verified, you will be able to track attendance, schedules, coach feedback, and fee payments from your portal dashboard.
+              <strong>Guardian Portal Access:</strong> Once verified, you will be able to track attendance, schedules, coach feedback, and fee payments from your portal dashboard.
             </p>
           </div>
 

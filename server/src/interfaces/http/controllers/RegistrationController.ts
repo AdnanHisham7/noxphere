@@ -37,7 +37,11 @@ export class RegistrationController {
 
   submitRequest = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const result = await this.registrationUseCases.submitRequest(req.body);
+      const result = await this.registrationUseCases.submitRequest({
+        ...req.body,
+        ip: req.ip,
+        userAgent: req.get("user-agent"),
+      });
       ResponseHandler.created(res, result, "Registration request submitted");
     } catch (err) {
       next(err);

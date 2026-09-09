@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { clsx } from 'clsx';
 import { useSelector } from 'react-redux';
-import { Target, Send, Download } from 'lucide-react';
+import { Target, Send, Download, X } from 'lucide-react';
 import { Button, Badge, Avatar, Skeleton, EmptyState } from '../../components/ui';
 import { toast } from 'react-hot-toast';
 import { RootState } from '../../store';
@@ -294,7 +294,9 @@ const SelectionPage: React.FC = () => {
                   <p className="text-xs text-slate-500">{selectedPlayer.position} · {selectedPlayer.ageGroup}</p>
                 </div>
               </div>
-              <button onClick={() => setSelectedPlayer(null)} className="text-slate-500 hover:text-white text-sm">✕</button>
+              <button onClick={() => setSelectedPlayer(null)} className="text-slate-500 hover:text-white p-1 transition-colors" aria-label="Close">
+                <X size={16} />
+              </button>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">

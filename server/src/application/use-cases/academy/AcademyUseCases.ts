@@ -239,6 +239,7 @@ export class AcademyUseCases {
 
       if (dto.name !== undefined) effectiveDto.name = dto.name;
       if (mergedLocation !== undefined) effectiveDto.location = mergedLocation;
+      if (dto.pitches !== undefined) effectiveDto.pitches = dto.pitches;
       if (dto.ageGroups !== undefined) effectiveDto.ageGroups = dto.ageGroups;
       if (dto.absentAlertDays !== undefined) effectiveDto.absentAlertDays = dto.absentAlertDays;
       if (dto.dueDateAlertDays !== undefined) effectiveDto.dueDateAlertDays = dto.dueDateAlertDays;

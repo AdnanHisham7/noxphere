@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { clsx } from "clsx";
 import { toast } from "react-hot-toast";
-import { MessageSquareWarning, Send } from "lucide-react";
+import { MessageSquareWarning, Send, LifeBuoy } from "lucide-react";
 import { Badge, Button, Skeleton, EmptyState } from "../../components/ui";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import {
@@ -10,6 +10,7 @@ import {
   useRespondToComplaintMutation,
   type Complaint,
 } from "../../store/api/complaintApi";
+import { PlatformSupportTab } from "./PlatformSupportTab";
 
 const STATUS_VARIANT: Record<Complaint["status"], "yellow" | "blue" | "green"> = {
   open: "yellow",
@@ -19,6 +20,7 @@ const STATUS_VARIANT: Record<Complaint["status"], "yellow" | "blue" | "green"> =
 
 const ComplaintsInboxPage: React.FC = () => {
   const academyId = useCurrentAcademyId();
+  const [activeTab, setActiveTab] = useState<"academy_inquiries" | "platform_support">("academy_inquiries");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [selected, setSelected] = useState<Complaint | null>(null);
   const { data: complaints, isLoading } = useListAcademyComplaintsQuery(
@@ -26,24 +28,67 @@ const ComplaintsInboxPage: React.FC = () => {
     { skip: !academyId },
   );
 
-  if (!academyId) {
-    return <EmptyState icon={<MessageSquareWarning size={28} />} title="No academy context" description="Select a franchise to view its academy's complaints." />;
-  }
-
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Tab Switcher */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
         <div>
-          <p className="section-title mb-1">Academy Staff & Guardians</p>
-          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">Complaints</h1>
+          <p className="section-title mb-1">Support & Helpdesk</p>
+          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">
+            {activeTab === "academy_inquiries" ? "Academy Complaints" : "Platform Support"}
+          </h1>
         </div>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input w-full sm:w-auto">
-          <option value="">All statuses</option>
-          <option value="open">Open</option>
-          <option value="in_progress">In Progress</option>
-          <option value="resolved">Resolved</option>
-        </select>
+
+        <div className="flex items-center gap-2 bg-pitch-900/80 p-1 rounded-xl border border-white/10 self-start sm:self-auto">
+          <button
+            onClick={() => setActiveTab("academy_inquiries")}
+            className={clsx(
+              "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2",
+              activeTab === "academy_inquiries"
+                ? "bg-volt-400 text-pitch-900 shadow-sm"
+                : "text-slate-400 hover:text-white"
+            )}
+          >
+            <MessageSquareWarning size={14} />
+            Academy Complaints
+          </button>
+          <button
+            onClick={() => setActiveTab("platform_support")}
+            className={clsx(
+              "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2",
+              activeTab === "platform_support"
+                ? "bg-volt-400 text-pitch-900 shadow-sm"
+                : "text-slate-400 hover:text-white"
+            )}
+          >
+            <LifeBuoy size={14} />
+            Platform Support (To Super Admin)
+          </button>
+        </div>
       </div>
+
+      {activeTab === "platform_support" ? (
+        <PlatformSupportTab />
+      ) : !academyId ? (
+        <EmptyState
+          icon={<MessageSquareWarning size={28} />}
+          title="No academy context"
+          description="Select a franchise to view its academy's complaints."
+        />
+      ) : (
+        <>
+          <div className="flex justify-end">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="input text-xs py-1.5 px-3 w-full sm:w-auto"
+            >
+              <option value="">All statuses</option>
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+            </select>
+          </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-2">
@@ -76,12 +121,14 @@ const ComplaintsInboxPage: React.FC = () => {
 
         <div>
           {selected ? (
-            <ComplaintDetail academyId={academyId} complaint={selected} onResponded={setSelected} />
+            <ComplaintDetail academyId={academyId!} complaint={selected} onResponded={setSelected} />
           ) : (
             <EmptyState icon={<MessageSquareWarning size={28} />} title="Select a complaint" description="Pick one from the list to view and respond." />
           )}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 };

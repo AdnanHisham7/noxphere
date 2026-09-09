@@ -8,6 +8,15 @@ export interface Location {
   fieldNumber?: string;
 }
 
+export interface AcademyPitch {
+  id: string;
+  name: string;
+  fieldNumber?: string;
+  surfaceType?: string;
+  address?: string;
+  isActive?: boolean;
+}
+
 export interface AcademyManager {
   id: string;
   firstName: string;
@@ -44,6 +53,7 @@ export interface AcademyEntity {
   dueDateAlertDays: number;
   feeQrImageUrl?: string;
   skillParameters: string[];
+  pitches?: AcademyPitch[];
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -54,6 +64,7 @@ export interface CreateAcademyEntity {
   academyCode: string;
   managerId: string;
   location: Location;
+  pitches?: AcademyPitch[];
   ageGroups: string[];
   maxStudents: number;
   isActive: boolean;

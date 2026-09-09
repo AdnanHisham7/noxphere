@@ -23,6 +23,7 @@ import {
   FolderOpen,
   Settings,
   MessageSquareWarning,
+  LifeBuoy,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -81,6 +82,7 @@ const navConfig: Record<string, NavItem[]> = {
     { path: '/users', label: 'Users', icon: Users },
     { path: '/finance', label: 'Finance', icon: Wallet },
     { path: '/nfc-cards', label: 'NFC Cards', icon: CreditCard },
+    { path: '/admin/support', label: 'Platform Issues', icon: LifeBuoy },
   ],
   manager: [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },

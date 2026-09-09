@@ -15,6 +15,7 @@ import {
   Radio,
   Clock,
   CheckCircle2,
+  Wallet,
 } from "lucide-react";
 import { StatCard, Skeleton, EmptyState, Badge, Button } from "../../components/ui";
 import { academyApi } from "../../store/api/academyApi";
@@ -162,28 +163,28 @@ const FinancePage: React.FC = () => {
             label="Total Platform Revenue"
             value={formatCurrency(totalPlatformRev)}
             sublabel={`SaaS: ${formatCurrency(subRev)} · NFC: ${formatCurrency(nfcRev)}`}
-            icon="💰"
+            icon={<Wallet size={20} />}
             accent="volt"
           />
           <StatCard
             label="Academy SaaS Subscriptions"
             value={formatCurrency(subRev)}
             sublabel={`${overview?.activeSubscriptionsCount ?? 0} active subscriptions`}
-            icon="💳"
+            icon={<CreditCard size={20} />}
             accent="ice"
           />
           <StatCard
             label="Smart NFC Card Sales"
             value={formatCurrency(nfcRev)}
             sublabel={`${overview?.nfcCardsCount ?? 0} cards · ${overview?.nfcOrdersCount ?? 0} orders`}
-            icon="📇"
+            icon={<Radio size={20} />}
             accent="field"
           />
           <StatCard
             label="Active Client Academies"
             value={overview?.activeSubscriptionsCount ?? academies.length}
             sublabel="Recurring Stripe billing active"
-            icon="🏢"
+            icon={<Building2 size={20} />}
             accent="ember"
           />
         </div>

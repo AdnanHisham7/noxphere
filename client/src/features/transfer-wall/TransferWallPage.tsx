@@ -10,6 +10,7 @@ import {
 import { Card, Badge, Button, Input, Modal, Skeleton, EmptyState, Avatar } from '../../components/ui';
 import { RootState } from '../../store';
 import { toast } from 'react-hot-toast';
+import { Search, Check, Eye, X, ArrowLeft } from 'lucide-react';
 import logoSrc from '../../assets/logo.png';
 import { ThemeToggle } from '../../components/common/ThemeToggle';
 
@@ -85,7 +86,7 @@ const TransferWallPage: React.FC = () => {
           <span className="text-2xs text-slate-500 hidden md:block">{data?.meta?.total ?? listings.length} players listed</span>
           <ThemeToggle size="sm" />
           {isAuthenticated ? (
-            <a href="/dashboard" className="btn-secondary text-xs py-1.5 px-3">← Dashboard</a>
+            <a href="/dashboard" className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1.5"><ArrowLeft size={13} /> Dashboard</a>
           ) : (
             <a href="/login" className="btn-primary text-xs py-1.5 px-4">Manager Login</a>
           )}
@@ -123,7 +124,7 @@ const TransferWallPage: React.FC = () => {
               placeholder="Name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              icon={<span className="text-xs">🔍</span>}
+              icon={<Search size={14} className="text-slate-400" />}
             />
           </div>
           <div className="min-w-36">
@@ -200,12 +201,14 @@ const TransferWallPage: React.FC = () => {
                   {/* Quick stats */}
                   <div className="flex items-center gap-3 mt-3 flex-wrap">
                     {listing.student?.attendancePercentage !== undefined && (
-                      <span className="stat-badge text-field-500 dark:text-field-400">
-                        ✓ {listing.student.attendancePercentage}% att
+                      <span className="stat-badge text-field-500 dark:text-field-400 flex items-center gap-1">
+                        <Check size={11} className="shrink-0" />
+                        <span>{listing.student.attendancePercentage}% att</span>
                       </span>
                     )}
-                    <span className="stat-badge text-slate-600 dark:text-slate-400">
-                      👁 {listing.viewCount} views
+                    <span className="stat-badge text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                      <Eye size={11} className="shrink-0" />
+                      <span>{listing.viewCount} views</span>
                     </span>
                     {listing.fromFranchise?.name && (
                       <span className="stat-badge text-slate-500">
@@ -285,7 +288,7 @@ const TransferWallPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <button onClick={() => setSelectedListing(null)} className="btn-ghost p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white text-sm">✕</button>
+              <button onClick={() => setSelectedListing(null)} className="btn-ghost p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white text-sm"><X size={16} /></button>
             </div>
 
             <div className="p-5 space-y-6">

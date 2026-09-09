@@ -17,6 +17,7 @@ import {
   Repeat2,
   Ban,
   LayoutDashboard,
+  AlertTriangle,
 } from "lucide-react";
 import { Button, Input, Modal, Badge, StatCard } from "../../components/ui";
 import { PlatformBillingCard } from "./PlatformBillingCard";
@@ -123,7 +124,6 @@ const AcademiesManagement: React.FC = () => {
       longitude: 0,
       fieldNumber: "",
     },
-    ageGroups: "",
     alertBeforeMinutes: 60,
     notificationAlertAfterMinutes: 15,
     skillParameters:
@@ -164,10 +164,7 @@ const AcademiesManagement: React.FC = () => {
         latitude: Number(newAcademyForm.location.latitude),
         longitude: Number(newAcademyForm.location.longitude),
       },
-      ageGroups: newAcademyForm.ageGroups
-        .split(",")
-        .map((g) => g.trim())
-        .filter(Boolean),
+      ageGroups: [],
       alertBeforeMinutes: Number(newAcademyForm.alertBeforeMinutes),
       notificationAlertAfterMinutes: Number(
         newAcademyForm.notificationAlertAfterMinutes,
@@ -191,7 +188,6 @@ const AcademiesManagement: React.FC = () => {
           longitude: 0,
           fieldNumber: "",
         },
-        ageGroups: "",
         alertBeforeMinutes: 60,
         notificationAlertAfterMinutes: 15,
         skillParameters:
@@ -758,19 +754,7 @@ const AcademiesManagement: React.FC = () => {
             />
           </div>
 
-          <div>
-            <Input
-              label="Age Groups (comma separated)"
-              value={newAcademyForm.ageGroups}
-              onChange={(e) =>
-                setNewAcademyForm({
-                  ...newAcademyForm,
-                  ageGroups: e.target.value,
-                })
-              }
-              placeholder="U-12, U-14, U-16"
-            />
-          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="Pre-Session Alert (mins)"
@@ -826,8 +810,9 @@ const AcademiesManagement: React.FC = () => {
               }
               placeholder="e.g. Dribbling, Passing, Shooting, Speed, Tactical Awareness, Attitude"
             />
-            <p className="text-3xs text-slate-400 mt-1">
-              ⚠️ Exactly 6 skill parameters required. Once configured, they cannot be changed.
+            <p className="text-3xs text-amber-400/90 mt-1.5 flex items-center gap-1.5">
+              <AlertTriangle size={12} className="shrink-0 text-amber-400" />
+              <span>Exactly 6 skill parameters required. Once configured, they cannot be changed.</span>
             </p>
           </div>
 
@@ -895,21 +880,27 @@ const AcademiesManagement: React.FC = () => {
               <p className="text-2xs text-slate-500">Leave either blank to use the platform default rate.</p>
             </div>
             <div className="space-y-3">
-              <p className="section-title">Capacity & Eligibility</p>
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Age Groups (Comma separated)"
-                  value={
-                    configForm.ageGroups?.join(", ") ??
-                    selectedAcademy.ageGroups.join(", ")
-                  }
-                  onChange={(e) =>
-                    setConfigForm({
-                      ...configForm,
-                      ageGroups: e.target.value.split(",").map((s) => s.trim()),
-                    })
-                  }
-                />
+              <p className="section-title">Age Categories</p>
+              <div>
+                <p className="text-2xs text-slate-400 mb-2">
+                  Age categories populate automatically when players enroll with their birthdates.
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedAcademy.ageGroups && selectedAcademy.ageGroups.length > 0 ? (
+                    selectedAcademy.ageGroups.map((group) => (
+                      <span
+                        key={group}
+                        className="px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                      >
+                        {group}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-500 italic">
+                      No categories registered yet (added automatically as players enter birthdates).
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 

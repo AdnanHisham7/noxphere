@@ -18,11 +18,22 @@ export const LocationSchema = z.object({
   fieldNumber: z.string().optional(),
 });
 
+// Pitch / Venue sub‑schema
+export const PitchSchemaDto = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  fieldNumber: z.string().optional(),
+  surfaceType: z.string().optional(),
+  address: z.string().optional(),
+  isActive: z.boolean().optional(),
+});
+
 // Create Academy DTO (includes manager creation data)
 export const CreateAcademySchema = z.object({
   name: z.string().min(1).max(100),
   academyCode: z.string().min(1).max(20).optional(), // will generate if omitted
   location: LocationSchema,
+  pitches: z.array(PitchSchemaDto).optional(),
   ageGroups: z.array(z.string()).default([]),
   alertBeforeMinutes: z.number().min(0).default(60),
   notificationAlertAfterMinutes: z.number().min(0).default(15),
@@ -50,6 +61,7 @@ export const CreateAcademySchema = z.object({
 export const UpdateAcademySchema = z.object({
   name: z.string().min(1).max(100).optional(),
   location: LocationSchema.partial().optional(),
+  pitches: z.array(PitchSchemaDto).optional(),
   ageGroups: z.array(z.string()).optional(),
   maxStudents: z.number().min(1).optional(),
   isActive: z.boolean().optional(),
@@ -70,6 +82,7 @@ export const UpdateAcademySchema = z.object({
 export const AcademyConfigSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   location: LocationSchema.partial().optional(),
+  pitches: z.array(PitchSchemaDto).optional(),
   maxStudents: z.number().min(1).optional(),
   subscriptionRateOverride: z.number().min(0).optional(),
   staffRateOverride: z.number().min(0).optional(),

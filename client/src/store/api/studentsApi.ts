@@ -363,6 +363,14 @@ export const studentsApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: { request: any } }) => res.data,
       invalidatesTags: ['RegistrationRequest'],
     }),
+    getAgeCategories: builder.query<string[], { franchiseId?: string; academyId?: string }>({
+      query: (params) => ({
+        url: '/students/age-categories',
+        params,
+      }),
+      transformResponse: (res: { data: string[] }) => res.data,
+      providesTags: [{ type: 'Student', id: 'LIST' }],
+    }),
   }),
 });
 
@@ -385,4 +393,5 @@ export const {
   useGetRegistrationRequestsQuery,
   useApproveRegistrationRequestMutation,
   useRejectRegistrationRequestMutation,
+  useGetAgeCategoriesQuery,
 } = studentsApi;

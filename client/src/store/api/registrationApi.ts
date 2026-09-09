@@ -32,6 +32,7 @@ export interface SubmitRegistrationPayload {
   academyId: string;
   franchiseId: string;
   existingStudentId?: string;
+  dpdpConsent: boolean;
   studentDetails: {
     firstName: string;
     lastName: string;

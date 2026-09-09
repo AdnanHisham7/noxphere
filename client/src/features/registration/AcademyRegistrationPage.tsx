@@ -16,6 +16,7 @@ import {
   Send,
   UserCheck,
   ShieldAlert,
+  ShieldCheck,
   ArrowRight,
   Phone,
   Mail,
@@ -86,14 +87,9 @@ export const AcademyRegistrationPage: React.FC = () => {
     relation: "Parent",
   });
 
+  const [dpdpConsent, setDpdpConsent] = useState(false);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
 
-  // Auto-select first franchise when loaded
-  React.useEffect(() => {
-    if (academyInfo?.franchises?.length && !selectedFranchiseId) {
-      setSelectedFranchiseId(academyInfo.franchises[0].id);
-    }
-  }, [academyInfo, selectedFranchiseId]);
 
   const handleSendOtp = async () => {
     if (!otpPhone.trim() && !otpEmail.trim()) {
@@ -177,7 +173,8 @@ export const AcademyRegistrationPage: React.FC = () => {
     e.preventDefault();
 
     if (!selectedFranchiseId) {
-      toast.error("Please select a training franchise / branch");
+      toast.error("Please choose your preferred training branch / franchise");
+      document.getElementById("franchise-select")?.focus();
       return;
     }
     if (!studentDetails.firstName.trim() || !studentDetails.lastName.trim()) {
@@ -204,11 +201,20 @@ export const AcademyRegistrationPage: React.FC = () => {
       return;
     }
 
+    if (!dpdpConsent) {
+      toast.error(
+        "Parental/guardian consent under the Digital Personal Data Protection (DPDP) Act is mandatory for enrollment",
+      );
+      document.getElementById("dpdp-consent-checkbox")?.focus();
+      return;
+    }
+
     try {
       await submitRequest({
         academyId: academyId!,
         franchiseId: selectedFranchiseId,
         existingStudentId: verifiedStudent?.id,
+        dpdpConsent: true,
         studentDetails: {
           firstName: studentDetails.firstName.trim(),
           lastName: studentDetails.lastName.trim(),
@@ -489,17 +495,23 @@ export const AcademyRegistrationPage: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Franchise selection */}
               <div className="space-y-2">
-                <label className="label">
-                  Select Preferred Branch / Franchise *
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="label" htmlFor="franchise-select">
+                    Select Preferred Branch / Franchise *
+                  </label>
+                  <span className="text-2xs font-semibold text-amber-500 uppercase tracking-wide">
+                    Manual selection required
+                  </span>
+                </div>
                 <select
+                  id="franchise-select"
                   value={selectedFranchiseId}
                   onChange={(e) => setSelectedFranchiseId(e.target.value)}
                   className="input"
                   required
                 >
                   <option value="" disabled>
-                    Choose training center…
+                    -- Choose your preferred training center / branch * --
                   </option>
                   {academyInfo.franchises.map((f) => {
                     const locationLabel =
@@ -513,6 +525,11 @@ export const AcademyRegistrationPage: React.FC = () => {
                     );
                   })}
                 </select>
+                {!selectedFranchiseId && (
+                  <p className="text-2xs text-slate-500 dark:text-slate-400">
+                    Please select the training branch where the player will attend regular sessions.
+                  </p>
+                )}
               </div>
 
               {/* Student Details */}
@@ -776,6 +793,56 @@ export const AcademyRegistrationPage: React.FC = () => {
                     className="input"
                   />
                 </div>
+              </div>
+
+              {/* Statutory DPDP Act Consent */}
+              <div className="card p-4 sm:p-5 border border-sky-500/30 bg-sky-50/50 dark:bg-sky-950/20 dark:border-sky-500/20 rounded-xl space-y-3.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-sky-500/10 dark:bg-sky-400/10 border border-sky-500/20 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="text-sky-600 dark:text-sky-400" size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-tight">
+                      Digital Personal Data Protection (DPDP) Act Consent *
+                    </h3>
+                    <p className="text-2xs text-slate-500 dark:text-slate-400">
+                      Statutory Notice under DPDP Act, 2023 & Rule 3 Data Protection Guidelines
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-xs text-slate-600 dark:text-slate-300 space-y-2 bg-white/60 dark:bg-pitch-800/60 p-3.5 rounded-lg border border-slate-200/80 dark:border-white/5">
+                  <p className="leading-relaxed">
+                    Under India&apos;s Digital Personal Data Protection Act, 2023, <strong>{academyInfo.academy.name}</strong> and <strong>Noxphere</strong> require explicit parental/guardian consent to collect, process, and retain the player&apos;s personal, athletic, and emergency medical records.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-2xs text-slate-500 dark:text-slate-400">
+                    <div>
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">Data Collected:</span> Name, DOB, contact, photo, emergency medical notes, attendance & evaluation records.
+                    </div>
+                    <div>
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">Purpose:</span> Academy squad enrollment, safety, emergency contact, training evaluation & fee administration.
+                    </div>
+                  </div>
+                  <p className="text-2xs text-slate-400 pt-1">
+                    Consent may be reviewed or withdrawn at any time through your Guardian Portal account.
+                  </p>
+                </div>
+
+                <label className="flex items-start gap-3 cursor-pointer pt-1 group select-none">
+                  <input
+                    type="checkbox"
+                    id="dpdp-consent-checkbox"
+                    checked={dpdpConsent}
+                    onChange={(e) => setDpdpConsent(e.target.checked)}
+                    required
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-volt-500 focus:ring-volt-400 dark:border-white/20 dark:bg-pitch-800 cursor-pointer"
+                  />
+                  <span className="text-xs text-slate-700 dark:text-slate-200 leading-snug">
+                    <strong className="font-medium text-slate-900 dark:text-white">
+                      I declare that I am the parent or legal guardian of {studentDetails.firstName.trim() || "the applicant"} and provide mandatory consent under the DPDP Act for the processing of player and guardian data as described above. *
+                    </strong>
+                  </span>
+                </label>
               </div>
 
               {/* Submit CTA */}

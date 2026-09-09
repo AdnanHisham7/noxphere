@@ -7,6 +7,8 @@ import {
 import {
   useSendSquadInvitationMutation,
   useGetAcademySquadInvitationsQuery,
+  useCancelSquadInvitationMutation,
+  type SquadInvitation,
 } from "@/store/api/squadInvitationApi";
 import { Button, Modal, Badge, EmptyState, Input } from "@/components/ui";
 import {
@@ -20,8 +22,11 @@ import {
   X,
   Mail,
   AlertTriangle,
+  Clock,
+  XCircle,
 } from "lucide-react";
 import { useCurrentAcademyId } from "@/hooks/useCurrentAcademyId";
+import { useConfirm } from "@/hooks/useConfirm";
 import { useGetAcademySubscriptionStatusQuery } from "@/store/api/academySubscriptionApi";
 import { SubscriptionModal } from "../subscription/SubscriptionModal";
 import toast from "react-hot-toast";
@@ -74,7 +79,10 @@ export const InviteUnattachedStudentModal: React.FC<InviteUnattachedStudentModal
   );
 
   const [sendInvitation, { isLoading: sending }] = useSendSquadInvitationMutation();
+  const [cancelInvitation, { isLoading: isCancelling }] = useCancelSquadInvitationMutation();
+  const { confirm, ConfirmDialog } = useConfirm();
 
+  const [viewMode, setViewMode] = useState<"directory" | "invitations">("directory");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [assignmentForm, setAssignmentForm] = useState({
     teamId: "",
@@ -158,6 +166,26 @@ export const InviteUnattachedStudentModal: React.FC<InviteUnattachedStudentModal
     }
   };
 
+  const handleCancelInvite = async (invitationId: string, playerName: string) => {
+    const confirmed = await confirm({
+      title: "Cancel Squad Invitation",
+      message: `Are you sure you want to withdraw the invitation sent to ${playerName}?`,
+      confirmLabel: "Withdraw Invite",
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      await cancelInvitation(invitationId).unwrap();
+      toast.success("Invitation withdrawn");
+      refetchInvitations();
+      refetch();
+      refetchSubStatus();
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to cancel invitation");
+    }
+  };
+
   const pendingStudentIds = new Set(
     (sentInvitations || [])
       .filter((inv) => inv.status === "pending")
@@ -168,15 +196,54 @@ export const InviteUnattachedStudentModal: React.FC<InviteUnattachedStudentModal
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Invite Free Agent to Squad"
-      size="lg"
+      title="Free Agents & Squad Recruitment"
+      size="xl"
     >
       <div className="space-y-4 pt-2">
-        <p className="text-xs text-slate-500">
-          Search independent free agents and send an official squad invitation. Players will review the invitation in their portal before joining your roster.
-        </p>
+        {/* Navigation Mode Tabs */}
+        <div className="flex items-center gap-2 border-b border-slate-200 dark:border-white/10 pb-2">
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode("directory");
+              setSelectedStudent(null);
+            }}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              viewMode === "directory"
+                ? "bg-volt-400 text-pitch-900 font-bold shadow-sm"
+                : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-pitch-800"
+            }`}
+          >
+            Available Free Agents ({students.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode("invitations");
+              setSelectedStudent(null);
+            }}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              viewMode === "invitations"
+                ? "bg-volt-400 text-pitch-900 font-bold shadow-sm"
+                : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-pitch-800"
+            }`}
+          >
+            <span>Sent Invitations</span>
+            {pendingCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-pitch-900 font-mono text-2xs font-bold">
+                {pendingCount}
+              </span>
+            )}
+          </button>
+        </div>
 
-        {/* Capacity Indicator Banner */}
+        {viewMode === "directory" && (
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500">
+              Search independent free agents and send an official squad invitation. Players will review the invitation in their portal before joining your roster.
+            </p>
+
+            {/* Capacity Indicator Banner */}
         {hasActiveSubscription && (
           <div
             className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs ${
@@ -482,6 +549,104 @@ export const InviteUnattachedStudentModal: React.FC<InviteUnattachedStudentModal
             </form>
           </div>
         )}
+      </div>
+    )}
+
+    {/* Invitations View */}
+    {viewMode === "invitations" && (
+      <div className="space-y-3">
+        {!sentInvitations || sentInvitations.length === 0 ? (
+          <EmptyState
+            title="No invitations sent yet"
+            description="Invitations sent to free agents will appear here with live status tracking."
+          />
+        ) : (
+          <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
+            {sentInvitations.map((inv: any) => {
+              const studentName =
+                typeof inv.studentId === "object" && inv.studentId
+                  ? `${inv.studentId.firstName} ${inv.studentId.lastName}`
+                  : "Player";
+              const teamName =
+                typeof inv.teamId === "object" && inv.teamId
+                  ? inv.teamId.name
+                  : "Unassigned Team";
+              const inviteId = inv.id || inv._id;
+
+              return (
+                <div
+                  key={inviteId}
+                  className="card p-3 flex items-center justify-between gap-3 hover:border-slate-300 dark:hover:border-white/20 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-volt-400/10 text-volt-500 font-display font-bold flex items-center justify-center shrink-0">
+                      <Mail size={16} />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-xs text-slate-900 dark:text-white flex items-center gap-2">
+                        {studentName}
+                        <span
+                          className={`text-2xs font-mono px-2 py-0.5 rounded-full font-bold uppercase ${
+                            inv.status === "pending"
+                              ? "bg-amber-500/15 text-amber-500"
+                              : inv.status === "accepted"
+                              ? "bg-emerald-500/15 text-emerald-500"
+                              : inv.status === "rejected"
+                              ? "bg-rose-500/15 text-rose-500"
+                              : "bg-slate-500/15 text-slate-400"
+                          }`}
+                        >
+                          {inv.status}
+                        </span>
+                      </div>
+                      <div className="text-2xs text-slate-500 flex items-center gap-2 mt-0.5">
+                        <span>Team: {teamName}</span>
+                        {inv.position && (
+                          <>
+                            <span>•</span>
+                            <span>Pos: {inv.position}</span>
+                          </>
+                        )}
+                        {inv.jerseyNumber && (
+                          <>
+                            <span>•</span>
+                            <span>#{inv.jerseyNumber}</span>
+                          </>
+                        )}
+                        <span>•</span>
+                        <span>Sent {new Date(inv.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      {inv.notes && (
+                        <p className="text-2xs text-slate-400 italic mt-1 line-clamp-1">
+                          "{inv.notes}"
+                        </p>
+                      )}
+                      {inv.rejectionReason && (
+                        <p className="text-2xs text-rose-400 mt-1">
+                          Reason: {inv.rejectionReason}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {inv.status === "pending" && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleCancelInvite(inviteId, studentName)}
+                      disabled={isCancelling}
+                      className="text-xs text-rose-400 hover:text-rose-300 hover:border-rose-500/30 shrink-0"
+                    >
+                      <X size={12} className="mr-1" /> Withdraw
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    )}
 
         <div className="flex justify-end pt-2">
           <Button variant="secondary" size="sm" onClick={onClose}>
@@ -489,6 +654,8 @@ export const InviteUnattachedStudentModal: React.FC<InviteUnattachedStudentModal
           </Button>
         </div>
       </div>
+
+      {ConfirmDialog}
 
       {/* Upgrade Subscription Modal */}
       {showUpgradeModal && academyId && (

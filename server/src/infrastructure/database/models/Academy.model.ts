@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 import {
   AcademyEntity,
+  AcademyPitch,
   Location,
 } from "../../../domain/entities/Academy.entity";
 
@@ -9,6 +10,7 @@ export interface AcademyDocument extends Document {
   academyCode: string;
   managerId: mongoose.Types.ObjectId;
   location: Location;
+  pitches?: AcademyPitch[];
   ageGroups: string[];
   maxStudents: number;
   subscriptionRateOverride?: number;
@@ -45,6 +47,18 @@ const LocationSchema = new Schema<Location>(
   { _id: false },
 );
 
+const PitchSchema = new Schema<AcademyPitch>(
+  {
+    id: { type: String, required: true },
+    name: { type: String, required: true, trim: true },
+    fieldNumber: { type: String, trim: true },
+    surfaceType: { type: String, trim: true, default: "Artificial Turf" },
+    address: { type: String, trim: true },
+    isActive: { type: Boolean, default: true },
+  },
+  { _id: false },
+);
+
 const AcademySchema = new Schema<AcademyDocument>(
   {
     name: { type: String, required: true, trim: true },
@@ -56,6 +70,7 @@ const AcademySchema = new Schema<AcademyDocument>(
       index: true,
     },
     location: { type: LocationSchema, required: true },
+    pitches: { type: [PitchSchema], default: [] },
     ageGroups: [{ type: String }],
     maxStudents: { type: Number, default: 100 },
     // Per-academy override of PlatformSettings.defaultRatePerStudentPerDay

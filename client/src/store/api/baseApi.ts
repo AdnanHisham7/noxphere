@@ -101,6 +101,7 @@ export const baseApi = createApi({
     "RegistrationRequest",
     "NfcRequest",
     "PlatformSettings",
+    "PlatformTicket",
   ],
   endpoints: () => ({}),
 

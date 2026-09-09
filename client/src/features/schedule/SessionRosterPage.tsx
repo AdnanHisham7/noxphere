@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useMemo } from "react";
-import { useParams, Link, Navigate } from "react-router-dom";
-import { ArrowLeft, CalendarDays, Save, Zap, Star } from "lucide-react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
+import { ArrowLeft, CalendarDays, Save, Zap, Star, AlertTriangle, AlertCircle } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
   Button,
@@ -8,6 +8,7 @@ import {
   Avatar,
   Skeleton,
   EmptyState,
+  Modal,
 } from "../../components/ui";
 import {
   useGetSessionRosterQuery,
@@ -70,6 +71,7 @@ const getOverallScoreBadgeStyle = (score: number) => {
 
 const SessionRosterPage: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const navigate = useNavigate();
 
   // 1. ALL HOOKS MUST BE DECLARED FIRST
   const { data, isLoading, isError } = useGetSessionRosterQuery(
@@ -90,6 +92,9 @@ const SessionRosterPage: React.FC = () => {
   const [remarksPending, setRemarksPending] = useState<Record<string, string>>(
     {},
   );
+
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [pendingNavigationPath, setPendingNavigationPath] = useState<string | null>(null);
 
   useEffect(() => {
     if (!data) return;
@@ -130,6 +135,70 @@ const SessionRosterPage: React.FC = () => {
 
     return { present, late, absent, excused, unmarked };
   }, [roster, attendancePending]);
+
+  // Track if any changes were made that are unsaved
+  const hasUnsavedAttendance = useMemo(() => {
+    return roster.some((p) => {
+      const pending = attendancePending[p.studentId];
+      const original = p.attendanceStatus ?? "";
+      return pending !== undefined && pending !== original;
+    });
+  }, [roster, attendancePending]);
+
+  const hasUnsavedRemarks = useMemo(() => {
+    return roster.some((p) => {
+      const pending = remarksPending[p.studentId];
+      const original = p.performanceRemarks ?? p.attendanceRemarks ?? "";
+      return pending !== undefined && pending !== original;
+    });
+  }, [roster, remarksPending]);
+
+  const hasUnsavedScores = useMemo(() => {
+    return roster.some((p) => {
+      const pendingScores = scoresPending[p.studentId];
+      if (!pendingScores) return false;
+      const originalScores = p.skillScores
+        ? Object.fromEntries(p.skillScores.map((s) => [s.parameter, s.score]))
+        : {};
+      return skillParameters.some((param) => {
+        const pendingVal = pendingScores[param];
+        const origVal = originalScores[param];
+        return pendingVal !== undefined && pendingVal !== origVal;
+      });
+    });
+  }, [roster, scoresPending, skillParameters]);
+
+  const hasUnsavedChanges = hasUnsavedAttendance || hasUnsavedRemarks || hasUnsavedScores;
+
+  // Browser tab close / reload protection
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Browser back button (popstate) protection
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    window.history.pushState({ rosterGuard: true }, "", window.location.href);
+
+    const handlePopState = () => {
+      if (hasUnsavedChanges) {
+        window.history.pushState({ rosterGuard: true }, "", window.location.href);
+        setPendingNavigationPath("/schedule");
+        setShowUnsavedModal(true);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [hasUnsavedChanges]);
 
   // Helper functions
   const getAttendanceStatus = (p: RosterPlayer) =>
@@ -209,18 +278,26 @@ const SessionRosterPage: React.FC = () => {
     toast.success("Marked all unmarked athletes as Present");
   };
 
-  // Unified Save Workflow
-  const handleSaveAll = async () => {
-    if (!sessionId) return;
+  // Unified Save Workflow - Attendance is mandatory for all roster athletes before saving
+  const handleSaveAll = async (): Promise<boolean> => {
+    if (!sessionId) return false;
+
+    // 1. Mandatory Attendance Validation
+    if (roster.length > 0 && attendanceMetrics.unmarked > 0) {
+      toast.error(
+        `Attendance is mandatory for all athletes before saving. Please mark attendance for the ${attendanceMetrics.unmarked} remaining athlete${attendanceMetrics.unmarked === 1 ? "" : "s"}.`,
+        { duration: 5000 }
+      );
+      return false;
+    }
+
     try {
       // 1. Submit Attendance
-      const attendanceRecords = roster
-        .filter((p) => getAttendanceStatus(p))
-        .map((p) => ({
-          studentId: p.studentId,
-          status: getAttendanceStatus(p) as any,
-          remarks: remarksPending[p.studentId] || undefined,
-        }));
+      const attendanceRecords = roster.map((p) => ({
+        studentId: p.studentId,
+        status: getAttendanceStatus(p) as "present" | "absent" | "late" | "excused",
+        remarks: remarksPending[p.studentId] || undefined,
+      }));
 
       if (attendanceRecords.length > 0) {
         await markAttendance({
@@ -248,12 +325,51 @@ const SessionRosterPage: React.FC = () => {
         }).unwrap();
       }
 
-      toast.success("Session roster and evaluations saved");
+      // Reset dirty tracking states upon successful save
+      setAttendancePending({});
+      setRemarksPending({});
+
+      toast.success("Attendance saved and session completed successfully!");
+      return true;
     } catch (err: any) {
       toast.error(
         err?.data?.message || "Couldn't save roster changes — try again",
       );
+      return false;
     }
+  };
+
+  // Confirmation modal handlers
+  const handleBackClick = () => {
+    if (hasUnsavedChanges) {
+      setPendingNavigationPath("/schedule");
+      setShowUnsavedModal(true);
+    } else {
+      navigate("/schedule");
+    }
+  };
+
+  const handleConfirmSaveAndLeave = async () => {
+    const success = await handleSaveAll();
+    if (success) {
+      setShowUnsavedModal(false);
+      navigate(pendingNavigationPath || "/schedule");
+    } else {
+      setShowUnsavedModal(false);
+    }
+  };
+
+  const handleConfirmDiscardAndLeave = () => {
+    setAttendancePending({});
+    setRemarksPending({});
+    setScoresPending({});
+    setShowUnsavedModal(false);
+    navigate(pendingNavigationPath || "/schedule");
+  };
+
+  const handleCancelLeave = () => {
+    setShowUnsavedModal(false);
+    setPendingNavigationPath(null);
   };
 
   // 2. EARLY RETURNS ARE SAFELY PLACED NOW
@@ -276,12 +392,14 @@ const SessionRosterPage: React.FC = () => {
         title="Session not found"
         description="This session may have been removed or relocated."
         action={
-          <Link
-            to="/schedule"
-            className="text-volt-400 hover:underline text-xs"
+          <button
+            type="button"
+            onClick={handleBackClick}
+            className="text-volt-400 hover:underline text-xs inline-flex items-center gap-1 cursor-pointer"
           >
-            ← Return to Schedule
-          </Link>
+            <ArrowLeft size={13} />
+            Return to Schedule
+          </button>
         }
       />
     );
@@ -295,12 +413,13 @@ const SessionRosterPage: React.FC = () => {
       {/* Header Context */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-4">
         <div>
-          <Link
-            to="/schedule"
-            className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors mb-2"
+          <button
+            type="button"
+            onClick={handleBackClick}
+            className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors mb-2 cursor-pointer"
           >
             <ArrowLeft size={14} /> Back to Schedule
-          </Link>
+          </button>
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="font-display font-bold text-xl text-slate-900 dark:text-white uppercase tracking-wide">
               {session.targetType === "category"
@@ -324,6 +443,12 @@ const SessionRosterPage: React.FC = () => {
             >
               {session.status}
             </Badge>
+            {hasUnsavedChanges && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-2xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                Unsaved changes
+              </span>
+            )}
           </div>
           <p className="text-2xs text-slate-500 dark:text-slate-400 font-mono mt-1">
             {session.startDate &&
@@ -352,9 +477,18 @@ const SessionRosterPage: React.FC = () => {
             loading={savingAttendance || savingPerformance}
             onClick={handleSaveAll}
             icon={<Save size={15} />}
-            className="text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-pitch-900 w-full sm:w-auto justify-center"
+            className={`text-xs font-semibold w-full sm:w-auto justify-center transition-all ${
+              attendanceMetrics.unmarked > 0
+                ? "bg-slate-700 hover:bg-slate-600 text-white dark:bg-slate-700 dark:hover:bg-slate-600"
+                : "bg-emerald-500 hover:bg-emerald-600 text-pitch-900"
+            }`}
+            title={
+              attendanceMetrics.unmarked > 0
+                ? `Attendance is mandatory for all athletes (${attendanceMetrics.unmarked} remaining)`
+                : "Save attendance and complete session"
+            }
           >
-            Save All Updates
+            Save All Updates {attendanceMetrics.unmarked > 0 ? `(${attendanceMetrics.unmarked} unmarked)` : ""}
           </Button>
         )}
       </div>
@@ -386,9 +520,15 @@ const SessionRosterPage: React.FC = () => {
               <span className="text-cyan-600 dark:text-ice-400 font-semibold">
                 E: {attendanceMetrics.excused}
               </span>
-              <span className="text-slate-400 dark:text-slate-500">
-                Unmarked: {attendanceMetrics.unmarked}
-              </span>
+              {attendanceMetrics.unmarked > 0 ? (
+                <span className="px-2 py-0.5 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold inline-flex items-center gap-1 font-mono text-2xs">
+                  <AlertTriangle size={11} /> Unmarked: {attendanceMetrics.unmarked} (Mandatory)
+                </span>
+              ) : (
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold font-mono text-2xs">
+                  All Marked ✓
+                </span>
+              )}
               {averageRosterScore !== null && (
                 <span className="text-volt-600 dark:text-volt-400 font-bold border-l border-slate-200 dark:border-white/10 pl-3 sm:pl-4 inline-flex items-center gap-1">
                   <Star size={12} className="fill-current" /> Avg Rating: {averageRosterScore.toFixed(1)}/10
@@ -434,7 +574,7 @@ const SessionRosterPage: React.FC = () => {
                       Athlete Details
                     </th>
                     <th className="py-2.5 px-3 text-center whitespace-nowrap min-w-[125px]">
-                      Attendance
+                      Attendance <span className="text-rose-500 font-bold" title="Attendance is mandatory for all athletes">*</span>
                     </th>
                     {skillParameters.map((param) => (
                       <th
@@ -591,7 +731,7 @@ const SessionRosterPage: React.FC = () => {
                                 }}
                                 className="w-5 h-6 text-2xs rounded bg-slate-100 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer px-0.5"
                               >
-                                <option value="" disabled>⚡</option>
+                                <option value="" disabled>—</option>
                                 {SCORE_OPTIONS.map((val) => (
                                   <option
                                     key={val}
@@ -634,6 +774,72 @@ const SessionRosterPage: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* Unsaved Changes Confirmation Modal */}
+      <Modal
+        isOpen={showUnsavedModal}
+        onClose={handleCancelLeave}
+        title="Unsaved Changes"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0 border border-amber-500/20">
+              <AlertTriangle size={20} />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
+                You have unsaved changes
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                You have modified attendance records or player evaluations that have not been saved yet. Would you like to save your updates before leaving, or discard them?
+              </p>
+            </div>
+          </div>
+
+          {attendanceMetrics.unmarked > 0 && (
+            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+              <AlertCircle size={15} className="flex-shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <div>
+                <span className="font-semibold">Attendance is mandatory: </span>
+                There {attendanceMetrics.unmarked === 1 ? "is" : "are"} still {attendanceMetrics.unmarked} athlete{attendanceMetrics.unmarked === 1 ? "" : "s"} unmarked. All athletes must have an attendance status marked before the session can be saved and completed.
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-4 border-t border-slate-200 dark:border-white/10">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleCancelLeave}
+              className="w-full sm:w-auto text-xs order-3 sm:order-1"
+            >
+              Keep Editing
+            </Button>
+            <div className="flex items-center gap-2 w-full sm:w-auto order-1 sm:order-2">
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                onClick={handleConfirmDiscardAndLeave}
+                className="w-full sm:w-auto text-xs"
+              >
+                Discard Changes
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                loading={savingAttendance || savingPerformance}
+                onClick={handleConfirmSaveAndLeave}
+                className="w-full sm:w-auto text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-pitch-900"
+              >
+                Save & Exit
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

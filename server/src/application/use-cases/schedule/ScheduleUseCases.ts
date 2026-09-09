@@ -215,14 +215,8 @@ export class ScheduleUseCases {
       if (dto.categories && dto.categories.length > 0 && !dto.category) {
         dto.category = dto.categories[0];
       }
-      const franchise = await FranchiseModel.findById(dto.franchiseId).select("ageGroups").lean();
+      const franchise = await FranchiseModel.findById(dto.franchiseId).select("_id").lean();
       if (!franchise) throw new NotFoundError("Franchise");
-      const targetCat = dto.category!;
-      if (franchise.ageGroups?.length && !franchise.ageGroups.includes(targetCat)) {
-        throw new BadRequestError(
-          `"${targetCat}" isn't one of this franchise's configured age groups (${franchise.ageGroups.join(", ")})`,
-        );
-      }
     } else {
       if (!dto.teamId) throw new BadRequestError("teamId is required for a team session");
       const team = await TeamModel.findById(dto.teamId);
@@ -251,12 +245,14 @@ export class ScheduleUseCases {
         franchiseId: dto.franchiseId,
         ageGroup: categoriesFilter,
         isActive: true,
+        deletedAt: { $exists: false },
       }).select("_id").lean();
       resolvedPlayerIds = baseStudents.map((s) => s._id);
     } else {
       const baseStudents = await StudentModel.find({
         teamId: dto.teamId,
         isActive: true,
+        deletedAt: { $exists: false },
       }).select("_id").lean();
       resolvedPlayerIds = baseStudents.map((s) => s._id);
     }
@@ -300,7 +296,7 @@ export class ScheduleUseCases {
       location: dto.location,
       fieldNumber: dto.fieldNumber,
       notes: dto.notes,
-      playerIds: dto.playerIds,
+      playerIds: dto.targetType === "category" ? resolvedPlayerIds.map((id) => id.toString()) : dto.playerIds,
       rosterPlayerIds: resolvedPlayerIds,
       documents: dto.documents,
       createdBy,
@@ -316,12 +312,13 @@ export class ScheduleUseCases {
       .populate("coachIds", "firstName lastName");
 
     const sessionDate = new Date(dto.date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+    const categoryLabel = dto.categories && dto.categories.length > 0 ? dto.categories.join(", ") : dto.category;
     const target =
       dto.targetType === "team"
         ? (populated?.teamId as any)?.name
         : dto.targetType === "batch"
         ? "custom batch squad"
-        : dto.category;
+        : `${categoryLabel} squad`;
 
     // A coach scheduling their own session already knows about it —
     // notify any assigned coach who did not create it.
@@ -388,6 +385,23 @@ export class ScheduleUseCases {
     }
     if (dto.categories && dto.categories.length > 0) {
       dto.category = dto.categories[0];
+    }
+    const targetType = dto.targetType ?? session.targetType;
+    if (targetType === "category") {
+      const activeFranchiseId = dto.franchiseId ?? session.franchiseId;
+      const cats = dto.categories && dto.categories.length > 0 ? dto.categories : (dto.category ? [dto.category] : session.categories);
+      const catFilter = cats && cats.length > 0 ? { $in: cats } : (dto.category ?? session.category);
+      if (catFilter) {
+        const matchingStudents = await StudentModel.find({
+          franchiseId: activeFranchiseId,
+          ageGroup: catFilter,
+          isActive: true,
+          deletedAt: { $exists: false },
+        }).select("_id").lean();
+        const resolvedIds = matchingStudents.map((s) => s._id);
+        (dto as any).rosterPlayerIds = resolvedIds;
+        (dto as any).playerIds = resolvedIds.map((id) => id.toString());
+      }
     }
     Object.assign(session, dto);
     await session.save();
@@ -501,8 +515,8 @@ export class ScheduleUseCases {
       .populate("coachIds", "firstName lastName");
     if (!session) throw new NotFoundError("Session");
 
-    const studentQuery: any = { isActive: true };
-    if (session.rosterPlayerIds !== undefined) {
+    const studentQuery: any = { isActive: true, deletedAt: { $exists: false } };
+    if (session.rosterPlayerIds !== undefined && session.rosterPlayerIds.length > 0) {
       const allRosterPlayerIds = [...(session.rosterPlayerIds || []), ...(session.playerIds || [])];
       studentQuery._id = { $in: allRosterPlayerIds };
     } else {
@@ -569,11 +583,44 @@ export class ScheduleUseCases {
       throw new BadRequestError("This session was cancelled — attendance can't be marked for it");
     }
 
+    // Resolve full roster of students to ensure attendance is mandatory for all athletes
+    const studentQuery: any = { isActive: true, deletedAt: { $exists: false } };
+    if (session.rosterPlayerIds !== undefined && session.rosterPlayerIds.length > 0) {
+      const allRosterPlayerIds = [...(session.rosterPlayerIds || []), ...(session.playerIds || [])];
+      studentQuery._id = { $in: allRosterPlayerIds };
+    } else {
+      const categoriesFilter = session.categories && session.categories.length > 0 ? { $in: session.categories } : session.category;
+      const playerQueryList = session.playerIds && session.playerIds.length > 0 ? { _id: { $in: session.playerIds } } : null;
+
+      if (session.targetType === "category") {
+        const defaultFilter = { franchiseId: session.franchiseId, ageGroup: categoriesFilter };
+        studentQuery.$or = playerQueryList ? [defaultFilter, playerQueryList] : [defaultFilter];
+      } else {
+        const defaultFilter = { teamId: session.teamId };
+        studentQuery.$or = playerQueryList ? [defaultFilter, playerQueryList] : [defaultFilter];
+      }
+    }
+
+    const students = await StudentModel.find(studentQuery)
+      .select("_id firstName lastName teamId")
+      .lean();
+
+    if (students.length > 0) {
+      const markedIds = new Set(
+        records
+          .filter((r) => r.status && ["present", "absent", "late", "excused"].includes(r.status))
+          .map((r) => r.studentId.toString())
+      );
+      const missing = students.filter((s) => !markedIds.has(s._id.toString()));
+      if (missing.length > 0) {
+        throw new BadRequestError(
+          `Attendance is mandatory for all roster athletes before saving. Missing attendance status for ${missing.length} athlete(s).`
+        );
+      }
+    }
+
     const studentTeamMap = new Map<string, mongoose.Types.ObjectId | undefined>();
     if (session.targetType === "category") {
-      const students = await StudentModel.find({ _id: { $in: records.map((r) => r.studentId) } })
-        .select("teamId")
-        .lean();
       for (const s of students) studentTeamMap.set(s._id.toString(), s.teamId);
     }
 

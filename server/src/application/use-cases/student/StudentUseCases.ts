@@ -37,6 +37,7 @@ import { FeeModel } from "../../../infrastructure/database/models/Fee.model";
 import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
 import { notificationService } from "../../../infrastructure/services/NotificationService";
 import { normalizePhone, getPhoneMatchVariants } from "../../../shared/utils/phone";
+import { calculateAgeCategory } from "../../../shared/utils/ageCategory";
 
 export class StudentUseCases {
   constructor(
@@ -249,6 +250,15 @@ export class StudentUseCases {
       }
     }
 
+    // Sync age category to franchise and academy
+    const effectiveAgeGroup = createdStudent.ageGroup || calculateAgeCategory(createdStudent.dateOfBirth);
+    if (effectiveAgeGroup) {
+      await Promise.all([
+        FranchiseModel.findByIdAndUpdate(dto.franchiseId, { $addToSet: { ageGroups: effectiveAgeGroup } }),
+        AcademyModel.findByIdAndUpdate(franchise.academyId, { $addToSet: { ageGroups: effectiveAgeGroup } }),
+      ]).catch(() => undefined);
+    }
+
     return createdStudent;
   }
 
@@ -346,7 +356,47 @@ export class StudentUseCases {
     }
     const student = await this.studentRepo.update(id, updateData);
     if (!student) throw new NotFoundError("Student");
+
+    const effectiveAgeGroup = student.ageGroup || (student.dateOfBirth ? calculateAgeCategory(student.dateOfBirth) : undefined);
+    if (effectiveAgeGroup && student.franchiseId) {
+      const fr = await FranchiseModel.findById(student.franchiseId).select("academyId").lean();
+      if (fr) {
+        await Promise.all([
+          FranchiseModel.findByIdAndUpdate(student.franchiseId, { $addToSet: { ageGroups: effectiveAgeGroup } }),
+          AcademyModel.findByIdAndUpdate(fr.academyId, { $addToSet: { ageGroups: effectiveAgeGroup } }),
+        ]).catch(() => undefined);
+      }
+    }
+
     return student;
+  }
+
+  async getDistinctAgeCategories(franchiseId?: string, academyId?: string): Promise<string[]> {
+    const filter: any = {
+      isActive: true,
+      deletedAt: { $exists: false },
+      ageGroup: { $ne: null, $exists: true },
+    };
+
+    if (franchiseId && mongoose.Types.ObjectId.isValid(franchiseId)) {
+      filter.franchiseId = new mongoose.Types.ObjectId(franchiseId);
+    } else if (academyId && mongoose.Types.ObjectId.isValid(academyId)) {
+      const franchises = await FranchiseModel.find({
+        academyId: new mongoose.Types.ObjectId(academyId),
+      })
+        .select("_id")
+        .lean();
+      filter.franchiseId = { $in: franchises.map((f) => f._id) };
+    }
+
+    const raw = await StudentModel.distinct("ageGroup", filter);
+    return raw
+      .filter((c): c is string => typeof c === "string" && c.trim().length > 0)
+      .sort((a, b) => {
+        const numA = parseInt(a.replace(/\D/g, ""), 10) || 0;
+        const numB = parseInt(b.replace(/\D/g, ""), 10) || 0;
+        return numA !== numB ? numA - numB : a.localeCompare(b);
+      });
   }
 
   async deleteStudent(id: string): Promise<void> {
