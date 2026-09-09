@@ -62,24 +62,24 @@ const GuardianChildDetailPage: React.FC = () => {
       {profileLoading && <NoxSkeleton className="h-24 mb-8" />}
 
       {profile && (
-        <div className="nox-card p-6 mb-8 flex flex-wrap items-center gap-5 justify-between">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center justify-center w-14 h-14 rounded-full bg-core-400/[0.12] text-core-400 font-orbital font-semibold text-lg">
+        <div className="nox-card p-4 sm:p-6 mb-8 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 justify-between">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <span className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-core-400/[0.12] text-core-400 font-orbital font-semibold text-base sm:text-lg shrink-0">
               {profile.firstName.charAt(0)}
               {profile.lastName.charAt(0)}
             </span>
-            <div>
-              <h1 className="font-orbital text-xl font-semibold text-nox-high">
+            <div className="min-w-0">
+              <h1 className="font-orbital text-lg sm:text-xl font-semibold text-nox-high truncate">
                 {profile.firstName} {profile.lastName}
               </h1>
-              <p className="text-sm text-nox-mid mt-0.5">
+              <p className="text-xs sm:text-sm text-nox-mid mt-0.5 truncate">
                 {teamName ?? profile.ageGroup}
                 {profile.position ? ` · ${profile.position}` : ""}
                 {profile.jerseyNumber ? ` · #${profile.jerseyNumber}` : ""}
               </p>
             </div>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-3 sm:gap-4 w-full sm:w-auto">
             <NoxStatCard label="Attendance" value={`${profile.attendancePercentage}%`} accent="ion" />
             <NoxStatCard label="Rating" value={profile.overallRating?.toFixed(1) ?? "—"} accent="plasma" />
           </div>
@@ -98,7 +98,7 @@ const GuardianChildDetailPage: React.FC = () => {
 
       {profile && <PublicProfileToggleCard studentId={studentId} profile={profile} />}
 
-      <div className="flex gap-2 border-b border-white/[0.06] mb-6 overflow-x-auto">
+      <div className="flex gap-2 border-b border-white/[0.06] mb-6 overflow-x-auto no-scrollbar flex-nowrap -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
         {TABS.map((t) => {
           const Icon = t.icon;
           const active = tab === t.id;

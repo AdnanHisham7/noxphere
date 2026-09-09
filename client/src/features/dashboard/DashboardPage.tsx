@@ -90,21 +90,21 @@ const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Page header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <p className="section-title mb-1">
             {isSuperAdmin ? "System Overview" : (isConsolidated ? "Academy Overview" : "Overview")}
           </p>
-          <h1 className="font-display font-extrabold text-white text-2xl uppercase tracking-tight">
+          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">
             {isSuperAdmin ? "Super Admin Dashboard" : (isConsolidated ? "Academy Dashboard" : "Dashboard")}
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 text-xs text-volt-400 bg-volt-400/10 border border-volt-400/20 rounded px-3 py-1.5 font-bold font-mono">
-            <span className="w-1.5 h-1.5 rounded-full bg-volt-400 animate-pulse-volt" />
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <span className="flex items-center gap-1.5 text-xs text-volt-400 bg-volt-400/10 border border-volt-400/20 rounded px-2.5 sm:px-3 py-1.5 font-bold font-mono">
+            <span className="w-1.5 h-1.5 rounded-full bg-volt-400 animate-pulse-volt shrink-0" />
             {isSuperAdmin ? "Super Admin Active" : (isConsolidated ? "Academy-wide" : "Franchise Active")}
           </span>
         </div>
@@ -112,12 +112,12 @@ const DashboardPage: React.FC = () => {
 
       {/* KPI Stats Row */}
       {statsLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-lg" />)}
         </div>
       ) : isSuperAdmin ? (
         /* Super Admin Stats Layout */
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           <StatCard
             label="Total Academies"
             value={stats?.totalAcademies ?? 0}
@@ -160,7 +160,7 @@ const DashboardPage: React.FC = () => {
         </div>
       ) : isConsolidated ? (
         /* Consolidated (academy-wide) Stats Layout */
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           <StatCard
             label="Total Franchises"
             value={stats?.franchisePerformance?.length ?? 0}
@@ -211,7 +211,7 @@ const DashboardPage: React.FC = () => {
         </div>
       ) : (
         /* Single Franchise Stats Layout */
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard
             label="Total Students"
             value={stats?.totalStudents ?? 0}
@@ -496,7 +496,7 @@ const DashboardPage: React.FC = () => {
           <p className="text-2xs font-mono uppercase tracking-widest text-slate-500 font-bold px-1">
             Operational Shortcuts
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               {
                 label: 'Register Player',

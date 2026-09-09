@@ -308,7 +308,7 @@ const StudentDashboardPage: React.FC = () => {
       )}
 
       {isLoading && (
-        <div className="grid sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
           {[1, 2, 3].map((i) => (
             <NoxSkeleton key={i} className="h-24" />
           ))}
@@ -760,7 +760,7 @@ const StudentDashboardPage: React.FC = () => {
                 </span>
               </div>
 
-              <div className="grid sm:grid-cols-3 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
                 <NoxStatCard
                   label="Attendance"
                   value={`${data.profile.attendancePercentage}%`}
@@ -781,7 +781,7 @@ const StudentDashboardPage: React.FC = () => {
                 />
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <h2 className="font-orbital text-lg font-medium text-nox-high mb-4">Fee reminders</h2>
                   {[...data.overdueFees, ...data.upcomingFees].length === 0 ? (

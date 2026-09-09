@@ -81,7 +81,7 @@ const FranchiseDashboardPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Page header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <button
             onClick={() => navigate('/franchises')}
@@ -91,14 +91,14 @@ const FranchiseDashboardPage: React.FC = () => {
             All franchises
           </button>
           <p className="section-title mb-1">Franchise Dashboard</p>
-          <h1 className="font-display font-extrabold text-white text-2xl uppercase tracking-tight">
+          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">
             {franchiseLoading ? 'Loading…' : (franchise?.name ?? 'Franchise')}
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           {franchise && (
             <Badge variant={franchise.isActive ? 'green' : 'gray'}>
               {franchise.isActive ? 'Active' : 'Inactive'}
@@ -109,11 +109,11 @@ const FranchiseDashboardPage: React.FC = () => {
 
       {/* KPI Stats Row */}
       {statsLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-lg" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard
             label="Total Students"
             value={stats?.totalStudents ?? 0}

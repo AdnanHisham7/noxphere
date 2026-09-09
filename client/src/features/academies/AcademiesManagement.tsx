@@ -258,23 +258,23 @@ const AcademiesManagement: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <p className="section-title mb-1">Infrastructure</p>
-          <h1 className="font-display font-extrabold text-white text-2xl uppercase tracking-tight">
+          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">
             Academies Management
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             {academies.length} total branches
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           {/* Search & Filter */}
           <Input
             placeholder="Search by name or code..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-48"
+            className="w-full sm:w-48"
           />
           <select
-            className="bg-pitch-700 border border-white/5 rounded px-2 py-1 text-sm"
+            className="bg-pitch-700 border border-white/5 rounded px-2 py-1 text-sm flex-1 sm:flex-initial"
             value={
               activeFilter === undefined
                 ? "all"
@@ -320,6 +320,7 @@ const AcademiesManagement: React.FC = () => {
           <Button
             onClick={() => setIsAddModalOpen(true)}
             icon={<Plus size={18} />}
+            className="w-full sm:w-auto justify-center"
           >
             New Academy
           </Button>
@@ -355,7 +356,7 @@ const AcademiesManagement: React.FC = () => {
 
       {/* Table Mode */}
       {viewMode === "table" && (
-        <div className="card overflow-hidden">
+        <div className="card overflow-hidden overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-white/5 bg-pitch-700/50">

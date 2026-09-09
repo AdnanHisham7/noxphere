@@ -158,7 +158,7 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ navItems, portalLabe
 
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/60 z-20 md:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-30 md:hidden transition-opacity"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -169,7 +169,7 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ navItems, portalLabe
           <ThemeToggle size="sm" />
           <PortalNotificationBell />
         </div>
-        <div className="max-w-6xl mx-auto px-5 md:px-8 py-8">
+        <div className="max-w-6xl mx-auto px-3.5 sm:px-5 md:px-8 py-4 sm:py-6 md:py-8">
 
           <ConsentGate>
             <Outlet />

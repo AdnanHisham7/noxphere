@@ -36,9 +36,10 @@ export const StatCard: React.FC<StatCardProps> = ({
       <div>
         <span
           className={clsx(
-            "font-display font-extrabold text-3xl tabular-nums",
+            "font-display font-extrabold text-2xl sm:text-3xl tabular-nums truncate block",
             accents[accent],
           )}
+          title={typeof value === "string" || typeof value === "number" ? String(value) : undefined}
         >
           {value}
         </span>

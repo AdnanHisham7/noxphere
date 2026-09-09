@@ -126,26 +126,26 @@ const TeamsPage: React.FC = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white uppercase tracking-wide">
+          <h1 className="font-display text-xl sm:text-2xl font-bold text-white uppercase tracking-wide">
             {isHeadOffice ? "Academy Teams" : "Teams"}
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
             {isHeadOffice
               ? "All squads across all franchises of the academy"
               : "Batches and squads for this franchise"}
           </p>
         </div>
         {!isHeadOffice && (
-          <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)}>
+          <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)} className="w-full sm:w-auto justify-center">
             New team
           </Button>
         )}
       </div>
 
       {isLoading && (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-32 rounded-xl" />
           ))}
@@ -166,7 +166,7 @@ const TeamsPage: React.FC = () => {
       )}
 
       {teams && teams.length > 0 && (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {teams.map((team) => (
             <Card key={team.id} className="p-0 flex flex-col overflow-hidden">
               <div

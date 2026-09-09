@@ -97,21 +97,21 @@ const FranchiseManagementPage: React.FC = () => {
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <p className="section-title mb-1">Structure</p>
-          <h1 className="font-display font-extrabold text-white text-2xl uppercase tracking-tight">Franchises</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">Franchises</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             {isSuperAdmin
               ? "Manage the operational franchises under any academy"
               : "Manage the franchises under your academy"}
           </p>
         </div>
         {activeAcademyId && canCreateFranchise && (
-          <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)}>New franchise</Button>
+          <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)} className="w-full sm:w-auto">New franchise</Button>
         )}
       </div>
 
       {isSuperAdmin && (
         <div className="card p-4 flex items-end gap-3">
-          <div className="min-w-64">
+          <div className="w-full sm:w-64">
             <label className="label">Academy</label>
             <select className="input" value={selectedAcademyId} onChange={(e) => setSelectedAcademyId(e.target.value)}>
               <option value="">Select an academy…</option>

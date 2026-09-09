@@ -203,8 +203,8 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="w-36">
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-end gap-3 w-full lg:w-auto">
+              <div className="w-full sm:w-36">
                 <Input
                   label="Official Card (₹)"
                   type="number"
@@ -217,7 +217,7 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
                 />
               </div>
 
-              <div className="w-36">
+              <div className="w-full sm:w-36">
                 <Input
                   label="Custom Card (₹)"
                   type="number"
@@ -230,12 +230,12 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
                 />
               </div>
 
-              <div className="pt-5">
+              <div className="pt-1 sm:pt-0">
                 <Button
                   type="submit"
                   size="md"
                   loading={isUpdatingPricing}
-                  className="!bg-volt-400 hover:!bg-volt-300 !text-pitch-950 font-bold"
+                  className="!bg-volt-400 hover:!bg-volt-300 !text-pitch-950 font-bold w-full sm:w-auto justify-center"
                 >
                   Save Pricing
                 </Button>
@@ -246,7 +246,7 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
       </div>
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <StatCard
           label="Total NFC Revenue"
           value={`₹${totalRevenue.toLocaleString("en-IN")}`}

@@ -219,10 +219,10 @@ export const AcademyNfcManagementPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="section-title mb-1">Squad Gear &amp; Tech</p>
-          <h1 className="font-display font-black text-white text-2xl uppercase tracking-tight">
+          <h1 className="font-display font-black text-white text-xl sm:text-2xl uppercase tracking-tight">
             NFC Smart Cards
           </h1>
-          <p className="text-sm text-slate-400 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
             Order physical contactless NFC player cards for your academy squad
           </p>
         </div>
@@ -232,14 +232,14 @@ export const AcademyNfcManagementPage: React.FC = () => {
             setIsWizardOpen(true);
             setStep(1);
           }}
-          className="!bg-volt-400 hover:!bg-volt-300 !text-pitch-950 font-bold"
+          className="!bg-volt-400 hover:!bg-volt-300 !text-pitch-950 font-bold w-full sm:w-auto justify-center"
         >
           <Plus size={16} className="mr-1.5" /> Order NFC Cards
         </Button>
       </div>
 
       {/* Overview Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           label="Total Cards Delivered / Paid"
           value={totalCardsOrdered}
@@ -558,29 +558,29 @@ export const AcademyNfcManagementPage: React.FC = () => {
       >
         <div className="space-y-5">
           {/* Stepper Indicator */}
-          <div className="flex items-center justify-between border-b border-white/10 pb-3 text-xs">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3 text-xs overflow-x-auto no-scrollbar gap-2">
             <span
-              className={`font-semibold flex items-center gap-1.5 ${
+              className={`font-semibold flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 step === 1 ? "text-volt-400" : "text-slate-400"
               }`}
             >
               <span className="w-5 h-5 rounded-full border border-current flex items-center justify-center font-mono text-2xs">
                 1
               </span>
-              Select Players ({selectedStudentIds.length})
+              <span className="hidden sm:inline">Select Players</span> ({selectedStudentIds.length})
             </span>
             <span
-              className={`font-semibold flex items-center gap-1.5 ${
+              className={`font-semibold flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 step === 2 ? "text-volt-400" : "text-slate-400"
               }`}
             >
               <span className="w-5 h-5 rounded-full border border-current flex items-center justify-center font-mono text-2xs">
                 2
               </span>
-              Card Style
+              <span className="hidden sm:inline">Card </span>Style
             </span>
             <span
-              className={`font-semibold flex items-center gap-1.5 ${
+              className={`font-semibold flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 step === 3 ? "text-volt-400" : "text-slate-400"
               }`}
             >
@@ -590,7 +590,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
               Shipping
             </span>
             <span
-              className={`font-semibold flex items-center gap-1.5 ${
+              className={`font-semibold flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 step === 4 ? "text-volt-400" : "text-slate-400"
               }`}
             >

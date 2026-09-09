@@ -352,7 +352,7 @@ const SessionRosterPage: React.FC = () => {
             loading={savingAttendance || savingPerformance}
             onClick={handleSaveAll}
             icon={<Save size={15} />}
-            className="text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-pitch-900"
+            className="text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-pitch-900 w-full sm:w-auto justify-center"
           >
             Save All Updates
           </Button>

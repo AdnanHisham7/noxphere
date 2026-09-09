@@ -389,23 +389,24 @@ const FeesPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Top Header */}
-      <div className="flex items-start justify-between flex-wrap gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
           <p className="section-title mb-1">Financial Management</p>
-          <h1 className="font-display text-2xl font-extrabold text-white uppercase tracking-tight">
+          <h1 className="font-display text-xl sm:text-2xl font-extrabold text-white uppercase tracking-tight">
             Player Fees
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
             Track schedules, collection milestones, and due-date alerts across every enrolled player.
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
           <Button
             icon={<Plus size={15} />}
             onClick={() => {
               setCreateInitialStudentId(undefined);
               setShowCreate(true);
             }}
+            className="w-full sm:w-auto justify-center"
           >
             Schedule fee
           </Button>
@@ -413,7 +414,7 @@ const FeesPage: React.FC = () => {
       </div>
 
       {/* KPI Overview Metrics Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="card p-3.5 bg-pitch-900/60 border-white/10 relative overflow-hidden">
           <p className="text-2xs font-semibold uppercase tracking-wider text-slate-400">Total Invoiced</p>
           <p className="text-xl font-display font-extrabold text-white mt-1">
@@ -633,7 +634,7 @@ const FeesPage: React.FC = () => {
                 {/* Student Header Bar */}
                 <div
                   onClick={() => toggleStudentExpanded(group.student._id)}
-                  className="p-3.5 sm:p-4 flex items-center justify-between flex-wrap gap-3 cursor-pointer hover:bg-white/[0.02] transition-colors"
+                  className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-white/[0.02] transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <Avatar
@@ -659,7 +660,7 @@ const FeesPage: React.FC = () => {
                   </div>
 
                   {/* Financial summary & Progress */}
-                  <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
+                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 flex-wrap w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
                     <div className="text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <span className="text-xs font-mono font-bold text-white">

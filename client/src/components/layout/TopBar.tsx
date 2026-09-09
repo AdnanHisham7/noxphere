@@ -1,7 +1,7 @@
-// src/components/layout/TopBar.tsx
 import { useSelector, useDispatch } from "react-redux";
 import { Link, useLocation } from "react-router-dom";
-import { Building2, ChevronDown, Check, Bell, Repeat2 } from "lucide-react";
+import { Building2, ChevronDown, Check, Bell, Repeat2, Menu } from "lucide-react";
+import logoSrc from "../../assets/logo.png";
 import {
   setNotifications,
   markOneRead,
@@ -10,6 +10,7 @@ import {
 import {
   setActiveFranchise,
   clearActiveFranchise,
+  toggleMobileSidebar,
 } from "../../store/slices/uiSlice";
 import { Avatar } from "../ui";
 import { useState, useEffect } from "react";
@@ -69,9 +70,9 @@ const FranchiseSwitcher: React.FC = () => {
 
   if (isFranchiseManager) {
     return (
-      <div className="hidden sm:flex items-center gap-2 bg-slate-100 border border-slate-200 text-slate-700 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 rounded px-3 py-1.5">
-        <Building2 size={13} className="text-volt-600 dark:text-volt-400" />
-        <span className="text-xs font-medium max-w-40 truncate">
+      <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 rounded px-2.5 sm:px-3 py-1.5 max-w-[130px] sm:max-w-xs">
+        <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />
+        <span className="text-xs font-medium truncate">
           {currentFranchise?.name ?? "Loading…"}
         </span>
       </div>
@@ -79,18 +80,18 @@ const FranchiseSwitcher: React.FC = () => {
   }
 
   return (
-    <div className="relative hidden sm:block">
+    <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 bg-slate-100 border border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/20 rounded px-3 py-1.5 transition-colors"
+        className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/20 rounded px-2.5 sm:px-3 py-1.5 transition-colors max-w-[140px] sm:max-w-xs"
       >
-        <Building2 size={13} className="text-volt-600 dark:text-volt-400" />
-        <span className="text-xs font-medium max-w-40 truncate">
+        <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />
+        <span className="text-xs font-medium truncate">
           {currentFranchiseId
             ? (currentFranchise?.name ?? "Loading…")
             : "Academy Overview"}
         </span>
-        <ChevronDown size={12} className="text-slate-500" />
+        <ChevronDown size={12} className="text-slate-500 shrink-0" />
       </button>
 
       {open && (
@@ -165,9 +166,9 @@ const CoachFranchiseSwitcher: React.FC = () => {
 
   if (!franchises || franchises.length === 0) {
     return (
-      <div className="hidden sm:flex items-center gap-2 bg-slate-100 border border-slate-200 text-slate-700 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 rounded px-3 py-1.5">
-        <Building2 size={13} className="text-volt-600 dark:text-volt-400" />
-        <span className="text-xs text-slate-500 font-medium">
+      <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 rounded px-2.5 sm:px-3 py-1.5">
+        <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />
+        <span className="text-xs text-slate-500 font-medium truncate max-w-[120px] sm:max-w-none">
           No franchise assigned yet
         </span>
       </div>
@@ -176,9 +177,9 @@ const CoachFranchiseSwitcher: React.FC = () => {
 
   if (franchises.length === 1) {
     return (
-      <div className="hidden sm:flex items-center gap-2 bg-slate-100 border border-slate-200 text-slate-700 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 rounded px-3 py-1.5">
-        <Building2 size={13} className="text-volt-600 dark:text-volt-400" />
-        <span className="text-xs font-medium max-w-40 truncate">
+      <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 rounded px-2.5 sm:px-3 py-1.5">
+        <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />
+        <span className="text-xs font-medium max-w-[120px] sm:max-w-40 truncate">
           {franchises[0].name}
         </span>
       </div>
@@ -186,22 +187,22 @@ const CoachFranchiseSwitcher: React.FC = () => {
   }
 
   return (
-    <div className="relative hidden sm:block">
+    <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 bg-slate-100 border border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/20 rounded px-3 py-1.5 transition-colors"
+        className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/20 rounded px-2.5 sm:px-3 py-1.5 transition-colors"
       >
-        <Building2 size={13} className="text-volt-600 dark:text-volt-400" />
-        <span className="text-xs font-medium max-w-40 truncate">
+        <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />
+        <span className="text-xs font-medium max-w-[120px] sm:max-w-40 truncate">
           {currentFranchise?.name ?? "Loading…"}
         </span>
-        <ChevronDown size={12} className="text-slate-500" />
+        <ChevronDown size={12} className="text-slate-500 shrink-0" />
       </button>
 
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-11 w-64 card shadow-panel z-50 animate-slide-up py-1.5">
+          <div className="absolute left-0 top-11 w-64 max-w-[85vw] card shadow-panel z-50 animate-slide-up py-1.5">
             <p className="px-3 py-1.5 section-title">Switch franchise</p>
             {franchises.map((f) => (
               <button
@@ -285,9 +286,22 @@ export const TopBar: React.FC = () => {
   };
 
   return (
-    <header className="h-16 bg-white/90 dark:bg-pitch-900/80 backdrop-blur-sm border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-6 sticky top-0 z-30 transition-colors duration-200">
-      {/* Left: Franchise selector / breadcrumb */}
-      <div className="flex items-center gap-4">
+    <header className="h-16 bg-white/90 dark:bg-pitch-900/80 backdrop-blur-sm border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-3.5 sm:px-6 sticky top-0 z-30 transition-colors duration-200">
+      {/* Left: Mobile hamburger menu + Mobile logo + Franchise selector / breadcrumb */}
+      <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+        <button
+          type="button"
+          onClick={() => dispatch(toggleMobileSidebar())}
+          className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg bg-slate-100 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white shrink-0 transition-colors"
+          aria-label="Toggle Navigation Menu"
+        >
+          <Menu size={18} />
+        </button>
+
+        <Link to="/" className="md:hidden flex items-center shrink-0">
+          <img src={logoSrc} alt="Noxphere" className="h-7 w-auto object-contain" />
+        </Link>
+
         {user?.role === "coach" ? (
           <CoachFranchiseSwitcher />
         ) : (
@@ -297,7 +311,7 @@ export const TopBar: React.FC = () => {
       </div>
 
       {/* Right: Theme Toggle + Notifications + Profile */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Transfer Wall quick link — manager only, and only while the
             academy hasn't disabled it */}
         {showTransferWallLink && (
@@ -335,7 +349,7 @@ export const TopBar: React.FC = () => {
                 className="fixed inset-0 z-40"
                 onClick={() => setNotifOpen(false)}
               />
-              <div className="absolute right-0 top-12 w-80 card shadow-panel z-50 animate-slide-up">
+              <div className="absolute right-0 top-12 w-[calc(100vw-1.5rem)] sm:w-80 max-w-sm card shadow-panel z-50 animate-slide-up">
                 <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/5">
                   <span className="section-title">Alerts</span>
                   <button

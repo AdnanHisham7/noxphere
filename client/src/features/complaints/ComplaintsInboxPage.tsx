@@ -32,12 +32,12 @@ const ComplaintsInboxPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <p className="section-title mb-1">Academy Staff & Guardians</p>
-          <h1 className="font-display font-extrabold text-white text-2xl uppercase tracking-tight">Complaints</h1>
+          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">Complaints</h1>
         </div>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input">
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input w-full sm:w-auto">
           <option value="">All statuses</option>
           <option value="open">Open</option>
           <option value="in_progress">In Progress</option>

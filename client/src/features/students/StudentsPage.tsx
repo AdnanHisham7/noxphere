@@ -82,7 +82,7 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
       </div>
 
       <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
-        <span className="font-display font-black text-[110px] leading-none text-white/[0.06] select-none">
+        <span className="font-display font-black text-[64px] sm:text-[100px] leading-none text-white/[0.06] select-none">
           {student.jerseyNumber ?? "—"}
         </span>
       </div>
@@ -310,32 +310,32 @@ const StudentsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <p className="section-title mb-1">Management</p>
-          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-2xl uppercase tracking-tight">
+          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
             Squad &amp; Players
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             {isLoading ? "Loading…" : `${data?.total ?? 0} players enrolled`}
           </p>
         </div>
         {canManageSquad && (
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             {academyId && (
               <Button
                 size="sm"
                 variant="secondary"
                 icon={<Link2 size={14} />}
                 onClick={() => setShowShareLinkModal(true)}
-                className="text-xs"
+                className="text-xs flex-1 sm:flex-none justify-center"
               >
                 Registration Link
               </Button>
             )}
-            <Link to="/nfc-cards">
+            <Link to="/nfc-cards" className="flex-1 sm:flex-none">
               <Button
                 size="sm"
                 variant="secondary"
                 icon={<CreditCard size={14} />}
-                className="text-xs"
+                className="text-xs w-full justify-center"
               >
                 NFC Cards
               </Button>
@@ -345,11 +345,11 @@ const StudentsPage: React.FC = () => {
               variant="secondary"
               icon={<UserPlus size={14} />}
               onClick={() => setActiveTab("free_agents")}
-              className="text-xs"
+              className="text-xs flex-1 sm:flex-none justify-center"
             >
               Free Agents
             </Button>
-            <Button size="sm" icon={<span>+</span>} onClick={() => setShowAddModal(true)} className="text-xs">
+            <Button size="sm" icon={<span>+</span>} onClick={() => setShowAddModal(true)} className="text-xs flex-1 sm:flex-none justify-center">
               Add Player
             </Button>
           </div>
@@ -358,12 +358,12 @@ const StudentsPage: React.FC = () => {
 
       {/* Navigation Tabs */}
       {canManageSquad && (
-        <div className="flex items-center gap-2 border-b border-slate-200 dark:border-white/10 pb-1">
+        <div className="flex items-center gap-2 border-b border-slate-200 dark:border-white/10 pb-1 overflow-x-auto no-scrollbar flex-nowrap -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
           <button
             type="button"
             onClick={() => setActiveTab("squad")}
             className={clsx(
-              "px-4 py-2 text-xs font-display uppercase tracking-wider font-bold rounded-t-lg transition-colors",
+              "px-3.5 sm:px-4 py-2 text-xs font-display uppercase tracking-wider font-bold rounded-t-lg transition-colors whitespace-nowrap shrink-0",
               activeTab === "squad"
                 ? "bg-slate-200 dark:bg-pitch-800 text-slate-900 dark:text-volt-400 border-b-2 border-volt-400"
                 : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
@@ -375,7 +375,7 @@ const StudentsPage: React.FC = () => {
             type="button"
             onClick={() => setActiveTab("free_agents")}
             className={clsx(
-              "px-4 py-2 text-xs font-display uppercase tracking-wider font-bold rounded-t-lg transition-colors flex items-center gap-1.5",
+              "px-3.5 sm:px-4 py-2 text-xs font-display uppercase tracking-wider font-bold rounded-t-lg transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0",
               activeTab === "free_agents"
                 ? "bg-slate-200 dark:bg-pitch-800 text-slate-900 dark:text-volt-400 border-b-2 border-volt-400"
                 : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
@@ -388,7 +388,7 @@ const StudentsPage: React.FC = () => {
             type="button"
             onClick={() => setActiveTab("requests")}
             className={clsx(
-              "px-4 py-2 text-xs font-display uppercase tracking-wider font-bold rounded-t-lg transition-colors flex items-center gap-2",
+              "px-3.5 sm:px-4 py-2 text-xs font-display uppercase tracking-wider font-bold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap shrink-0",
               activeTab === "requests"
                 ? "bg-slate-200 dark:bg-pitch-800 text-slate-900 dark:text-volt-400 border-b-2 border-volt-400"
                 : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
@@ -421,9 +421,9 @@ const StudentsPage: React.FC = () => {
       ) : (
         <>
           {/* Filters + view toggle */}
-          <div className="card p-4 flex flex-wrap gap-3 items-end">
+          <div className="card p-3.5 sm:p-4 flex flex-col sm:flex-row flex-wrap gap-2.5 sm:gap-3 sm:items-end">
 
-        <div className="flex-1 min-w-48">
+        <div className="w-full sm:flex-1 sm:min-w-48">
           <Input
             placeholder="Search players..."
             value={search}
@@ -431,24 +431,24 @@ const StudentsPage: React.FC = () => {
             icon={<Search className="h-4 w-4 text-muted-foreground" />}
           />
         </div>
-        <div className="min-w-32">
-          <select className="input" value={filterTeam} onChange={(e) => setFilterTeam(e.target.value)}>
+        <div className="w-full sm:w-auto sm:min-w-32">
+          <select className="input w-full" value={filterTeam} onChange={(e) => setFilterTeam(e.target.value)}>
             <option value="">All Teams</option>
             {(teams ?? []).map((t) => (
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
           </select>
         </div>
-        <div className="min-w-32">
-          <select className="input" value={filterAge} onChange={(e) => setFilterAge(e.target.value)}>
+        <div className="w-full sm:w-auto sm:min-w-32">
+          <select className="input w-full" value={filterAge} onChange={(e) => setFilterAge(e.target.value)}>
             <option value="">All Ages</option>
             {categoriesList.map((a) => (
               <option key={a}>{a}</option>
             ))}
           </select>
         </div>
-        <div className="min-w-40">
-          <select className="input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+        <div className="w-full sm:w-auto sm:min-w-40">
+          <select className="input w-full" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
             <option value="">All Statuses</option>
             <option value="selected">Selected</option>
             <option value="shortlisted">Shortlisted</option>
@@ -458,7 +458,7 @@ const StudentsPage: React.FC = () => {
           </select>
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="w-full sm:w-auto sm:ml-auto flex items-center justify-between sm:justify-start gap-2 pt-1 sm:pt-0">
           <button
             onClick={() => setShowPhotoCards((prev) => !prev)}
             className="h-10 w-10 flex items-center justify-center rounded-xl border border-white/10 bg-pitch-700 text-slate-300 hover:text-white hover:border-volt-400/30 hover:bg-pitch-600 transition-all duration-300"

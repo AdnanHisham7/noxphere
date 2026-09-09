@@ -106,22 +106,22 @@ const FinancePage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="pill pill-green font-mono text-2xs uppercase">Platform Operator</span>
             <span className="text-2xs text-slate-500">Super Admin Finances</span>
           </div>
-          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-2xl uppercase tracking-tight">
+          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
             Platform Financial Ledger
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5 max-w-2xl">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5 max-w-2xl">
             Super Admin revenue derived strictly from Academy SaaS Subscriptions and Smart NFC Card sales.
           </p>
         </div>
 
         <select
-          className="input !w-auto text-xs"
+          className="input w-full sm:!w-auto text-xs"
           value={academyId}
           onChange={(e) => setAcademyId(e.target.value)}
         >
@@ -135,15 +135,15 @@ const FinancePage: React.FC = () => {
       </div>
 
       {/* Domain Separation Notice */}
-      <div className="card p-3.5 bg-slate-100/70 dark:bg-pitch-800/40 border border-slate-200/80 dark:border-white/[0.06] flex items-center justify-between gap-3 text-xs">
+      <div className="card p-3.5 bg-slate-100/70 dark:bg-pitch-800/40 border border-slate-200/80 dark:border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2.5 text-slate-600 dark:text-slate-300">
           <Info size={16} className="text-volt-500 dark:text-volt-400 shrink-0" />
           <span>
             <strong>Revenue Model:</strong> Platform earnings come directly from <strong>SaaS Subscriptions</strong> and <strong>Smart NFC Card sales</strong>. Student coaching and tuition fees belong exclusively to each respective academy.
           </span>
         </div>
-        <Link to="/nfc-cards" className="shrink-0">
-          <Button size="sm" variant="secondary" className="text-xs !py-1 !px-2.5">
+        <Link to="/nfc-cards" className="shrink-0 w-full sm:w-auto">
+          <Button size="sm" variant="secondary" className="text-xs !py-1 !px-2.5 w-full justify-center">
             <CreditCard size={13} className="mr-1" /> NFC Cards Center
           </Button>
         </Link>
@@ -151,13 +151,13 @@ const FinancePage: React.FC = () => {
 
       {/* Platform KPI Row */}
       {overviewLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-28 rounded-lg" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard
             label="Total Platform Revenue"
             value={formatCurrency(totalPlatformRev)}

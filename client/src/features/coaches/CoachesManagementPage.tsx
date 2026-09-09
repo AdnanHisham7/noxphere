@@ -75,15 +75,15 @@ const CoachesManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-start justify-between flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
           <p className="section-title mb-1">Staff</p>
-          <h1 className="font-display font-extrabold text-white text-2xl uppercase tracking-tight">Coaches</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">Coaches</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             {isLoading ? "Loading…" : `${coachesResult?.total ?? 0} coaches in this academy`}
           </p>
         </div>
-        <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)}>New coach</Button>
+        <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)} className="w-full sm:w-auto justify-center">New coach</Button>
       </div>
 
       <div className="card p-4">

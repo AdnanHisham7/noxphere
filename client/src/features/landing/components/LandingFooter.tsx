@@ -16,10 +16,11 @@ export const LandingFooter: React.FC = () => {
           </span>
         </div>
 
-        <div className="flex items-center gap-6 text-sm text-nox-mid">
+        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm text-nox-mid">
           <a href="#features" className="hover:text-nox-high transition-colors">Features</a>
           <a href="#how-it-works" className="hover:text-nox-high transition-colors">How it works</a>
           <a href="#faq" className="hover:text-nox-high transition-colors">FAQ</a>
+          <Link to="/signup/student" className="text-emerald-600 dark:text-core-400 font-semibold hover:underline transition-colors">Player Sign Up</Link>
           <Link to="/login" className="hover:text-nox-high transition-colors">Sign in</Link>
         </div>
 

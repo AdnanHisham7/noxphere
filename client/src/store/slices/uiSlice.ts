@@ -5,6 +5,7 @@
 
   interface UiState {
     sidebarCollapsed: boolean;
+    mobileSidebarOpen: boolean;
     activeFranchiseId: string | null;
     theme: ThemeMode;
   }
@@ -23,12 +24,22 @@
     name: 'ui',
     initialState: {
       sidebarCollapsed: false,
+      mobileSidebarOpen: false,
       activeFranchiseId: localStorage.getItem('activeFranchiseId'),
       theme: savedTheme,
     } as UiState,
     reducers: {
       toggleSidebar: (state) => {
         state.sidebarCollapsed = !state.sidebarCollapsed;
+      },
+      setMobileSidebarOpen: (state, action: PayloadAction<boolean>) => {
+        state.mobileSidebarOpen = action.payload;
+      },
+      toggleMobileSidebar: (state) => {
+        state.mobileSidebarOpen = !state.mobileSidebarOpen;
+      },
+      closeMobileSidebar: (state) => {
+        state.mobileSidebarOpen = false;
       },
       setActiveFranchise: (state, action: PayloadAction<string>) => {
         state.activeFranchiseId = action.payload;
@@ -65,6 +76,9 @@
 
   export const {
     toggleSidebar,
+    setMobileSidebarOpen,
+    toggleMobileSidebar,
+    closeMobileSidebar,
     setActiveFranchise,
     clearActiveFranchise,
     toggleTheme,

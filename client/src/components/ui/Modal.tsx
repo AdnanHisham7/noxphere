@@ -27,7 +27,7 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -42,8 +42,8 @@ export const Modal: React.FC<ModalProps> = ({
         )}
       >
         {/* Fixed Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-white/5 flex-shrink-0">
-          <h2 className="font-display font-bold text-slate-900 dark:text-white uppercase tracking-wide">
+        <div className="flex items-center justify-between px-4 py-3.5 sm:p-5 border-b border-slate-200 dark:border-white/5 flex-shrink-0">
+          <h2 className="font-display font-bold text-slate-900 dark:text-white uppercase tracking-wide text-sm sm:text-base">
             {title}
           </h2>
           <button
@@ -55,7 +55,7 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
         
         {/* Scrollable Body Content */}
-        <div className="p-5 overflow-y-auto min-h-0 custom-scrollbar">
+        <div className="p-4 sm:p-5 overflow-y-auto min-h-0 custom-scrollbar">
           {children}
         </div>
       </div>

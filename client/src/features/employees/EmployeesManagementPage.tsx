@@ -101,15 +101,15 @@ const EmployeesManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
           <p className="section-title mb-1">Academy Staff</p>
-          <h1 className="font-display font-extrabold text-white text-2xl uppercase tracking-tight">Employees</h1>
+          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">Employees</h1>
         </div>
-        <Button icon={<UserPlus size={15} />} onClick={() => setShowAddEmployee(true)}>Add Employee</Button>
+        <Button icon={<UserPlus size={15} />} onClick={() => setShowAddEmployee(true)} className="w-full sm:w-auto justify-center">Add Employee</Button>
       </div>
 
-      <div className="flex gap-2 border-b border-white/5">
+      <div className="flex gap-2 border-b border-white/5 overflow-x-auto no-scrollbar flex-nowrap -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
         {[
           { id: "employees" as const, label: "Employees", icon: Users },
           { id: "roles" as const, label: "Roles", icon: Shield },
@@ -119,7 +119,7 @@ const EmployeesManagementPage: React.FC = () => {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={clsx(
-              "flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors",
+              "flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap shrink-0",
               tab === t.id ? "border-volt-400 text-volt-400" : "border-transparent text-slate-500 hover:text-slate-300"
             )}
           >
@@ -137,26 +137,33 @@ const EmployeesManagementPage: React.FC = () => {
         ) : (
           <div className="card divide-y divide-white/5">
             {employees.map((emp) => (
-              <div key={emp.id} className="flex items-center gap-4 p-4">
-                <div className="w-10 h-10 rounded-full bg-pitch-700 flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0">
-                  {emp.firstName[0]}{emp.lastName[0]}
+              <div key={emp.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-pitch-700 flex items-center justify-center text-xs font-bold text-slate-300 shrink-0">
+                    {emp.firstName[0]}{emp.lastName[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">{emp.firstName} {emp.lastName}</p>
+                    <p className="text-2xs text-slate-500 truncate">
+                      {emp.employeeType === "staff" ? (typeof emp.roleId === "object" ? emp.roleId?.name : "Staff") : "External"}
+                      {emp.email ? ` · ${emp.email}` : ""}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white">{emp.firstName} {emp.lastName}</p>
-                  <p className="text-2xs text-slate-500">
-                    {emp.employeeType === "staff" ? (typeof emp.roleId === "object" ? emp.roleId?.name : "Staff") : "External"}
-                    {emp.email ? ` · ${emp.email}` : ""}
-                  </p>
-                </div>
-                <Badge variant={emp.employeeType === "staff" ? "blue" : "gray"}>
-                  {emp.employeeType === "staff" ? "System access" : "External"}
-                </Badge>
-                <Badge variant={emp.isActive ? "green" : "gray"}>{emp.isActive ? "Active" : "Inactive"}</Badge>
-                <span className="text-xs text-slate-400 w-24 text-right">₹{emp.salaryAmount.toLocaleString("en-IN")}/mo</span>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setEditEmployee(emp)} className="text-slate-500 hover:text-volt-400"><Pencil size={14} /></button>
-                  <button onClick={() => handleToggleActive(emp)} className="text-slate-500 hover:text-volt-400"><Power size={14} /></button>
-                  <button onClick={() => handleDelete(emp)} className="text-slate-500 hover:text-ember-400"><Trash2 size={14} /></button>
+
+                <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 sm:gap-3 pl-13 sm:pl-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Badge variant={emp.employeeType === "staff" ? "blue" : "gray"}>
+                      {emp.employeeType === "staff" ? "System access" : "External"}
+                    </Badge>
+                    <Badge variant={emp.isActive ? "green" : "gray"}>{emp.isActive ? "Active" : "Inactive"}</Badge>
+                  </div>
+                  <span className="text-xs font-mono font-semibold text-slate-300">₹{emp.salaryAmount.toLocaleString("en-IN")}/mo</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => setEditEmployee(emp)} className="text-slate-500 hover:text-volt-400 p-1" title="Edit"><Pencil size={14} /></button>
+                    <button onClick={() => handleToggleActive(emp)} className="text-slate-500 hover:text-volt-400 p-1" title="Toggle active"><Power size={14} /></button>
+                    <button onClick={() => handleDelete(emp)} className="text-slate-500 hover:text-ember-400 p-1" title="Delete"><Trash2 size={14} /></button>
+                  </div>
                 </div>
               </div>
             ))}

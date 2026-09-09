@@ -23,7 +23,7 @@ const CoachDashboardPage: React.FC = () => {
       />
 
       {isLoading && (
-        <div className="grid sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
           {[1, 2, 3].map((i) => (
             <NoxSkeleton key={i} className="h-24" />
           ))}
@@ -36,7 +36,7 @@ const CoachDashboardPage: React.FC = () => {
 
       {data && (
         <>
-          <div className="grid sm:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
             <NoxStatCard label="Assigned players" value={data.roster.length} icon={<Users size={18} />} accent="ion" />
             <NoxStatCard
               label="Today's sessions"
@@ -88,7 +88,7 @@ const CoachDashboardPage: React.FC = () => {
               />
             ) : (
               <div className="nox-card p-5 space-y-4">
-                <div className="grid grid-cols-7 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
                   {DAY_LABELS.map((label, i) => {
                     const slot = availability?.weeklyAvailability.find((wa) => wa.dayOfWeek === i);
                     return (
@@ -135,7 +135,7 @@ const CoachDashboardPage: React.FC = () => {
                 icon={<CalendarClock size={28} />}
               />
             ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {data.upcomingSessions.map((s) => (
                   <Link
                     key={s.id}
@@ -159,7 +159,7 @@ const CoachDashboardPage: React.FC = () => {
           {data.roster.length > 0 && (
             <div className="mt-10">
               <h2 className="font-orbital text-lg font-medium text-nox-high mb-4">Your players</h2>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {data.roster.map((s) => (
                   <Link
                     key={s.id}
