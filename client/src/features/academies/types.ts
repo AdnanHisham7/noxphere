@@ -69,6 +69,5 @@ export interface AcademyConfigPayload {
   absentAlertDays?: number;
   dueDateAlertDays?: number;
   feeQrImageUrl?: string;
-  skillParameters?: string[];
   isActive?: boolean;
 }

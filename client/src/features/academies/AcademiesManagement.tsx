@@ -138,6 +138,24 @@ const AcademiesManagement: React.FC = () => {
   });
 
   const handleAddSubmit = async () => {
+    const parsedSkills = newAcademyForm.skillParameters
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (parsedSkills.length !== 6) {
+      toast.error(
+        `Exactly 6 skill parameters are required (currently ${parsedSkills.length}). It cannot be more or less.`
+      );
+      return;
+    }
+
+    const uniqueSkills = new Set(parsedSkills.map((s) => s.toLowerCase()));
+    if (uniqueSkills.size !== 6) {
+      toast.error("Skill parameter names must be unique");
+      return;
+    }
+
     const payload: CreateAcademyPayload = {
       name: newAcademyForm.name,
       academyCode: newAcademyForm.academyCode || undefined,
@@ -154,10 +172,7 @@ const AcademiesManagement: React.FC = () => {
       notificationAlertAfterMinutes: Number(
         newAcademyForm.notificationAlertAfterMinutes,
       ),
-      skillParameters: newAcademyForm.skillParameters
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
+      skillParameters: parsedSkills,
       manager: newAcademyForm.manager,
     };
 
@@ -199,7 +214,6 @@ const AcademiesManagement: React.FC = () => {
         alertBeforeMinutes: selectedAcademy.alertBeforeMinutes,
         notificationAlertAfterMinutes:
           selectedAcademy.notificationAlertAfterMinutes,
-        skillParameters: selectedAcademy.skillParameters,
         isActive: selectedAcademy.isActive,
       });
     }
@@ -780,16 +794,41 @@ const AcademiesManagement: React.FC = () => {
               }
             />
           </div>
-          <Input
-            label="Skill Parameters (comma separated)"
-            value={newAcademyForm.skillParameters}
-            onChange={(e) =>
-              setNewAcademyForm({
-                ...newAcademyForm,
-                skillParameters: e.target.value,
-              })
-            }
-          />
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="label mb-0">Skill Parameters * (comma separated)</label>
+              <span
+                className={`text-2xs font-mono font-bold ${
+                  newAcademyForm.skillParameters
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean).length === 6
+                    ? "text-volt-400"
+                    : "text-ember-400"
+                }`}
+              >
+                {
+                  newAcademyForm.skillParameters
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean).length
+                } / 6 parameters
+              </span>
+            </div>
+            <Input
+              value={newAcademyForm.skillParameters}
+              onChange={(e) =>
+                setNewAcademyForm({
+                  ...newAcademyForm,
+                  skillParameters: e.target.value,
+                })
+              }
+              placeholder="e.g. Dribbling, Passing, Shooting, Speed, Tactical Awareness, Attitude"
+            />
+            <p className="text-3xs text-slate-400 mt-1">
+              ⚠️ Exactly 6 skill parameters required. Once configured, they cannot be changed.
+            </p>
+          </div>
 
           <div className="flex gap-3 mt-6">
             <Button
@@ -908,53 +947,21 @@ const AcademiesManagement: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-3">
-              <p className="section-title text-volt-400">Skill Parameters</p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="section-title text-volt-400">Skill Parameters</p>
+                <span className="text-3xs text-slate-500 font-mono">Locked (Established at creation)</span>
+              </div>
               <div className="flex flex-wrap gap-2 p-3 bg-white/5 rounded border border-white/5">
-                {(
-                  configForm.skillParameters ?? selectedAcademy.skillParameters
-                ).map((skill, idx) => (
+                {(selectedAcademy.skillParameters || []).map((skill, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-2 bg-pitch-700 px-2 py-1 rounded text-xs text-white"
+                    className="flex items-center gap-1.5 bg-pitch-700 px-2.5 py-1 rounded text-xs text-white border border-white/10 font-medium"
                   >
+                    <span className="w-1.5 h-1.5 rounded-full bg-volt-400"></span>
                     {skill}
-                    <button
-                      type="button"
-                      className="text-ember-400 hover:text-ember-300"
-                      onClick={() => {
-                        const newSkills = (
-                          configForm.skillParameters ??
-                          selectedAcademy.skillParameters
-                        ).filter((_, i) => i !== idx);
-                        setConfigForm({
-                          ...configForm,
-                          skillParameters: newSkills,
-                        });
-                      }}
-                    >
-                      <X size={12} />
-                    </button>
                   </div>
                 ))}
-                <button
-                  type="button"
-                  className="text-xs text-volt-400 font-bold px-2 flex items-center gap-1 hover:text-volt-300"
-                  onClick={() => {
-                    const newSkill = prompt("Enter new skill parameter:");
-                    if (newSkill) {
-                      const current =
-                        configForm.skillParameters ??
-                        selectedAcademy.skillParameters;
-                      setConfigForm({
-                        ...configForm,
-                        skillParameters: [...current, newSkill],
-                      });
-                    }
-                  }}
-                >
-                  <Plus size={12} /> Add
-                </button>
               </div>
             </div>
 

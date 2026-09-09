@@ -37,7 +37,7 @@ export interface Employee {
 
 export interface SalaryPayment {
   id: string;
-  employeeId: string | { firstName: string; lastName: string; employeeType: string };
+  employeeId: string | { firstName: string; lastName: string; employeeType: string; roleId?: { name: string } | string };
   academyId: string;
   period: string;
   amount: number;

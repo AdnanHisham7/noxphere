@@ -24,17 +24,9 @@ import {
   Sparkles,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { calculateAgeCategory, ALL_AGE_GROUPS } from "@/utils/ageCategory";
 
-const AGE_GROUPS = [
-  "U-7",
-  "U-9",
-  "U-11",
-  "U-13",
-  "U-15",
-  "U-17",
-  "U-19",
-  "Senior",
-];
+const AGE_GROUPS = ALL_AGE_GROUPS;
 const POSITIONS = [
   "Forward",
   "Winger",
@@ -145,14 +137,17 @@ export const AcademyRegistrationPage: React.FC = () => {
           id: (res as any).studentId || res.student.id,
         });
         // Pre-fill student info
+        const prefillDob = res.student.dateOfBirth
+          ? res.student.dateOfBirth.split("T")[0]
+          : "";
         setStudentDetails((prev) => ({
           ...prev,
           firstName: res.student.firstName || prev.firstName,
           lastName: res.student.lastName || prev.lastName,
-          dateOfBirth: res.student.dateOfBirth
-            ? res.student.dateOfBirth.split("T")[0]
-            : prev.dateOfBirth,
-          ageGroup: res.student.ageGroup || prev.ageGroup,
+          dateOfBirth: prefillDob || prev.dateOfBirth,
+          ageGroup:
+            res.student.ageGroup ||
+            (prefillDob ? calculateAgeCategory(prefillDob) : prev.ageGroup),
           position: res.student.position || prev.position,
           photo: res.student.photo || prev.photo,
         }));
@@ -168,6 +163,14 @@ export const AcademyRegistrationPage: React.FC = () => {
     } catch (err: any) {
       toast.error(err?.data?.message || "Invalid or expired OTP code");
     }
+  };
+
+  const handleDobChange = (value: string) => {
+    setStudentDetails((prev) => ({
+      ...prev,
+      dateOfBirth: value,
+      ageGroup: value ? calculateAgeCategory(value) : prev.ageGroup,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -573,12 +576,7 @@ export const AcademyRegistrationPage: React.FC = () => {
                       type="date"
                       required
                       value={studentDetails.dateOfBirth}
-                      onChange={(e) =>
-                        setStudentDetails({
-                          ...studentDetails,
-                          dateOfBirth: e.target.value,
-                        })
-                      }
+                      onChange={(e) => handleDobChange(e.target.value)}
                       className="input"
                     />
                   </div>

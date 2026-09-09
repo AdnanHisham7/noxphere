@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { clsx } from "clsx";
-import { UserCog, Plus, KeyRound, Power, Search, Pencil, Clock, Trash2 } from "lucide-react";
+import { UserCog, Plus, KeyRound, Power, Search, Pencil, Clock, Trash2, Wallet } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { Button, Input, Badge, Avatar, Modal, Skeleton, EmptyState } from "../../components/ui";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
@@ -155,6 +155,23 @@ const CoachesManagementPage: React.FC = () => {
                   )}
                 </div>
 
+                <div className="flex items-center justify-between text-xs py-1.5 px-2 rounded bg-white/[0.02] border border-white/5">
+                  <div className="flex items-center gap-1.5 text-slate-400">
+                    <Wallet size={12} className="text-volt-400" />
+                    <span>Monthly Salary:</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-white">
+                      {c.salaryAmount !== undefined && c.salaryAmount > 0
+                        ? `₹${c.salaryAmount.toLocaleString("en-IN")}/mo`
+                        : "₹0 / Unset"}
+                    </span>
+                    <Link to="/employees" className="text-2xs text-volt-400 hover:underline">
+                      Payroll →
+                    </Link>
+                  </div>
+                </div>
+
                 <div className="flex items-center gap-3 pt-2 border-t border-white/5">
                   <button
                     onClick={() => setEditingCoach(c)}
@@ -196,7 +213,7 @@ const CoachesManagementPage: React.FC = () => {
           onCreate={async (body) => {
             try {
               await createCoach(body).unwrap();
-              toast.success("Coach created — assign them to a team from the Teams page");
+              toast.success("Coach created — linked to Employees for salary management");
               setShowCreate(false);
             } catch (err: any) {
               toast.error(err?.data?.message || "Couldn't create coach — try again");
@@ -239,6 +256,7 @@ const EditCoachModal: React.FC<{ coach: ManagedUser; franchises: any[]; onClose:
   const [lastName, setLastName] = useState(coach.lastName);
   const [phone, setPhone] = useState(coach.phone ?? "");
   const [franchiseId, setFranchiseId] = useState(coach.franchiseId ?? "");
+  const [salaryAmount, setSalaryAmount] = useState(coach.salaryAmount !== undefined ? String(coach.salaryAmount) : "");
 
   const handleSave = async () => {
     if (!firstName.trim() || !lastName.trim()) {
@@ -253,9 +271,10 @@ const EditCoachModal: React.FC<{ coach: ManagedUser; franchises: any[]; onClose:
           lastName: lastName.trim(),
           phone: phone.trim() || undefined,
           franchiseId: franchiseId,
+          salaryAmount: salaryAmount ? Number(salaryAmount) : 0,
         },
       }).unwrap();
-      toast.success("Coach details updated");
+      toast.success("Coach details and salary updated");
       onClose();
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't update coach — try again");
@@ -268,6 +287,14 @@ const EditCoachModal: React.FC<{ coach: ManagedUser; franchises: any[]; onClose:
         <Input label="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
         <Input label="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
         <Input label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+        <Input
+          label="Monthly Salary (₹)"
+          type="number"
+          min={0}
+          value={salaryAmount}
+          onChange={(e) => setSalaryAmount(e.target.value)}
+          placeholder="e.g. 25000"
+        />
         <div>
           <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
             Franchise in-charge (Optional)
@@ -298,7 +325,7 @@ const CreateCoachModal: React.FC<{
   franchises: any[];
   onClose: () => void;
   creating: boolean;
-  onCreate: (body: { email: string; password: string; role: "coach"; firstName: string; lastName: string; phone: string; franchiseId?: string }) => void;
+  onCreate: (body: { email: string; password: string; role: "coach"; firstName: string; lastName: string; phone: string; franchiseId?: string; salaryAmount?: number }) => void;
 }> = ({ franchises, onClose, creating, onCreate }) => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -306,6 +333,7 @@ const CreateCoachModal: React.FC<{
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [franchiseId, setFranchiseId] = useState("");
+  const [salaryAmount, setSalaryAmount] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -321,6 +349,7 @@ const CreateCoachModal: React.FC<{
       lastName,
       phone: phone.trim(),
       franchiseId: franchiseId || undefined,
+      salaryAmount: salaryAmount ? Number(salaryAmount) : undefined,
     });
   };
 
@@ -335,6 +364,20 @@ const CreateCoachModal: React.FC<{
         <Input label="Temporary password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 8 characters" required />
         <Input label="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
         
+        <div className="sm:col-span-2">
+          <Input
+            label="Monthly Salary (₹, optional)"
+            type="number"
+            min={0}
+            value={salaryAmount}
+            onChange={(e) => setSalaryAmount(e.target.value)}
+            placeholder="e.g. 25000 (Defaults to 0, manageable in Employees)"
+          />
+          <p className="text-2xs text-slate-500 mt-1">
+            This will automatically create a staff profile under Employees with the "Coach" role for salary tracking.
+          </p>
+        </div>
+
         <div className="sm:col-span-2">
           <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
             Franchise in-charge (Optional)

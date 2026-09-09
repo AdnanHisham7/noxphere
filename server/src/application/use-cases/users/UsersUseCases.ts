@@ -6,6 +6,8 @@ import { NotFoundError, ConflictError, BadRequestError } from "../../../shared/e
 import { CreateUserDto, UpdateUserDto, ResetPasswordDto } from "../../dtos/users.dto";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
 import { UserModel } from "../../../infrastructure/database/models/User.model";
+import { EmployeeModel } from "../../../infrastructure/database/models/Employee.model";
+import { EmployeeRoleModel } from "../../../infrastructure/database/models/EmployeeRole.model";
 import { normalizePhone, getPhoneMatchVariants } from "../../../shared/utils/phone";
 
 export interface RequestingUser {
@@ -120,6 +122,53 @@ export class UsersUseCases {
       franchiseId,
       academyId,
     });
+
+    // If a coach was created and belongs to an academy, automatically ensure an Employee record
+    // with the 'Coach' role exists so the academy manager can manage the coach's salary.
+    if (dto.role === "coach" && academyId) {
+      try {
+        let coachRole = await EmployeeRoleModel.findOne({ academyId, name: "Coach" });
+        if (!coachRole) {
+          coachRole = await EmployeeRoleModel.create({
+            academyId,
+            name: "Coach",
+            permissions: ["canManageSessions", "canManageAttendance", "canManagePerformance", "canManageSelection"],
+          });
+        }
+
+        const existingEmp = await EmployeeModel.findOne({
+          academyId,
+          $or: [{ userId: user.id }, { email: dto.email.toLowerCase() }],
+        });
+
+        if (!existingEmp) {
+          await EmployeeModel.create({
+            academyId,
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            phone: dto.phone,
+            email: dto.email.toLowerCase(),
+            employeeType: "staff",
+            userId: user.id as any,
+            roleId: coachRole._id,
+            salaryAmount: dto.salaryAmount ?? 0,
+            joinDate: new Date(),
+            isActive: true,
+          });
+        } else {
+          existingEmp.userId = user.id as any;
+          existingEmp.roleId = coachRole._id as any;
+          existingEmp.employeeType = "staff";
+          if (dto.salaryAmount !== undefined) {
+            existingEmp.salaryAmount = dto.salaryAmount;
+          }
+          await existingEmp.save();
+        }
+      } catch (empErr) {
+        console.error("Failed to auto-create employee profile for coach:", empErr);
+      }
+    }
+
     return sanitize(user);
   }
 
@@ -152,6 +201,21 @@ export class UsersUseCases {
     }
     const user = await this.userRepo.update(id, updates);
     if (!user) throw new NotFoundError("User");
+
+    // Sync any name/phone/salary updates to linked Employee record
+    if (dto.firstName || dto.lastName || dto.phone || dto.salaryAmount !== undefined) {
+      const empUpdates: any = {};
+      if (dto.firstName) empUpdates.firstName = dto.firstName;
+      if (dto.lastName) empUpdates.lastName = dto.lastName;
+      if (dto.phone) empUpdates.phone = dto.phone;
+      if (dto.salaryAmount !== undefined) empUpdates.salaryAmount = dto.salaryAmount;
+      try {
+        await EmployeeModel.findOneAndUpdate({ userId: id }, empUpdates);
+      } catch (empErr) {
+        console.error("Failed to sync employee details for user update:", empErr);
+      }
+    }
+
     return sanitize(user);
   }
 
@@ -160,6 +224,14 @@ export class UsersUseCases {
     if (!user) throw new NotFoundError("User");
     const updated = await this.userRepo.update(id, { isActive: !user.isActive });
     if (!updated) throw new NotFoundError("User");
+
+    // Sync active status to linked Employee
+    try {
+      await EmployeeModel.findOneAndUpdate({ userId: id }, { isActive: updated.isActive });
+    } catch (empErr) {
+      console.error("Failed to sync employee active status:", empErr);
+    }
+
     return sanitize(updated);
   }
 
@@ -178,5 +250,12 @@ export class UsersUseCases {
     }
     const success = await this.userRepo.softDelete(id);
     if (!success) throw new NotFoundError("User");
+
+    // Deactivate linked employee
+    try {
+      await EmployeeModel.findOneAndUpdate({ userId: id }, { isActive: false });
+    } catch (empErr) {
+      console.error("Failed to deactivate linked employee on deleteUser:", empErr);
+    }
   }
 }

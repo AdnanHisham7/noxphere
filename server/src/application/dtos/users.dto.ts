@@ -13,6 +13,7 @@ export const CreateUserSchema = z.object({
   // when a super_admin is creating the account — a manager's own academy
   // is resolved automatically server-side. See UsersUseCases.createUser.
   academyId: z.string().optional(),
+  salaryAmount: z.number().min(0).optional(),
 });
 
 export const UpdateUserSchema = z.object({
@@ -22,6 +23,7 @@ export const UpdateUserSchema = z.object({
   role: z.enum(["super_admin", "manager", "coach", "student", "guardian"]).optional(),
   franchiseId: z.string().optional(),
   academyId: z.string().optional(),
+  salaryAmount: z.number().min(0).optional(),
   permissions: z
     .object({
       canManageUsers: z.boolean().optional(),

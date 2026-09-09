@@ -6,6 +6,7 @@ import { SalaryPaymentModel } from "../../../infrastructure/database/models/Sala
 import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { UserPermissions } from "../../../domain/entities/User.entity";
 import { AcademySubscriptionUseCases } from "../subscription/AcademySubscriptionUseCases";
+import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
 import { NotFoundError, BadRequestError, ConflictError } from "../../../shared/errors/AppError";
 import { normalizePhone, getPhoneMatchVariants } from "../../../shared/utils/phone";
 
@@ -142,7 +143,73 @@ export class EmployeeUseCases {
     return employee;
   }
 
+  async syncAcademyCoaches(academyId: string) {
+    try {
+      const franchises = await FranchiseModel.find({ academyId }).select("_id").lean();
+      const franchiseIds = franchises.map((f) => f._id.toString());
+
+      const coaches = await UserModel.find({
+        role: "coach",
+        $or: [{ academyId }, { franchiseId: { $in: franchiseIds } }],
+      }).lean();
+
+      if (!coaches.length) return;
+
+      let coachRole = await EmployeeRoleModel.findOne({ academyId, name: "Coach" });
+      if (!coachRole) {
+        coachRole = await EmployeeRoleModel.create({
+          academyId,
+          name: "Coach",
+          permissions: ["canManageSessions", "canManageAttendance", "canManagePerformance", "canManageSelection"],
+        });
+      }
+
+      for (const coach of coaches) {
+        const existing = await EmployeeModel.findOne({
+          academyId,
+          $or: [{ userId: coach._id }, { email: coach.email }],
+        });
+
+        if (!existing) {
+          await EmployeeModel.create({
+            academyId,
+            firstName: coach.firstName,
+            lastName: coach.lastName,
+            phone: coach.phone,
+            email: coach.email,
+            employeeType: "staff",
+            userId: coach._id,
+            roleId: coachRole._id,
+            salaryAmount: 0,
+            joinDate: coach.createdAt || new Date(),
+            isActive: coach.isActive ?? true,
+          });
+        } else {
+          let needsSave = false;
+          if (!existing.userId) {
+            existing.userId = coach._id as any;
+            needsSave = true;
+          }
+          if (!existing.roleId) {
+            existing.roleId = coachRole._id as any;
+            needsSave = true;
+          }
+          if (existing.isActive !== coach.isActive) {
+            existing.isActive = coach.isActive;
+            needsSave = true;
+          }
+          if (needsSave) {
+            await existing.save();
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to sync coaches to employees for academy:", academyId, err);
+    }
+  }
+
   async listEmployees(academyId: string) {
+    await this.syncAcademyCoaches(academyId);
     return EmployeeModel.find({ academyId })
       .populate("roleId", "name permissions")
       .sort({ createdAt: -1 });
@@ -234,13 +301,20 @@ export class EmployeeUseCases {
   }
 
   async listSalaryForAcademyPeriod(academyId: string, period: string) {
+    // Ensures every coach in the academy has an employee profile
+    await this.syncAcademyCoaches(academyId);
+
     // Ensures every active employee has a row for this period before
     // returning the list, so the manager sees the whole roster even for
     // a period no one has touched yet, not just the ones already logged.
     const employees = await EmployeeModel.find({ academyId, isActive: true }).lean();
     await Promise.all(employees.map((e) => this.logSalaryForPeriod(e._id.toString(), period)));
     return SalaryPaymentModel.find({ academyId, period })
-      .populate("employeeId", "firstName lastName employeeType")
+      .populate({
+        path: "employeeId",
+        select: "firstName lastName employeeType roleId",
+        populate: { path: "roleId", select: "name" },
+      })
       .sort({ createdAt: 1 });
   }
 }

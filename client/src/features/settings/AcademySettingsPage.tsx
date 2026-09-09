@@ -1,7 +1,7 @@
 // src/features/settings/AcademySettingsPage.tsx
 import React, { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
-import { Settings, Plus, X, Save, Building2 } from "lucide-react";
+import { Settings, Save, Building2 } from "lucide-react";
 import { Button, Input, Card, Badge, Skeleton, EmptyState } from "../../components/ui";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import { academyApi } from "../../store/api/academyApi";
@@ -17,8 +17,6 @@ const AcademySettingsPage: React.FC = () => {
 
   const [name, setName] = useState("");
   const [location, setLocation] = useState<Location>({ name: "", address: "", latitude: 0, longitude: 0, fieldNumber: "" });
-  const [skillParameters, setSkillParameters] = useState<string[]>([]);
-  const [newSkill, setNewSkill] = useState("");
   const [absentAlertDays, setAbsentAlertDays] = useState(5);
   const [dueDateAlertDays, setDueDateAlertDays] = useState(3);
   const [dataProtectionContactEmail, setDataProtectionContactEmail] = useState("");
@@ -27,26 +25,10 @@ const AcademySettingsPage: React.FC = () => {
     if (!academy) return;
     setName(academy.name);
     setLocation(academy.location);
-    setSkillParameters(academy.skillParameters || []);
     setAbsentAlertDays(academy.absentAlertDays);
     setDueDateAlertDays(academy.dueDateAlertDays);
     setDataProtectionContactEmail(academy.dataProtectionContactEmail ?? "");
   }, [academy]);
-
-  const addSkill = () => {
-    const trimmed = newSkill.trim();
-    if (!trimmed) return;
-    if (skillParameters.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
-      toast.error("That skill parameter already exists");
-      return;
-    }
-    setSkillParameters((prev) => [...prev, trimmed]);
-    setNewSkill("");
-  };
-
-  const removeSkill = (skill: string) => {
-    setSkillParameters((prev) => prev.filter((s) => s !== skill));
-  };
 
   const handleSave = async () => {
     if (!academyId) return;
@@ -73,7 +55,6 @@ const AcademySettingsPage: React.FC = () => {
           name: name.trim(),
           location,
           ageGroups: academy?.ageGroups,
-          skillParameters,
           absentAlertDays,
           dueDateAlertDays,
           dataProtectionContactEmail: dataProtectionContactEmail.trim() || undefined,
@@ -166,45 +147,6 @@ const AcademySettingsPage: React.FC = () => {
             value={location?.fieldNumber ?? ""}
             onChange={(e) => setLocation((prev) => ({ ...prev, fieldNumber: e.target.value }))}
           />
-        </div>
-      </Card>
-
-      <Card>
-        <h2 className="font-display text-sm font-bold text-white uppercase tracking-wide mb-1">Technical skill parameters</h2>
-        <p className="text-xs text-slate-400 mb-4">
-          Defines the parameters coaches evaluate students on during sessions (e.g. Dribbling, Passing, Shooting, Attitude).
-        </p>
-        <div className="flex flex-wrap gap-2 mb-4">
-          {skillParameters?.length === 0 && <p className="text-xs text-slate-500">No skill parameters defined yet — add one below.</p>}
-          {skillParameters?.map((skill) => (
-            <Badge key={skill} variant="blue" className="flex items-center gap-1.5 pr-1.5">
-              {skill}
-              <button
-                type="button"
-                onClick={() => removeSkill(skill)}
-                className="hover:text-ember-400 transition-colors"
-                aria-label={`Remove ${skill}`}
-              >
-                <X size={12} />
-              </button>
-            </Badge>
-          ))}
-        </div>
-        <div className="flex gap-2 max-w-sm">
-          <Input
-            placeholder="e.g. Conditioning"
-            value={newSkill}
-            onChange={(e) => setNewSkill(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                addSkill();
-              }
-            }}
-          />
-          <Button type="button" variant="secondary" icon={<Plus size={15} />} onClick={addSkill}>
-            Add
-          </Button>
         </div>
       </Card>
 

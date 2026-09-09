@@ -182,8 +182,10 @@ export class AcademyUseCases {
       };
     }
 
+    const { ...safeDto } = dto as any;
+    delete safeDto.skillParameters;
     const updated = await this.academyRepository.update(id, {
-      ...dto,
+      ...safeDto,
       location: locationUpdate,
     });
     if (!updated) throw new NotFoundError("Academy");
@@ -201,9 +203,10 @@ export class AcademyUseCases {
     // A manager may only edit the academy their own franchise belongs to.
     // super_admin is unrestricted. This is what makes the settings tab —
     // name, location, age categories, guardian alert-day thresholds, and
-    // skillParameters — genuinely editable by the manager of the academy,
+    // feeQrImageUrl — genuinely editable by the manager of the academy,
     // without opening up isActive, maxStudents, or the session-reminder
     // minute fields, which stay super_admin-only.
+    // Skill parameters are permanently established at academy creation.
     //
     // Whitelisting here (rather than blacklisting isActive) means a
     // future field added to AcademyConfigSchema doesn't silently become
@@ -242,10 +245,10 @@ export class AcademyUseCases {
       if (dto.feeQrImageUrl !== undefined) {
         effectiveDto.feeQrImageUrl = dto.feeQrImageUrl ? ensureWhatsAppCompatibleImageUrl(dto.feeQrImageUrl) : dto.feeQrImageUrl;
       }
-      if (dto.skillParameters !== undefined) effectiveDto.skillParameters = dto.skillParameters;
       if (dto.dataProtectionContactEmail !== undefined) effectiveDto.dataProtectionContactEmail = dto.dataProtectionContactEmail;
     } else {
       effectiveDto = { ...dto };
+      delete effectiveDto.skillParameters;
       if (effectiveDto.feeQrImageUrl) {
         effectiveDto.feeQrImageUrl = ensureWhatsAppCompatibleImageUrl(effectiveDto.feeQrImageUrl);
       }

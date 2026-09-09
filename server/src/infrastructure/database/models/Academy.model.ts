@@ -73,6 +73,12 @@ const AcademySchema = new Schema<AcademyDocument>(
     feeQrImageUrl: { type: String },
     skillParameters: {
       type: [String],
+      validate: {
+        validator: function (v: string[]) {
+          return !v || (Array.isArray(v) && v.length === 6);
+        },
+        message: "Academy must have exactly 6 skill parameters",
+      },
       default: [
         "Dribbling",
         "Passing",

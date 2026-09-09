@@ -39,6 +39,7 @@ import {
   type Student,
   type SelectionStatus,
 } from "../../store/api/studentsApi";
+import { calculateAgeCategory, categoriesList } from "@/utils/ageCategory";
 
 interface PlayerCardContentProps {
   student: Student;
@@ -159,8 +160,6 @@ const getRatingColor = (r: number) =>
   r >= 9 ? "text-volt-400" : r >= 8 ? "text-field-400" : r >= 7 ? "text-ice-400" : "text-slate-400";
 
 type ViewMode = "grid" | "list";
-
-const categoriesList = Array.from({ length: 21 }, (_, i) => `U-${i + 5}`);
 
 const emptyGuardian = { name: "", phone: "", email: "" };
 const emptyMedical = {
@@ -765,19 +764,6 @@ const defaultPositions = [
   "Left Midfielder", "Right Midfielder", "Left Winger", "Right Winger",
   "Center Forward", "Striker", "Second Striker", "False 9"
 ];
-
-const calculateAgeCategory = (dobString: string): string => {
-  if (!dobString) return "U-13";
-  const dobDate = new Date(dobString);
-  const today = new Date();
-  let age = today.getFullYear() - dobDate.getFullYear();
-  const m = today.getMonth() - dobDate.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) {
-    age--;
-  }
-  const categoryNum = Math.max(5, Math.min(25, age + 1));
-  return `U-${categoryNum}`;
-};
 
 const AddPlayerModal: React.FC<{
   franchiseId: string;

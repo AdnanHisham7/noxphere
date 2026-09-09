@@ -1,5 +1,6 @@
 // src/features/employees/SalaryTrackerPanel.tsx
 import React, { useState } from "react";
+import { clsx } from "clsx";
 import { toast } from "react-hot-toast";
 import { CheckCircle2, Clock3 } from "lucide-react";
 import { Badge, Button, Skeleton, EmptyState } from "../../components/ui";
@@ -55,11 +56,17 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
         <div className="card divide-y divide-white/5">
           {records.map((rec) => {
             const emp = typeof rec.employeeId === "object" ? rec.employeeId : null;
+            const roleName = emp && typeof emp.roleId === "object" ? emp.roleId?.name : (emp?.employeeType === "staff" ? "Staff" : "External");
             return (
               <div key={rec.id} className="flex items-center gap-4 p-4">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white">{emp ? `${emp.firstName} ${emp.lastName}` : "Employee"}</p>
-                  <p className="text-2xs text-slate-500">{emp?.employeeType === "staff" ? "System access" : "External"}</p>
+                  <p className="text-2xs text-slate-500">
+                    <span className={clsx("font-semibold", roleName === "Coach" ? "text-emerald-400" : "text-slate-400")}>
+                      {roleName}
+                    </span>
+                    {emp?.employeeType === "staff" ? " · System access" : " · External"}
+                  </p>
                 </div>
                 <span className="text-sm text-white w-24 text-right">₹{rec.amount.toLocaleString("en-IN")}</span>
                 <Badge variant={rec.status === "paid" ? "green" : "yellow"}>

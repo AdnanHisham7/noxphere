@@ -20,6 +20,7 @@ export interface ManagedUser {
   isEmailVerified: boolean;
   franchiseId?: string;
   academyId?: string;
+  salaryAmount?: number;
   permissions: Record<string, boolean>;
   weeklyAvailability?: WeeklyAvailability[];
   customUnavailableDates?: string[];
@@ -53,25 +54,25 @@ export const usersApi = baseApi.injectEndpoints({
     }),
     createUser: builder.mutation<
       ManagedUser,
-      { email: string; password: string; role: UserRole; firstName: string; lastName: string; phone?: string; franchiseId?: string; academyId?: string }
+      { email: string; password: string; role: UserRole; firstName: string; lastName: string; phone?: string; franchiseId?: string; academyId?: string; salaryAmount?: number }
     >({
       query: (body) => ({ url: "/users", method: "POST", body }),
-      invalidatesTags: [{ type: "User", id: "LIST" }],
+      invalidatesTags: [{ type: "User", id: "LIST" }, "Employee", "EmployeeRole", "SalaryPayment"],
     }),
-    updateUser: builder.mutation<ManagedUser, { id: string; data: Partial<ManagedUser> }>({
+    updateUser: builder.mutation<ManagedUser, { id: string; data: Partial<ManagedUser> & { salaryAmount?: number } }>({
       query: ({ id, data }) => ({ url: `/users/${id}`, method: "PUT", body: data }),
-      invalidatesTags: (_r, _e, { id }) => [{ type: "User", id }, { type: "User", id: "LIST" }],
+      invalidatesTags: (_r, _e, { id }) => [{ type: "User", id }, { type: "User", id: "LIST" }, "Employee", "EmployeeRole", "SalaryPayment"],
     }),
     toggleUserActive: builder.mutation<ManagedUser, string>({
       query: (id) => ({ url: `/users/${id}/toggle-active`, method: "PATCH" }),
-      invalidatesTags: (_r, _e, id) => [{ type: "User", id }, { type: "User", id: "LIST" }],
+      invalidatesTags: (_r, _e, id) => [{ type: "User", id }, { type: "User", id: "LIST" }, "Employee", "SalaryPayment"],
     }),
     resetUserPassword: builder.mutation<ManagedUser, { id: string; newPassword: string }>({
       query: ({ id, newPassword }) => ({ url: `/users/${id}/reset-password`, method: "PATCH", body: { newPassword } }),
     }),
     deleteUser: builder.mutation<void, string>({
       query: (id) => ({ url: `/users/${id}`, method: "DELETE" }),
-      invalidatesTags: [{ type: "User", id: "LIST" }],
+      invalidatesTags: [{ type: "User", id: "LIST" }, "Employee", "SalaryPayment"],
     }),
   }),
 });

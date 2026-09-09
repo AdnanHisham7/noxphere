@@ -56,18 +56,7 @@ const FranchiseManagementPage: React.FC = () => {
   const [toggleActive] = useToggleFranchiseActiveMutation();
   const [deleteFranchise] = useDeleteFranchiseMutation();
   const [showCreate, setShowCreate] = useState(false);
-  const [editingFranchise, setEditingFranchise] = useState<Franchise | null>(null);
-  const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
   const [detailsFranchise, setDetailsFranchise] = useState<Franchise | null>(null);
-
-  const openSkillModal = (franchise: Franchise) => {
-    setEditingFranchise(franchise);
-    setIsSkillModalOpen(true);
-  };
-  const closeSkillModal = () => {
-    setIsSkillModalOpen(false);
-    setEditingFranchise(null);
-  };
 
   const handleToggle = async (id: string, isActive: boolean) => {
     try {
@@ -197,13 +186,6 @@ const FranchiseManagementPage: React.FC = () => {
                 ) : (
                   <span className="text-2xs text-slate-500 italic">None set</span>
                 )}
-                <button
-                  onClick={() => openSkillModal(f)}
-                  className="ml-auto text-slate-400 hover:text-volt-400 transition-colors"
-                  title="Manage skills"
-                >
-                  <Pencil size={14} />
-                </button>
               </div>
               <button
                 onClick={() => handleViewDashboard(f)}
@@ -252,12 +234,7 @@ const FranchiseManagementPage: React.FC = () => {
         />
       )}
 
-      {isSkillModalOpen && editingFranchise && (
-        <FranchiseSkillModal
-          franchise={editingFranchise}
-          onClose={closeSkillModal}
-        />
-      )}
+
 
       {detailsFranchise && (
         <FranchiseDetailsModal
@@ -376,94 +353,6 @@ const FranchiseDetailsModal: React.FC<{
   );
 };
 
-const FranchiseSkillModal: React.FC<{
-  franchise: Franchise;
-  onClose: () => void;
-}> = ({ franchise, onClose }) => {
-  const [updateFranchise, { isLoading }] = useUpdateFranchiseMutation();
-  const [skills, setSkills] = useState<string[]>(franchise.skillParameters || []);
-  const [newSkill, setNewSkill] = useState("");
-  const [dirty, setDirty] = useState(false);
 
-  const addSkill = () => {
-    const trimmed = newSkill.trim();
-    if (!trimmed) return;
-    if (skills.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
-      toast.error("That skill already exists");
-      return;
-    }
-    setSkills((prev) => [...prev, trimmed]);
-    setNewSkill("");
-    setDirty(true);
-  };
-
-  const removeSkill = (idx: number) => {
-    setSkills((prev) => prev.filter((_, i) => i !== idx));
-    setDirty(true);
-  };
-
-  const handleSave = async () => {
-    if (skills.length === 0) {
-      toast.error("Keep at least one skill parameter");
-      return;
-    }
-    try {
-      await updateFranchise({
-        id: franchise.id,
-        data: { skillParameters: skills },
-      }).unwrap();
-      toast.success("Skills updated for this franchise");
-      setDirty(false);
-      onClose();
-    } catch (err: any) {
-      toast.error(err?.data?.message || "Update failed");
-    }
-  };
-
-  return (
-    <Modal isOpen onClose={onClose} title={`Manage skills – ${franchise.name}`} size="md">
-      <div className="space-y-4">
-        <div className="flex flex-wrap gap-2 p-3 bg-white/5 rounded border border-white/5">
-          {skills.map((skill, idx) => (
-            <div key={`${skill}-${idx}`} className="flex items-center gap-2 bg-pitch-700 px-2 py-1 rounded text-xs text-white">
-              {skill}
-              <button type="button" className="text-ember-400 hover:text-ember-300" onClick={() => removeSkill(idx)}>
-                <X size={12} />
-              </button>
-            </div>
-          ))}
-          {skills.length === 0 && (
-            <p className="text-2xs text-slate-500">No skills defined for this franchise.</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            className="input flex-1"
-            placeholder="e.g. Dribbling"
-            value={newSkill}
-            onChange={(e) => setNewSkill(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                addSkill();
-              }
-            }}
-          />
-          <Button type="button" variant="secondary" icon={<Plus size={14} />} onClick={addSkill}>
-            Add
-          </Button>
-        </div>
-        <div className="flex gap-3 pt-2">
-          <Button type="button" loading={isLoading} onClick={handleSave} disabled={!dirty}>
-            Save changes
-          </Button>
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-        </div>
-      </div>
-    </Modal>
-  );
-};
 
 export default FranchiseManagementPage;

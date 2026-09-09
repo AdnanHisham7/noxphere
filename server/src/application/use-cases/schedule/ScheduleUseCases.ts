@@ -462,14 +462,26 @@ export class ScheduleUseCases {
    * there by the manager), not by the Franchise — every session belongs to
    * a franchise, and every franchise belongs to exactly one academy, so we
    * resolve franchise -> academy to find the parameter list that's allowed
-   * to be scored against. Falls back to the platform default set if
-   * somehow neither record carries any (keeps old data / dev fixtures
-   * from hard-failing).
+   * to be scored against. Guaranteed to reflect the 6 skill parameters
+   * established when the parent academy was created. Falls back to the
+   * platform default set if neither record carries any.
    */
   private async getSkillParametersForFranchise(franchiseId: mongoose.Types.ObjectId | string): Promise<string[]> {
-    const franchise = await FranchiseModel.findById(franchiseId).select("skillParameters").lean();
+    const franchise = await FranchiseModel.findById(franchiseId).select("skillParameters academyId").lean();
     if (!franchise) throw new NotFoundError("Franchise");
-    // Return franchise-specific skills; fallback to default set if empty
+
+    // Parent academy's parameters configured at academy creation time take top precedence
+    if (franchise.academyId) {
+      const academy = await AcademyModel.findById(franchise.academyId).select("skillParameters").lean();
+      if (academy?.skillParameters && academy.skillParameters.length === 6) {
+        return academy.skillParameters;
+      }
+      if (academy?.skillParameters && academy.skillParameters.length > 0) {
+        return academy.skillParameters;
+      }
+    }
+
+    // Fallback to franchise-specific skills; fallback to default set if empty
     return franchise.skillParameters?.length ? franchise.skillParameters : [
       "Dribbling", "Passing", "Shooting", "Speed", "Tactical Awareness", "Attitude"
     ];

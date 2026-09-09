@@ -20,8 +20,9 @@ import {
   ArrowRight,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { calculateAgeCategory, ALL_AGE_GROUPS } from "@/utils/ageCategory";
 
-const AGE_GROUPS = ["U-7", "U-9", "U-11", "U-13", "U-15", "U-17", "U-19", "Senior"];
+const AGE_GROUPS = ALL_AGE_GROUPS;
 const POSITIONS = ["Forward", "Winger", "Midfielder", "Defensive Midfielder", "Defender", "Full Back", "Goalkeeper"];
 
 export const StudentSignupPage: React.FC = () => {
@@ -46,7 +47,16 @@ export const StudentSignupPage: React.FC = () => {
   const [copied, setCopied] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    if (name === "dateOfBirth") {
+      setFormData((prev) => ({
+        ...prev,
+        dateOfBirth: value,
+        ageGroup: value ? calculateAgeCategory(value) : prev.ageGroup,
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
