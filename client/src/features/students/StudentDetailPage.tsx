@@ -194,64 +194,48 @@ const StudentDetailPage: React.FC = () => {
     }
   };
 
-  const tabs = ["overview", "attendance", "performance", "info"] as const;
-
-  if (!id) return <Navigate to="/students" replace />;
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64 rounded-lg" />
-        <Skeleton className="h-96 rounded-lg" />
-      </div>
-    );
-  }
-
-  if (isError || !card) {
-    return (
-      <EmptyState
-        title="Player not found"
-        description="This player may have been removed, or you don't have access."
-        action={<Link to="/students" className="inline-flex items-center gap-1.5 text-volt-400 hover:underline text-sm"><ArrowLeft size={14} /> Back to Squad</Link>}
-      />
-    );
-  }
-
-  const { student, performances, attendance, remarks } = card;
-
   // Aggregate skill scores across recent performances into a radar profile
-  const skillTotals = new Map<string, { sum: number; count: number }>();
-  for (const p of performances) {
-    for (const s of p.skillScores) {
-      const bucket = skillTotals.get(s.parameter) ?? { sum: 0, count: 0 };
-      bucket.sum += s.score;
-      bucket.count += 1;
-      skillTotals.set(s.parameter, bucket);
+  const skillScores = useMemo(() => {
+    if (!card?.performances) return [];
+    const skillTotals = new Map<string, { sum: number; count: number }>();
+    for (const p of card.performances) {
+      for (const s of p.skillScores || []) {
+        const bucket = skillTotals.get(s.parameter) ?? { sum: 0, count: 0 };
+        bucket.sum += s.score;
+        bucket.count += 1;
+        skillTotals.set(s.parameter, bucket);
+      }
     }
-  }
-  const skillScores = Array.from(skillTotals.entries()).map(([parameter, v]) => ({
-    parameter,
-    score: Math.round((v.sum / v.count) * 10) / 10,
-  }));
+    return Array.from(skillTotals.entries()).map(([parameter, v]) => ({
+      parameter,
+      score: Math.round((v.sum / v.count) * 10) / 10,
+    }));
+  }, [card?.performances]);
 
   // Session history for the trend line, oldest → newest
-  const sessionHistory = [...performances]
-    .sort((a, b) => new Date(a.sessionDate).getTime() - new Date(b.sessionDate).getTime())
-    .map((p) => ({
-      session: new Date(p.sessionDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
-      score: p.overallScore,
-    }));
+  const sessionHistory = useMemo(() => {
+    if (!card?.performances) return [];
+    return [...card.performances]
+      .sort((a, b) => new Date(a.sessionDate).getTime() - new Date(b.sessionDate).getTime())
+      .map((p) => ({
+        session: new Date(p.sessionDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+        score: p.overallScore,
+      }));
+  }, [card?.performances]);
 
-  const attendanceCounts = {
-    present: attendance.filter((a) => a.status === "present").length,
-    late: attendance.filter((a) => a.status === "late").length,
-    absent: attendance.filter((a) => a.status === "absent").length,
-    excused: attendance.filter((a) => a.status === "excused").length,
-  };
+  const attendanceCounts = useMemo(() => {
+    const list = card?.attendance || [];
+    return {
+      present: list.filter((a) => a.status === "present").length,
+      late: list.filter((a) => a.status === "late").length,
+      absent: list.filter((a) => a.status === "absent").length,
+      excused: list.filter((a) => a.status === "excused").length,
+    };
+  }, [card?.attendance]);
 
   // Performance analytics calculations
   const performanceStats = useMemo(() => {
+    const performances = card?.performances;
     if (!performances || performances.length === 0) {
       return {
         avgScore: 0,
@@ -287,10 +271,10 @@ const StudentDetailPage: React.FC = () => {
       peakScore: Math.round(peak * 10) / 10,
       latestDate,
     };
-  }, [performances, skillScores]);
+  }, [card?.performances, skillScores]);
 
   const filteredSessions = useMemo(() => {
-    const list = [...performances].sort(
+    const list = [...(card?.performances || [])].sort(
       (a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime()
     );
     if (sessionRatingFilter === "high") {
@@ -300,7 +284,33 @@ const StudentDetailPage: React.FC = () => {
       return list.filter((s) => (s.overallScore || 0) < 7);
     }
     return list;
-  }, [performances, sessionRatingFilter]);
+  }, [card?.performances, sessionRatingFilter]);
+
+  const tabs = ["overview", "attendance", "performance", "info"] as const;
+
+  if (!id) return <Navigate to="/students" replace />;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 rounded-lg" />
+        <Skeleton className="h-96 rounded-lg" />
+      </div>
+    );
+  }
+
+  if (isError || !card) {
+    return (
+      <EmptyState
+        title="Player not found"
+        description="This player may have been removed, or you don't have access."
+        action={<Link to="/students" className="inline-flex items-center gap-1.5 text-volt-400 hover:underline text-sm"><ArrowLeft size={14} /> Back to Squad</Link>}
+      />
+    );
+  }
+
+  const { student, performances = [], attendance = [], remarks = [] } = card;
 
   const toggleSessionExpand = (sessionId: string) => {
     setExpandedSessionIds((prev) => ({
@@ -537,12 +547,12 @@ const StudentDetailPage: React.FC = () => {
                         <div className="col-span-8 grid grid-cols-2 gap-6">
                           <div>
                             <p className="text-white/20 text-[10px] uppercase font-black tracking-widest mb-1">Guardian</p>
-                            <p className="text-white font-bold text-lg">{student.guardian.name}</p>
-                            <p className="text-volt-400 font-mono text-sm">{student.guardian.phone}</p>
+                            <p className="text-white font-bold text-lg">{student.guardian?.name || "—"}</p>
+                            <p className="text-volt-400 font-mono text-sm">{student.guardian?.phone || "—"}</p>
                           </div>
                           <div>
                             <p className="text-white/20 text-[10px] uppercase font-black tracking-widest mb-1">Bio Metrics</p>
-                            <p className="text-white font-bold text-lg">Group: {student.medicalInfo.bloodGroup ?? "N/A"}</p>
+                            <p className="text-white font-bold text-lg">Group: {student.medicalInfo?.bloodGroup ?? "N/A"}</p>
                             <p className="text-white/40 text-sm italic">{student.ageGroup} Division</p>
                           </div>
                         </div>
@@ -605,9 +615,11 @@ const StudentDetailPage: React.FC = () => {
                   </Button>
                 )}
 
-                <a href={`mailto:${student.guardian.email}`} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
-                  <Mail size={13} /> Message Guardian
-                </a>
+                {student.guardian?.email && (
+                  <a href={`mailto:${student.guardian.email}`} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+                    <Mail size={13} /> Message Guardian
+                  </a>
+                )}
               </div>
             </div>
 
@@ -1289,15 +1301,15 @@ const StudentDetailPage: React.FC = () => {
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { label: "Date of Birth", value: new Date(student.dateOfBirth).toLocaleDateString("en-IN") },
-              { label: "Enrolled", value: new Date(student.enrollmentDate).toLocaleDateString("en-IN") },
-              { label: "Blood Group", value: student.medicalInfo.bloodGroup || "Not on file" },
-              { label: "Emergency Contact", value: `${student.medicalInfo.emergencyContactName} — ${student.medicalInfo.emergencyContactPhone}` },
-              { label: "Guardian", value: student.guardian.name },
-              { label: "Guardian Phone", value: student.guardian.phone },
-              { label: "Guardian Email", value: student.guardian.email },
-              { label: "Allergies", value: student.medicalInfo.allergies?.length ? student.medicalInfo.allergies.join(", ") : "None" },
-              { label: "Medical Conditions", value: student.medicalInfo.medicalConditions?.length ? student.medicalInfo.medicalConditions.join(", ") : "None" },
+              { label: "Date of Birth", value: student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString("en-IN") : "Not on file" },
+              { label: "Enrolled", value: student.enrollmentDate ? new Date(student.enrollmentDate).toLocaleDateString("en-IN") : "Not on file" },
+              { label: "Blood Group", value: student.medicalInfo?.bloodGroup || "Not on file" },
+              { label: "Emergency Contact", value: student.medicalInfo?.emergencyContactName ? `${student.medicalInfo.emergencyContactName} — ${student.medicalInfo.emergencyContactPhone || ""}` : "Not on file" },
+              { label: "Guardian", value: student.guardian?.name || "Not on file" },
+              { label: "Guardian Phone", value: student.guardian?.phone || "Not on file" },
+              { label: "Guardian Email", value: student.guardian?.email || "Not on file" },
+              { label: "Allergies", value: student.medicalInfo?.allergies?.length ? student.medicalInfo.allergies.join(", ") : "None" },
+              { label: "Medical Conditions", value: student.medicalInfo?.medicalConditions?.length ? student.medicalInfo.medicalConditions.join(", ") : "None" },
               { label: "Jersey Size", value: student.jerseySize || "Not on file" },
             ].map((item) => (
               <div key={item.label} className="card p-4">
