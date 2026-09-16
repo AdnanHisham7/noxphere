@@ -46,7 +46,8 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 
 const StudentProgressPage: React.FC = () => {
   const [tab, setTab] = useState<Tab>("attendance");
-  const { data: dashboard, isLoading: isDashLoading } = useGetMyDashboardQuery();
+  const { data: dashboard, isLoading: isDashLoading } =
+    useGetMyDashboardQuery();
 
   if (isDashLoading) {
     return <NoxSkeleton className="h-64" />;
@@ -69,11 +70,17 @@ const StudentProgressPage: React.FC = () => {
               Academy Progress Not Active
             </h3>
             <p className="text-xs text-nox-low mt-1 leading-relaxed">
-              Attendance tracking, training schedules, fee plans, and coach evaluation notes become active once you join an academy squad. In the meantime, you can manage your verified public player card and privacy settings from your dashboard.
+              Attendance tracking, training schedules, fee plans, and coach
+              evaluation notes become active once you join an academy squad. In
+              the meantime, you can manage your verified public player card and
+              privacy settings from your dashboard.
             </p>
           </div>
           <div className="pt-2">
-            <Link to="/student/dashboard" className="nox-btn-primary inline-flex items-center gap-2 text-xs">
+            <Link
+              to="/student/dashboard"
+              className="nox-btn-primary inline-flex items-center gap-2 text-xs"
+            >
               <span>Go to Free Agent Dashboard</span>
               <ArrowRight size={14} />
             </Link>
@@ -110,11 +117,15 @@ const StudentProgressPage: React.FC = () => {
                 {profile.firstName} {profile.lastName}
               </h2>
               <p className="text-xs text-nox-mid mt-0.5 truncate flex items-center gap-2">
-                <span>{profile.team?.name || profile.ageGroup || "Squad Member"}</span>
+                <span>
+                  {profile.team?.name || profile.ageGroup || "Squad Member"}
+                </span>
                 {profile.position && (
                   <>
                     <span>·</span>
-                    <span className="text-volt-400 font-medium">{profile.position}</span>
+                    <span className="text-volt-400 font-medium">
+                      {profile.position}
+                    </span>
                   </>
                 )}
                 {profile.jerseyNumber !== undefined && (
@@ -135,7 +146,9 @@ const StudentProgressPage: React.FC = () => {
             />
             <NoxStatCard
               label="Rating"
-              value={profile.overallRating ? profile.overallRating.toFixed(1) : "—"}
+              value={
+                profile.overallRating ? profile.overallRating.toFixed(1) : "—"
+              }
               accent="plasma"
             />
           </div>
@@ -143,7 +156,7 @@ const StudentProgressPage: React.FC = () => {
       )}
 
       {/* Navigation Tabs */}
-      <div className="flex gap-2 border-b border-slate-200 dark:border-white/[0.06] overflow-x-auto no-scrollbar">
+      <div className="flex gap-2 border-b border-white/[0.06] overflow-x-auto no-scrollbar">
         {TABS.map((t) => {
           const Icon = t.icon;
           const active = tab === t.id;
@@ -155,7 +168,7 @@ const StudentProgressPage: React.FC = () => {
                 "flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 transition-all whitespace-nowrap",
                 active
                   ? "border-core-400 text-core-400"
-                  : "border-transparent text-nox-mid hover:text-nox-high"
+                  : "border-transparent text-nox-mid hover:text-nox-high",
               )}
             >
               <Icon size={15} />
@@ -190,15 +203,26 @@ const AttendanceTab: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <NoxStatCard label="Present" value={data.summary.present} accent="ion" />
+        <NoxStatCard
+          label="Present"
+          value={data.summary.present}
+          accent="ion"
+        />
         <NoxStatCard label="Absent" value={data.summary.absent} accent="core" />
         <NoxStatCard label="Late" value={data.summary.late} accent="plasma" />
-        <NoxStatCard label="Attendance Rate" value={`${data.summary.percentage}%`} accent="ion" />
+        <NoxStatCard
+          label="Attendance Rate"
+          value={`${data.summary.percentage}%`}
+          accent="ion"
+        />
       </div>
 
-      <div className="nox-card divide-y divide-slate-200 dark:divide-white/[0.06] overflow-hidden">
+      <div className="nox-card divide-y divide-white/[0.06] overflow-hidden">
         {data.records.map((r) => (
-          <div key={r._id} className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.01] transition-colors">
+          <div
+            key={r._id}
+            className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.01] transition-colors"
+          >
             <div>
               <div className="text-sm font-medium text-nox-high">
                 {new Date(r.sessionDate).toLocaleDateString("en-US", {
@@ -208,7 +232,9 @@ const AttendanceTab: React.FC = () => {
                   year: "numeric",
                 })}
               </div>
-              {r.remarks && <div className="text-xs text-nox-low mt-0.5">{r.remarks}</div>}
+              {r.remarks && (
+                <div className="text-xs text-nox-low mt-0.5">{r.remarks}</div>
+              )}
             </div>
             <NoxStatusBadge status={r.status} />
           </div>
@@ -232,42 +258,61 @@ const ScheduleTab: React.FC = () => {
   }
 
   const now = new Date();
-  const upcomingSessions = sessions.filter((s) => new Date(s.date) >= new Date(now.setHours(0, 0, 0, 0)));
-  const pastSessions = sessions.filter((s) => new Date(s.date) < new Date(now.setHours(0, 0, 0, 0)));
+  const upcomingSessions = sessions.filter(
+    (s) => new Date(s.date) >= new Date(now.setHours(0, 0, 0, 0)),
+  );
+  const pastSessions = sessions.filter(
+    (s) => new Date(s.date) < new Date(now.setHours(0, 0, 0, 0)),
+  );
 
   return (
     <div className="space-y-6">
       {upcomingSessions.length > 0 && (
         <div className="space-y-3">
           <h3 className="font-orbital text-xs uppercase tracking-wider text-core-400 font-bold flex items-center gap-2">
-            <Calendar size={14} /> Upcoming Training & Matches ({upcomingSessions.length})
+            <Calendar size={14} /> Upcoming Training & Matches (
+            {upcomingSessions.length})
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {upcomingSessions.map((session) => {
               const sId = (session as any).id || (session as any)._id;
               const sType = session.type || "training";
-              const sTitle = (session as any).notes || session.teamName || (session as any).title || "Squad Practice Session";
-              const sCoach = session.coach || (typeof (session as any).coachId === "object" ? `${(session as any).coachId?.firstName} ${(session as any).coachId?.lastName}` : undefined);
+              const sTitle =
+                (session as any).notes ||
+                session.teamName ||
+                (session as any).title ||
+                "Squad Practice Session";
+              const sCoach =
+                session.coach ||
+                (typeof (session as any).coachId === "object"
+                  ? `${(session as any).coachId?.firstName} ${(session as any).coachId?.lastName}`
+                  : undefined);
 
               return (
-                <div key={sId} className="nox-card p-4 space-y-3 hover:border-slate-300 dark:hover:border-white/15 transition-all">
+                <div
+                  key={sId}
+                  className="nox-card p-4 space-y-3 hover:border-white/15 transition-all"
+                >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-transparent capitalize">
+                      <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 text-slate-300 capitalize">
                         {sType}
                       </span>
                       <h4 className="font-orbital font-bold text-sm text-nox-high mt-1.5">
                         {sTitle}
                       </h4>
                     </div>
-                    <Badge variant={sType === "match" ? "red" : "blue"} className="text-2xs capitalize">
+                    <Badge
+                      variant={sType === "match" ? "red" : "blue"}
+                      className="text-2xs capitalize"
+                    >
                       {sType}
                     </Badge>
                   </div>
 
-                  <div className="space-y-1.5 text-2xs text-nox-mid pt-1 border-t border-slate-100 dark:border-white/5">
+                  <div className="space-y-1.5 text-2xs text-nox-mid pt-1 border-t border-white/5">
                     <div className="flex items-center gap-2">
-                      <Calendar size={12} className="text-volt-600 dark:text-volt-400 shrink-0" />
+                      <Calendar size={12} className="text-volt-400 shrink-0" />
                       <span>
                         {new Date(session.date).toLocaleDateString("en-US", {
                           weekday: "short",
@@ -284,16 +329,25 @@ const ScheduleTab: React.FC = () => {
 
                     {session.location && (
                       <div className="flex items-center gap-2">
-                        <MapPin size={12} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <MapPin
+                          size={12}
+                          className="text-emerald-400 shrink-0"
+                        />
                         <span>
-                          {session.location} {session.fieldNumber ? `(Pitch #${session.fieldNumber})` : ""}
+                          {session.location}{" "}
+                          {session.fieldNumber
+                            ? `(Pitch #${session.fieldNumber})`
+                            : ""}
                         </span>
                       </div>
                     )}
 
                     {sCoach && (
                       <div className="flex items-center gap-2">
-                        <UserCheck size={12} className="text-core-400 shrink-0" />
+                        <UserCheck
+                          size={12}
+                          className="text-core-400 shrink-0"
+                        />
                         <span>Coach: {sCoach}</span>
                       </div>
                     )}
@@ -307,15 +361,22 @@ const ScheduleTab: React.FC = () => {
 
       {pastSessions.length > 0 && (
         <div className="space-y-3 pt-2">
-          <h3 className="font-orbital text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400 font-bold">
+          <h3 className="font-orbital text-xs uppercase tracking-wider text-slate-400 font-bold">
             Recent Past Sessions
           </h3>
-          <div className="nox-card divide-y divide-slate-200 dark:divide-white/[0.06] overflow-hidden">
+          <div className="nox-card divide-y divide-white/[0.06] overflow-hidden">
             {pastSessions.slice(0, 10).map((session) => {
               const sId = (session as any).id || (session as any)._id;
-              const sTitle = (session as any).notes || session.teamName || (session as any).title || "Squad Practice";
+              const sTitle =
+                (session as any).notes ||
+                session.teamName ||
+                (session as any).title ||
+                "Squad Practice";
               return (
-                <div key={sId} className="p-4 flex items-center justify-between text-xs hover:bg-white/[0.01]">
+                <div
+                  key={sId}
+                  className="p-4 flex items-center justify-between text-xs hover:bg-white/[0.01]"
+                >
                   <div>
                     <p className="font-semibold text-nox-high">{sTitle}</p>
                     <p className="text-2xs text-nox-low mt-0.5">
@@ -327,7 +388,9 @@ const ScheduleTab: React.FC = () => {
                       &bull; {session.startTime} - {session.endTime}
                     </p>
                   </div>
-                  <Badge variant="gray" className="text-2xs">Completed</Badge>
+                  <Badge variant="gray" className="text-2xs">
+                    Completed
+                  </Badge>
                 </div>
               );
             })}
@@ -370,7 +433,7 @@ const FeesTab: React.FC = () => {
             {fee.installments.map((inst) => (
               <div
                 key={inst.installmentNumber}
-                className="flex items-center justify-between text-sm bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-transparent rounded-lg px-3 py-2.5"
+                className="flex items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2.5"
               >
                 <span className="text-nox-mid text-xs">
                   Installment {inst.installmentNumber} &bull; due{" "}
@@ -378,7 +441,8 @@ const FeesTab: React.FC = () => {
                 </span>
                 <div className="flex items-center gap-3">
                   <span className="text-nox-high font-mono text-xs">
-                    ₹{inst.paidAmount.toLocaleString("en-IN")} / ₹{inst.amount.toLocaleString("en-IN")}
+                    ₹{inst.paidAmount.toLocaleString("en-IN")} / ₹
+                    {inst.amount.toLocaleString("en-IN")}
                   </span>
                   <NoxStatusBadge status={inst.status} />
                 </div>
@@ -409,23 +473,36 @@ const PerformanceTab: React.FC = () => {
       {data.performance.length > 0 && (
         <div className="space-y-3">
           <h3 className="font-orbital text-xs uppercase tracking-wider text-core-400 font-bold flex items-center gap-2">
-            <Award size={14} /> Performance Assessments ({data.performance.length})
+            <Award size={14} /> Performance Assessments (
+            {data.performance.length})
           </h3>
-          <div className="nox-card divide-y divide-slate-200 dark:divide-white/[0.06]">
+          <div className="nox-card divide-y divide-white/[0.06]">
             {data.performance.map((p) => (
-              <div key={p._id} className="px-5 py-4 flex items-center justify-between hover:bg-white/[0.01]">
+              <div
+                key={p._id}
+                className="px-5 py-4 flex items-center justify-between hover:bg-white/[0.01]"
+              >
                 <div>
                   <span className="text-sm font-semibold text-nox-high block">
                     Periodic Assessment
                   </span>
                   <span className="text-2xs text-nox-low font-mono">
-                    Recorded on {new Date(p.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    Recorded on{" "}
+                    {new Date(p.createdAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </span>
-                  {p.notes && <p className="text-xs text-nox-mid mt-1">{p.notes}</p>}
+                  {p.notes && (
+                    <p className="text-xs text-nox-mid mt-1">{p.notes}</p>
+                  )}
                 </div>
                 {typeof p.overallRating === "number" && (
                   <div className="text-right">
-                    <span className="text-2xs text-nox-low block uppercase font-mono">Score</span>
+                    <span className="text-2xs text-nox-low block uppercase font-mono">
+                      Score
+                    </span>
                     <span className="font-orbital text-lg font-bold text-core-400">
                       {p.overallRating.toFixed(1)}
                     </span>
@@ -439,10 +516,11 @@ const PerformanceTab: React.FC = () => {
 
       {data.remarks.length > 0 && (
         <div className="space-y-3">
-          <h3 className="font-orbital text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-2">
-            <Sparkles size={14} /> Coach Notes & Technical Remarks ({data.remarks.length})
+          <h3 className="font-orbital text-xs uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-2">
+            <Sparkles size={14} /> Coach Notes & Technical Remarks (
+            {data.remarks.length})
           </h3>
-          <div className="nox-card divide-y divide-slate-200 dark:divide-white/[0.06]">
+          <div className="nox-card divide-y divide-white/[0.06]">
             {data.remarks.map((r) => (
               <div key={r._id} className="px-5 py-4 hover:bg-white/[0.01]">
                 <div className="text-2xs text-nox-low font-mono">
@@ -453,7 +531,9 @@ const PerformanceTab: React.FC = () => {
                     year: "numeric",
                   })}
                 </div>
-                <p className="text-sm text-nox-high mt-1 leading-relaxed">{r.text}</p>
+                <p className="text-sm text-nox-high mt-1 leading-relaxed">
+                  {r.text}
+                </p>
               </div>
             ))}
           </div>

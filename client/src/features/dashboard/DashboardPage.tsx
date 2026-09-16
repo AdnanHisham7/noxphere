@@ -1,21 +1,51 @@
 // src/features/dashboard/DashboardPage.tsx
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart,
-  Radar, PolarGrid, PolarAngleAxis,
-} from 'recharts';
-import { clsx } from 'clsx';
-import { formatDistanceToNowStrict } from 'date-fns';
-import { Shirt, LayoutDashboard, CheckCircle2,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+} from "recharts";
+import { clsx } from "clsx";
+import { formatDistanceToNowStrict } from "date-fns";
+import {
+  Shirt,
+  LayoutDashboard,
+  CheckCircle2,
   CreditCard,
-  Star, Users, Shield, CalendarClock, Building2, School,
-  UserPlus, CalendarCheck, Wallet, Repeat2, Settings, Radio, TrendingUp, Activity } from 'lucide-react';
-import { StatCard, Skeleton, Avatar, EmptyState, Button } from '../../components/ui';
-import { useCurrentFranchiseId } from '../../hooks/useCurrentFranchiseId';
-import { RootState } from '../../store';
-import { setActiveFranchise } from '../../store/slices/uiSlice';
+  Star,
+  Users,
+  Shield,
+  CalendarClock,
+  Building2,
+  School,
+  UserPlus,
+  CalendarCheck,
+  Wallet,
+  Repeat2,
+  Settings,
+  Radio,
+  TrendingUp,
+  Activity,
+} from "lucide-react";
+import {
+  StatCard,
+  Skeleton,
+  Avatar,
+  EmptyState,
+  Button,
+} from "../../components/ui";
+import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
+import { RootState } from "../../store";
+import { setActiveFranchise } from "../../store/slices/uiSlice";
 import {
   useGetDashboardStatsQuery,
   useGetAttendanceTrendQuery,
@@ -23,31 +53,33 @@ import {
   useGetTeamHealthQuery,
   useGetTopPerformersQuery,
   useGetRecentActivityQuery,
-} from '../../store/api/dashboardApi';
+} from "../../store/api/dashboardApi";
 
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded px-3 py-2 text-xs shadow-md">
-      <p className="text-slate-500 dark:text-slate-400">{label}</p>
-      <p className="text-volt-600 dark:text-volt-400 font-bold">{payload[0].value}%</p>
+    <div className="bg-pitch-800 border border-white/10 rounded px-3 py-2 text-xs">
+      <p className="text-slate-400">{label}</p>
+      <p className="text-volt-400 font-bold">{payload[0].value}%</p>
     </div>
   );
 };
 
 const formatCurrency = (n: number) =>
-  n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : `₹${n.toLocaleString('en-IN')}`;
+  n >= 100000
+    ? `₹${(n / 100000).toFixed(1)}L`
+    : `₹${n.toLocaleString("en-IN")}`;
 
 const renderActivityIcon = (type: string) => {
   switch (type) {
-    case 'attendance':
-      return <CheckCircle2 size={14} className="text-emerald-600 dark:text-volt-400" />;
-    case 'performance':
-      return <TrendingUp size={14} className="text-sky-600 dark:text-ice-400" />;
-    case 'fee':
-      return <CreditCard size={14} className="text-emerald-600 dark:text-field-400" />;
+    case "attendance":
+      return <CheckCircle2 size={14} className="text-volt-400" />;
+    case "performance":
+      return <TrendingUp size={14} className="text-ice-400" />;
+    case "fee":
+      return <CreditCard size={14} className="text-field-400" />;
     default:
-      return <Activity size={14} className="text-slate-500 dark:text-slate-400" />;
+      return <Activity size={14} className="text-slate-400" />;
   }
 };
 
@@ -58,37 +90,52 @@ const DashboardPage: React.FC = () => {
   const user = useSelector((s: RootState) => s.auth.user);
   const academyId = user?.academyId;
 
-  const isSuperAdmin = user?.role === 'super_admin';
-  const isOwnerManager = user?.role === 'manager' && !user?.franchiseId;
+  const isSuperAdmin = user?.role === "super_admin";
+  const isOwnerManager = user?.role === "manager" && !user?.franchiseId;
 
   // The plain /dashboard route always shows the academy-wide overview for
   // an owner-manager, regardless of any franchise picked earlier while
   // browsing other pages (Students/Fees/etc. still honor that selection —
   // only this page ignores it). Franchise-specific dashboards live at
   // /franchises/:id instead, reached from the Franchises tab.
-  const franchiseId = isOwnerManager ? undefined : (user?.franchiseId ?? activeFranchiseId ?? undefined);
+  const franchiseId = isOwnerManager
+    ? undefined
+    : (user?.franchiseId ?? activeFranchiseId ?? undefined);
   const isConsolidated = isOwnerManager;
   const skip = !isSuperAdmin && !franchiseId && !academyId;
-  const queryParams = isSuperAdmin ? {} : (isConsolidated ? { academyId: academyId ?? undefined } : { franchiseId });
+  const queryParams = isSuperAdmin
+    ? {}
+    : isConsolidated
+      ? { academyId: academyId ?? undefined }
+      : { franchiseId };
 
   const { data: stats, isLoading: statsLoading } = useGetDashboardStatsQuery(
-    queryParams, { skip },
+    queryParams,
+    { skip },
   );
-  const { data: attendanceTrend, isLoading: trendLoading } = useGetAttendanceTrendQuery(
-    { ...queryParams, days: 7 }, { skip: skip || isSuperAdmin },
-  );
+  const { data: attendanceTrend, isLoading: trendLoading } =
+    useGetAttendanceTrendQuery(
+      { ...queryParams, days: 7 },
+      { skip: skip || isSuperAdmin },
+    );
   const { data: radarData, isLoading: radarLoading } = useGetSkillRadarQuery(
-    queryParams, { skip: skip || isSuperAdmin },
+    queryParams,
+    { skip: skip || isSuperAdmin },
   );
   const { data: teamHealth, isLoading: teamsLoading } = useGetTeamHealthQuery(
-    queryParams, { skip: skip || isSuperAdmin },
+    queryParams,
+    { skip: skip || isSuperAdmin },
   );
-  const { data: topPerformers, isLoading: performersLoading } = useGetTopPerformersQuery(
-    { ...queryParams, limit: 5 }, { skip: skip || isSuperAdmin },
-  );
-  const { data: recentActivity, isLoading: activityLoading } = useGetRecentActivityQuery(
-    { ...queryParams, limit: 8 }, { skip: skip || isSuperAdmin },
-  );
+  const { data: topPerformers, isLoading: performersLoading } =
+    useGetTopPerformersQuery(
+      { ...queryParams, limit: 5 },
+      { skip: skip || isSuperAdmin },
+    );
+  const { data: recentActivity, isLoading: activityLoading } =
+    useGetRecentActivityQuery(
+      { ...queryParams, limit: 8 },
+      { skip: skip || isSuperAdmin },
+    );
 
   if (!franchiseId && !academyId && !isSuperAdmin) {
     return (
@@ -106,19 +153,36 @@ const DashboardPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <p className="section-title mb-1">
-            {isSuperAdmin ? "System Overview" : (isConsolidated ? "Academy Overview" : "Overview")}
+            {isSuperAdmin
+              ? "System Overview"
+              : isConsolidated
+                ? "Academy Overview"
+                : "Overview"}
           </p>
-          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">
-            {isSuperAdmin ? "Super Admin Dashboard" : (isConsolidated ? "Academy Dashboard" : "Dashboard")}
+          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
+            {isSuperAdmin
+              ? "Super Admin Dashboard"
+              : isConsolidated
+                ? "Academy Dashboard"
+                : "Dashboard"}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {new Date().toLocaleDateString("en-IN", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
           </p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <span className="flex items-center gap-1.5 text-xs text-volt-400 bg-volt-400/10 border border-volt-400/20 rounded px-2.5 sm:px-3 py-1.5 font-bold font-mono">
             <span className="w-1.5 h-1.5 rounded-full bg-volt-400 animate-pulse-volt shrink-0" />
-            {isSuperAdmin ? "Super Admin Active" : (isConsolidated ? "Academy-wide" : "Franchise Active")}
+            {isSuperAdmin
+              ? "Super Admin Active"
+              : isConsolidated
+                ? "Academy-wide"
+                : "Franchise Active"}
           </span>
         </div>
       </div>
@@ -126,7 +190,9 @@ const DashboardPage: React.FC = () => {
       {/* KPI Stats Row */}
       {statsLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-lg" />)}
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-lg" />
+          ))}
         </div>
       ) : isSuperAdmin ? (
         /* Super Admin Stats Layout */
@@ -262,66 +328,107 @@ const DashboardPage: React.FC = () => {
       {/* Main content grid */}
       {!isSuperAdmin && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Attendance trend chart */}
-        <div className="lg:col-span-2 card p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="section-title">Attendance Trend</p>
-              <p className="text-xs text-slate-500 mt-0.5">Last 7 days — {isConsolidated ? "consolidated academy view" : "all teams"}</p>
+          {/* Attendance trend chart */}
+          <div className="lg:col-span-2 card p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="section-title">Attendance Trend</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Last 7 days —{" "}
+                  {isConsolidated ? "consolidated academy view" : "all teams"}
+                </p>
+              </div>
+              <span className="text-volt-400 font-display font-extrabold text-xl">
+                {stats?.avgAttendance ?? 0}%
+              </span>
             </div>
-            <span className="text-volt-400 font-display font-extrabold text-xl">
-              {stats?.avgAttendance ?? 0}%
-            </span>
+            {trendLoading ? (
+              <Skeleton className="h-40 rounded" />
+            ) : !attendanceTrend?.length ||
+              attendanceTrend.every((d) => d.rate === 0) ? (
+              <EmptyState
+                title="No attendance recorded yet"
+                description="Mark attendance to see the trend here."
+              />
+            ) : (
+              <ResponsiveContainer width="100%" height={160}>
+                <AreaChart data={attendanceTrend}>
+                  <defs>
+                    <linearGradient id="voltGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="5%"
+                        stopColor="#ccff00"
+                        stopOpacity={0.15}
+                      />
+                      <stop offset="95%" stopColor="#ccff00" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fill: "#64748b", fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    tick={{ fill: "#64748b", fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="rate"
+                    stroke="#ccff00"
+                    strokeWidth={2}
+                    fill="url(#voltGrad)"
+                    dot={{ fill: "#ccff00", strokeWidth: 0, r: 3 }}
+                    activeDot={{ fill: "#ccff00", r: 5, strokeWidth: 0 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
-          {trendLoading ? (
-            <Skeleton className="h-40 rounded" />
-          ) : !attendanceTrend?.length || attendanceTrend.every((d) => d.rate === 0) ? (
-            <EmptyState title="No attendance recorded yet" description="Mark attendance to see the trend here." />
-          ) : (
-            <ResponsiveContainer width="100%" height={160}>
-              <AreaChart data={attendanceTrend}>
-                <defs>
-                  <linearGradient id="voltGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ccff00" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#ccff00" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<ChartTooltip />} />
-                <Area
-                  type="monotone" dataKey="rate"
-                  stroke="#ccff00" strokeWidth={2}
-                  fill="url(#voltGrad)"
-                  dot={{ fill: '#ccff00', strokeWidth: 0, r: 3 }}
-                  activeDot={{ fill: '#ccff00', r: 5, strokeWidth: 0 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </div>
 
-        {/* Skill radar */}
-        <div className="card p-5 space-y-4">
-          <div>
-            <p className="section-title">{isConsolidated ? "Overall Avg Skills" : "Franchise Avg Skills"}</p>
-            <p className="text-xs text-slate-500 mt-0.5">{isConsolidated ? "All franchises aggregate" : "All players aggregate"}</p>
+          {/* Skill radar */}
+          <div className="card p-5 space-y-4">
+            <div>
+              <p className="section-title">
+                {isConsolidated ? "Overall Avg Skills" : "Franchise Avg Skills"}
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {isConsolidated
+                  ? "All franchises aggregate"
+                  : "All players aggregate"}
+              </p>
+            </div>
+            {radarLoading ? (
+              <Skeleton className="h-44 rounded" />
+            ) : !radarData?.length ? (
+              <EmptyState
+                title="No performance data yet"
+                description="Log a session to populate skill averages."
+              />
+            ) : (
+              <ResponsiveContainer width="100%" height={180}>
+                <RadarChart data={radarData}>
+                  <PolarGrid stroke="rgba(255,255,255,0.06)" />
+                  <PolarAngleAxis
+                    dataKey="skill"
+                    tick={{ fill: "#64748b", fontSize: 10 }}
+                  />
+                  <Radar
+                    dataKey="avg"
+                    stroke="#ccff00"
+                    fill="#ccff00"
+                    fillOpacity={0.08}
+                    strokeWidth={1.5}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            )}
           </div>
-          {radarLoading ? (
-            <Skeleton className="h-44 rounded" />
-          ) : !radarData?.length ? (
-            <EmptyState title="No performance data yet" description="Log a session to populate skill averages." />
-          ) : (
-            <ResponsiveContainer width="100%" height={180}>
-              <RadarChart data={radarData}>
-                <PolarGrid stroke="rgba(255,255,255,0.06)" />
-                <PolarAngleAxis dataKey="skill" tick={{ fill: '#64748b', fontSize: 10 }} />
-                <Radar dataKey="avg" stroke="#ccff00" fill="#ccff00" fillOpacity={0.08} strokeWidth={1.5} />
-              </RadarChart>
-            </ResponsiveContainer>
-          )}
         </div>
-      </div>
       )}
 
       {/* Super Admin Welcome & Control Panel */}
@@ -330,8 +437,11 @@ const DashboardPage: React.FC = () => {
           <h2 className="font-display font-extrabold text-slate-900 dark:text-white text-lg uppercase tracking-wide">
             Welcome to the System Control Panel
           </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-2xl">
-            As a Super Admin, you have system-wide administration rights. You can onboard new football academies, manage billing/finance transactions, register platform managers, and inspect high-level statistics across all branches.
+          <p className="text-sm text-slate-400 leading-relaxed max-w-2xl">
+            As a Super Admin, you have system-wide administration rights. You
+            can onboard new football academies, manage billing/finance
+            transactions, register platform managers, and inspect high-level
+            statistics across all branches.
           </p>
           <div className="flex flex-wrap gap-3 pt-2">
             <Link to="/academies">
@@ -348,61 +458,105 @@ const DashboardPage: React.FC = () => {
       )}
 
       {/* Franchise Performance list (only on the academy-wide overview) */}
-      {isConsolidated && stats?.franchisePerformance && stats.franchisePerformance.length > 0 && (
-        <div className="card p-3.5 sm:p-5 space-y-4 animate-fade-in">
-          <div>
-            <p className="section-title">Franchise Performance</p>
-            <p className="text-xs text-slate-500 mt-0.5">Consolidated overview of all operational branches</p>
-          </div>
-          <div className="table-responsive">
-            <table className="w-full min-w-[680px] text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200/80 dark:border-white/5 pb-2">
-                  <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Franchise</th>
-                  <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Players</th>
-                  <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Teams</th>
-                  <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Sessions</th>
-                  <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Collected</th>
-                  <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Outstanding</th>
-                  <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Status</th>
-                  <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.franchisePerformance.map((fp) => (
-                  <tr key={fp.id} className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50/80 dark:hover:bg-white/2 transition-colors">
-                    <td className="py-3">
-                      <p className="font-semibold text-slate-900 dark:text-white text-sm">{fp.name}</p>
-                      <p className="text-2xs text-slate-500 font-mono mt-0.5">{fp.code} · {fp.location ?? "No location"}</p>
-                    </td>
-                    <td className="py-3 text-center text-slate-700 dark:text-slate-300 text-sm">{fp.totalPlayers}</td>
-                    <td className="py-3 text-center text-slate-700 dark:text-slate-300 text-sm">{fp.totalTeams}</td>
-                    <td className="py-3 text-center text-slate-700 dark:text-slate-300 text-sm">{fp.totalSessions}</td>
-                    <td className="py-3 text-right text-emerald-600 dark:text-field-400 font-mono text-sm">₹{fp.feesCollected.toLocaleString('en-IN')}</td>
-                    <td className="py-3 text-right text-orange-600 dark:text-ember-400 font-mono text-sm">₹{fp.feesOutstanding.toLocaleString('en-IN')}</td>
-                    <td className="py-3 text-center">
-                      <span className={clsx("px-2 py-0.5 rounded text-[10px] font-bold uppercase", fp.isActive ? "bg-emerald-500/10 text-emerald-600 dark:text-field-400 border border-emerald-500/20" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400")}>
-                        {fp.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="py-3 text-center">
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          dispatch(setActiveFranchise(fp.id));
-                          navigate(`/franchises/${fp.id}`);
-                        }}
-                      >
-                        View Dashboard
-                      </Button>
-                    </td>
+      {isConsolidated &&
+        stats?.franchisePerformance &&
+        stats.franchisePerformance.length > 0 && (
+          <div className="card p-3.5 sm:p-5 space-y-4 animate-fade-in">
+            <div>
+              <p className="section-title">Franchise Performance</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Consolidated overview of all operational branches
+              </p>
+            </div>
+            <div className="table-responsive">
+              <table className="w-full min-w-[680px] text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/5 pb-2">
+                    <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider">
+                      Franchise
+                    </th>
+                    <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-center">
+                      Players
+                    </th>
+                    <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-center">
+                      Teams
+                    </th>
+                    <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-center">
+                      Sessions
+                    </th>
+                    <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-right">
+                      Collected
+                    </th>
+                    <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-right">
+                      Outstanding
+                    </th>
+                    <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-center">
+                      Status
+                    </th>
+                    <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-center">
+                      Action
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {stats.franchisePerformance.map((fp) => (
+                    <tr
+                      key={fp.id}
+                      className="border-b border-white/5 hover:bg-white/2 transition-colors"
+                    >
+                      <td className="py-3">
+                        <p className="font-semibold text-slate-900 dark:text-white text-sm">
+                          {fp.name}
+                        </p>
+                        <p className="text-2xs text-slate-500 font-mono mt-0.5">
+                          {fp.code} · {fp.location ?? "No location"}
+                        </p>
+                      </td>
+                      <td className="py-3 text-center text-slate-300 text-sm">
+                        {fp.totalPlayers}
+                      </td>
+                      <td className="py-3 text-center text-slate-300 text-sm">
+                        {fp.totalTeams}
+                      </td>
+                      <td className="py-3 text-center text-slate-300 text-sm">
+                        {fp.totalSessions}
+                      </td>
+                      <td className="py-3 text-right text-field-400 font-mono text-sm">
+                        ₹{fp.feesCollected.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3 text-right text-ember-400 font-mono text-sm">
+                        ₹{fp.feesOutstanding.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3 text-center">
+                        <span
+                          className={clsx(
+                            "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
+                            fp.isActive
+                              ? "bg-field-400/10 text-field-400"
+                              : "bg-slate-800 text-slate-400",
+                          )}
+                        >
+                          {fp.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="py-3 text-center">
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            dispatch(setActiveFranchise(fp.id));
+                            navigate(`/franchises/${fp.id}`);
+                          }}
+                        >
+                          View Dashboard
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Team Health + Top Performers + Activity (Visible for standard Franchise views) */}
       {!isConsolidated && !isSuperAdmin && (
@@ -411,30 +565,66 @@ const DashboardPage: React.FC = () => {
           <div className="card p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="section-title">Team Health</p>
-              <Link to="/teams" className="text-xs text-volt-400 hover:underline">View all →</Link>
+              <Link
+                to="/teams"
+                className="text-xs text-volt-400 hover:underline"
+              >
+                View all →
+              </Link>
             </div>
             {teamsLoading ? (
-              <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 rounded" />)}</div>
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 rounded" />
+                ))}
+              </div>
             ) : !teamHealth?.length ? (
-              <EmptyState title="No teams yet" description="Create a team to track its health here." />
+              <EmptyState
+                title="No teams yet"
+                description="Create a team to track its health here."
+              />
             ) : (
               <div className="space-y-3">
                 {teamHealth.map((team) => (
-                  <div key={team.name} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-pitch-700 rounded border border-slate-200/80 dark:border-transparent">
+                  <div
+                    key={team.name}
+                    className="flex items-center gap-3 p-3 bg-pitch-700 rounded"
+                  >
                     <div
                       className="w-8 h-8 rounded flex items-center justify-center text-xs font-display font-extrabold text-pitch-900 flex-shrink-0"
-                      style={{ backgroundColor: team.attendance > 90 ? '#00e676' : team.attendance > 80 ? '#ccff00' : '#ff6b35' }}
+                      style={{
+                        backgroundColor:
+                          team.attendance > 90
+                            ? "#00e676"
+                            : team.attendance > 80
+                              ? "#ccff00"
+                              : "#ff6b35",
+                      }}
                     >
-                      {team.name.replace('Team ', '').slice(0, 2)}
+                      {team.name.replace("Team ", "").slice(0, 2)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-slate-900 dark:text-white">{team.name}</p>
-                        <span className="text-2xs text-slate-500">{team.students} players</span>
+                        <p className="text-xs font-semibold text-slate-900 dark:text-white">
+                          {team.name}
+                        </p>
+                        <span className="text-2xs text-slate-500">
+                          {team.students} players
+                        </span>
                       </div>
                       <div className="flex items-center gap-3 mt-1">
-                        <span className="text-2xs text-slate-500">Att: <span className="text-volt-600 dark:text-volt-400 font-semibold">{team.attendance}%</span></span>
-                        <span className="text-2xs text-slate-500">Perf: <span className="text-sky-600 dark:text-ice-400 font-semibold">{team.performance}</span></span>
+                        <span className="text-2xs text-slate-500">
+                          Att:{" "}
+                          <span className="text-volt-400 font-semibold">
+                            {team.attendance}%
+                          </span>
+                        </span>
+                        <span className="text-2xs text-slate-500">
+                          Perf:{" "}
+                          <span className="text-ice-400 font-semibold">
+                            {team.performance}
+                          </span>
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -447,28 +637,52 @@ const DashboardPage: React.FC = () => {
           <div className="card p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="section-title">Top Performers</p>
-              <Link to="/students" className="text-xs text-volt-600 dark:text-volt-400 hover:underline">Full rankings →</Link>
+              <Link
+                to="/students"
+                className="text-xs text-volt-400 hover:underline"
+              >
+                Full rankings →
+              </Link>
             </div>
             {performersLoading ? (
-              <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 rounded" />)}</div>
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 rounded" />
+                ))}
+              </div>
             ) : !topPerformers?.length ? (
-              <EmptyState title="No ratings yet" description="Log performance scores to rank players." />
+              <EmptyState
+                title="No ratings yet"
+                description="Log performance scores to rank players."
+              />
             ) : (
               <div className="space-y-3">
                 {topPerformers.map((player, i) => (
                   <div key={player.id} className="flex items-center gap-3">
-                    <span className={clsx(
-                      'font-display font-900 text-sm w-5 text-center',
-                      i === 0 ? 'text-volt-600 dark:text-volt-400' : i === 1 ? 'text-slate-400 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'
-                    )}>
+                    <span
+                      className={clsx(
+                        "font-display font-900 text-sm w-5 text-center",
+                        i === 0
+                          ? "text-volt-400"
+                          : i === 1
+                            ? "text-slate-300"
+                            : "text-slate-500",
+                      )}
+                    >
                       {i + 1}
                     </span>
                     <Avatar name={player.name} src={player.avatar} size="sm" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{player.name}</p>
-                      <p className="text-2xs text-slate-500">{player.team} · {player.position}</p>
+                      <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                        {player.name}
+                      </p>
+                      <p className="text-2xs text-slate-500">
+                        {player.team} · {player.position}
+                      </p>
                     </div>
-                    <span className="font-display font-extrabold text-volt-600 dark:text-volt-400 text-sm">{player.rating}</span>
+                    <span className="font-display font-extrabold text-volt-400 text-sm">
+                      {player.rating}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -479,20 +693,38 @@ const DashboardPage: React.FC = () => {
           <div className="card p-5 space-y-4">
             <p className="section-title">Live Activity</p>
             {activityLoading ? (
-              <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 rounded" />)}</div>
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 rounded" />
+                ))}
+              </div>
             ) : !recentActivity?.length ? (
-              <EmptyState title="No recent activity" description="Actions across the franchise will show up here." />
+              <EmptyState
+                title="No recent activity"
+                description="Actions across the franchise will show up here."
+              />
             ) : (
               <div className="space-y-0">
                 {recentActivity.map((item, i) => (
-                  <div key={item.id} className={clsx('flex gap-3 py-3', i < recentActivity.length - 1 && 'border-b border-slate-100 dark:border-white/4')}>
-                    <div className="w-7 h-7 rounded bg-slate-100 dark:bg-pitch-700 flex items-center justify-center flex-shrink-0">
+                  <div
+                    key={item.id}
+                    className={clsx(
+                      "flex gap-3 py-3",
+                      i < recentActivity.length - 1 &&
+                        "border-b border-white/4",
+                    )}
+                  >
+                    <div className="w-7 h-7 rounded bg-pitch-700 flex items-center justify-center flex-shrink-0">
                       {renderActivityIcon(item.type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-tight">{item.message}</p>
-                      <p className="text-2xs text-slate-400 dark:text-slate-600 mt-1">
-                        {formatDistanceToNowStrict(new Date(item.time), { addSuffix: true })}
+                      <p className="text-xs text-slate-300 leading-tight">
+                        {item.message}
+                      </p>
+                      <p className="text-2xs text-slate-600 mt-1">
+                        {formatDistanceToNowStrict(new Date(item.time), {
+                          addSuffix: true,
+                        })}
                       </p>
                     </div>
                   </div>
@@ -512,60 +744,68 @@ const DashboardPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               {
-                label: 'Register Player',
+                label: "Register Player",
                 icon: UserPlus,
-                to: '/students',
-                desc: 'Add new athlete to squad',
-                badgeStyle: 'text-volt-500 dark:text-volt-400 bg-volt-400/10 border-volt-400/25',
+                to: "/students",
+                desc: "Add new athlete to squad",
+                badgeStyle:
+                  "text-volt-500 dark:text-volt-400 bg-volt-400/10 border-volt-400/25",
               },
               {
-                label: 'Session Roster',
+                label: "Session Roster",
                 icon: CalendarCheck,
-                to: '/schedule',
-                desc: 'Live attendance & drills',
-                badgeStyle: 'text-field-500 dark:text-field-400 bg-field-400/10 border-field-400/25',
+                to: "/schedule",
+                desc: "Live attendance & drills",
+                badgeStyle:
+                  "text-field-500 dark:text-field-400 bg-field-400/10 border-field-400/25",
               },
               {
-                label: 'Fee Ledger',
+                label: "Fee Ledger",
                 icon: Wallet,
-                to: '/fees',
-                desc: 'Collect installments & dues',
-                badgeStyle: 'text-ice-500 dark:text-ice-400 bg-ice-400/10 border-ice-400/25',
+                to: "/fees",
+                desc: "Collect installments & dues",
+                badgeStyle:
+                  "text-ice-500 dark:text-ice-400 bg-ice-400/10 border-ice-400/25",
               },
               {
-                label: 'Squad & Teams',
+                label: "Squad & Teams",
                 icon: Users,
-                to: '/teams',
-                desc: 'Formation & rosters',
-                badgeStyle: 'text-purple-400 bg-purple-500/10 border-purple-500/25',
+                to: "/teams",
+                desc: "Formation & rosters",
+                badgeStyle:
+                  "text-purple-400 bg-purple-500/10 border-purple-500/25",
               },
               {
-                label: 'Training Branches',
+                label: "Training Branches",
                 icon: Building2,
-                to: '/franchises',
-                desc: 'Centres & pitch locations',
-                badgeStyle: 'text-amber-500 bg-amber-500/10 border-amber-500/25',
+                to: "/franchises",
+                desc: "Centres & pitch locations",
+                badgeStyle:
+                  "text-amber-500 bg-amber-500/10 border-amber-500/25",
               },
               {
-                label: 'Transfer Wall',
+                label: "Transfer Wall",
                 icon: Repeat2,
-                to: '/transfer-wall',
-                desc: 'Scouting & recruitment',
-                badgeStyle: 'text-ember-500 bg-ember-500/10 border-ember-500/25',
+                to: "/transfer-wall",
+                desc: "Scouting & recruitment",
+                badgeStyle:
+                  "text-ember-500 bg-ember-500/10 border-ember-500/25",
               },
               {
-                label: 'Smart NFC Passes',
+                label: "Smart NFC Passes",
                 icon: Radio,
-                to: '/nfc-cards',
-                desc: 'Order & manage ID cards',
-                badgeStyle: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/25',
+                to: "/nfc-cards",
+                desc: "Order & manage ID cards",
+                badgeStyle:
+                  "text-emerald-500 bg-emerald-500/10 border-emerald-500/25",
               },
               {
-                label: 'Academy Settings',
+                label: "Academy Settings",
                 icon: Settings,
-                to: '/settings',
-                desc: 'Branding & billing tier',
-                badgeStyle: 'text-slate-400 bg-slate-500/10 border-slate-500/25',
+                to: "/settings",
+                desc: "Branding & billing tier",
+                badgeStyle:
+                  "text-slate-400 bg-slate-500/10 border-slate-500/25",
               },
             ].map((action) => {
               const IconComp = action.icon;
@@ -575,7 +815,12 @@ const DashboardPage: React.FC = () => {
                   to={action.to}
                   className="card p-3.5 flex items-center gap-3 border border-slate-200/80 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/15 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-all group"
                 >
-                  <div className={clsx('w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 transition-transform group-hover:scale-105', action.badgeStyle)}>
+                  <div
+                    className={clsx(
+                      "w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
+                      action.badgeStyle,
+                    )}
+                  >
                     <IconComp size={18} />
                   </div>
                   <div className="min-w-0">

@@ -33,17 +33,29 @@ import {
   type SquadInvitation,
 } from "../../store/api/squadInvitationApi";
 import { useConfirm } from "../../hooks/useConfirm";
-import { NoxPageHeader, NoxStatCard, NoxSkeleton, NoxEmptyState, NoxStatusBadge } from "../../components/portal-ui";
+import {
+  NoxPageHeader,
+  NoxStatCard,
+  NoxSkeleton,
+  NoxEmptyState,
+  NoxStatusBadge,
+} from "../../components/portal-ui";
 import { ImageUploadField } from "../../components/ui";
 import { NfcPlayerCardSection } from "./NfcPlayerCardSection";
 import { AcceptSquadInvitationModal } from "./AcceptSquadInvitationModal";
 
 const StudentDashboardPage: React.FC = () => {
   const user = useSelector((s: RootState) => s.auth.user);
-  const { data, isLoading, isError, refetch: refetchDashboard } = useGetMyDashboardQuery();
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch: refetchDashboard,
+  } = useGetMyDashboardQuery();
   const [copied, setCopied] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
-  const [acceptModalInvite, setAcceptModalInvite] = useState<SquadInvitation | null>(null);
+  const [acceptModalInvite, setAcceptModalInvite] =
+    useState<SquadInvitation | null>(null);
 
   const { confirm, ConfirmDialog } = useConfirm();
   const {
@@ -51,13 +63,17 @@ const StudentDashboardPage: React.FC = () => {
     isLoading: isLoadingInvitations,
     refetch: refetchInvitations,
   } = useGetMySquadInvitationsQuery();
-  const [respondToInvitation, { isLoading: isResponding }] = useRespondToSquadInvitationMutation();
+  const [respondToInvitation, { isLoading: isResponding }] =
+    useRespondToSquadInvitationMutation();
 
-  const [updateProfile, { isLoading: isUpdatingProfile }] = useUpdateMyProfileMutation();
-  const [updateSettings, { isLoading: isUpdatingSettings }] = useUpdateMyPublicProfileSettingsMutation();
+  const [updateProfile, { isLoading: isUpdatingProfile }] =
+    useUpdateMyProfileMutation();
+  const [updateSettings, { isLoading: isUpdatingSettings }] =
+    useUpdateMyPublicProfileSettingsMutation();
 
   const isFreeAgent = data ? !data.profile.franchiseId : false;
-  const pendingInvitations = squadInvitations?.filter((inv) => inv.status === "pending") || [];
+  const pendingInvitations =
+    squadInvitations?.filter((inv) => inv.status === "pending") || [];
 
   // Free Agent Visibility State
   const [visibilitySettings, setVisibilitySettings] = useState({
@@ -104,10 +120,15 @@ const StudentDashboardPage: React.FC = () => {
           ? new Date(data.profile.dateOfBirth).toISOString().split("T")[0]
           : "",
         position: data.profile.position || "",
-        jerseyNumber: data.profile.jerseyNumber !== undefined ? String(data.profile.jerseyNumber) : "",
+        jerseyNumber:
+          data.profile.jerseyNumber !== undefined
+            ? String(data.profile.jerseyNumber)
+            : "",
         photo: data.profile.photo || "",
-        emergencyContactName: data.profile.medicalInfo?.emergencyContactName || "",
-        emergencyContactPhone: data.profile.medicalInfo?.emergencyContactPhone || "",
+        emergencyContactName:
+          data.profile.medicalInfo?.emergencyContactName || "",
+        emergencyContactPhone:
+          data.profile.medicalInfo?.emergencyContactPhone || "",
       });
     }
   }, [data]);
@@ -144,7 +165,11 @@ const StudentDashboardPage: React.FC = () => {
         enabled: nextState,
         settings: visibilitySettings,
       }).unwrap();
-      toast.success(nextState ? "Public player card enabled" : "Public player card disabled");
+      toast.success(
+        nextState
+          ? "Public player card enabled"
+          : "Public player card disabled",
+      );
     } catch (err: any) {
       toast.error(err?.data?.message || "Failed to update public status");
     }
@@ -158,10 +183,14 @@ const StudentDashboardPage: React.FC = () => {
         lastName: profileForm.lastName.trim(),
         dateOfBirth: profileForm.dateOfBirth || undefined,
         position: profileForm.position || undefined,
-        jerseyNumber: profileForm.jerseyNumber ? parseInt(profileForm.jerseyNumber, 10) : undefined,
+        jerseyNumber: profileForm.jerseyNumber
+          ? parseInt(profileForm.jerseyNumber, 10)
+          : undefined,
         photo: profileForm.photo !== undefined ? profileForm.photo : undefined,
-        emergencyContactName: profileForm.emergencyContactName.trim() || undefined,
-        emergencyContactPhone: profileForm.emergencyContactPhone.trim() || undefined,
+        emergencyContactName:
+          profileForm.emergencyContactName.trim() || undefined,
+        emergencyContactPhone:
+          profileForm.emergencyContactPhone.trim() || undefined,
       }).unwrap();
       toast.success("Player profile updated successfully!");
     } catch (err: any) {
@@ -227,16 +256,21 @@ const StudentDashboardPage: React.FC = () => {
             <h3 className="font-orbital font-bold text-slate-900 dark:text-white text-base">
               Squad Recruitment Invitations ({pendingInvitations.length})
             </h3>
-            <span className="pill pill-green font-mono text-2xs animate-pulse">Action Required</span>
+            <span className="pill pill-green font-mono text-2xs animate-pulse">
+              Action Required
+            </span>
           </div>
           <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
-            You have received an official squad recruitment invitation. Review the terms below and choose whether to accept or decline.
+            You have received an official squad recruitment invitation. Review
+            the terms below and choose whether to accept or decline.
           </p>
 
           <div className="space-y-3">
             {pendingInvitations.map((inv) => {
-              const academy = typeof inv.academyId === "object" ? inv.academyId : null;
-              const franchise = typeof inv.franchiseId === "object" ? inv.franchiseId : null;
+              const academy =
+                typeof inv.academyId === "object" ? inv.academyId : null;
+              const franchise =
+                typeof inv.franchiseId === "object" ? inv.franchiseId : null;
               const team = typeof inv.teamId === "object" ? inv.teamId : null;
 
               return (
@@ -264,15 +298,23 @@ const StudentDashboardPage: React.FC = () => {
                     <div className="text-2xs text-slate-500 dark:text-slate-400 flex items-center gap-3 flex-wrap">
                       {inv.position && (
                         <span>
-                          Position: <strong className="text-slate-700 dark:text-slate-200">{inv.position}</strong>
+                          Position:{" "}
+                          <strong className="text-slate-700 dark:text-slate-200">
+                            {inv.position}
+                          </strong>
                         </span>
                       )}
                       {inv.jerseyNumber && (
                         <span>
-                          Jersey: <strong className="text-slate-700 dark:text-slate-200">#{inv.jerseyNumber}</strong>
+                          Jersey:{" "}
+                          <strong className="text-slate-700 dark:text-slate-200">
+                            #{inv.jerseyNumber}
+                          </strong>
                         </span>
                       )}
-                      <span>Received {new Date(inv.createdAt).toLocaleDateString()}</span>
+                      <span>
+                        Received {new Date(inv.createdAt).toLocaleDateString()}
+                      </span>
                     </div>
 
                     {inv.notes && (
@@ -347,7 +389,8 @@ const StudentDashboardPage: React.FC = () => {
                     Share Your Player Card &amp; Match Stats
                   </h3>
                   <p className="text-xs text-nox-low max-w-xl">
-                    Anyone with your public link or QR code can view your verified stats, overall rating, and player card.
+                    Anyone with your public link or QR code can view your
+                    verified stats, overall rating, and player card.
                   </p>
                 </div>
 
@@ -357,7 +400,11 @@ const StudentDashboardPage: React.FC = () => {
                     onClick={handleCopyLink}
                     className="nox-btn-secondary !py-2 !px-3 text-xs flex-1 sm:flex-initial"
                   >
-                    {copied ? <CheckCircle2 size={14} className="text-field-400" /> : <Copy size={14} />}
+                    {copied ? (
+                      <CheckCircle2 size={14} className="text-field-400" />
+                    ) : (
+                      <Copy size={14} />
+                    )}
                     {copied ? "Link Copied" : "Copy Link"}
                   </button>
                   <button
@@ -409,7 +456,10 @@ const StudentDashboardPage: React.FC = () => {
                   <span className="text-2xs font-mono uppercase tracking-wider text-core-400 font-semibold flex items-center gap-1">
                     <Globe size={12} /> Verified Player ID
                   </span>
-                  <button onClick={() => setShowQrModal(false)} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">
+                  <button
+                    onClick={() => setShowQrModal(false)}
+                    className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  >
                     <X size={16} />
                   </button>
                 </div>
@@ -417,10 +467,17 @@ const StudentDashboardPage: React.FC = () => {
                   Player Public QR Code
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Scan with any phone camera to view {data.profile.firstName}&apos;s verified player card.
+                  Scan with any phone camera to view {data.profile.firstName}
+                  &apos;s verified player card.
                 </p>
                 <div className="p-4 bg-white rounded-xl inline-block mx-auto shadow-inner">
-                  <QRCode value={publicProfileUrl} size={180} level="H" bgColor="#FFFFFF" fgColor="#000000" />
+                  <QRCode
+                    value={publicProfileUrl}
+                    size={180}
+                    level="H"
+                    bgColor="#FFFFFF"
+                    fgColor="#000000"
+                  />
                 </div>
                 <div className="pt-2">
                   <button
@@ -454,7 +511,11 @@ const StudentDashboardPage: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-xs text-nox-low mt-0.5 max-w-xl leading-relaxed">
-                      You are registered as an independent player. Academy session attendance, fee installments, and coach evaluations will activate automatically once you join an academy squad. You have full control over your verified public player card below.
+                      You are registered as an independent player. Academy
+                      session attendance, fee installments, and coach
+                      evaluations will activate automatically once you join an
+                      academy squad. You have full control over your verified
+                      public player card below.
                     </p>
                   </div>
                 </div>
@@ -468,12 +529,16 @@ const StudentDashboardPage: React.FC = () => {
                     onClick={handleTogglePublicEnabled}
                     disabled={isUpdatingSettings}
                     className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                      data.profile.publicProfileEnabled ? "bg-core-400" : "bg-slate-300 dark:bg-white/10"
+                      data.profile.publicProfileEnabled
+                        ? "bg-core-400"
+                        : "bg-white/10"
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                        data.profile.publicProfileEnabled ? "translate-x-5" : "translate-x-0.5"
+                        data.profile.publicProfileEnabled
+                          ? "translate-x-5"
+                          : "translate-x-0.5"
                       }`}
                     />
                   </button>
@@ -484,18 +549,21 @@ const StudentDashboardPage: React.FC = () => {
               <div className="grid lg:grid-cols-2 gap-6">
                 {/* 1. Public Profile Viewing Controls */}
                 <div className="nox-card p-6 space-y-5">
-                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.06] pb-3">
+                  <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
                     <div className="flex items-center gap-2">
                       <SlidersHorizontal size={17} className="text-core-400" />
                       <h3 className="font-orbital font-semibold text-nox-high text-sm">
                         Public Profile Viewing Controls
                       </h3>
                     </div>
-                    <span className="text-[11px] text-nox-low font-mono">Scout Visibility</span>
+                    <span className="text-[11px] text-nox-low font-mono">
+                      Scout Visibility
+                    </span>
                   </div>
 
                   <p className="text-xs text-nox-low">
-                    Configure exactly what scouts, recruiters, and visitors can see when viewing your public player card.
+                    Configure exactly what scouts, recruiters, and visitors can
+                    see when viewing your public player card.
                   </p>
 
                   <form onSubmit={handleSaveVisibility} className="space-y-4">
@@ -503,22 +571,29 @@ const StudentDashboardPage: React.FC = () => {
                       {[
                         { key: "showPhoto", label: "Show Photo / Avatar" },
                         { key: "showPosition", label: "Show Position" },
-                        { key: "showJerseyNumber", label: "Show Jersey Number" },
+                        {
+                          key: "showJerseyNumber",
+                          label: "Show Jersey Number",
+                        },
                         { key: "showAgeGroup", label: "Show Age Category" },
                         { key: "showRating", label: "Show Rating" },
                       ].map(({ key, label }) => {
-                        const active = (visibilitySettings as any)[key] !== false;
+                        const active =
+                          (visibilitySettings as any)[key] !== false;
                         return (
                           <button
                             type="button"
                             key={key}
                             onClick={() =>
-                              setVisibilitySettings((s) => ({ ...s, [key]: !active }))
+                              setVisibilitySettings((s) => ({
+                                ...s,
+                                [key]: !active,
+                              }))
                             }
                             className={`flex items-center justify-between p-3 rounded-xl border text-left text-xs transition-all ${
                               active
                                 ? "bg-core-400/10 border-core-400/40 text-nox-high font-semibold"
-                                : "bg-slate-50 dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.06] text-nox-low hover:text-nox-mid"
+                                : "bg-white/[0.02] border-white/[0.06] text-nox-low hover:text-nox-mid"
                             }`}
                           >
                             <span>{label}</span>
@@ -526,7 +601,7 @@ const StudentDashboardPage: React.FC = () => {
                               className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] shrink-0 ml-2 ${
                                 active
                                   ? "bg-core-400 border-core-400 text-pitch-950 font-bold"
-                                  : "border-slate-300 dark:border-white/20 bg-transparent"
+                                  : "border-white/20 bg-transparent"
                               }`}
                             >
                               {active && <Check size={11} strokeWidth={3} />}
@@ -544,7 +619,10 @@ const StudentDashboardPage: React.FC = () => {
                         <textarea
                           value={visibilitySettings.bio}
                           onChange={(e) =>
-                            setVisibilitySettings((s) => ({ ...s, bio: e.target.value }))
+                            setVisibilitySettings((s) => ({
+                              ...s,
+                              bio: e.target.value,
+                            }))
                           }
                           placeholder="Introduce yourself to recruiters (e.g. key playing strengths, preferred tactical role)..."
                           rows={3}
@@ -560,7 +638,10 @@ const StudentDashboardPage: React.FC = () => {
                         <select
                           value={visibilitySettings.preferredFoot}
                           onChange={(e) =>
-                            setVisibilitySettings((s) => ({ ...s, preferredFoot: e.target.value }))
+                            setVisibilitySettings((s) => ({
+                              ...s,
+                              preferredFoot: e.target.value,
+                            }))
                           }
                           className="input text-xs w-full"
                         >
@@ -578,7 +659,9 @@ const StudentDashboardPage: React.FC = () => {
                         disabled={isUpdatingSettings}
                         className="nox-btn-primary !py-2 !px-4 text-xs"
                       >
-                        {isUpdatingSettings ? "Saving…" : "Save Visibility Preferences"}
+                        {isUpdatingSettings
+                          ? "Saving…"
+                          : "Save Visibility Preferences"}
                       </button>
                     </div>
                   </form>
@@ -586,7 +669,7 @@ const StudentDashboardPage: React.FC = () => {
 
                 {/* 2. Edit My Player Information (Editable for unattached player) */}
                 <div className="nox-card p-6 space-y-5">
-                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.06] pb-3">
+                  <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
                     <div className="flex items-center gap-2">
                       <UserCheck size={17} className="text-field-400" />
                       <h3 className="font-orbital font-semibold text-nox-high text-sm">
@@ -599,7 +682,8 @@ const StudentDashboardPage: React.FC = () => {
                   </div>
 
                   <p className="text-xs text-nox-low">
-                    As an independent player, you can freely update your verified personal and tactical details.
+                    As an independent player, you can freely update your
+                    verified personal and tactical details.
                   </p>
 
                   <form onSubmit={handleSaveProfile} className="space-y-3.5">
@@ -607,7 +691,9 @@ const StudentDashboardPage: React.FC = () => {
                       label="Player Card Headshot"
                       category="player_photo"
                       value={profileForm.photo}
-                      onChange={(url) => setProfileForm((p) => ({ ...p, photo: url || "" }))}
+                      onChange={(url) =>
+                        setProfileForm((p) => ({ ...p, photo: url || "" }))
+                      }
                       shape="circle"
                       helperText="Official player headshot shown on your verified digital FUT card, scout searches, and NFC ID pass."
                     />
@@ -622,7 +708,10 @@ const StudentDashboardPage: React.FC = () => {
                           required
                           value={profileForm.firstName}
                           onChange={(e) =>
-                            setProfileForm((p) => ({ ...p, firstName: e.target.value }))
+                            setProfileForm((p) => ({
+                              ...p,
+                              firstName: e.target.value,
+                            }))
                           }
                           className="input text-xs w-full"
                         />
@@ -636,7 +725,10 @@ const StudentDashboardPage: React.FC = () => {
                           required
                           value={profileForm.lastName}
                           onChange={(e) =>
-                            setProfileForm((p) => ({ ...p, lastName: e.target.value }))
+                            setProfileForm((p) => ({
+                              ...p,
+                              lastName: e.target.value,
+                            }))
                           }
                           className="input text-xs w-full"
                         />
@@ -651,7 +743,10 @@ const StudentDashboardPage: React.FC = () => {
                         <select
                           value={profileForm.position}
                           onChange={(e) =>
-                            setProfileForm((p) => ({ ...p, position: e.target.value }))
+                            setProfileForm((p) => ({
+                              ...p,
+                              position: e.target.value,
+                            }))
                           }
                           className="input text-xs w-full"
                         >
@@ -660,8 +755,12 @@ const StudentDashboardPage: React.FC = () => {
                           <option value="Striker">Striker</option>
                           <option value="Winger">Winger</option>
                           <option value="Midfielder">Midfielder</option>
-                          <option value="Attacking Midfielder">Attacking Midfielder</option>
-                          <option value="Defensive Midfielder">Defensive Midfielder</option>
+                          <option value="Attacking Midfielder">
+                            Attacking Midfielder
+                          </option>
+                          <option value="Defensive Midfielder">
+                            Defensive Midfielder
+                          </option>
                           <option value="Defender">Defender</option>
                           <option value="Center Back">Center Back</option>
                           <option value="Full Back">Full Back</option>
@@ -678,7 +777,10 @@ const StudentDashboardPage: React.FC = () => {
                           max="99"
                           value={profileForm.jerseyNumber}
                           onChange={(e) =>
-                            setProfileForm((p) => ({ ...p, jerseyNumber: e.target.value }))
+                            setProfileForm((p) => ({
+                              ...p,
+                              jerseyNumber: e.target.value,
+                            }))
                           }
                           placeholder="e.g. 10"
                           className="input text-xs w-full"
@@ -694,7 +796,10 @@ const StudentDashboardPage: React.FC = () => {
                         type="date"
                         value={profileForm.dateOfBirth}
                         onChange={(e) =>
-                          setProfileForm((p) => ({ ...p, dateOfBirth: e.target.value }))
+                          setProfileForm((p) => ({
+                            ...p,
+                            dateOfBirth: e.target.value,
+                          }))
                         }
                         className="input text-xs w-full"
                       />
@@ -709,7 +814,10 @@ const StudentDashboardPage: React.FC = () => {
                           type="text"
                           value={profileForm.emergencyContactName}
                           onChange={(e) =>
-                            setProfileForm((p) => ({ ...p, emergencyContactName: e.target.value }))
+                            setProfileForm((p) => ({
+                              ...p,
+                              emergencyContactName: e.target.value,
+                            }))
                           }
                           placeholder="Guardian / Emergency contact"
                           className="input text-xs w-full"
@@ -723,7 +831,10 @@ const StudentDashboardPage: React.FC = () => {
                           type="tel"
                           value={profileForm.emergencyContactPhone}
                           onChange={(e) =>
-                            setProfileForm((p) => ({ ...p, emergencyContactPhone: e.target.value }))
+                            setProfileForm((p) => ({
+                              ...p,
+                              emergencyContactPhone: e.target.value,
+                            }))
                           }
                           placeholder="+91 98765 43210"
                           className="input text-xs w-full"
@@ -737,7 +848,9 @@ const StudentDashboardPage: React.FC = () => {
                         disabled={isUpdatingProfile}
                         className="nox-btn-primary !py-2 !px-4 text-xs"
                       >
-                        {isUpdatingProfile ? "Saving…" : "Save Player Information"}
+                        {isUpdatingProfile
+                          ? "Saving…"
+                          : "Save Player Information"}
                       </button>
                     </div>
                   </form>
@@ -752,7 +865,9 @@ const StudentDashboardPage: React.FC = () => {
                 <div className="flex items-center gap-2.5">
                   <Lock size={15} className="text-core-400 shrink-0" />
                   <span>
-                    Official Academy Roster Player: Roster details (Name, DOB, Squad, Jersey #) are verified and managed by your academy coaches.
+                    Official Academy Roster Player: Roster details (Name, DOB,
+                    Squad, Jersey #) are verified and managed by your academy
+                    coaches.
                   </span>
                 </div>
                 <span className="font-mono text-2xs uppercase tracking-wider text-core-400 shrink-0 font-semibold">
@@ -783,30 +898,44 @@ const StudentDashboardPage: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
-                  <h2 className="font-orbital text-lg font-medium text-nox-high mb-4">Fee reminders</h2>
+                  <h2 className="font-orbital text-lg font-medium text-nox-high mb-4">
+                    Fee reminders
+                  </h2>
                   {[...data.overdueFees, ...data.upcomingFees].length === 0 ? (
-                    <NoxEmptyState title="You're all caught up" body="No pending fee installments right now." />
+                    <NoxEmptyState
+                      title="You're all caught up"
+                      body="No pending fee installments right now."
+                    />
                   ) : (
-                    <div className="nox-card divide-y divide-slate-200 dark:divide-white/[0.06]">
-                      {[...data.overdueFees, ...data.upcomingFees].map((f, i) => {
-                        const isOverdue = data.overdueFees.includes(f);
-                        return (
-                          <div key={i} className="flex items-center justify-between px-5 py-4">
-                            <div>
-                              <div className="text-sm text-nox-high">Installment {f.installmentNumber}</div>
-                              <div className="text-xs text-nox-low font-mono mt-0.5">
-                                Due {new Date(f.dueDate).toLocaleDateString()}
+                    <div className="nox-card divide-y divide-white/[0.06]">
+                      {[...data.overdueFees, ...data.upcomingFees].map(
+                        (f, i) => {
+                          const isOverdue = data.overdueFees.includes(f);
+                          return (
+                            <div
+                              key={i}
+                              className="flex items-center justify-between px-5 py-4"
+                            >
+                              <div>
+                                <div className="text-sm text-nox-high">
+                                  Installment {f.installmentNumber}
+                                </div>
+                                <div className="text-xs text-nox-low font-mono mt-0.5">
+                                  Due {new Date(f.dueDate).toLocaleDateString()}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-orbital text-sm font-semibold text-nox-high">
+                                  ₹{f.amount.toLocaleString("en-IN")}
+                                </div>
+                                <NoxStatusBadge
+                                  status={isOverdue ? "overdue" : "pending"}
+                                />
                               </div>
                             </div>
-                            <div className="text-right">
-                              <div className="font-orbital text-sm font-semibold text-nox-high">
-                                ₹{f.amount.toLocaleString("en-IN")}
-                              </div>
-                              <NoxStatusBadge status={isOverdue ? "overdue" : "pending"} />
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        },
+                      )}
                     </div>
                   )}
                 </div>
@@ -817,9 +946,12 @@ const StudentDashboardPage: React.FC = () => {
                     Recent coach notes
                   </h2>
                   {data.recentRemarks.length === 0 ? (
-                    <NoxEmptyState title="No notes yet" body="Coach feedback will appear here as it's added." />
+                    <NoxEmptyState
+                      title="No notes yet"
+                      body="Coach feedback will appear here as it's added."
+                    />
                   ) : (
-                    <div className="nox-card divide-y divide-slate-200 dark:divide-white/[0.06]">
+                    <div className="nox-card divide-y divide-white/[0.06]">
                       {data.recentRemarks.map((r) => (
                         <div key={r._id} className="px-5 py-4">
                           <div className="text-xs text-nox-low font-mono">

@@ -58,7 +58,7 @@ export const PortalNotificationBell: React.FC = () => {
       >
         <Bell size={16} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full text-[10px] text-white font-bold flex items-center justify-center shadow-xs">
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-orbit-cta rounded-full text-[10px] text-white font-bold flex items-center justify-center shadow-xs">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -121,7 +121,9 @@ export const PortalNotificationBell: React.FC = () => {
                       }
                       if (atts.length === 0 && n.data?.documentUrl) {
                         atts.push({
-                          name: (n.data.documentFilename as string) || "Attached Document",
+                          name:
+                            (n.data.documentFilename as string) ||
+                            "Attached Document",
                           url: n.data.documentUrl as string,
                         });
                       }
@@ -141,7 +143,9 @@ export const PortalNotificationBell: React.FC = () => {
                               className="inline-flex items-center gap-1 text-[11px] text-core-500 dark:text-core-400 bg-core-400/10 border border-core-400/20 px-2 py-0.5 rounded font-medium hover:underline"
                             >
                               <Download size={11} />
-                              <span className="truncate max-w-[140px]">{at.name}</span>
+                              <span className="truncate max-w-[140px]">
+                                {at.name}
+                              </span>
                             </a>
                           ))}
                         </div>

@@ -62,12 +62,20 @@ const STATUS_VARIANT: Record<string, "green" | "red" | "yellow" | "gray"> = {
   refunded: "gray",
 };
 
-const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({ isOpen, onToggle }) => {
+const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
+  isOpen,
+  onToggle,
+}) => {
   const academyId = useCurrentAcademyId();
-  const { data: academy, isLoading } = academyApi.useGetAcademyByIdQuery(academyId ?? "", { skip: !academyId });
-  const [updateConfig, { isLoading: saving }] = academyApi.useUpdateAcademyConfigMutation();
+  const { data: academy, isLoading } = academyApi.useGetAcademyByIdQuery(
+    academyId ?? "",
+    { skip: !academyId },
+  );
+  const [updateConfig, { isLoading: saving }] =
+    academyApi.useUpdateAcademyConfigMutation();
 
-  const qrImageUrl = academy?.feeQrImageUrl ?? (academy as any)?.data?.feeQrImageUrl;
+  const qrImageUrl =
+    academy?.feeQrImageUrl ?? (academy as any)?.data?.feeQrImageUrl;
 
   const handleChange = async (url: string | undefined) => {
     if (!academyId) {
@@ -75,22 +83,27 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({ is
       return;
     }
     try {
-      await updateConfig({ id: academyId, config: { feeQrImageUrl: url ?? "" } }).unwrap();
+      await updateConfig({
+        id: academyId,
+        config: { feeQrImageUrl: url ?? "" },
+      }).unwrap();
       toast.success(url ? "QR code updated" : "QR code removed");
     } catch (err: any) {
-      toast.error(err?.data?.message || "Couldn't save the QR code — try again");
+      toast.error(
+        err?.data?.message || "Couldn't save the QR code — try again",
+      );
     }
   };
 
   return (
-    <div className="rounded-xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-pitch-900/60 overflow-hidden mb-6 transition-all shadow-xs">
+    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/60 overflow-hidden mb-6 transition-all shadow-xs">
       <button
         type="button"
         onClick={onToggle}
         className="w-full flex items-center justify-between p-3.5 sm:px-4 text-left hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
       >
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-600 dark:text-sky-400">
+          <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
             <QrCode size={16} />
           </div>
           <div>
@@ -101,18 +114,20 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({ is
               <span
                 className={clsx(
                   "text-[10px] px-1.5 py-0.5 rounded font-semibold",
-                  qrImageUrl ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-transparent"
+                  qrImageUrl
+                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400",
                 )}
               >
                 {qrImageUrl ? "Configured" : "Not Set"}
               </span>
             </div>
-            <p className="text-2xs text-slate-500 dark:text-slate-400">
+            <p className="text-2xs text-slate-400">
               Attached to WhatsApp due-date reminders sent to guardians.
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex items-center gap-1 text-xs text-slate-400">
           <span>{isOpen ? "Hide settings" : "Configure QR"}</span>
           {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
         </div>
@@ -122,7 +137,7 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({ is
         <div className="p-4 pt-2 border-t border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-pitch-950/40">
           <div className="max-w-xs">
             {isLoading && !qrImageUrl ? (
-              <div className="w-[180px] aspect-square rounded-lg bg-slate-100 dark:bg-slate-900 animate-pulse border border-dashed border-slate-300 dark:border-white/10 flex items-center justify-center text-2xs text-slate-500 dark:text-slate-400">
+              <div className="w-[180px] aspect-square rounded-lg bg-slate-900 animate-pulse border border-dashed border-white/10 flex items-center justify-center text-2xs text-slate-400">
                 Loading QR Code…
               </div>
             ) : (
@@ -135,7 +150,11 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({ is
               />
             )}
           </div>
-          {saving && <p className="text-2xs text-volt-400 mt-2">Saving payment QR code…</p>}
+          {saving && (
+            <p className="text-2xs text-volt-400 mt-2">
+              Saving payment QR code…
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -151,16 +170,34 @@ const FeesPage: React.FC = () => {
 
   // Modals state
   const [showCreate, setShowCreate] = useState(false);
-  const [createInitialStudentId, setCreateInitialStudentId] = useState<string | undefined>(undefined);
-  const [payTarget, setPayTarget] = useState<{ feeId: string; installmentNumber: number; amount: number } | null>(null);
-  const [editTarget, setEditTarget] = useState<{ feeId: string; installmentNumber: number; amount: number; paymentMethod?: string; transactionId?: string } | null>(null);
+  const [createInitialStudentId, setCreateInitialStudentId] = useState<
+    string | undefined
+  >(undefined);
+  const [payTarget, setPayTarget] = useState<{
+    feeId: string;
+    installmentNumber: number;
+    amount: number;
+  } | null>(null);
+  const [editTarget, setEditTarget] = useState<{
+    feeId: string;
+    installmentNumber: number;
+    amount: number;
+    paymentMethod?: string;
+    transactionId?: string;
+  } | null>(null);
 
   // Accordion expansion tracking
-  const [expandedStudents, setExpandedStudents] = useState<Set<string>>(new Set());
+  const [expandedStudents, setExpandedStudents] = useState<Set<string>>(
+    new Set(),
+  );
   const [expandedFees, setExpandedFees] = useState<Set<string>>(new Set());
   const [expandedAudits, setExpandedAudits] = useState<Set<string>>(new Set());
 
-  const { data: fees, isLoading, isError } = useListFeesQuery(
+  const {
+    data: fees,
+    isLoading,
+    isError,
+  } = useListFeesQuery(
     { franchiseId: franchiseId ?? "" },
     { skip: !franchiseId },
   );
@@ -191,7 +228,9 @@ const FeesPage: React.FC = () => {
         const paid = inst.paidAmount || 0;
         feePaid += paid;
         const unpaid = Math.max(0, inst.amount - paid);
-        const isPastDue = new Date(inst.dueDate).getTime() < Date.now() && inst.status !== "paid";
+        const isPastDue =
+          new Date(inst.dueDate).getTime() < Date.now() &&
+          inst.status !== "paid";
         if (inst.status === "overdue" || isPastDue) {
           overdue += unpaid;
         }
@@ -203,7 +242,8 @@ const FeesPage: React.FC = () => {
     }
 
     const pending = Math.max(0, invoiced - collected);
-    const collectionRate = invoiced > 0 ? Math.round((collected / invoiced) * 100) : 0;
+    const collectionRate =
+      invoiced > 0 ? Math.round((collected / invoiced) * 100) : 0;
 
     return {
       invoiced,
@@ -225,7 +265,8 @@ const FeesPage: React.FC = () => {
       // Search filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const studentName = `${fee.studentId?.firstName || ""} ${fee.studentId?.lastName || ""}`.toLowerCase();
+        const studentName =
+          `${fee.studentId?.firstName || ""} ${fee.studentId?.lastName || ""}`.toLowerCase();
         const feeType = (fee.feeType || "").toLowerCase();
         return studentName.includes(q) || feeType.includes(q);
       }
@@ -235,7 +276,13 @@ const FeesPage: React.FC = () => {
 
   // Status counts
   const statusCounts = useMemo(() => {
-    const counts = { all: (fees ?? []).length, overdue: 0, pending: 0, partial: 0, paid: 0 };
+    const counts = {
+      all: (fees ?? []).length,
+      overdue: 0,
+      pending: 0,
+      partial: 0,
+      paid: 0,
+    };
     for (const f of fees ?? []) {
       if (f.overallStatus === "overdue") counts.overdue++;
       else if (f.overallStatus === "pending") counts.pending++;
@@ -250,7 +297,13 @@ const FeesPage: React.FC = () => {
     const map = new Map<
       string,
       {
-        student: { _id: string; firstName: string; lastName: string; photo?: string; ageGroup?: string };
+        student: {
+          _id: string;
+          firstName: string;
+          lastName: string;
+          photo?: string;
+          ageGroup?: string;
+        };
         fees: AdminFeeRecord[];
         totalInvoiced: number;
         totalPaid: number;
@@ -288,7 +341,9 @@ const FeesPage: React.FC = () => {
       let planPaid = 0;
       for (const inst of fee.installments || []) {
         planPaid += inst.paidAmount || 0;
-        const isPastDue = new Date(inst.dueDate).getTime() < Date.now() && inst.status !== "paid";
+        const isPastDue =
+          new Date(inst.dueDate).getTime() < Date.now() &&
+          inst.status !== "paid";
         if (inst.status === "overdue" || isPastDue) {
           group.hasOverdue = true;
         }
@@ -347,23 +402,35 @@ const FeesPage: React.FC = () => {
     setExpandedFees(new Set());
   };
 
-  const handleSendReminder = async (feeId: string, installmentNumber: number) => {
+  const handleSendReminder = async (
+    feeId: string,
+    installmentNumber: number,
+  ) => {
     const key = `${feeId}-${installmentNumber}`;
     setRemindingKey(key);
     try {
-      const res = await sendInstallmentReminder({ feeId, installmentNumber }).unwrap();
+      const res = await sendInstallmentReminder({
+        feeId,
+        installmentNumber,
+      }).unwrap();
       toast.success(res.message || "Payment alert & QR sent successfully");
     } catch (err: any) {
-      toast.error(err?.data?.message || "Failed to send payment alert — try again");
+      toast.error(
+        err?.data?.message || "Failed to send payment alert — try again",
+      );
     } finally {
       setRemindingKey(null);
     }
   };
 
-  const handleUndoPayment = async (feeId: string, installmentNumber: number) => {
+  const handleUndoPayment = async (
+    feeId: string,
+    installmentNumber: number,
+  ) => {
     const ok = await confirm({
       title: "Undo payment",
-      message: "Undo this payment? This will reset the installment to unpaid/pending.",
+      message:
+        "Undo this payment? This will reset the installment to unpaid/pending.",
       confirmLabel: "Undo payment",
       danger: true,
     });
@@ -392,11 +459,12 @@ const FeesPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
           <p className="section-title mb-1">Financial Management</p>
-          <h1 className="font-display text-xl sm:text-2xl font-extrabold text-white uppercase tracking-tight">
+          <h1 className="font-display text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white uppercase tracking-tight">
             Player Fees
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Track schedules, collection milestones, and due-date alerts across every enrolled player.
+            Track schedules, collection milestones, and due-date alerts across
+            every enrolled player.
           </p>
         </div>
         <div className="flex items-center gap-2.5 w-full sm:w-auto">
@@ -415,17 +483,23 @@ const FeesPage: React.FC = () => {
 
       {/* KPI Overview Metrics Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="card p-3.5 bg-pitch-900/60 border-white/10 relative overflow-hidden">
-          <p className="text-2xs font-semibold uppercase tracking-wider text-slate-400">Total Invoiced</p>
-          <p className="text-xl font-display font-extrabold text-white mt-1">
+        <div className="card p-3.5 bg-white dark:bg-pitch-900/60 border-slate-200 dark:border-white/10 relative overflow-hidden">
+          <p className="text-2xs font-semibold uppercase tracking-wider text-slate-400">
+            Total Invoiced
+          </p>
+          <p className="text-xl font-display font-extrabold text-slate-900 dark:text-white mt-1">
             ₹{metrics.invoiced.toLocaleString("en-IN")}
           </p>
-          <span className="text-2xs text-slate-500 font-mono">Across all active plans</span>
+          <span className="text-2xs text-slate-500 font-mono">
+            Across all active plans
+          </span>
         </div>
 
-        <div className="card p-3.5 bg-pitch-900/60 border-white/10 relative overflow-hidden">
+        <div className="card p-3.5 bg-white dark:bg-pitch-900/60 border-slate-200 dark:border-white/10 relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <p className="text-2xs font-semibold uppercase tracking-wider text-emerald-400">Collected</p>
+            <p className="text-2xs font-semibold uppercase tracking-wider text-emerald-400">
+              Collected
+            </p>
             <span className="text-2xs font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
               {metrics.collectionRate}%
             </span>
@@ -434,7 +508,7 @@ const FeesPage: React.FC = () => {
             ₹{metrics.collected.toLocaleString("en-IN")}
           </p>
           {/* Mini progress bar */}
-          <div className="w-full bg-white/5 rounded-full h-1 mt-2 overflow-hidden">
+          <div className="w-full bg-slate-100 dark:bg-white/5 rounded-full h-1 mt-2 overflow-hidden">
             <div
               className="bg-emerald-400 h-full rounded-full transition-all duration-500"
               style={{ width: `${Math.min(100, metrics.collectionRate)}%` }}
@@ -442,19 +516,24 @@ const FeesPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="card p-3.5 bg-pitch-900/60 border-white/10 relative overflow-hidden">
-          <p className="text-2xs font-semibold uppercase tracking-wider text-amber-400">Outstanding Due</p>
+        <div className="card p-3.5 bg-white dark:bg-pitch-900/60 border-slate-200 dark:border-white/10 relative overflow-hidden">
+          <p className="text-2xs font-semibold uppercase tracking-wider text-amber-400">
+            Outstanding Due
+          </p>
           <p className="text-xl font-display font-extrabold text-amber-400 mt-1">
             ₹{metrics.pending.toLocaleString("en-IN")}
           </p>
           <span className="text-2xs text-slate-500">
-            {metrics.studentsWithDuesCount} student{metrics.studentsWithDuesCount === 1 ? "" : "s"} with dues
+            {metrics.studentsWithDuesCount} student
+            {metrics.studentsWithDuesCount === 1 ? "" : "s"} with dues
           </span>
         </div>
 
-        <div className="card p-3.5 bg-pitch-900/60 border-white/10 relative overflow-hidden">
+        <div className="card p-3.5 bg-white dark:bg-pitch-900/60 border-slate-200 dark:border-white/10 relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <p className="text-2xs font-semibold uppercase tracking-wider text-rose-400">Overdue Amount</p>
+            <p className="text-2xs font-semibold uppercase tracking-wider text-rose-400">
+              Overdue Amount
+            </p>
             {metrics.overdue > 0 && (
               <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
             )}
@@ -462,19 +541,24 @@ const FeesPage: React.FC = () => {
           <p className="text-xl font-display font-extrabold text-rose-400 mt-1">
             ₹{metrics.overdue.toLocaleString("en-IN")}
           </p>
-          <span className="text-2xs text-rose-400/80 font-mono">Needs immediate reminder</span>
+          <span className="text-2xs text-rose-400/80 font-mono">
+            Needs immediate reminder
+          </span>
         </div>
       </div>
 
       {/* Collapsible Payment QR Code Setting */}
-      <FeeQrCodeCard isOpen={qrOpen} onToggle={() => setQrOpen((prev) => !prev)} />
+      <FeeQrCodeCard
+        isOpen={qrOpen}
+        onToggle={() => setQrOpen((prev) => !prev)}
+      />
 
       {/* Control & Filter Toolbar */}
-      <div className="card p-3.5 space-y-3 bg-white dark:bg-pitch-900/80 border-slate-200/80 dark:border-white/10 shadow-xs">
+      <div className="card p-3.5 space-y-3 bg-white dark:bg-pitch-900/80 border-slate-200 dark:border-white/10">
         <div className="flex items-center justify-between flex-wrap gap-3">
           {/* Search input */}
           <div className="relative flex-1 min-w-[220px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
             <input
               type="text"
               placeholder="Search by student name, fee type..."
@@ -485,7 +569,7 @@ const FeesPage: React.FC = () => {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 dark:hover:text-white"
               >
                 <X size={13} />
               </button>
@@ -500,7 +584,9 @@ const FeesPage: React.FC = () => {
                 onClick={() => setViewMode("student")}
                 className={clsx(
                   "flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold transition-colors",
-                  viewMode === "student" ? "bg-volt-400 text-pitch-950 font-bold" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  viewMode === "student"
+                    ? "bg-volt-400 text-pitch-950"
+                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white",
                 )}
                 title="Group multiple cards by student"
               >
@@ -512,7 +598,9 @@ const FeesPage: React.FC = () => {
                 onClick={() => setViewMode("table")}
                 className={clsx(
                   "flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold transition-colors",
-                  viewMode === "table" ? "bg-volt-400 text-pitch-950 font-bold" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  viewMode === "table"
+                    ? "bg-volt-400 text-pitch-950"
+                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white",
                 )}
                 title="Dense tabular view"
               >
@@ -526,15 +614,15 @@ const FeesPage: React.FC = () => {
             <button
               type="button"
               onClick={expandAll}
-              className="text-2xs font-semibold text-slate-500 dark:text-slate-400 hover:text-volt-600 dark:hover:text-volt-400 px-2 py-1 transition-colors"
+              className="text-2xs font-semibold text-slate-400 hover:text-volt-400 px-2 py-1 transition-colors"
             >
               Expand all
             </button>
-            <span className="text-slate-300 dark:text-slate-600 text-2xs">·</span>
+            <span className="text-slate-600 text-2xs">·</span>
             <button
               type="button"
               onClick={collapseAll}
-              className="text-2xs font-semibold text-slate-500 dark:text-slate-400 hover:text-volt-600 dark:hover:text-volt-400 px-2 py-1 transition-colors"
+              className="text-2xs font-semibold text-slate-400 hover:text-volt-400 px-2 py-1 transition-colors"
             >
               Collapse all
             </button>
@@ -542,13 +630,33 @@ const FeesPage: React.FC = () => {
         </div>
 
         {/* Status Filter Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 border-t border-slate-200/80 dark:border-white/5">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 border-t border-white/5">
           {[
             { id: "", label: "All Statuses", count: statusCounts.all },
-            { id: "overdue", label: "Overdue", count: statusCounts.overdue, variant: "red" },
-            { id: "pending", label: "Pending", count: statusCounts.pending, variant: "gray" },
-            { id: "partial", label: "Partial", count: statusCounts.partial, variant: "yellow" },
-            { id: "paid", label: "Paid", count: statusCounts.paid, variant: "green" },
+            {
+              id: "overdue",
+              label: "Overdue",
+              count: statusCounts.overdue,
+              variant: "red",
+            },
+            {
+              id: "pending",
+              label: "Pending",
+              count: statusCounts.pending,
+              variant: "gray",
+            },
+            {
+              id: "partial",
+              label: "Partial",
+              count: statusCounts.partial,
+              variant: "yellow",
+            },
+            {
+              id: "paid",
+              label: "Paid",
+              count: statusCounts.paid,
+              variant: "green",
+            },
           ].map((pill) => (
             <button
               key={pill.id}
@@ -556,8 +664,8 @@ const FeesPage: React.FC = () => {
               className={clsx(
                 "px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 border",
                 statusFilter === pill.id
-                  ? "bg-volt-400 text-pitch-950 font-bold border-volt-400"
-                  : "bg-slate-100 dark:bg-white/[0.03] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/15"
+                  ? "bg-volt-400 text-pitch-950 border-volt-400"
+                  : "bg-slate-100 dark:bg-white/[0.03] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/15",
               )}
             >
               <span>{pill.label}</span>
@@ -567,8 +675,8 @@ const FeesPage: React.FC = () => {
                   statusFilter === pill.id
                     ? "bg-pitch-900/30 text-pitch-950"
                     : pill.id === "overdue" && pill.count > 0
-                    ? "bg-rose-500/20 text-rose-600 dark:text-rose-400"
-                    : "bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-400"
+                      ? "bg-rose-500/20 text-rose-400"
+                      : "bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-400",
                 )}
               >
                 {pill.count}
@@ -588,13 +696,22 @@ const FeesPage: React.FC = () => {
       )}
 
       {/* Error state */}
-      {isError && <EmptyState title="Couldn't load fees" description="Please try again shortly." />}
+      {isError && (
+        <EmptyState
+          title="Couldn't load fees"
+          description="Please try again shortly."
+        />
+      )}
 
       {/* Empty State */}
       {!isLoading && !isError && filteredFees.length === 0 && (
         <EmptyState
           icon={<Wallet size={28} />}
-          title={searchQuery || statusFilter ? "No matching fees found" : "No fee records yet"}
+          title={
+            searchQuery || statusFilter
+              ? "No matching fees found"
+              : "No fee records yet"
+          }
           description={
             searchQuery || statusFilter
               ? "Try resetting your search query or status filter."
@@ -612,242 +729,299 @@ const FeesPage: React.FC = () => {
                 Clear filters
               </Button>
             ) : (
-              <Button onClick={() => setShowCreate(true)}>Schedule a fee</Button>
+              <Button onClick={() => setShowCreate(true)}>
+                Schedule a fee
+              </Button>
             )
           }
         />
       )}
 
       {/* VIEW MODE 1: Grouped By Student (Default & Recommended for 100+ students) */}
-      {!isLoading && !isError && filteredFees.length > 0 && viewMode === "student" && (
-        <div className="space-y-3">
-          {studentGroups.map((group) => {
-            const isExpanded = expandedStudents.has(group.student._id);
-            const percentPaid =
-              group.totalInvoiced > 0 ? Math.round((group.totalPaid / group.totalInvoiced) * 100) : 0;
+      {!isLoading &&
+        !isError &&
+        filteredFees.length > 0 &&
+        viewMode === "student" && (
+          <div className="space-y-3">
+            {studentGroups.map((group) => {
+              const isExpanded = expandedStudents.has(group.student._id);
+              const percentPaid =
+                group.totalInvoiced > 0
+                  ? Math.round((group.totalPaid / group.totalInvoiced) * 100)
+                  : 0;
 
-            return (
-              <div
-                key={group.student._id}
-                className="card border-slate-200/80 dark:border-white/10 bg-white dark:bg-pitch-900/70 overflow-hidden transition-all shadow-xs"
-              >
-                {/* Student Header Bar */}
+              return (
                 <div
-                  onClick={() => toggleStudentExpanded(group.student._id)}
-                  className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors"
+                  key={group.student._id}
+                  className="card border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/70 overflow-hidden transition-all shadow-xs"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Avatar
-                      name={`${group.student.firstName} ${group.student.lastName}`}
-                      src={group.student.photo}
-                      size="md"
-                    />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-display font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wide truncate">
-                          {group.student.firstName} {group.student.lastName}
-                        </h3>
-                        {group.student.ageGroup && (
-                          <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/5">
-                            {group.student.ageGroup}
+                  {/* Student Header Bar */}
+                  <div
+                    onClick={() => toggleStudentExpanded(group.student._id)}
+                    className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar
+                        name={`${group.student.firstName} ${group.student.lastName}`}
+                        src={group.student.photo}
+                        size="md"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-display font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wide truncate">
+                            {group.student.firstName} {group.student.lastName}
+                          </h3>
+                          {group.student.ageGroup && (
+                            <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/5">
+                              {group.student.ageGroup}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-2xs text-slate-500 font-mono mt-0.5">
+                          {group.fees.length} fee plan
+                          {group.fees.length === 1 ? "" : "s"} assigned
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Financial summary & Progress */}
+                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 flex-wrap w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                      <div className="text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span className="text-xs font-mono font-bold text-slate-900 dark:text-white">
+                            ₹{group.totalPaid.toLocaleString("en-IN")}
                           </span>
+                          <span className="text-2xs text-slate-500">/</span>
+                          <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
+                            ₹{group.totalInvoiced.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                        <div className="w-32 sm:w-40 bg-slate-100 dark:bg-white/5 rounded-full h-1.5 mt-1 overflow-hidden ml-auto">
+                          <div
+                            className={clsx(
+                              "h-full rounded-full transition-all",
+                              group.hasOverdue
+                                ? "bg-rose-500"
+                                : percentPaid === 100
+                                  ? "bg-emerald-400"
+                                  : "bg-volt-400",
+                            )}
+                            style={{ width: `${Math.min(100, percentPaid)}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Overall Status Badge */}
+                      <div className="w-24 text-right">
+                        {group.hasOverdue ? (
+                          <Badge variant="red" size="sm">
+                            Overdue
+                          </Badge>
+                        ) : group.totalBalance === 0 ? (
+                          <Badge variant="green" size="sm">
+                            Paid Full
+                          </Badge>
+                        ) : group.totalPaid > 0 ? (
+                          <Badge variant="yellow" size="sm">
+                            Partial
+                          </Badge>
+                        ) : (
+                          <Badge variant="gray" size="sm">
+                            Pending
+                          </Badge>
                         )}
                       </div>
-                      <p className="text-2xs text-slate-500 font-mono mt-0.5">
-                        {group.fees.length} fee plan{group.fees.length === 1 ? "" : "s"} assigned
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Financial summary & Progress */}
-                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 flex-wrap w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-white/5">
-                    <div className="text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <span className="text-xs font-mono font-bold text-slate-900 dark:text-white">
-                          ₹{group.totalPaid.toLocaleString("en-IN")}
-                        </span>
-                        <span className="text-2xs text-slate-400 dark:text-slate-500">/</span>
-                        <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-                          ₹{group.totalInvoiced.toLocaleString("en-IN")}
-                        </span>
-                      </div>
-                      <div className="w-32 sm:w-40 bg-slate-100 dark:bg-white/5 rounded-full h-1.5 mt-1 overflow-hidden ml-auto">
-                        <div
-                          className={clsx(
-                            "h-full rounded-full transition-all",
-                            group.hasOverdue
-                              ? "bg-rose-500"
-                              : percentPaid === 100
-                              ? "bg-emerald-500 dark:bg-emerald-400"
-                              : "bg-volt-500 dark:bg-volt-400"
+                      {/* Quick action: Add fee & Accordion toggle */}
+                      <div
+                        className="flex items-center gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCreateInitialStudentId(group.student._id);
+                            setShowCreate(true);
+                          }}
+                          className="text-2xs font-semibold text-volt-400 hover:text-volt-300 bg-volt-400/10 border border-volt-400/20 px-2 py-1 rounded transition-colors"
+                          title="Add another fee schedule for this student"
+                        >
+                          + Add Fee
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            toggleStudentExpanded(group.student._id)
+                          }
+                          className="p-1 rounded text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                        >
+                          {isExpanded ? (
+                            <ChevronUp size={16} />
+                          ) : (
+                            <ChevronDown size={16} />
                           )}
-                          style={{ width: `${Math.min(100, percentPaid)}%` }}
-                        />
+                        </button>
                       </div>
                     </div>
-
-                    {/* Overall Status Badge */}
-                    <div className="w-24 text-right">
-                      {group.hasOverdue ? (
-                        <Badge variant="red" size="sm">Overdue</Badge>
-                      ) : group.totalBalance === 0 ? (
-                        <Badge variant="green" size="sm">Paid Full</Badge>
-                      ) : group.totalPaid > 0 ? (
-                        <Badge variant="yellow" size="sm">Partial</Badge>
-                      ) : (
-                        <Badge variant="gray" size="sm">Pending</Badge>
-                      )}
-                    </div>
-
-                    {/* Quick action: Add fee & Accordion toggle */}
-                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCreateInitialStudentId(group.student._id);
-                          setShowCreate(true);
-                        }}
-                        className="text-2xs font-semibold text-volt-600 dark:text-volt-400 hover:text-volt-700 dark:hover:text-volt-300 bg-volt-400/10 border border-volt-400/20 px-2 py-1 rounded transition-colors"
-                        title="Add another fee schedule for this student"
-                      >
-                        + Add Fee
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleStudentExpanded(group.student._id)}
-                        className="p-1 rounded text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                      >
-                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                      </button>
-                    </div>
                   </div>
+
+                  {/* Expanded Fee Details for this Student */}
+                  {isExpanded && (
+                    <div className="border-t border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-pitch-950/50 p-3.5 sm:p-4 space-y-4">
+                      {group.fees.map((fee) => (
+                        <FeePlanDetailBlock
+                          key={fee._id}
+                          fee={fee}
+                          remindingKey={remindingKey}
+                          onSendReminder={handleSendReminder}
+                          onUndoPayment={handleUndoPayment}
+                          onRecordPayment={(target) => setPayTarget(target)}
+                          onEditPayment={(target) => setEditTarget(target)}
+                          isAuditExpanded={expandedAudits.has(fee._id)}
+                          onToggleAudit={() => toggleAuditExpanded(fee._id)}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-
-                {/* Expanded Fee Details for this Student */}
-                {isExpanded && (
-                  <div className="border-t border-slate-200/80 dark:border-white/10 bg-slate-50/50 dark:bg-pitch-950/50 p-3.5 sm:p-4 space-y-4">
-                    {group.fees.map((fee) => (
-                      <FeePlanDetailBlock
-                        key={fee._id}
-                        fee={fee}
-                        remindingKey={remindingKey}
-                        onSendReminder={handleSendReminder}
-                        onUndoPayment={handleUndoPayment}
-                        onRecordPayment={(target) => setPayTarget(target)}
-                        onEditPayment={(target) => setEditTarget(target)}
-                        isAuditExpanded={expandedAudits.has(fee._id)}
-                        onToggleAudit={() => toggleAuditExpanded(fee._id)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
 
       {/* VIEW MODE 2: Compact High-Density Table / List */}
-      {!isLoading && !isError && filteredFees.length > 0 && viewMode === "table" && (
-        <div className="card overflow-hidden border-slate-200/80 dark:border-white/10 bg-white dark:bg-pitch-900/80 shadow-xs">
-          <div className="table-responsive">
-            <table className="w-full min-w-[680px] text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200/80 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] text-slate-500 dark:text-slate-400 uppercase text-[10px] tracking-wider font-semibold">
-                  <th className="py-2.5 px-3">Player</th>
-                  <th className="py-2.5 px-3">Fee Type</th>
-                  <th className="py-2.5 px-3 text-right">Invoiced</th>
-                  <th className="py-2.5 px-3 text-right">Collected</th>
-                  <th className="py-2.5 px-3 text-right">Balance</th>
-                  <th className="py-2.5 px-3 text-center">Status</th>
-                  <th className="py-2.5 px-3">Milestones</th>
-                  <th className="py-2.5 px-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                {filteredFees.map((fee) => {
-                  const isExpanded = expandedFees.has(fee._id);
-                  const totalPaid = fee.installments.reduce((sum, i) => sum + (i.paidAmount || 0), 0);
-                  const balance = Math.max(0, fee.finalAmount - totalPaid);
-                  const paidCount = fee.installments.filter((i) => i.status === "paid").length;
+      {!isLoading &&
+        !isError &&
+        filteredFees.length > 0 &&
+        viewMode === "table" && (
+          <div className="card overflow-hidden border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/80">
+            <div className="table-responsive">
+              <table className="w-full min-w-[680px] text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] text-slate-500 dark:text-slate-400 uppercase text-[10px] tracking-wider font-semibold">
+                    <th className="py-2.5 px-3">Player</th>
+                    <th className="py-2.5 px-3">Fee Type</th>
+                    <th className="py-2.5 px-3 text-right">Invoiced</th>
+                    <th className="py-2.5 px-3 text-right">Collected</th>
+                    <th className="py-2.5 px-3 text-right">Balance</th>
+                    <th className="py-2.5 px-3 text-center">Status</th>
+                    <th className="py-2.5 px-3">Milestones</th>
+                    <th className="py-2.5 px-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {filteredFees.map((fee) => {
+                    const isExpanded = expandedFees.has(fee._id);
+                    const totalPaid = fee.installments.reduce(
+                      (sum, i) => sum + (i.paidAmount || 0),
+                      0,
+                    );
+                    const balance = Math.max(0, fee.finalAmount - totalPaid);
+                    const paidCount = fee.installments.filter(
+                      (i) => i.status === "paid",
+                    ).length;
 
-                  return (
-                    <React.Fragment key={fee._id}>
-                      <tr
-                        onClick={() => toggleFeeExpanded(fee._id)}
-                        className={clsx(
-                          "cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors",
-                          isExpanded ? "bg-slate-50/80 dark:bg-white/[0.02]" : ""
-                        )}
-                      >
-                        <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
-                          <div className="flex items-center gap-2">
-                            <span className="text-slate-400 dark:text-slate-500">
-                              {isExpanded ? <ChevronUp size={13} /> : <ChevronRight size={13} />}
+                    return (
+                      <React.Fragment key={fee._id}>
+                        <tr
+                          onClick={() => toggleFeeExpanded(fee._id)}
+                          className={clsx(
+                            "cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors border-b border-slate-100 dark:border-white/5",
+                            isExpanded ? "bg-slate-50/80 dark:bg-white/[0.02]" : "",
+                          )}
+                        >
+                          <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
+                            <div className="flex items-center gap-2">
+                              <span className="text-slate-500">
+                                {isExpanded ? (
+                                  <ChevronUp size={13} />
+                                ) : (
+                                  <ChevronRight size={13} />
+                                )}
+                              </span>
+                              <span>
+                                {fee.studentId?.firstName}{" "}
+                                {fee.studentId?.lastName}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="capitalize font-mono text-slate-700 dark:text-slate-300">
+                              {fee.feeType.replace("_", " ")}
                             </span>
-                            <span>{fee.studentId?.firstName} {fee.studentId?.lastName}</span>
-                          </div>
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span className="capitalize font-mono text-slate-600 dark:text-slate-300">
-                            {fee.feeType.replace("_", " ")}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-slate-900 dark:text-white">
-                          ₹{fee.finalAmount.toLocaleString("en-IN")}
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
-                          ₹{totalPaid.toLocaleString("en-IN")}
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-amber-600 dark:text-amber-400 font-semibold">
-                          ₹{balance.toLocaleString("en-IN")}
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <Badge variant={STATUS_VARIANT[fee.overallStatus] ?? "gray"} size="sm">
-                            {fee.overallStatus}
-                          </Badge>
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span className="text-2xs text-slate-500 dark:text-slate-400 font-mono">
-                            {paidCount}/{fee.installments.length} paid
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={() => toggleFeeExpanded(fee._id)}
-                            className="text-2xs font-semibold text-volt-600 dark:text-volt-400 hover:underline"
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono text-slate-900 dark:text-white">
+                            ₹{fee.finalAmount.toLocaleString("en-IN")}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono text-emerald-400 font-semibold">
+                            ₹{totalPaid.toLocaleString("en-IN")}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono text-amber-400 font-semibold">
+                            ₹{balance.toLocaleString("en-IN")}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <Badge
+                              variant={
+                                STATUS_VARIANT[fee.overallStatus] ?? "gray"
+                              }
+                              size="sm"
+                            >
+                              {fee.overallStatus}
+                            </Badge>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="text-2xs text-slate-400 font-mono">
+                              {paidCount}/{fee.installments.length} paid
+                            </span>
+                          </td>
+                          <td
+                            className="py-2.5 px-3 text-right"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            {isExpanded ? "Hide" : "Details"}
-                          </button>
-                        </td>
-                      </tr>
-
-                      {/* Expanded Installment Table */}
-                      {isExpanded && (
-                        <tr className="bg-slate-50/70 dark:bg-pitch-950/70">
-                          <td colSpan={8} className="p-3.5 border-t border-b border-slate-200/80 dark:border-white/10">
-                            <FeePlanDetailBlock
-                              fee={fee}
-                              remindingKey={remindingKey}
-                              onSendReminder={handleSendReminder}
-                              onUndoPayment={handleUndoPayment}
-                              onRecordPayment={(target) => setPayTarget(target)}
-                              onEditPayment={(target) => setEditTarget(target)}
-                              isAuditExpanded={expandedAudits.has(fee._id)}
-                              onToggleAudit={() => toggleAuditExpanded(fee._id)}
-                            />
+                            <button
+                              type="button"
+                              onClick={() => toggleFeeExpanded(fee._id)}
+                              className="text-2xs font-semibold text-volt-400 hover:underline"
+                            >
+                              {isExpanded ? "Hide" : "Details"}
+                            </button>
                           </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
+
+                        {/* Expanded Installment Table */}
+                        {isExpanded && (
+                          <tr className="bg-slate-50/70 dark:bg-pitch-950/70">
+                            <td
+                              colSpan={8}
+                              className="p-3.5 border-t border-b border-slate-200 dark:border-white/10"
+                            >
+                              <FeePlanDetailBlock
+                                fee={fee}
+                                remindingKey={remindingKey}
+                                onSendReminder={handleSendReminder}
+                                onUndoPayment={handleUndoPayment}
+                                onRecordPayment={(target) =>
+                                  setPayTarget(target)
+                                }
+                                onEditPayment={(target) =>
+                                  setEditTarget(target)
+                                }
+                                isAuditExpanded={expandedAudits.has(fee._id)}
+                                onToggleAudit={() =>
+                                  toggleAuditExpanded(fee._id)
+                                }
+                              />
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Modals */}
       {showCreate && (
@@ -862,7 +1036,10 @@ const FeesPage: React.FC = () => {
           onCreate={async (body, targetStudentIds) => {
             try {
               if (targetStudentIds.length === 1) {
-                await createFee({ ...body, studentId: targetStudentIds[0] }).unwrap();
+                await createFee({
+                  ...body,
+                  studentId: targetStudentIds[0],
+                }).unwrap();
                 toast.success("Fee scheduled successfully");
               } else {
                 let successCount = 0;
@@ -876,22 +1053,38 @@ const FeesPage: React.FC = () => {
                   }
                 }
                 if (failCount === 0) {
-                  toast.success(`Fee scheduled for all ${successCount} players!`);
+                  toast.success(
+                    `Fee scheduled for all ${successCount} players!`,
+                  );
                 } else {
-                  toast.success(`Fee scheduled for ${successCount} players (${failCount} failed).`);
+                  toast.success(
+                    `Fee scheduled for ${successCount} players (${failCount} failed).`,
+                  );
                 }
               }
               setShowCreate(false);
               setCreateInitialStudentId(undefined);
             } catch (err: any) {
-              toast.error(err?.data?.message || "Couldn't schedule fee — try again");
+              toast.error(
+                err?.data?.message || "Couldn't schedule fee — try again",
+              );
             }
           }}
         />
       )}
 
-      {payTarget && <RecordPaymentModal target={payTarget} onClose={() => setPayTarget(null)} />}
-      {editTarget && <EditPaymentModal target={editTarget} onClose={() => setEditTarget(null)} />}
+      {payTarget && (
+        <RecordPaymentModal
+          target={payTarget}
+          onClose={() => setPayTarget(null)}
+        />
+      )}
+      {editTarget && (
+        <EditPaymentModal
+          target={editTarget}
+          onClose={() => setEditTarget(null)}
+        />
+      )}
       {ConfirmDialog}
     </div>
   );
@@ -904,8 +1097,18 @@ interface FeePlanDetailBlockProps {
   remindingKey: string | null;
   onSendReminder: (feeId: string, installmentNumber: number) => void;
   onUndoPayment: (feeId: string, installmentNumber: number) => void;
-  onRecordPayment: (target: { feeId: string; installmentNumber: number; amount: number }) => void;
-  onEditPayment: (target: { feeId: string; installmentNumber: number; amount: number; paymentMethod?: string; transactionId?: string }) => void;
+  onRecordPayment: (target: {
+    feeId: string;
+    installmentNumber: number;
+    amount: number;
+  }) => void;
+  onEditPayment: (target: {
+    feeId: string;
+    installmentNumber: number;
+    amount: number;
+    paymentMethod?: string;
+    transactionId?: string;
+  }) => void;
   isAuditExpanded: boolean;
   onToggleAudit: () => void;
 }
@@ -921,14 +1124,14 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
   onToggleAudit,
 }) => {
   return (
-    <div className="rounded-lg border border-slate-200/80 dark:border-white/5 bg-slate-50/60 dark:bg-pitch-900/50 p-3.5 space-y-3">
+    <div className="rounded-lg border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-pitch-900/50 p-3.5 space-y-3">
       {/* Plan Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider capitalize font-mono">
             {fee.feeType.replace("_", " ")}
           </span>
-          <span className="text-slate-400 dark:text-slate-500 text-2xs">·</span>
+          <span className="text-slate-500 text-2xs">·</span>
           <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">
             Total: ₹{fee.finalAmount.toLocaleString("en-IN")}
           </span>
@@ -936,11 +1139,15 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
             <button
               type="button"
               onClick={onToggleAudit}
-              className="text-[10px] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-volt-400 ml-2 font-mono flex items-center gap-1 border border-slate-200 dark:border-white/10 px-1.5 py-0.5 rounded transition-colors"
+              className="text-[10px] text-slate-500 dark:text-slate-400 hover:text-volt-600 dark:hover:text-volt-400 ml-2 font-mono flex items-center gap-1 border border-slate-200 dark:border-white/10 px-1.5 py-0.5 rounded transition-colors"
             >
               <History size={11} />
               <span>{fee.auditLog.length} Audit Events</span>
-              {isAuditExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+              {isAuditExpanded ? (
+                <ChevronUp size={11} />
+              ) : (
+                <ChevronDown size={11} />
+              )}
             </button>
           )}
         </div>
@@ -952,13 +1159,15 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
       {/* High-density Installments List */}
       <div className="space-y-1.5">
         {fee.installments.map((inst) => {
-          const isPastDue = new Date(inst.dueDate).getTime() < Date.now() && inst.status !== "paid";
+          const isPastDue =
+            new Date(inst.dueDate).getTime() < Date.now() &&
+            inst.status !== "paid";
           const unpaid = Math.max(0, inst.amount - (inst.paidAmount || 0));
 
           return (
             <div
               key={inst.installmentNumber}
-              className="flex items-center justify-between text-xs bg-white dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/5 rounded-lg px-3 py-2 flex-wrap gap-2 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors shadow-2xs"
+              className="flex items-center justify-between text-xs bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 rounded-lg px-3 py-2 flex-wrap gap-2 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors shadow-2xs"
             >
               {/* Left Info: Milestone #, Due Date, Payment Details */}
               <div className="flex flex-col min-w-0">
@@ -966,37 +1175,70 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                   <span className="font-semibold text-slate-900 dark:text-white">
                     Milestone {inst.installmentNumber}
                   </span>
-                  <span className="text-slate-400 dark:text-slate-500">·</span>
-                  <span className={clsx("text-2xs", isPastDue ? "text-rose-600 dark:text-rose-400 font-semibold" : "text-slate-500 dark:text-slate-400")}>
-                    Due: {new Date(inst.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  <span className="text-slate-500">·</span>
+                  <span
+                    className={clsx(
+                      "text-2xs",
+                      isPastDue
+                        ? "text-rose-400 font-semibold"
+                        : "text-slate-400",
+                    )}
+                  >
+                    Due:{" "}
+                    {new Date(inst.dueDate).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
                     {isPastDue && " (Overdue)"}
                   </span>
                 </div>
                 {inst.paidAt && (
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Paid via <span className="uppercase font-semibold text-slate-700 dark:text-slate-300">{inst.paymentMethod || "cash"}</span> on{" "}
-                    {new Date(inst.paidAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                  <span className="text-[10px] text-slate-400 mt-0.5">
+                    Paid via{" "}
+                    <span className="uppercase font-semibold text-slate-700 dark:text-slate-300">
+                      {inst.paymentMethod || "cash"}
+                    </span>{" "}
+                    on{" "}
+                    {new Date(inst.paidAt).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                    })}
                     {inst.transactionId && ` (Txn: ${inst.transactionId})`}
                   </span>
                 )}
-                {inst.status !== "paid" && (inst.reminderSentCount ?? 0) > 0 && (
-                  <span className="text-[10px] text-sky-600 dark:text-sky-400/90 font-mono mt-0.5">
-                    QR alert sent {inst.reminderSentCount} time{(inst.reminderSentCount ?? 0) > 1 ? "s" : ""}
-                    {inst.lastReminderAt && ` (last: ${new Date(inst.lastReminderAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })})`}
-                  </span>
-                )}
+                {inst.status !== "paid" &&
+                  (inst.reminderSentCount ?? 0) > 0 && (
+                    <span className="text-[10px] text-sky-400/90 font-mono mt-0.5">
+                      QR alert sent {inst.reminderSentCount} time
+                      {(inst.reminderSentCount ?? 0) > 1 ? "s" : ""}
+                      {inst.lastReminderAt &&
+                        ` (last: ${new Date(inst.lastReminderAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })})`}
+                    </span>
+                  )}
               </div>
 
               {/* Right: Amounts, Badge, Actions */}
               <div className="flex items-center gap-3 flex-wrap ml-auto">
                 <span className="font-mono text-xs">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">₹{inst.paidAmount.toLocaleString("en-IN")}</span>
-                  <span className="text-slate-400 dark:text-slate-500"> / </span>
-                  <span className="text-slate-700 dark:text-slate-300">₹{inst.amount.toLocaleString("en-IN")}</span>
+                  <span className="text-emerald-400 font-semibold">
+                    ₹{inst.paidAmount.toLocaleString("en-IN")}
+                  </span>
+                  <span className="text-slate-500"> / </span>
+                  <span className="text-slate-700 dark:text-slate-300">
+                    ₹{inst.amount.toLocaleString("en-IN")}
+                  </span>
                 </span>
 
-                <Badge variant={STATUS_VARIANT[inst.status] ?? (isPastDue ? "red" : "gray")} size="sm">
-                  {isPastDue && inst.status !== "paid" ? "overdue" : inst.status}
+                <Badge
+                  variant={
+                    STATUS_VARIANT[inst.status] ?? (isPastDue ? "red" : "gray")
+                  }
+                  size="sm"
+                >
+                  {isPastDue && inst.status !== "paid"
+                    ? "overdue"
+                    : inst.status}
                 </Badge>
 
                 <div className="flex items-center gap-1.5">
@@ -1013,15 +1255,17 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                             transactionId: inst.transactionId || "",
                           })
                         }
-                        className="text-[10px] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-volt-400 font-semibold border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-white/5 rounded px-2 py-1 transition-colors"
+                        className="text-[10px] text-slate-600 dark:text-slate-400 hover:text-volt-600 dark:hover:text-volt-400 font-semibold border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-white/5 rounded px-2 py-1 transition-colors"
                         title="Edit payment details"
                       >
                         Edit
                       </button>
                       <button
                         type="button"
-                        onClick={() => onUndoPayment(fee._id, inst.installmentNumber)}
-                        className="text-[10px] text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 font-semibold border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-white/5 rounded px-2 py-1 transition-colors"
+                        onClick={() =>
+                          onUndoPayment(fee._id, inst.installmentNumber)
+                        }
+                        className="text-[10px] text-slate-600 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 font-semibold border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-white/5 rounded px-2 py-1 transition-colors"
                         title="Undo this payment"
                       >
                         Undo
@@ -1033,12 +1277,18 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                     <>
                       <button
                         type="button"
-                        onClick={() => onSendReminder(fee._id, inst.installmentNumber)}
-                        disabled={remindingKey === `${fee._id}-${inst.installmentNumber}`}
-                        className="flex items-center gap-1 text-[11px] text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 bg-sky-500/10 border border-sky-500/20 px-2 py-1 rounded transition-colors disabled:opacity-50"
+                        onClick={() =>
+                          onSendReminder(fee._id, inst.installmentNumber)
+                        }
+                        disabled={
+                          remindingKey ===
+                          `${fee._id}-${inst.installmentNumber}`
+                        }
+                        className="flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 bg-sky-500/10 border border-sky-500/20 px-2 py-1 rounded transition-colors disabled:opacity-50"
                         title="Send WhatsApp payment link and QR code alert"
                       >
-                        {remindingKey === `${fee._id}-${inst.installmentNumber}` ? (
+                        {remindingKey ===
+                        `${fee._id}-${inst.installmentNumber}` ? (
                           <Loader2 size={11} className="animate-spin" />
                         ) : (
                           <Send size={11} />
@@ -1054,7 +1304,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                             amount: unpaid,
                           })
                         }
-                        className="text-[11px] font-semibold text-pitch-950 bg-volt-400 hover:bg-volt-300 px-2.5 py-1 rounded transition-colors shadow-2xs"
+                        className="text-[11px] font-semibold text-pitch-950 bg-volt-400 hover:bg-volt-300 px-2.5 py-1 rounded transition-colors"
                       >
                         Record Pay
                       </button>
@@ -1077,15 +1327,19 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
             {fee.auditLog.map((log, idx) => (
               <div
                 key={idx}
-                className="flex justify-between items-start text-[10px] bg-slate-100/60 dark:bg-white/[0.01] border border-slate-200 dark:border-white/5 rounded px-2.5 py-1 font-mono text-slate-600 dark:text-slate-400"
+                className="flex justify-between items-start text-[10px] bg-slate-50 dark:bg-white/[0.01] border border-slate-200 dark:border-white/5 rounded px-2.5 py-1 font-mono text-slate-600 dark:text-slate-400"
               >
                 <div>
-                  <span className="text-volt-600 dark:text-volt-400 font-semibold capitalize">[{log.action.replace("_", " ")}]</span>{" "}
+                  <span className="text-volt-400 font-semibold capitalize">
+                    [{log.action.replace("_", " ")}]
+                  </span>{" "}
                   <span>{log.details || `Amount: ₹${log.amount}`}</span>
                 </div>
                 <div className="text-right text-[9px] text-slate-500 shrink-0 ml-2">
                   <span>by {log.performedByName}</span>
-                  <span className="block">{new Date(log.timestamp).toLocaleDateString()}</span>
+                  <span className="block">
+                    {new Date(log.timestamp).toLocaleDateString()}
+                  </span>
                 </div>
               </div>
             ))}
@@ -1104,7 +1358,10 @@ const CreateFeeModal: React.FC<{
   franchiseId: string;
   initialStudentId?: string;
   onClose: () => void;
-  onCreate: (body: Omit<CreateFeeBody, "studentId">, studentIds: string[]) => void;
+  onCreate: (
+    body: Omit<CreateFeeBody, "studentId">,
+    studentIds: string[],
+  ) => void;
   creating: boolean;
 }> = ({ franchiseId, initialStudentId, onClose, onCreate, creating }) => {
   const { data: studentsResult } = useGetStudentsQuery(
@@ -1113,12 +1370,14 @@ const CreateFeeModal: React.FC<{
   );
   const students = studentsResult?.items ?? [];
 
-  const [selectionMode, setSelectionMode] = useState<"single" | "all" | "category" | "custom">(
-    initialStudentId ? "single" : "single"
-  );
+  const [selectionMode, setSelectionMode] = useState<
+    "single" | "all" | "category" | "custom"
+  >(initialStudentId ? "single" : "single");
   const [studentId, setStudentId] = useState(initialStudentId ?? "");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [customSelectedIds, setCustomSelectedIds] = useState<string[]>(initialStudentId ? [initialStudentId] : []);
+  const [customSelectedIds, setCustomSelectedIds] = useState<string[]>(
+    initialStudentId ? [initialStudentId] : [],
+  );
   const [playerFilter, setPlayerFilter] = useState<string>("");
 
   const [feeType, setFeeType] = useState<CreateFeeBody["feeType"]>("one_time");
@@ -1140,7 +1399,11 @@ const CreateFeeModal: React.FC<{
     if (selectionMode === "single") return studentId ? [studentId] : [];
     if (selectionMode === "all") return students.map((s) => s.id);
     if (selectionMode === "category") {
-      return selectedCategory ? students.filter((s) => s.ageGroup === selectedCategory).map((s) => s.id) : [];
+      return selectedCategory
+        ? students
+            .filter((s) => s.ageGroup === selectedCategory)
+            .map((s) => s.id)
+        : [];
     }
     if (selectionMode === "custom") return customSelectedIds;
     return [];
@@ -1151,19 +1414,31 @@ const CreateFeeModal: React.FC<{
     if (type !== "installment") setInstallments([emptyInstallment()]);
   };
 
-  const addInstallment = () => setInstallments((prev) => [...prev, emptyInstallment()]);
-  const removeInstallment = (i: number) => setInstallments((prev) => prev.filter((_, idx) => idx !== i));
-  const updateInstallment = (i: number, field: "amount" | "dueDate", value: string) => {
-    setInstallments((prev) => prev.map((inst, idx) => (idx === i ? { ...inst, [field]: value } : inst)));
+  const addInstallment = () =>
+    setInstallments((prev) => [...prev, emptyInstallment()]);
+  const removeInstallment = (i: number) =>
+    setInstallments((prev) => prev.filter((_, idx) => idx !== i));
+  const updateInstallment = (
+    i: number,
+    field: "amount" | "dueDate",
+    value: string,
+  ) => {
+    setInstallments((prev) =>
+      prev.map((inst, idx) => (idx === i ? { ...inst, [field]: value } : inst)),
+    );
   };
 
   const splitEvenly = () => {
     const total = parseFloat(totalAmount);
     if (!total || installments.length === 0) return;
     const each = Math.floor((total / installments.length) * 100) / 100;
-    const remainder = Math.round((total - each * installments.length) * 100) / 100;
+    const remainder =
+      Math.round((total - each * installments.length) * 100) / 100;
     setInstallments((prev) =>
-      prev.map((inst, i) => ({ ...inst, amount: (i === prev.length - 1 ? each + remainder : each).toString() })),
+      prev.map((inst, i) => ({
+        ...inst,
+        amount: (i === prev.length - 1 ? each + remainder : each).toString(),
+      })),
     );
   };
 
@@ -1182,10 +1457,15 @@ const CreateFeeModal: React.FC<{
       toast.error("Fill in an amount and due date for every milestone");
       return;
     }
-    const installmentTotal = installments.reduce((sum, i) => sum + parseFloat(i.amount || "0"), 0);
+    const installmentTotal = installments.reduce(
+      (sum, i) => sum + parseFloat(i.amount || "0"),
+      0,
+    );
     const finalAmount = total - (parseFloat(discount) || 0);
     if (Math.abs(installmentTotal - finalAmount) > 0.5) {
-      toast.error(`Installments (₹${installmentTotal.toFixed(2)}) must add up to the total minus discount (₹${finalAmount.toFixed(2)})`);
+      toast.error(
+        `Installments (₹${installmentTotal.toFixed(2)}) must add up to the total minus discount (₹${finalAmount.toFixed(2)})`,
+      );
       return;
     }
 
@@ -1202,7 +1482,7 @@ const CreateFeeModal: React.FC<{
           dueDate: new Date(inst.dueDate).toISOString(),
         })),
       },
-      targetStudentIds
+      targetStudentIds,
     );
   };
 
@@ -1226,7 +1506,7 @@ const CreateFeeModal: React.FC<{
                   "px-2.5 py-1.5 rounded border text-xs font-semibold transition-all text-center",
                   selectionMode === m.id
                     ? "bg-volt-400 text-pitch-900 border-volt-400 shadow-xs"
-                    : "bg-slate-100 dark:bg-pitch-800 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                    : "bg-slate-100 dark:bg-pitch-800 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
                 )}
               >
                 {m.label}
@@ -1244,7 +1524,8 @@ const CreateFeeModal: React.FC<{
               <option value="">Select a player…</option>
               {students.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.firstName} {s.lastName} {s.ageGroup ? `· ${s.ageGroup}` : ""}
+                  {s.firstName} {s.lastName}{" "}
+                  {s.ageGroup ? `· ${s.ageGroup}` : ""}
                 </option>
               ))}
             </select>
@@ -1252,7 +1533,11 @@ const CreateFeeModal: React.FC<{
 
           {selectionMode === "all" && (
             <div className="p-3 rounded-lg bg-volt-400/10 border border-volt-400/20 text-xs text-slate-700 dark:text-slate-300">
-              Fee schedule will be created for <strong className="text-volt-600 dark:text-volt-400">{students.length} active players</strong> in this franchise.
+              Fee schedule will be created for{" "}
+              <strong className="text-volt-600 dark:text-volt-400">
+                {students.length} active players
+              </strong>{" "}
+              in this franchise.
             </div>
           )}
 
@@ -1267,13 +1552,19 @@ const CreateFeeModal: React.FC<{
                 <option value="">Select an age category / squad…</option>
                 {categories.map((c) => (
                   <option key={c} value={c}>
-                    {c} ({students.filter((s) => s.ageGroup === c).length} players)
+                    {c} ({students.filter((s) => s.ageGroup === c).length}{" "}
+                    players)
                   </option>
                 ))}
               </select>
               {selectedCategory && (
                 <p className="text-2xs text-slate-500">
-                  Targeting {students.filter((s) => s.ageGroup === selectedCategory).length} players in {selectedCategory}.
+                  Targeting{" "}
+                  {
+                    students.filter((s) => s.ageGroup === selectedCategory)
+                      .length
+                  }{" "}
+                  players in {selectedCategory}.
                 </p>
               )}
             </div>
@@ -1300,24 +1591,38 @@ const CreateFeeModal: React.FC<{
                   }}
                   className="text-2xs text-volt-600 dark:text-volt-400 hover:underline font-semibold whitespace-nowrap"
                 >
-                  {customSelectedIds.length === students.length ? "Deselect All" : "Select All"}
+                  {customSelectedIds.length === students.length
+                    ? "Deselect All"
+                    : "Select All"}
                 </button>
               </div>
               <div className="max-h-40 overflow-y-auto divide-y divide-slate-100 dark:divide-white/5 pr-1">
                 {students
-                  .filter((s) => `${s.firstName} ${s.lastName} ${s.ageGroup || ""}`.toLowerCase().includes(playerFilter.toLowerCase()))
+                  .filter((s) =>
+                    `${s.firstName} ${s.lastName} ${s.ageGroup || ""}`
+                      .toLowerCase()
+                      .includes(playerFilter.toLowerCase()),
+                  )
                   .map((s) => {
                     const isChecked = customSelectedIds.includes(s.id);
                     return (
-                      <label key={s.id} className="flex items-center gap-2.5 py-1.5 px-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded cursor-pointer text-xs">
+                      <label
+                        key={s.id}
+                        className="flex items-center gap-2.5 py-1.5 px-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded cursor-pointer text-xs"
+                      >
                         <input
                           type="checkbox"
                           checked={isChecked}
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setCustomSelectedIds([...customSelectedIds, s.id]);
+                              setCustomSelectedIds([
+                                ...customSelectedIds,
+                                s.id,
+                              ]);
                             } else {
-                              setCustomSelectedIds(customSelectedIds.filter((id) => id !== s.id));
+                              setCustomSelectedIds(
+                                customSelectedIds.filter((id) => id !== s.id),
+                              );
                             }
                           }}
                           className="rounded text-volt-500 focus:ring-volt-400"
@@ -1352,34 +1657,61 @@ const CreateFeeModal: React.FC<{
                 className={clsx(
                   "flex-1 px-3 py-2 rounded border text-xs font-semibold uppercase tracking-wide transition-colors",
                   feeType === t
-                    ? "bg-volt-400 text-pitch-900 border-volt-400 font-bold"
-                    : "border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/25",
+                    ? "bg-volt-400 text-pitch-900 border-volt-400"
+                    : "bg-slate-50 dark:bg-pitch-900 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/25",
                 )}
               >
-                {t === "one_time" ? "One-time" : t === "installment" ? "Installment plan" : "Early bird"}
+                {t === "one_time"
+                  ? "One-time"
+                  : t === "installment"
+                    ? "Installment plan"
+                    : "Early bird"}
               </button>
             ))}
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <Input label="Total amount (₹)" type="number" min={1} value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} required />
-          <Input label="Discount (₹, optional)" type="number" min={0} value={discount} onChange={(e) => setDiscount(e.target.value)} />
+          <Input
+            label="Total amount (₹)"
+            type="number"
+            min={1}
+            value={totalAmount}
+            onChange={(e) => setTotalAmount(e.target.value)}
+            required
+          />
+          <Input
+            label="Discount (₹, optional)"
+            type="number"
+            min={0}
+            value={discount}
+            onChange={(e) => setDiscount(e.target.value)}
+          />
         </div>
 
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="label !mb-0 text-xs">
-              {feeType === "installment" ? "Milestone installments" : "Payment due date"}
+              {feeType === "installment"
+                ? "Milestone installments"
+                : "Payment due date"}
             </label>
             <div className="flex gap-3">
               {totalAmount && (
-                <button type="button" onClick={splitEvenly} className="text-2xs text-volt-600 dark:text-volt-400 hover:underline">
+                <button
+                  type="button"
+                  onClick={splitEvenly}
+                  className="text-2xs text-volt-400 hover:underline"
+                >
                   Split evenly
                 </button>
               )}
               {feeType === "installment" && (
-                <button type="button" onClick={addInstallment} className="text-2xs text-sky-600 dark:text-ice-400 hover:underline">
+                <button
+                  type="button"
+                  onClick={addInstallment}
+                  className="text-2xs text-ice-400 hover:underline"
+                >
                   + Add installment
                 </button>
               )}
@@ -1394,19 +1726,27 @@ const CreateFeeModal: React.FC<{
                   min={1}
                   placeholder="Amount"
                   value={inst.amount}
-                  onChange={(e) => updateInstallment(i, "amount", e.target.value)}
+                  onChange={(e) =>
+                    updateInstallment(i, "amount", e.target.value)
+                  }
                   className="input flex-1 text-xs"
                   required
                 />
                 <input
                   type="date"
                   value={inst.dueDate}
-                  onChange={(e) => updateInstallment(i, "dueDate", e.target.value)}
+                  onChange={(e) =>
+                    updateInstallment(i, "dueDate", e.target.value)
+                  }
                   className="input flex-1 text-xs"
                   required
                 />
                 {feeType === "installment" && installments.length > 1 && (
-                  <button type="button" onClick={() => removeInstallment(i)} className="text-slate-500 hover:text-rose-400 px-1">
+                  <button
+                    type="button"
+                    onClick={() => removeInstallment(i)}
+                    className="text-slate-500 hover:text-rose-400 px-1"
+                  >
                     <Trash2 size={14} />
                   </button>
                 )}
@@ -1417,7 +1757,13 @@ const CreateFeeModal: React.FC<{
 
         <div>
           <label className="label text-xs">Notes (optional)</label>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="input w-full resize-none text-xs" placeholder="e.g. Annual registration fee" />
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            className="input w-full resize-none text-xs"
+            placeholder="e.g. Annual registration fee"
+          />
         </div>
 
         <div className="flex gap-3 pt-2">
@@ -1426,7 +1772,9 @@ const CreateFeeModal: React.FC<{
               ? `Schedule fee for ${targetStudentIds.length} players`
               : "Schedule fee"}
           </Button>
-          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
         </div>
       </form>
     </Modal>
@@ -1462,18 +1810,36 @@ const RecordPaymentModal: React.FC<{
   return (
     <Modal isOpen onClose={onClose} title="Record payment" size="sm">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input label="Amount (₹)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+        <Input
+          label="Amount (₹)"
+          type="number"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          required
+        />
         <div>
           <label className="label text-xs">Payment method</label>
-          <select className="input text-xs !w-full" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+          <select
+            className="input text-xs !w-full"
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value)}
+          >
             <option value="cash">Cash</option>
             <option value="card">Card</option>
             <option value="upi">UPI</option>
             <option value="bank_transfer">Bank transfer</option>
           </select>
         </div>
-        <Input label="Transaction ID (optional)" value={transactionId} onChange={(e) => setTransactionId(e.target.value)} />
-        <Button type="submit" loading={isLoading} className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2">
+        <Input
+          label="Transaction ID (optional)"
+          value={transactionId}
+          onChange={(e) => setTransactionId(e.target.value)}
+        />
+        <Button
+          type="submit"
+          loading={isLoading}
+          className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2"
+        >
           Record payment
         </Button>
       </form>
@@ -1482,13 +1848,23 @@ const RecordPaymentModal: React.FC<{
 };
 
 const EditPaymentModal: React.FC<{
-  target: { feeId: string; installmentNumber: number; amount: number; paymentMethod?: string; transactionId?: string };
+  target: {
+    feeId: string;
+    installmentNumber: number;
+    amount: number;
+    paymentMethod?: string;
+    transactionId?: string;
+  };
   onClose: () => void;
 }> = ({ target, onClose }) => {
   const [updatePayment, { isLoading }] = useUpdatePaymentMutation();
   const [amount, setAmount] = useState(String(target.amount));
-  const [paymentMethod, setPaymentMethod] = useState(target.paymentMethod || "cash");
-  const [transactionId, setTransactionId] = useState(target.transactionId || "");
+  const [paymentMethod, setPaymentMethod] = useState(
+    target.paymentMethod || "cash",
+  );
+  const [transactionId, setTransactionId] = useState(
+    target.transactionId || "",
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1510,18 +1886,36 @@ const EditPaymentModal: React.FC<{
   return (
     <Modal isOpen onClose={onClose} title="Edit payment details" size="sm">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input label="Amount (₹)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+        <Input
+          label="Amount (₹)"
+          type="number"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          required
+        />
         <div>
           <label className="label text-xs">Payment method</label>
-          <select className="input text-xs !w-full" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+          <select
+            className="input text-xs !w-full"
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value)}
+          >
             <option value="cash">Cash</option>
             <option value="card">Card</option>
             <option value="upi">UPI</option>
             <option value="bank_transfer">Bank transfer</option>
           </select>
         </div>
-        <Input label="Transaction ID (optional)" value={transactionId} onChange={(e) => setTransactionId(e.target.value)} />
-        <Button type="submit" loading={isLoading} className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2">
+        <Input
+          label="Transaction ID (optional)"
+          value={transactionId}
+          onChange={(e) => setTransactionId(e.target.value)}
+        />
+        <Button
+          type="submit"
+          loading={isLoading}
+          className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2"
+        >
           Save Changes
         </Button>
       </form>

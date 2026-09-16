@@ -108,7 +108,7 @@ const ResourcesPage: React.FC = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="font-display font-black text-2xl text-white uppercase tracking-wide">Resources</h1>
+          <h1 className="font-display font-black text-2xl text-slate-900 dark:text-white uppercase tracking-wide">Resources</h1>
           <p className="text-sm text-slate-400 mt-1">
             {isManager
               ? "Every document and image uploaded by your coaches, for review and verification."
@@ -133,7 +133,7 @@ const ResourcesPage: React.FC = () => {
       {isManager && data?.storage && (
         <Card className="p-5">
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2 text-sm text-white font-semibold">
+            <div className="flex items-center gap-2 text-sm text-slate-900 dark:text-white font-semibold">
               <HardDrive size={15} className="text-volt-400" />
               Academy storage
             </div>
@@ -213,7 +213,7 @@ const ResourceRow: React.FC<{
           href={resource.fileUrl}
           target="_blank"
           rel="noreferrer"
-          className="text-sm font-semibold text-white hover:text-volt-400 transition-colors truncate flex items-center gap-1.5"
+          className="text-sm font-semibold text-slate-900 dark:text-white hover:text-volt-600 dark:hover:text-volt-400 transition-colors truncate flex items-center gap-1.5"
         >
           {resource.fileName}
           <ExternalLink size={12} className="text-slate-500" />

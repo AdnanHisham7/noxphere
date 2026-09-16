@@ -5,13 +5,21 @@ import { Users, CheckCircle2, AlertTriangle, Wallet } from "lucide-react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
 import { useGetGuardianDashboardQuery } from "../../store/api/guardianApi";
-import { NoxPageHeader, NoxStatCard, NoxSkeleton, NoxEmptyState, NoxStatusBadge } from "../../components/portal-ui";
+import {
+  NoxPageHeader,
+  NoxStatCard,
+  NoxSkeleton,
+  NoxEmptyState,
+  NoxStatusBadge,
+} from "../../components/portal-ui";
 
 const GuardianDashboardPage: React.FC = () => {
   const user = useSelector((s: RootState) => s.auth.user);
   const { data, isLoading, isError } = useGetGuardianDashboardQuery();
 
-  const attendanceByStudent = new Map((data?.todayAttendance ?? []).map((a) => [a.studentId, a.status]));
+  const attendanceByStudent = new Map(
+    (data?.todayAttendance ?? []).map((a) => [a.studentId, a.status]),
+  );
 
   return (
     <div>
@@ -39,7 +47,12 @@ const GuardianDashboardPage: React.FC = () => {
       {data && (
         <>
           <div className="grid sm:grid-cols-3 gap-4 mb-8">
-            <NoxStatCard label="Children" value={data.children.length} icon={<Users size={18} />} accent="ion" />
+            <NoxStatCard
+              label="Children"
+              value={data.children.length}
+              icon={<Users size={18} />}
+              accent="ion"
+            />
             <NoxStatCard
               label="Overdue fees"
               value={data.overdueFees.length}
@@ -62,7 +75,9 @@ const GuardianDashboardPage: React.FC = () => {
             />
           ) : (
             <>
-              <h2 className="font-orbital text-lg font-medium text-nox-high mb-4">Your children</h2>
+              <h2 className="font-orbital text-lg font-medium text-nox-high mb-4">
+                Your children
+              </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
                 {data.children.map((child) => {
                   const todayStatus = attendanceByStudent.get(child.id);
@@ -86,13 +101,15 @@ const GuardianDashboardPage: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                      <div className="mt-4 pt-3 border-t border-slate-200 dark:border-white/[0.06] flex items-center justify-between">
+                      <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
                         <div className="flex items-center gap-1.5 text-xs text-nox-mid">
                           <span>Today:</span>
                           {todayStatus ? (
                             <NoxStatusBadge status={todayStatus} />
                           ) : (
-                            <span className="text-xs text-nox-low font-mono">Not marked</span>
+                            <span className="text-xs text-nox-low font-mono">
+                              Not marked
+                            </span>
                           )}
                         </div>
                         <span className="text-2xs font-mono text-core-400 group-hover:underline flex items-center gap-1">
@@ -112,16 +129,21 @@ const GuardianDashboardPage: React.FC = () => {
                 <CheckCircle2 size={18} className="text-core-400" />
                 Fee reminders
               </h2>
-              <div className="nox-card divide-y divide-slate-200 dark:divide-white/[0.06]">
+              <div className="nox-card divide-y divide-white/[0.06]">
                 {[...data.overdueFees, ...data.upcomingFees].map((f, i) => {
                   const child = data.children.find((c) => c.id === f.studentId);
                   const isOverdue = data.overdueFees.includes(f);
                   return (
-                    <div key={i} className="flex items-center justify-between px-5 py-4">
+                    <div
+                      key={i}
+                      className="flex items-center justify-between px-5 py-4"
+                    >
                       <div>
                         <div className="text-sm text-nox-high">
-                          {child ? `${child.firstName} ${child.lastName}` : "Student"} — installment{" "}
-                          {f.installmentNumber}
+                          {child
+                            ? `${child.firstName} ${child.lastName}`
+                            : "Student"}{" "}
+                          — installment {f.installmentNumber}
                         </div>
                         <div className="text-xs text-nox-low font-mono mt-0.5">
                           Due {new Date(f.dueDate).toLocaleDateString()}
@@ -131,7 +153,9 @@ const GuardianDashboardPage: React.FC = () => {
                         <div className="font-orbital text-sm font-semibold text-nox-high">
                           ₹{f.amount.toLocaleString("en-IN")}
                         </div>
-                        <NoxStatusBadge status={isOverdue ? "overdue" : "pending"} />
+                        <NoxStatusBadge
+                          status={isOverdue ? "overdue" : "pending"}
+                        />
                       </div>
                     </div>
                   );

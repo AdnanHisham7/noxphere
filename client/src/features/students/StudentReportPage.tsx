@@ -33,7 +33,7 @@ const StudentReportPage: React.FC = () => {
   if (isError || !report) {
     return (
       <div className="max-w-3xl mx-auto p-8 text-center">
-        <p className="text-white font-semibold">Couldn't load this report</p>
+        <p className="text-slate-900 dark:text-white font-semibold">Couldn't load this report</p>
         <p className="text-slate-500 text-sm mt-1">You may not have access, or this player doesn't exist.</p>
       </div>
     );

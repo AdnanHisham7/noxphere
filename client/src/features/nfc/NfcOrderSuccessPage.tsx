@@ -81,13 +81,13 @@ export const NfcOrderSuccessPage: React.FC = () => {
             </div>
             <div className="flex justify-between border-b border-white/5 pb-2">
               <span className="text-slate-400">Cards Ordered:</span>
-              <span className="text-white font-semibold">
+              <span className="text-slate-900 dark:text-white font-semibold">
                 {verifiedOrder.quantity} card{verifiedOrder.quantity > 1 ? "s" : ""} ({verifiedOrder.cardType})
               </span>
             </div>
             <div className="flex justify-between border-b border-white/5 pb-2">
               <span className="text-slate-400">Total Paid:</span>
-              <span className="font-mono font-bold text-white">
+              <span className="font-mono font-bold text-slate-900 dark:text-white">
                 ₹{verifiedOrder.totalAmount?.toLocaleString("en-IN")}
               </span>
             </div>

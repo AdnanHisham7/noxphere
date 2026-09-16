@@ -46,7 +46,16 @@ import {
 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
-import { Button, Badge, Avatar, Modal, Skeleton, EmptyState, Input, DocumentUploadField } from "../../components/ui";
+import {
+  Button,
+  Badge,
+  Avatar,
+  Modal,
+  Skeleton,
+  EmptyState,
+  Input,
+  DocumentUploadField,
+} from "../../components/ui";
 import { toast } from "react-hot-toast";
 import { useTransferWallEnabled } from "../../hooks/useTransferWallEnabled";
 import { useConfirm } from "../../hooks/useConfirm";
@@ -66,20 +75,44 @@ import {
   type Student,
   type StudentStatus,
 } from "../../store/api/studentsApi";
-import { useGetFranchiseByIdQuery, useGetFranchisesQuery } from "../../store/api/franchiseApi";
+import {
+  useGetFranchiseByIdQuery,
+  useGetFranchisesQuery,
+} from "../../store/api/franchiseApi";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
 import { academyApi } from "../../store/api/academyApi";
 import { useListPlayerMutation } from "../../store/api/transferApi";
 import { useUploadImageMutation } from "../../store/api/uploadApi";
 
 const getRatingColor = (r: number) =>
-  r >= 9 ? "text-volt-400" : r >= 8 ? "text-field-400" : r >= 7 ? "text-ice-400" : "text-slate-400";
+  r >= 9
+    ? "text-volt-400"
+    : r >= 8
+      ? "text-field-400"
+      : r >= 7
+        ? "text-ice-400"
+        : "text-slate-400";
 
 const getRatingTier = (score: number) => {
-  if (score >= 9) return { label: "Elite", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30" };
-  if (score >= 8) return { label: "Strong", color: "text-volt-400 bg-volt-400/10 border-volt-400/30" };
-  if (score >= 7) return { label: "Good", color: "text-amber-400 bg-amber-400/10 border-amber-400/30" };
-  return { label: "Developing", color: "text-rose-400 bg-rose-500/10 border-rose-500/30" };
+  if (score >= 9)
+    return {
+      label: "Elite",
+      color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
+    };
+  if (score >= 8)
+    return {
+      label: "Strong",
+      color: "text-volt-400 bg-volt-400/10 border-volt-400/30",
+    };
+  if (score >= 7)
+    return {
+      label: "Good",
+      color: "text-amber-400 bg-amber-400/10 border-amber-400/30",
+    };
+  return {
+    label: "Developing",
+    color: "text-rose-400 bg-rose-500/10 border-rose-500/30",
+  };
 };
 
 const attendanceColors: Record<string, string> = {
@@ -106,7 +139,9 @@ const isPdf = (url: string) => {
 
 const StudentDetailPage: React.FC = () => {
   const { id } = useParams();
-  const [activeTab, setActiveTab] = useState<"overview" | "attendance" | "performance" | "info">("overview");
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "attendance" | "performance" | "info"
+  >("overview");
   const [transferModal, setTransferModal] = useState(false);
   const [franchiseTransferModal, setFranchiseTransferModal] = useState(false);
   const [editModal, setEditModal] = useState(false);
@@ -118,24 +153,39 @@ const StudentDetailPage: React.FC = () => {
   const { confirm, ConfirmDialog } = useConfirm();
 
   // Performance Tab State
-  const [performanceChartView, setPerformanceChartView] = useState<"trend" | "radar">("trend");
-  const [sessionRatingFilter, setSessionRatingFilter] = useState<"all" | "high" | "low">("all");
-  const [expandedSessionIds, setExpandedSessionIds] = useState<Record<string, boolean>>({});
+  const [performanceChartView, setPerformanceChartView] = useState<
+    "trend" | "radar"
+  >("trend");
+  const [sessionRatingFilter, setSessionRatingFilter] = useState<
+    "all" | "high" | "low"
+  >("all");
+  const [expandedSessionIds, setExpandedSessionIds] = useState<
+    Record<string, boolean>
+  >({});
   const [isNotesOpen, setIsNotesOpen] = useState(false);
 
-  const { data: card, isLoading, isError } = useGetPlayerCardQuery(id ?? "", { skip: !id });
+  const {
+    data: card,
+    isLoading,
+    isError,
+  } = useGetPlayerCardQuery(id ?? "", { skip: !id });
   const [listPlayer, { isLoading: listing }] = useListPlayerMutation();
   const [uploadImage, { isLoading: uploadingPhoto }] = useUploadImageMutation();
   const [updateStudentPhoto] = useUpdateStudentPhotoMutation();
-  const [updateStudentStatus, { isLoading: statusUpdating }] = useUpdateStudentStatusMutation();
-  const [transferFranchise, { isLoading: transferringFranchise }] = useTransferStudentFranchiseMutation();
+  const [updateStudentStatus, { isLoading: statusUpdating }] =
+    useUpdateStudentStatusMutation();
+  const [transferFranchise, { isLoading: transferringFranchise }] =
+    useTransferStudentFranchiseMutation();
   const transferWallEnabled = useTransferWallEnabled();
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Only Head Office (an academy-owner manager, or super_admin) may move a
   // player between franchises — matches the backend authorization check.
-  const canTransferFranchise = user?.role === "super_admin" || (user?.role === "manager" && !user?.franchiseId);
-  const canEditStatus = user?.role === "manager" || user?.role === "super_admin";
+  const canTransferFranchise =
+    user?.role === "super_admin" ||
+    (user?.role === "manager" && !user?.franchiseId);
+  const canEditStatus =
+    user?.role === "manager" || user?.role === "super_admin";
   const canManagePerformance =
     user?.role === "super_admin" ||
     user?.role === "manager" ||
@@ -143,13 +193,17 @@ const StudentDetailPage: React.FC = () => {
     !!user?.permissions?.canManagePerformance;
 
   const [newRemarkText, setNewRemarkText] = useState("");
-  const [addCoachRemark, { isLoading: isAddingRemark }] = useAddCoachRemarkMutation();
+  const [addCoachRemark, { isLoading: isAddingRemark }] =
+    useAddCoachRemarkMutation();
 
   const handleAddRemark = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRemarkText.trim() || !id) return;
     try {
-      await addCoachRemark({ id, data: { text: newRemarkText.trim() } }).unwrap();
+      await addCoachRemark({
+        id,
+        data: { text: newRemarkText.trim() },
+      }).unwrap();
       toast.success("Note added successfully");
       setNewRemarkText("");
     } catch (err: any) {
@@ -177,7 +231,11 @@ const StudentDetailPage: React.FC = () => {
 
   const handlePhotoChange = async (file: File | undefined) => {
     if (!file || !id) return;
-    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+    if (
+      !["image/jpeg", "image/png", "image/webp", "image/gif"].includes(
+        file.type,
+      )
+    ) {
       toast.error("Only JPEG, PNG, WEBP or GIF images are allowed");
       return;
     }
@@ -186,7 +244,10 @@ const StudentDetailPage: React.FC = () => {
       return;
     }
     try {
-      const result = await uploadImage({ file, category: "player_photo" }).unwrap();
+      const result = await uploadImage({
+        file,
+        category: "player_photo",
+      }).unwrap();
       await updateStudentPhoto({ id, photo: result.url }).unwrap();
       toast.success("Photo updated");
     } catch (err: any) {
@@ -211,16 +272,24 @@ const StudentDetailPage: React.FC = () => {
       skillTotals.set(s.parameter, bucket);
     }
   }
-  const skillScores = Array.from(skillTotals.entries()).map(([parameter, v]) => ({
-    parameter,
-    score: Math.round((v.sum / v.count) * 10) / 10,
-  }));
+  const skillScores = Array.from(skillTotals.entries()).map(
+    ([parameter, v]) => ({
+      parameter,
+      score: Math.round((v.sum / v.count) * 10) / 10,
+    }),
+  );
 
   // Session history for the trend line, oldest → newest
   const sessionHistory = [...performances]
-    .sort((a, b) => new Date(a.sessionDate).getTime() - new Date(b.sessionDate).getTime())
+    .sort(
+      (a, b) =>
+        new Date(a.sessionDate).getTime() - new Date(b.sessionDate).getTime(),
+    )
     .map((p) => ({
-      session: new Date(p.sessionDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+      session: new Date(p.sessionDate).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+      }),
       score: p.overallScore,
     }));
 
@@ -244,20 +313,29 @@ const StudentDetailPage: React.FC = () => {
       };
     }
 
-    const total = performances.reduce((acc, p) => acc + (p.overallScore || 0), 0);
+    const total = performances.reduce(
+      (acc, p) => acc + (p.overallScore || 0),
+      0,
+    );
     const avg = total / performances.length;
     const peak = Math.max(...performances.map((p) => p.overallScore || 0));
 
     // Sort skills by average score
     const sortedSkills = [...skillScores].sort((a, b) => b.score - a.score);
     const highestSkill = sortedSkills.length > 0 ? sortedSkills[0] : null;
-    const lowestSkill = sortedSkills.length > 0 ? sortedSkills[sortedSkills.length - 1] : null;
+    const lowestSkill =
+      sortedSkills.length > 0 ? sortedSkills[sortedSkills.length - 1] : null;
 
     const sortedByDate = [...performances].sort(
-      (a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime()
+      (a, b) =>
+        new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime(),
     );
     const latestDate = sortedByDate[0]?.sessionDate
-      ? new Date(sortedByDate[0].sessionDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+      ? new Date(sortedByDate[0].sessionDate).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
       : null;
 
     return {
@@ -272,7 +350,8 @@ const StudentDetailPage: React.FC = () => {
 
   const filteredSessions = useMemo(() => {
     const list = [...performances].sort(
-      (a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime()
+      (a, b) =>
+        new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime(),
     );
     if (sessionRatingFilter === "high") {
       return list.filter((s) => (s.overallScore || 0) >= 8);
@@ -300,7 +379,14 @@ const StudentDetailPage: React.FC = () => {
       <EmptyState
         title="Player not found"
         description="This player may have been removed, or you don't have access."
-        action={<Link to="/students" className="inline-flex items-center gap-1.5 text-volt-400 hover:underline text-sm"><ArrowLeft size={14} /> Back to Squad</Link>}
+        action={
+          <Link
+            to="/students"
+            className="inline-flex items-center gap-1.5 text-volt-400 hover:underline text-sm"
+          >
+            <ArrowLeft size={14} /> Back to Squad
+          </Link>
+        }
       />
     );
   }
@@ -347,7 +433,10 @@ const StudentDetailPage: React.FC = () => {
 
   const handleListOnTransfer = async (price: number, note: string) => {
     try {
-      await listPlayer({ studentId: student.id, data: { price, note: note || undefined } }).unwrap();
+      await listPlayer({
+        studentId: student.id,
+        data: { price, note: note || undefined },
+      }).unwrap();
       toast.success("Player listed on Transfer Wall!");
       setTransferModal(false);
     } catch (err: any) {
@@ -359,17 +448,22 @@ const StudentDetailPage: React.FC = () => {
   // has opted in (see Student.publicProfileEnabled / the toggle in
   // GuardianChildDetailPage) — printing a QR code for a page that isn't
   // public yet would just print a 404.
-  const publicProfileUrl = student.publicProfileEnabled && student.publicProfileToken
-    ? `${window.location.origin}/players/${student.publicProfileToken}`
-    : null;
+  const publicProfileUrl =
+    student.publicProfileEnabled && student.publicProfileToken
+      ? `${window.location.origin}/players/${student.publicProfileToken}`
+      : null;
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-slate-500">
-        <Link to="/students" className="hover:text-volt-400 transition-colors">Squad</Link>
+        <Link to="/students" className="hover:text-volt-400 transition-colors">
+          Squad
+        </Link>
         <span>›</span>
-        <span className="text-white">{student.firstName} {student.lastName}</span>
+        <span className="text-slate-900 dark:text-white font-medium">
+          {student.firstName} {student.lastName}
+        </span>
       </div>
 
       {/* Hero section */}
@@ -382,26 +476,43 @@ const StudentDetailPage: React.FC = () => {
             <div className="flex-1 min-w-0 order-2 lg:order-1">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div>
-                  <h1 className="font-display font-900 text-white text-3xl uppercase leading-tight tracking-tight">
+                  <h1 className="font-display font-900 text-slate-900 dark:text-white text-3xl uppercase leading-tight tracking-tight">
                     {student.firstName} {student.lastName}
                   </h1>
                   <p className="text-slate-400 text-sm mt-0.5">
-                    {student.position ?? "—"} · {student.ageGroup} · #{student.jerseyNumber ?? "—"}
+                    {student.position ?? "—"} · {student.ageGroup} · #
+                    {student.jerseyNumber ?? "—"}
                   </p>
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <Badge variant={student.selectionStatus === "selected" ? "green" : student.selectionStatus === "shortlisted" ? "blue" : "gray"}>
+                    <Badge
+                      variant={
+                        student.selectionStatus === "selected"
+                          ? "green"
+                          : student.selectionStatus === "shortlisted"
+                            ? "blue"
+                            : "gray"
+                      }
+                    >
                       {student.selectionStatus.replace("_", " ")}
                     </Badge>
-                    {student.transferStatus === "listed" && <Badge variant="blue">↔ On Transfer</Badge>}
-                    {student.transferStatus === "sold" && <Badge variant="green">Transferred</Badge>}
+                    {student.transferStatus === "listed" && (
+                      <Badge variant="blue">↔ On Transfer</Badge>
+                    )}
+                    {student.transferStatus === "sold" && (
+                      <Badge variant="green">Transferred</Badge>
+                    )}
                     {canEditStatus ? (
                       <select
                         value={student.status}
                         disabled={statusUpdating}
-                        onChange={(e) => handleStatusChange(e.target.value as StudentStatus)}
+                        onChange={(e) =>
+                          handleStatusChange(e.target.value as StudentStatus)
+                        }
                         className={clsx(
                           "text-2xs font-bold uppercase tracking-wide rounded px-2 py-1 border bg-pitch-800",
-                          student.status === "active" ? "text-field-400 border-field-400/30" : "text-ember-400 border-ember-400/30",
+                          student.status === "active"
+                            ? "text-field-400 border-field-400/30"
+                            : "text-ember-400 border-ember-400/30",
                         )}
                       >
                         <option value="active">Active</option>
@@ -411,7 +522,9 @@ const StudentDetailPage: React.FC = () => {
                         <option value="dropped_out">Dropped Out</option>
                       </select>
                     ) : (
-                      <Badge variant={student.status === "active" ? "green" : "gray"}>
+                      <Badge
+                        variant={student.status === "active" ? "green" : "gray"}
+                      >
                         {student.status.replace("_", " ")}
                       </Badge>
                     )}
@@ -425,7 +538,13 @@ const StudentDetailPage: React.FC = () => {
                   <Check size={12} className="text-field-400" />
                   {student.attendancePercentage}% attendance
                 </span>
-                <span className="stat-badge text-slate-400">Enrolled {new Date(student.enrollmentDate).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}</span>
+                <span className="stat-badge text-slate-400">
+                  Enrolled{" "}
+                  {new Date(student.enrollmentDate).toLocaleDateString(
+                    "en-IN",
+                    { month: "short", year: "numeric" },
+                  )}
+                </span>
               </div>
 
               {/* Action buttons */}
@@ -433,7 +552,13 @@ const StudentDetailPage: React.FC = () => {
                 <Button
                   size="sm"
                   variant="secondary"
-                  icon={isDownloading ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                  icon={
+                    isDownloading ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <FileText size={14} />
+                    )
+                  }
                   onClick={handleDownloadCard}
                   disabled={isDownloading}
                 >
@@ -450,17 +575,27 @@ const StudentDetailPage: React.FC = () => {
                     >
                       <div
                         className="absolute inset-0 opacity-10"
-                        style={{ backgroundImage: "radial-gradient(#ccff00 0.5px, transparent 0.5px)", backgroundSize: "24px 24px" }}
+                        style={{
+                          backgroundImage:
+                            "radial-gradient(#ccff00 0.5px, transparent 0.5px)",
+                          backgroundSize: "24px 24px",
+                        }}
                       />
                       <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-volt-400/20 rounded-full blur-[120px]" />
 
                       <div className="z-20 w-full flex justify-between items-start mb-6">
                         <div className="bg-volt-400 h-12 px-6 flex items-center justify-center">
-                          <span className="text-black font-black italic text-2xl leading-none relative top-[1px]">ELITE SERIES</span>
+                          <span className="text-black font-black italic text-2xl leading-none relative top-[1px]">
+                            ELITE SERIES
+                          </span>
                         </div>
                         <div className="text-right">
-                          <p className="text-volt-400 font-black text-6xl leading-none">{student.overallRating.toFixed(1)}</p>
-                          <p className="text-white/50 text-lg uppercase tracking-widest font-thin mt-1">OVR Rating</p>
+                          <p className="text-volt-400 font-black text-6xl leading-none">
+                            {student.overallRating.toFixed(1)}
+                          </p>
+                          <p className="text-white/50 text-lg uppercase tracking-widest font-thin mt-1">
+                            OVR Rating
+                          </p>
                         </div>
                       </div>
 
@@ -484,16 +619,28 @@ const StudentDetailPage: React.FC = () => {
                       </div>
 
                       <div className="w-full z-20 text-center pb-10">
-                        <h1 className="text-8xl font-900 text-white uppercase tracking-tighter leading-none mb-2">{student.lastName}</h1>
-                        <p className="text-volt-400 font-900 text-3xl uppercase italic tracking-widest mb-6">{student.firstName}</p>
+                        <h1 className="text-8xl font-900 text-white uppercase tracking-tighter leading-none mb-2">
+                          {student.lastName}
+                        </h1>
+                        <p className="text-volt-400 font-900 text-3xl uppercase italic tracking-widest mb-6">
+                          {student.firstName}
+                        </p>
                         <div className="flex justify-center gap-16">
                           <div className="text-center">
-                            <p className="text-white font-900 text-2xl uppercase italic">{student.position ?? "—"}</p>
-                            <p className="text-white/40 text-[10px] uppercase font-bold tracking-[0.3em]">Position</p>
+                            <p className="text-white font-900 text-2xl uppercase italic">
+                              {student.position ?? "—"}
+                            </p>
+                            <p className="text-white/40 text-[10px] uppercase font-bold tracking-[0.3em]">
+                              Position
+                            </p>
                           </div>
                           <div className="text-center">
-                            <p className="text-white font-900 text-2xl uppercase italic">#{student.jerseyNumber ?? "—"}</p>
-                            <p className="text-white/40 text-[10px] uppercase font-bold tracking-[0.3em]">Squad No</p>
+                            <p className="text-white font-900 text-2xl uppercase italic">
+                              #{student.jerseyNumber ?? "—"}
+                            </p>
+                            <p className="text-white/40 text-[10px] uppercase font-bold tracking-[0.3em]">
+                              Squad No
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -507,29 +654,41 @@ const StudentDetailPage: React.FC = () => {
                       <div className="flex justify-between items-end border-b-2 border-white/10 pb-8">
                         <div>
                           <h3 className="text-5xl text-white font-900 uppercase tracking-tighter leading-none">
-                            Technical <span className="text-volt-400">Breakdown</span>
+                            Technical{" "}
+                            <span className="text-volt-400">Breakdown</span>
                           </h3>
                           <p className="text-white/30 font-bold uppercase tracking-[0.4em] mt-2 text-[10px]">
                             Verified Franchise Data • {new Date().getFullYear()}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-volt-400 font-mono text-xl">ID-{student.id.slice(-6).toUpperCase()}</p>
+                          <p className="text-volt-400 font-mono text-xl">
+                            ID-{student.id.slice(-6).toUpperCase()}
+                          </p>
                         </div>
                       </div>
 
                       <div className="mt-12 space-y-8">
                         {skillScores.length === 0 && (
-                          <p className="text-white/30 text-lg italic">No performance data logged yet.</p>
+                          <p className="text-white/30 text-lg italic">
+                            No performance data logged yet.
+                          </p>
                         )}
                         {skillScores.map((skill) => (
                           <div key={skill.parameter} className="group">
                             <div className="flex justify-between items-end mb-2">
-                              <span className="text-white font-900 uppercase tracking-widest text-lg">{skill.parameter}</span>
-                              <span className="text-volt-400 font-900 text-2xl italic">{Math.round(skill.score * 10)}</span>
+                              <span className="text-white font-900 uppercase tracking-widest text-lg">
+                                {skill.parameter}
+                              </span>
+                              <span className="text-volt-400 font-900 text-2xl italic">
+                                {Math.round(skill.score * 10)}
+                              </span>
                             </div>
                             <div className="h-4 bg-white/5 rounded-full overflow-hidden flex">
-                              <div className="h-full bg-volt-400 shadow-[0_0_15px_rgba(204,255,0,0.5)]" style={{ width: `${skill.score * 10}%` }} />
+                              <div
+                                className="h-full bg-volt-400 shadow-[0_0_15px_rgba(204,255,0,0.5)]"
+                                style={{ width: `${skill.score * 10}%` }}
+                              />
                               <div className="h-full bg-white/10 flex-1" />
                             </div>
                           </div>
@@ -539,21 +698,39 @@ const StudentDetailPage: React.FC = () => {
                       <div className="mt-auto grid grid-cols-12 gap-8 pt-12 border-t border-white/10">
                         <div className="col-span-8 grid grid-cols-2 gap-6">
                           <div>
-                            <p className="text-white/20 text-[10px] uppercase font-black tracking-widest mb-1">Guardian</p>
-                            <p className="text-white font-bold text-lg">{student.guardian.name}</p>
-                            <p className="text-volt-400 font-mono text-sm">{student.guardian.phone}</p>
+                            <p className="text-white/20 text-[10px] uppercase font-black tracking-widest mb-1">
+                              Guardian
+                            </p>
+                            <p className="text-white font-bold text-lg">
+                              {student.guardian.name}
+                            </p>
+                            <p className="text-volt-400 font-mono text-sm">
+                              {student.guardian.phone}
+                            </p>
                           </div>
                           <div>
-                            <p className="text-white/20 text-[10px] uppercase font-black tracking-widest mb-1">Bio Metrics</p>
-                            <p className="text-white font-bold text-lg">Group: {student.medicalInfo.bloodGroup ?? "N/A"}</p>
-                            <p className="text-white/40 text-sm italic">{student.ageGroup} Division</p>
+                            <p className="text-white/20 text-[10px] uppercase font-black tracking-widest mb-1">
+                              Bio Metrics
+                            </p>
+                            <p className="text-white font-bold text-lg">
+                              Group: {student.medicalInfo.bloodGroup ?? "N/A"}
+                            </p>
+                            <p className="text-white/40 text-sm italic">
+                              {student.ageGroup} Division
+                            </p>
                           </div>
                         </div>
                         <div className="col-span-4 flex flex-col items-end">
                           {publicProfileUrl ? (
                             <>
                               <div className="bg-white p-2 rounded-xl">
-                                <QRCode value={publicProfileUrl} size={110} level="H" bgColor="#FFFFFF" fgColor="#000000" />
+                                <QRCode
+                                  value={publicProfileUrl}
+                                  size={110}
+                                  level="H"
+                                  bgColor="#FFFFFF"
+                                  fgColor="#000000"
+                                />
                               </div>
                               <p className="text-white/30 text-[9px] uppercase font-black mt-3 tracking-tighter text-right">
                                 Scan for player profile
@@ -578,7 +755,12 @@ const StudentDetailPage: React.FC = () => {
                   </div>
                 </div>
 
-                <Button size="sm" variant="secondary" icon={<Pencil size={14} />} onClick={() => setEditModal(true)}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={<Pencil size={14} />}
+                  onClick={() => setEditModal(true)}
+                >
                   Edit details
                 </Button>
 
@@ -586,7 +768,9 @@ const StudentDetailPage: React.FC = () => {
                   size="sm"
                   variant="secondary"
                   icon={<FileText size={14} />}
-                  onClick={() => window.open(`/students/${student.id}/report`, "_blank")}
+                  onClick={() =>
+                    window.open(`/students/${student.id}/report`, "_blank")
+                  }
                 >
                   Generate Report
                 </Button>
@@ -602,13 +786,23 @@ const StudentDetailPage: React.FC = () => {
                   </Button>
                 )}
 
-                {student.transferStatus !== "listed" && student.transferStatus !== "sold" && transferWallEnabled && (
-                  <Button size="sm" variant="secondary" icon={<Repeat2 size={14} />} onClick={() => setTransferModal(true)}>
-                    List on Transfer Wall
-                  </Button>
-                )}
+                {student.transferStatus !== "listed" &&
+                  student.transferStatus !== "sold" &&
+                  transferWallEnabled && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      icon={<Repeat2 size={14} />}
+                      onClick={() => setTransferModal(true)}
+                    >
+                      List on Transfer Wall
+                    </Button>
+                  )}
 
-                <a href={`mailto:${student.guardian.email}`} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2">
+                <a
+                  href={`mailto:${student.guardian.email}`}
+                  className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2"
+                >
                   <Mail size={13} /> Message Guardian
                 </a>
               </div>
@@ -642,7 +836,11 @@ const StudentDetailPage: React.FC = () => {
                   className="absolute bottom-1 right-1 z-20 bg-pitch-900/90 hover:bg-volt-400 hover:text-pitch-900 text-white border border-white/10 rounded-full p-2 transition-colors disabled:opacity-60"
                   aria-label="Change photo"
                 >
-                  {uploadingPhoto ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+                  {uploadingPhoto ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Camera size={14} />
+                  )}
                 </button>
                 <input
                   ref={photoInputRef}
@@ -656,10 +854,17 @@ const StudentDetailPage: React.FC = () => {
 
             {/* RIGHT SIDE RATING */}
             <div className="flex flex-col items-center lg:items-end justify-center order-3 text-center lg:text-right">
-              <p className={clsx("font-display font-900 text-5xl sm:text-6xl tabular-nums", getRatingColor(student.overallRating))}>
+              <p
+                className={clsx(
+                  "font-display font-900 text-5xl sm:text-6xl tabular-nums",
+                  getRatingColor(student.overallRating),
+                )}
+              >
                 {student.overallRating.toFixed(1)}
               </p>
-              <p className="text-2xs text-slate-500 mt-1 uppercase tracking-wide">Overall Rating</p>
+              <p className="text-2xs text-slate-500 mt-1 uppercase tracking-wide">
+                Overall Rating
+              </p>
             </div>
           </div>
         </div>
@@ -691,24 +896,44 @@ const StudentDetailPage: React.FC = () => {
           <div className="card p-5">
             <p className="section-title mb-4">Skill Profile</p>
             {skillScores.length === 0 ? (
-              <EmptyState title="No performance data yet" description="Skill scores appear once a coach logs a session." />
+              <EmptyState
+                title="No performance data yet"
+                description="Skill scores appear once a coach logs a session."
+              />
             ) : (
               <>
                 <ResponsiveContainer width="100%" height={200}>
                   <RadarChart data={skillScores}>
                     <PolarGrid stroke="rgba(100,116,139,0.2)" />
-                    <PolarAngleAxis dataKey="parameter" tick={{ fill: "#64748b", fontSize: 10 }} />
-                    <Radar dataKey="score" stroke="#ccff00" fill="#ccff00" fillOpacity={0.12} strokeWidth={2} dot={{ fill: "#ccff00", r: 3, strokeWidth: 0 }} />
+                    <PolarAngleAxis
+                      dataKey="parameter"
+                      tick={{ fill: "#64748b", fontSize: 10 }}
+                    />
+                    <Radar
+                      dataKey="score"
+                      stroke="#ccff00"
+                      fill="#ccff00"
+                      fillOpacity={0.12}
+                      strokeWidth={2}
+                      dot={{ fill: "#ccff00", r: 3, strokeWidth: 0 }}
+                    />
                   </RadarChart>
                 </ResponsiveContainer>
                 <div className="space-y-2 mt-4">
                   {skillScores.map((s) => (
                     <div key={s.parameter} className="flex items-center gap-2">
-                      <span className="text-2xs text-slate-500 w-24">{s.parameter}</span>
+                      <span className="text-2xs text-slate-500 w-24">
+                        {s.parameter}
+                      </span>
                       <div className="flex-1 h-1.5 bg-slate-200 dark:bg-pitch-600 rounded-full overflow-hidden">
-                        <div className="h-full bg-volt-400 transition-all duration-500" style={{ width: `${s.score * 10}%` }} />
+                        <div
+                          className="h-full bg-volt-400 transition-all duration-500"
+                          style={{ width: `${s.score * 10}%` }}
+                        />
                       </div>
-                      <span className="font-display font-bold text-xs text-volt-400 w-6 text-right">{s.score}</span>
+                      <span className="font-display font-bold text-xs text-volt-400 w-6 text-right">
+                        {s.score}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -719,33 +944,76 @@ const StudentDetailPage: React.FC = () => {
           <div className="card p-5">
             <p className="section-title mb-4">Performance Trend</p>
             {sessionHistory.length === 0 ? (
-              <EmptyState title="No sessions logged yet" description="Trend appears once performance is recorded." />
+              <EmptyState
+                title="No sessions logged yet"
+                description="Trend appears once performance is recorded."
+              />
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={sessionHistory}>
-                  <CartesianGrid stroke="rgba(100,116,139,0.15)" strokeDasharray="3 3" />
-                  <XAxis dataKey="session" tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis domain={[0, 10]} tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, fontSize: 12, color: "#fff" }} />
-                  <Line type="monotone" dataKey="score" stroke="#16a34a" activeDot={{ r: 6 }} strokeWidth={2} dot={{ r: 4 }} />
+                  <CartesianGrid
+                    stroke="rgba(100,116,139,0.15)"
+                    strokeDasharray="3 3"
+                  />
+                  <XAxis
+                    dataKey="session"
+                    tick={{ fill: "#64748b", fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    domain={[0, 10]}
+                    tick={{ fill: "#64748b", fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "#0f172a",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      color: "#fff",
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="score"
+                    stroke="#16a34a"
+                    activeDot={{ r: 6 }}
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             )}
 
             <div className="mt-4 space-y-2">
               <p className="section-title">Recent Remarks</p>
-              {remarks.length === 0 && <p className="text-xs text-slate-500">No coach remarks yet.</p>}
+              {remarks.length === 0 && (
+                <p className="text-xs text-slate-500">No coach remarks yet.</p>
+              )}
               {remarks.slice(0, 5).map((r) => (
-                <div key={r._id} className="bg-slate-50 dark:bg-pitch-700 border border-slate-200 dark:border-white/5 rounded p-3 border-l-2 border-volt-400">
+                <div
+                  key={r._id}
+                  className="bg-slate-50 dark:bg-pitch-700 border border-slate-200 dark:border-white/5 rounded p-3 border-l-2 border-volt-400"
+                >
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-2xs text-volt-500 dark:text-volt-400 font-semibold">
-                      {r.coachId ? `${r.coachId.firstName} ${r.coachId.lastName}` : "Coach"}
+                      {r.coachId
+                        ? `${r.coachId.firstName} ${r.coachId.lastName}`
+                        : "Coach"}
                     </span>
                     <span className="text-2xs text-slate-500 dark:text-slate-600">
-                      {new Date(r.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                      {new Date(r.date).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                      })}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 italic">"{r.text}"</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 italic">
+                    "{r.text}"
+                  </p>
                 </div>
               ))}
             </div>
@@ -758,18 +1026,40 @@ const StudentDetailPage: React.FC = () => {
         <div className="card p-5 space-y-4">
           <div className="flex items-center justify-between">
             <p className="section-title">Attendance History</p>
-            <span className="font-display font-extrabold text-field-400 text-2xl">{student.attendancePercentage}%</span>
+            <span className="font-display font-extrabold text-field-400 text-2xl">
+              {student.attendancePercentage}%
+            </span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
             {[
-              { label: "Present", value: attendanceCounts.present, color: "text-field-400" },
-              { label: "Late", value: attendanceCounts.late, color: "text-volt-400" },
-              { label: "Absent", value: attendanceCounts.absent, color: "text-ember-400" },
-              { label: "Excused", value: attendanceCounts.excused, color: "text-ice-400" },
+              {
+                label: "Present",
+                value: attendanceCounts.present,
+                color: "text-field-400",
+              },
+              {
+                label: "Late",
+                value: attendanceCounts.late,
+                color: "text-volt-400",
+              },
+              {
+                label: "Absent",
+                value: attendanceCounts.absent,
+                color: "text-ember-400",
+              },
+              {
+                label: "Excused",
+                value: attendanceCounts.excused,
+                color: "text-ice-400",
+              },
             ].map((s) => (
               <div key={s.label} className="card p-3 text-center">
-                <p className={clsx("font-display font-900 text-2xl", s.color)}>{s.value}</p>
-                <p className="text-2xs text-slate-500 uppercase tracking-wide mt-0.5">{s.label}</p>
+                <p className={clsx("font-display font-900 text-2xl", s.color)}>
+                  {s.value}
+                </p>
+                <p className="text-2xs text-slate-500 uppercase tracking-wide mt-0.5">
+                  {s.label}
+                </p>
               </div>
             ))}
           </div>
@@ -778,12 +1068,29 @@ const StudentDetailPage: React.FC = () => {
           ) : (
             <div className="space-y-2">
               {attendance.map((entry, i) => (
-                <div key={i} className="flex items-center gap-3 py-2 border-b border-white/4">
-                  <div className={clsx("w-2 h-2 rounded-full", attendanceColors[entry.status])} />
+                <div
+                  key={i}
+                  className="flex items-center gap-3 py-2 border-b border-white/4"
+                >
+                  <div
+                    className={clsx(
+                      "w-2 h-2 rounded-full",
+                      attendanceColors[entry.status],
+                    )}
+                  />
                   <span className="text-sm text-slate-300 flex-1">
-                    {new Date(entry.sessionDate).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}
+                    {new Date(entry.sessionDate).toLocaleDateString("en-IN", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                    })}
                   </span>
-                  <span className={clsx("text-xs font-semibold uppercase", attendanceTextColors[entry.status])}>
+                  <span
+                    className={clsx(
+                      "text-xs font-semibold uppercase",
+                      attendanceTextColors[entry.status],
+                    )}
+                  >
                     {entry.status}
                   </span>
                 </div>
@@ -801,18 +1108,35 @@ const StudentDetailPage: React.FC = () => {
             {/* OVR Rating Card */}
             <div className="card p-4 bg-white dark:bg-gradient-to-br dark:from-pitch-800 dark:to-pitch-900/90 border border-slate-200 dark:border-white/10 relative overflow-hidden">
               <div className="flex items-center justify-between">
-                <span className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Average Rating</span>
+                <span className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">
+                  Average Rating
+                </span>
                 <span className="w-7 h-7 rounded-lg bg-volt-400/10 text-volt-500 dark:text-volt-400 flex items-center justify-center">
-                  <Star size={14} className="fill-volt-400/30 text-volt-500 dark:text-volt-400" />
+                  <Star
+                    size={14}
+                    className="fill-volt-400/30 text-volt-500 dark:text-volt-400"
+                  />
                 </span>
               </div>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className={clsx("font-display font-black text-3xl", getRatingColor(performanceStats.avgScore))}>
-                  {performanceStats.avgScore > 0 ? performanceStats.avgScore.toFixed(1) : "—"}
+                <span
+                  className={clsx(
+                    "font-display font-black text-3xl",
+                    getRatingColor(performanceStats.avgScore),
+                  )}
+                >
+                  {performanceStats.avgScore > 0
+                    ? performanceStats.avgScore.toFixed(1)
+                    : "—"}
                 </span>
                 <span className="text-xs text-slate-500 font-mono">/ 10</span>
                 {performanceStats.avgScore > 0 && (
-                  <span className={clsx("text-2xs font-bold px-2 py-0.5 rounded-full border ml-auto", getRatingTier(performanceStats.avgScore).color)}>
+                  <span
+                    className={clsx(
+                      "text-2xs font-bold px-2 py-0.5 rounded-full border ml-auto",
+                      getRatingTier(performanceStats.avgScore).color,
+                    )}
+                  >
                     {getRatingTier(performanceStats.avgScore).label}
                   </span>
                 )}
@@ -827,7 +1151,9 @@ const StudentDetailPage: React.FC = () => {
             {/* Key Strength Card */}
             <div className="card p-4 bg-white dark:bg-gradient-to-br dark:from-pitch-800 dark:to-pitch-900/90 border border-slate-200 dark:border-white/10">
               <div className="flex items-center justify-between">
-                <span className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Top Strength</span>
+                <span className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">
+                  Top Strength
+                </span>
                 <span className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 flex items-center justify-center">
                   <Zap size={14} />
                 </span>
@@ -837,16 +1163,22 @@ const StudentDetailPage: React.FC = () => {
                   {performanceStats.highestSkill?.parameter ?? "—"}
                 </div>
                 <div className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">
-                  {performanceStats.highestSkill ? `${performanceStats.highestSkill.score.toFixed(1)} / 10 Avg` : "Awaiting evaluations"}
+                  {performanceStats.highestSkill
+                    ? `${performanceStats.highestSkill.score.toFixed(1)} / 10 Avg`
+                    : "Awaiting evaluations"}
                 </div>
               </div>
-              <p className="text-2xs text-slate-500 mt-1">Player's highest-rated technical skill</p>
+              <p className="text-2xs text-slate-500 mt-1">
+                Player's highest-rated technical skill
+              </p>
             </div>
 
             {/* Development Focus Card */}
             <div className="card p-4 bg-white dark:bg-gradient-to-br dark:from-pitch-800 dark:to-pitch-900/90 border border-slate-200 dark:border-white/10">
               <div className="flex items-center justify-between">
-                <span className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Growth Focus</span>
+                <span className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">
+                  Growth Focus
+                </span>
                 <span className="w-7 h-7 rounded-lg bg-amber-400/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                   <Target size={14} />
                 </span>
@@ -856,16 +1188,22 @@ const StudentDetailPage: React.FC = () => {
                   {performanceStats.lowestSkill?.parameter ?? "—"}
                 </div>
                 <div className="text-xs font-mono text-amber-600 dark:text-amber-400 font-bold mt-0.5">
-                  {performanceStats.lowestSkill ? `${performanceStats.lowestSkill.score.toFixed(1)} / 10 Avg` : "Awaiting evaluations"}
+                  {performanceStats.lowestSkill
+                    ? `${performanceStats.lowestSkill.score.toFixed(1)} / 10 Avg`
+                    : "Awaiting evaluations"}
                 </div>
               </div>
-              <p className="text-2xs text-slate-500 mt-1">Key area for coaching development</p>
+              <p className="text-2xs text-slate-500 mt-1">
+                Key area for coaching development
+              </p>
             </div>
 
             {/* Total Evaluations Card */}
             <div className="card p-4 bg-white dark:bg-gradient-to-br dark:from-pitch-800 dark:to-pitch-900/90 border border-slate-200 dark:border-white/10">
               <div className="flex items-center justify-between">
-                <span className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Track Record</span>
+                <span className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">
+                  Track Record
+                </span>
                 <span className="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 dark:text-ice-400 flex items-center justify-center">
                   <Award size={14} />
                 </span>
@@ -874,10 +1212,14 @@ const StudentDetailPage: React.FC = () => {
                 <span className="font-display font-bold text-2xl text-slate-900 dark:text-white">
                   {performanceStats.totalSessions}
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">Sessions</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  Sessions
+                </span>
               </div>
               <p className="text-2xs text-slate-500 mt-1 font-mono truncate">
-                {performanceStats.latestDate ? `Latest: ${performanceStats.latestDate}` : "No evaluations on file"}
+                {performanceStats.latestDate
+                  ? `Latest: ${performanceStats.latestDate}`
+                  : "No evaluations on file"}
               </p>
             </div>
           </div>
@@ -888,17 +1230,24 @@ const StudentDetailPage: React.FC = () => {
             <div className="card p-5 space-y-4">
               <div className="flex items-center justify-between border-b border-white/5 pb-3">
                 <div>
-                  <h3 className="section-title text-white flex items-center gap-2">
+                  <h3 className="section-title text-slate-900 dark:text-white flex items-center gap-2">
                     <SlidersHorizontal size={15} className="text-volt-400" />
                     Skill Mastery Breakdown
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Average proficiency rating across all completed evaluations.</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Average proficiency rating across all completed evaluations.
+                  </p>
                 </div>
-                <span className="text-2xs font-mono text-slate-500 uppercase">{skillScores.length} Skills</span>
+                <span className="text-2xs font-mono text-slate-500 uppercase">
+                  {skillScores.length} Skills
+                </span>
               </div>
 
               {skillScores.length === 0 ? (
-                <EmptyState title="No skill data yet" description="Ratings will aggregate here as coaches log session evaluations." />
+                <EmptyState
+                  title="No skill data yet"
+                  description="Ratings will aggregate here as coaches log session evaluations."
+                />
               ) : (
                 <div className="space-y-3 pt-1">
                   {skillScores.map((s) => {
@@ -906,23 +1255,41 @@ const StudentDetailPage: React.FC = () => {
                     return (
                       <div key={s.parameter} className="space-y-1.5">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-300 font-medium">{s.parameter}</span>
+                          <span className="text-slate-300 font-medium">
+                            {s.parameter}
+                          </span>
                           <div className="flex items-center gap-2">
-                            <span className={clsx("text-2xs font-bold px-1.5 py-0.5 rounded border", ratingTier.color)}>
+                            <span
+                              className={clsx(
+                                "text-2xs font-bold px-1.5 py-0.5 rounded border",
+                                ratingTier.color,
+                              )}
+                            >
                               {ratingTier.label}
                             </span>
-                            <span className="font-mono font-bold text-volt-600 dark:text-volt-400 w-12 text-right">
-                              {s.score.toFixed(1)} <span className="text-slate-500 text-2xs font-normal">/10</span>
+                            <span className="font-mono font-bold text-volt-400 w-12 text-right">
+                              {s.score.toFixed(1)}{" "}
+                              <span className="text-slate-500 text-2xs font-normal">
+                                /10
+                              </span>
                             </span>
                           </div>
                         </div>
-                        <div className="h-2 w-full bg-slate-100 dark:bg-pitch-900 rounded-full overflow-hidden border border-slate-200 dark:border-white/5">
+                        <div className="h-2 w-full bg-pitch-900 rounded-full overflow-hidden border border-white/5">
                           <div
                             className={clsx(
                               "h-full transition-all duration-500 rounded-full",
-                              s.score >= 8.5 ? "bg-emerald-400" : s.score >= 7.0 ? "bg-volt-400" : s.score >= 5.5 ? "bg-amber-400" : "bg-rose-500"
+                              s.score >= 8.5
+                                ? "bg-emerald-400"
+                                : s.score >= 7.0
+                                  ? "bg-volt-400"
+                                  : s.score >= 5.5
+                                    ? "bg-amber-400"
+                                    : "bg-rose-500",
                             )}
-                            style={{ width: `${Math.min(100, Math.max(0, (s.score / 10) * 100))}%` }}
+                            style={{
+                              width: `${Math.min(100, Math.max(0, (s.score / 10) * 100))}%`,
+                            }}
                           />
                         </div>
                       </div>
@@ -934,21 +1301,25 @@ const StudentDetailPage: React.FC = () => {
 
             {/* Visual Chart Card with Interactive Toggle */}
             <div className="card p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
                 <div>
                   <h3 className="section-title text-slate-900 dark:text-white flex items-center gap-2">
-                    <TrendingUp size={15} className="text-volt-600 dark:text-volt-400" />
+                    <TrendingUp size={15} className="text-volt-400" />
                     Performance Visualizer
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Analyze player growth trajectory and skill balance.</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Analyze player growth trajectory and skill balance.
+                  </p>
                 </div>
-                <div className="flex items-center bg-slate-100 dark:bg-pitch-900 p-0.5 rounded-lg border border-slate-200 dark:border-white/10 text-2xs">
+                <div className="flex items-center bg-pitch-900 p-0.5 rounded-lg border border-white/10 text-2xs">
                   <button
                     type="button"
                     onClick={() => setPerformanceChartView("trend")}
                     className={clsx(
                       "px-2.5 py-1 rounded font-semibold transition-all",
-                      performanceChartView === "trend" ? "bg-volt-400 text-pitch-900 font-bold shadow-xs" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      performanceChartView === "trend"
+                        ? "bg-volt-400 text-pitch-900 font-bold"
+                        : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white",
                     )}
                   >
                     Progression
@@ -958,7 +1329,9 @@ const StudentDetailPage: React.FC = () => {
                     onClick={() => setPerformanceChartView("radar")}
                     className={clsx(
                       "px-2.5 py-1 rounded font-semibold transition-all",
-                      performanceChartView === "radar" ? "bg-volt-400 text-pitch-900 font-bold shadow-xs" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      performanceChartView === "radar"
+                        ? "bg-volt-400 text-pitch-900 font-bold"
+                        : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white",
                     )}
                   >
                     Radar
@@ -967,7 +1340,10 @@ const StudentDetailPage: React.FC = () => {
               </div>
 
               {sessionHistory.length === 0 ? (
-                <EmptyState title="No trend data yet" description="Visual insights appear once session ratings are recorded." />
+                <EmptyState
+                  title="No trend data yet"
+                  description="Visual insights appear once session ratings are recorded."
+                />
               ) : performanceChartView === "trend" ? (
                 <div className="pt-2">
                   <div className="text-2xs font-mono text-slate-400 flex items-center justify-between mb-2">
@@ -975,13 +1351,39 @@ const StudentDetailPage: React.FC = () => {
                     <span className="text-volt-400 font-bold">1–10 Scale</span>
                   </div>
                   <ResponsiveContainer width="100%" height={220}>
-                    <LineChart data={sessionHistory} margin={{ top: 10, right: 10, bottom: 5, left: -20 }}>
-                      <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
-                      <XAxis dataKey="session" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} />
-                      <YAxis domain={[0, 10]} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} ticks={[0, 2, 4, 6, 8, 10]} />
+                    <LineChart
+                      data={sessionHistory}
+                      margin={{ top: 10, right: 10, bottom: 5, left: -20 }}
+                    >
+                      <CartesianGrid
+                        stroke="rgba(255,255,255,0.05)"
+                        strokeDasharray="3 3"
+                      />
+                      <XAxis
+                        dataKey="session"
+                        tick={{ fill: "#94a3b8", fontSize: 10 }}
+                        axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        domain={[0, 10]}
+                        tick={{ fill: "#94a3b8", fontSize: 10 }}
+                        axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+                        tickLine={false}
+                        ticks={[0, 2, 4, 6, 8, 10]}
+                      />
                       <Tooltip
-                        contentStyle={{ background: "#09090b", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, fontSize: 12, color: "#fff" }}
-                        formatter={(val: any) => [`${val} / 10`, "Overall Rating"]}
+                        contentStyle={{
+                          background: "#09090b",
+                          border: "1px solid rgba(255,255,255,0.15)",
+                          borderRadius: 8,
+                          fontSize: 12,
+                          color: "#fff",
+                        }}
+                        formatter={(val: any) => [
+                          `${val} / 10`,
+                          "Overall Rating",
+                        ]}
                       />
                       <Line
                         type="monotone"
@@ -989,7 +1391,12 @@ const StudentDetailPage: React.FC = () => {
                         stroke="#ccff00"
                         strokeWidth={2.5}
                         dot={{ fill: "#ccff00", r: 4, strokeWidth: 0 }}
-                        activeDot={{ fill: "#ffffff", r: 6, stroke: "#ccff00", strokeWidth: 2 }}
+                        activeDot={{
+                          fill: "#ffffff",
+                          r: 6,
+                          stroke: "#ccff00",
+                          strokeWidth: 2,
+                        }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -1002,8 +1409,18 @@ const StudentDetailPage: React.FC = () => {
                   <ResponsiveContainer width="100%" height={220}>
                     <RadarChart data={skillScores}>
                       <PolarGrid stroke="rgba(255,255,255,0.08)" />
-                      <PolarAngleAxis dataKey="parameter" tick={{ fill: "#94a3b8", fontSize: 10 }} />
-                      <Radar dataKey="score" stroke="#ccff00" fill="#ccff00" fillOpacity={0.15} strokeWidth={2} dot={{ fill: "#ccff00", r: 3, strokeWidth: 0 }} />
+                      <PolarAngleAxis
+                        dataKey="parameter"
+                        tick={{ fill: "#94a3b8", fontSize: 10 }}
+                      />
+                      <Radar
+                        dataKey="score"
+                        stroke="#ccff00"
+                        fill="#ccff00"
+                        fillOpacity={0.15}
+                        strokeWidth={2}
+                        dot={{ fill: "#ccff00", r: 3, strokeWidth: 0 }}
+                      />
                     </RadarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1015,18 +1432,21 @@ const StudentDetailPage: React.FC = () => {
           <div className="card p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
               <div>
-                <h3 className="section-title text-white flex items-center gap-2">
+                <h3 className="section-title text-slate-900 dark:text-white flex items-center gap-2">
                   <Calendar size={15} className="text-volt-400" />
                   Session Performance Log
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Compact session history with expandable granular skill breakdowns.
+                  Compact session history with expandable granular skill
+                  breakdowns.
                 </p>
               </div>
 
               {/* Rating Filter Tabs */}
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-2xs text-slate-500 font-mono mr-1">Filter:</span>
+                <span className="text-2xs text-slate-500 font-mono mr-1">
+                  Filter:
+                </span>
                 {[
                   { id: "all", label: `All (${performances.length})` },
                   { id: "high", label: `Top Rated (8+)` },
@@ -1040,7 +1460,7 @@ const StudentDetailPage: React.FC = () => {
                       "px-2.5 py-1 rounded text-2xs font-mono font-semibold transition-all border",
                       sessionRatingFilter === f.id
                         ? "bg-volt-400 text-pitch-900 border-volt-400 font-bold"
-                        : "bg-pitch-900/60 text-slate-400 border-white/10 hover:text-white"
+                        : "bg-slate-100 dark:bg-pitch-900/60 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:text-slate-900 dark:hover:text-white",
                     )}
                   >
                     {f.label}
@@ -1062,8 +1482,13 @@ const StudentDetailPage: React.FC = () => {
               <div className="overflow-hidden rounded-xl border border-white/10 divide-y divide-white/5">
                 {filteredSessions.map((session) => {
                   const isExpanded = !!expandedSessionIds[session._id];
-                  const sessionObj = typeof session.sessionId === "object" ? session.sessionId : null;
-                  const sessionTitle = sessionObj?.title || `${sessionObj?.type ? sessionObj.type.toUpperCase() : "Training"} Session`;
+                  const sessionObj =
+                    typeof session.sessionId === "object"
+                      ? session.sessionId
+                      : null;
+                  const sessionTitle =
+                    sessionObj?.title ||
+                    `${sessionObj?.type ? sessionObj.type.toUpperCase() : "Training"} Session`;
                   const coachName =
                     session.coachId && typeof session.coachId === "object"
                       ? `${session.coachId.firstName} ${session.coachId.lastName}`
@@ -1078,7 +1503,10 @@ const StudentDetailPage: React.FC = () => {
                   const tier = getRatingTier(session.overallScore);
 
                   return (
-                    <div key={session._id} className="bg-pitch-900/40 hover:bg-pitch-900/70 transition-colors">
+                    <div
+                      key={session._id}
+                      className="bg-pitch-900/40 hover:bg-pitch-900/70 transition-colors"
+                    >
                       {/* Compact Primary Row */}
                       <div
                         onClick={() => toggleSessionExpand(session._id)}
@@ -1087,7 +1515,7 @@ const StudentDetailPage: React.FC = () => {
                         {/* Session Identity */}
                         <div className="space-y-1 min-w-[200px]">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-display font-bold text-white text-sm">
+                            <span className="font-display font-bold text-slate-900 dark:text-white text-sm">
                               {sessionTitle}
                             </span>
                             {sessionObj?.type && (
@@ -1098,12 +1526,15 @@ const StudentDetailPage: React.FC = () => {
                           </div>
                           <div className="flex items-center gap-2.5 text-2xs text-slate-400 font-mono">
                             <span>
-                              {new Date(session.sessionDate).toLocaleDateString("en-IN", {
-                                weekday: "short",
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              })}
+                              {new Date(session.sessionDate).toLocaleDateString(
+                                "en-IN",
+                                {
+                                  weekday: "short",
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                },
+                              )}
                             </span>
                             <span>•</span>
                             <span className="text-slate-300">{coachName}</span>
@@ -1117,11 +1548,17 @@ const StudentDetailPage: React.FC = () => {
                               key={sk.parameter}
                               className="text-2xs px-2 py-0.5 rounded bg-white/5 border border-white/5 text-slate-300 font-mono"
                             >
-                              {sk.parameter}: <strong className="text-volt-400">{sk.score}</strong>
+                              {sk.parameter}:{" "}
+                              <strong className="text-volt-400">
+                                {sk.score}
+                              </strong>
                             </span>
                           ))}
                           {session.remarks && (
-                            <span className="text-2xs text-slate-400 truncate max-w-[120px] italic" title={session.remarks}>
+                            <span
+                              className="text-2xs text-slate-400 truncate max-w-[120px] italic"
+                              title={session.remarks}
+                            >
                               "{session.remarks}"
                             </span>
                           )}
@@ -1131,11 +1568,23 @@ const StudentDetailPage: React.FC = () => {
                         <div className="flex items-center gap-3 self-end sm:self-center">
                           <div className="text-right">
                             <div className="flex items-center gap-1.5">
-                              <span className={clsx("font-display font-black text-lg", getRatingColor(session.overallScore))}>
+                              <span
+                                className={clsx(
+                                  "font-display font-black text-lg",
+                                  getRatingColor(session.overallScore),
+                                )}
+                              >
                                 {session.overallScore.toFixed(1)}
                               </span>
-                              <span className="text-3xs text-slate-500 font-mono">/10</span>
-                              <span className={clsx("text-3xs font-bold px-1.5 py-0.5 rounded border ml-1", tier.color)}>
+                              <span className="text-3xs text-slate-500 font-mono">
+                                /10
+                              </span>
+                              <span
+                                className={clsx(
+                                  "text-3xs font-bold px-1.5 py-0.5 rounded border ml-1",
+                                  tier.color,
+                                )}
+                              >
                                 {tier.label}
                               </span>
                             </div>
@@ -1143,10 +1592,18 @@ const StudentDetailPage: React.FC = () => {
 
                           <button
                             type="button"
-                            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-                            aria-label={isExpanded ? "Collapse session details" : "Expand session details"}
+                            className="p-1 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                            aria-label={
+                              isExpanded
+                                ? "Collapse session details"
+                                : "Expand session details"
+                            }
                           >
-                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            {isExpanded ? (
+                              <ChevronUp size={16} />
+                            ) : (
+                              <ChevronDown size={16} />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -1155,36 +1612,51 @@ const StudentDetailPage: React.FC = () => {
                       {isExpanded && (
                         <div className="px-4 pb-4 pt-2 border-t border-white/5 bg-pitch-950/60 space-y-3 animate-fade-in">
                           {/* Granular Parameter Badges */}
-                          {session.skillScores && session.skillScores.length > 0 && (
-                            <div>
-                              <span className="text-3xs uppercase tracking-wider text-slate-500 dark:text-slate-400 font-mono block mb-2">
-                                Technical Evaluation Details:
-                              </span>
-                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-                                {session.skillScores.map((skill) => (
-                                  <div
-                                    key={skill.parameter}
-                                    className="p-2 rounded-lg bg-white dark:bg-pitch-900/80 border border-slate-200 dark:border-white/5 text-center shadow-2xs"
-                                  >
-                                    <span className="text-3xs text-slate-500 dark:text-slate-400 block truncate font-medium">{skill.parameter}</span>
-                                    <span className={clsx("font-mono font-black text-sm", getRatingColor(skill.score))}>
-                                      {skill.score} <span className="text-3xs text-slate-400 dark:text-slate-600 font-normal">/10</span>
-                                    </span>
-                                  </div>
-                                ))}
+                          {session.skillScores &&
+                            session.skillScores.length > 0 && (
+                              <div>
+                                <span className="text-3xs uppercase tracking-wider text-slate-400 font-mono block mb-2">
+                                  Technical Evaluation Details:
+                                </span>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                                  {session.skillScores.map((skill) => (
+                                    <div
+                                      key={skill.parameter}
+                                      className="p-2 rounded-lg bg-pitch-900/80 border border-white/5 text-center"
+                                    >
+                                      <span className="text-3xs text-slate-400 block truncate font-medium">
+                                        {skill.parameter}
+                                      </span>
+                                      <span
+                                        className={clsx(
+                                          "font-mono font-black text-sm",
+                                          getRatingColor(skill.score),
+                                        )}
+                                      >
+                                        {skill.score}{" "}
+                                        <span className="text-3xs text-slate-600 font-normal">
+                                          /10
+                                        </span>
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
 
                           {/* Coach Note & Video Link */}
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs pt-1">
                             {session.remarks ? (
-                              <p className="text-slate-700 dark:text-slate-300 text-xs italic bg-slate-50 dark:bg-white/[0.02] p-2 rounded-lg border border-slate-200 dark:border-white/5 flex-1">
-                                <span className="text-volt-600 dark:text-volt-400 font-semibold not-italic text-2xs font-mono mr-1.5">Coach Remark:</span>
+                              <p className="text-slate-300 text-xs italic bg-white/[0.02] p-2 rounded-lg border border-white/5 flex-1">
+                                <span className="text-volt-400 font-semibold not-italic text-2xs font-mono mr-1.5">
+                                  Coach Remark:
+                                </span>
                                 "{session.remarks}"
                               </p>
                             ) : (
-                              <span className="text-2xs text-slate-500 italic">No written remarks for this session.</span>
+                              <span className="text-2xs text-slate-500 italic">
+                                No written remarks for this session.
+                              </span>
                             )}
 
                             {session.videoUrl && (
@@ -1192,9 +1664,9 @@ const StudentDetailPage: React.FC = () => {
                                 href={session.videoUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-xs text-volt-600 dark:text-volt-400 hover:underline inline-flex items-center gap-1.5 font-medium shrink-0 ml-auto"
+                                className="text-xs text-volt-400 hover:underline inline-flex items-center gap-1.5 font-medium shrink-0 ml-auto"
                               >
-                                <Video size={13} className="text-volt-600 dark:text-volt-400" />
+                                <Video size={13} className="text-volt-400" />
                                 Drill Video
                               </a>
                             )}
@@ -1212,12 +1684,13 @@ const StudentDetailPage: React.FC = () => {
           <div className="card p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="section-title text-volt-600 dark:text-volt-400 flex items-center gap-2">
-                  <FileText size={15} className="text-volt-600 dark:text-volt-400" />
+                <h3 className="section-title text-volt-400 flex items-center gap-2">
+                  <FileText size={15} className="text-volt-400" />
                   Staff Developmental Notes &amp; Observations
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  General coaching notes, scouting reports, and developmental recommendations.
+                <p className="text-xs text-slate-400 mt-0.5">
+                  General coaching notes, scouting reports, and developmental
+                  recommendations.
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -1241,7 +1714,10 @@ const StudentDetailPage: React.FC = () => {
 
             {/* Note Composer Form (Collapsible) */}
             {canManagePerformance && isNotesOpen && (
-              <form onSubmit={handleAddRemark} className="space-y-3 bg-slate-50 dark:bg-pitch-900/50 p-4 rounded-xl border border-slate-200 dark:border-white/5 animate-fade-in">
+              <form
+                onSubmit={handleAddRemark}
+                className="space-y-3 bg-pitch-900/50 p-4 rounded-xl border border-white/5 animate-fade-in"
+              >
                 <textarea
                   value={newRemarkText}
                   onChange={(e) => setNewRemarkText(e.target.value)}
@@ -1250,7 +1726,9 @@ const StudentDetailPage: React.FC = () => {
                   rows={3}
                 />
                 <div className="flex items-center justify-between">
-                  <span className="text-2xs text-slate-500">Visible to academy coaches, staff, and in official reports.</span>
+                  <span className="text-2xs text-slate-500">
+                    Visible to academy coaches, staff, and in official reports.
+                  </span>
                   <Button
                     type="submit"
                     size="sm"
@@ -1266,7 +1744,9 @@ const StudentDetailPage: React.FC = () => {
             {/* Notes List */}
             <div className="space-y-2">
               {remarks.length === 0 ? (
-                <p className="text-xs text-slate-500 italic py-1">No staff notes or remarks recorded yet.</p>
+                <p className="text-xs text-slate-500 italic py-1">
+                  No staff notes or remarks recorded yet.
+                </p>
               ) : (
                 remarks.map((r) => {
                   const coachName =
@@ -1274,14 +1754,25 @@ const StudentDetailPage: React.FC = () => {
                       ? `${r.coachId.firstName} ${r.coachId.lastName}`
                       : "Coach / Evaluator";
                   return (
-                    <div key={r._id} className="bg-slate-50 dark:bg-pitch-800/60 rounded-xl p-3.5 border-l-2 border-volt-400 dark:border-volt-400 border-y border-r border-slate-200 dark:border-transparent space-y-1 shadow-2xs">
+                    <div
+                      key={r._id}
+                      className="bg-pitch-800/60 rounded-xl p-3.5 border-l-2 border-volt-400 space-y-1"
+                    >
                       <div className="flex items-center justify-between text-2xs">
-                        <span className="text-volt-600 dark:text-volt-400 font-bold">{coachName}</span>
+                        <span className="text-volt-400 font-bold">
+                          {coachName}
+                        </span>
                         <span className="text-slate-500 font-mono">
-                          {new Date(r.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          {new Date(r.date).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed italic">"{r.text}"</p>
+                      <p className="text-xs text-slate-200 leading-relaxed italic">
+                        "{r.text}"
+                      </p>
                     </div>
                   );
                 })
@@ -1296,16 +1787,45 @@ const StudentDetailPage: React.FC = () => {
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { label: "Date of Birth", value: new Date(student.dateOfBirth).toLocaleDateString("en-IN") },
-              { label: "Enrolled", value: new Date(student.enrollmentDate).toLocaleDateString("en-IN") },
-              { label: "Blood Group", value: student.medicalInfo.bloodGroup || "Not on file" },
-              { label: "Emergency Contact", value: `${student.medicalInfo.emergencyContactName} — ${student.medicalInfo.emergencyContactPhone}` },
+              {
+                label: "Date of Birth",
+                value: new Date(student.dateOfBirth).toLocaleDateString(
+                  "en-IN",
+                ),
+              },
+              {
+                label: "Enrolled",
+                value: new Date(student.enrollmentDate).toLocaleDateString(
+                  "en-IN",
+                ),
+              },
+              {
+                label: "Blood Group",
+                value: student.medicalInfo.bloodGroup || "Not on file",
+              },
+              {
+                label: "Emergency Contact",
+                value: `${student.medicalInfo.emergencyContactName} — ${student.medicalInfo.emergencyContactPhone}`,
+              },
               { label: "Guardian", value: student.guardian.name },
               { label: "Guardian Phone", value: student.guardian.phone },
               { label: "Guardian Email", value: student.guardian.email },
-              { label: "Allergies", value: student.medicalInfo.allergies?.length ? student.medicalInfo.allergies.join(", ") : "None" },
-              { label: "Medical Conditions", value: student.medicalInfo.medicalConditions?.length ? student.medicalInfo.medicalConditions.join(", ") : "None" },
-              { label: "Jersey Size", value: student.jerseySize || "Not on file" },
+              {
+                label: "Allergies",
+                value: student.medicalInfo.allergies?.length
+                  ? student.medicalInfo.allergies.join(", ")
+                  : "None",
+              },
+              {
+                label: "Medical Conditions",
+                value: student.medicalInfo.medicalConditions?.length
+                  ? student.medicalInfo.medicalConditions.join(", ")
+                  : "None",
+              },
+              {
+                label: "Jersey Size",
+                value: student.jerseySize || "Not on file",
+              },
             ].map((item) => (
               <div key={item.label} className="card p-4">
                 <p className="section-title mb-1">{item.label}</p>
@@ -1318,17 +1838,37 @@ const StudentDetailPage: React.FC = () => {
           <FranchiseTransferHistoryCard studentId={student.id} />
 
           {/* Uploaded Documents Section */}
-          {(user?.role === "super_admin" || user?.role === "manager" || user?.role === "coach") && (
+          {(user?.role === "super_admin" ||
+            user?.role === "manager" ||
+            user?.role === "coach") && (
             <div className="card p-5 space-y-4">
               <p className="section-title text-volt-400">Uploaded Documents</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
-                  { label: "Medical Report", url: student.medicalInfo?.medicalReportUrl },
-                  { label: "Medical Certificate", url: student.medicalInfo?.medicalCertificateUrl },
-                  { label: "Scan Report", url: student.medicalInfo?.scanReportUrl },
-                  { label: "PDF Attachment", url: student.medicalInfo?.pdfAttachmentUrl },
-                  { label: "Image Attachment", url: student.medicalInfo?.imageAttachmentUrl },
-                  { label: "Document Attachment", url: student.medicalInfo?.docAttachmentUrl },
+                  {
+                    label: "Medical Report",
+                    url: student.medicalInfo?.medicalReportUrl,
+                  },
+                  {
+                    label: "Medical Certificate",
+                    url: student.medicalInfo?.medicalCertificateUrl,
+                  },
+                  {
+                    label: "Scan Report",
+                    url: student.medicalInfo?.scanReportUrl,
+                  },
+                  {
+                    label: "PDF Attachment",
+                    url: student.medicalInfo?.pdfAttachmentUrl,
+                  },
+                  {
+                    label: "Image Attachment",
+                    url: student.medicalInfo?.imageAttachmentUrl,
+                  },
+                  {
+                    label: "Document Attachment",
+                    url: student.medicalInfo?.docAttachmentUrl,
+                  },
                 ]
                   .filter((doc) => !!doc.url)
                   .map((doc) => (
@@ -1341,7 +1881,9 @@ const StudentDetailPage: React.FC = () => {
                       }}
                     >
                       <div>
-                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{doc.label}</p>
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                          {doc.label}
+                        </p>
                         <p className="text-2xs text-slate-500 mt-1 truncate">
                           {doc.url?.split("/").pop() || "view-document"}
                         </p>
@@ -1359,7 +1901,9 @@ const StudentDetailPage: React.FC = () => {
                   student.medicalInfo?.imageAttachmentUrl,
                   student.medicalInfo?.docAttachmentUrl,
                 ].some(Boolean) && (
-                  <p className="text-xs text-slate-500 italic col-span-3">No documents uploaded for this player.</p>
+                  <p className="text-xs text-slate-500 italic col-span-3">
+                    No documents uploaded for this player.
+                  </p>
                 )}
               </div>
             </div>
@@ -1379,7 +1923,10 @@ const StudentDetailPage: React.FC = () => {
       />
 
       {editModal && (
-        <EditStudentModal student={student} onClose={() => setEditModal(false)} />
+        <EditStudentModal
+          student={student}
+          onClose={() => setEditModal(false)}
+        />
       )}
 
       {franchiseTransferModal && (
@@ -1396,11 +1943,17 @@ const StudentDetailPage: React.FC = () => {
             });
             if (!ok) return;
             try {
-              await transferFranchise({ id: student.id, toFranchiseId, reason }).unwrap();
+              await transferFranchise({
+                id: student.id,
+                toFranchiseId,
+                reason,
+              }).unwrap();
               toast.success("Player transferred to new franchise");
               setFranchiseTransferModal(false);
             } catch (err: any) {
-              toast.error(err?.data?.message || "Couldn't transfer player — try again");
+              toast.error(
+                err?.data?.message || "Couldn't transfer player — try again",
+              );
             }
           }}
         />
@@ -1437,7 +1990,8 @@ const StudentDetailPage: React.FC = () => {
                   <FolderOpen className="w-12 h-12 text-slate-400" />
                 </div>
                 <p className="text-sm text-slate-300">
-                  This document format cannot be previewed directly in the browser.
+                  This document format cannot be previewed directly in the
+                  browser.
                 </p>
                 <div className="flex justify-center gap-3">
                   <a
@@ -1473,23 +2027,44 @@ const TransferListingModal: React.FC<{
   rating: number;
   listing: boolean;
   onSubmit: (price: number, note: string) => void;
-}> = ({ isOpen, onClose, studentName, position, rating, listing, onSubmit }) => {
+}> = ({
+  isOpen,
+  onClose,
+  studentName,
+  position,
+  rating,
+  listing,
+  onSubmit,
+}) => {
   const [price, setPrice] = useState("");
   const [note, setNote] = useState("");
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="List on Transfer Wall" size="md">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="List on Transfer Wall"
+      size="md"
+    >
       <div className="space-y-4">
         <div className="flex items-center gap-3 bg-pitch-700 rounded p-3">
           <Avatar name={studentName} size="md" />
           <div>
-            <p className="font-display font-bold text-white">{studentName}</p>
-            <p className="text-xs text-slate-500">{position ?? "—"} · Rating {rating.toFixed(1)}</p>
+            <p className="font-display font-bold text-slate-900 dark:text-white">{studentName}</p>
+            <p className="text-xs text-slate-500">
+              {position ?? "—"} · Rating {rating.toFixed(1)}
+            </p>
           </div>
         </div>
         <div>
           <label className="label">Transfer Price (₹)</label>
-          <input type="number" className="input" placeholder="15000" value={price} onChange={(e) => setPrice(e.target.value)} />
+          <input
+            type="number"
+            className="input"
+            placeholder="15000"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
         </div>
         <div>
           <label className="label">Coach Note (for buyers)</label>
@@ -1502,7 +2077,9 @@ const TransferListingModal: React.FC<{
         </div>
         <div className="flex items-center gap-2 p-3 bg-ice-400/5 border border-ice-400/15 rounded">
           <span className="text-ice-400 text-sm">↔</span>
-          <p className="text-xs text-ice-400">This player will be visible on the public Transfer Wall portal</p>
+          <p className="text-xs text-ice-400">
+            This player will be visible on the public Transfer Wall portal
+          </p>
         </div>
         <div className="flex gap-3">
           <Button
@@ -1519,20 +2096,26 @@ const TransferListingModal: React.FC<{
           >
             List on Transfer Wall
           </Button>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
         </div>
       </div>
     </Modal>
   );
 };
 
-const FranchiseTransferHistoryCard: React.FC<{ studentId: string }> = ({ studentId }) => {
+const FranchiseTransferHistoryCard: React.FC<{ studentId: string }> = ({
+  studentId,
+}) => {
   const { data: history, isLoading } = useGetTransferHistoryQuery(studentId);
 
   if (isLoading) {
     return (
       <div className="card p-5 space-y-3">
-        <p className="section-title text-volt-400">Franchise Transfer History</p>
+        <p className="section-title text-volt-400">
+          Franchise Transfer History
+        </p>
         <Skeleton className="h-10 rounded" />
       </div>
     );
@@ -1545,19 +2128,37 @@ const FranchiseTransferHistoryCard: React.FC<{ studentId: string }> = ({ student
       <p className="section-title text-volt-400">Franchise Transfer History</p>
       <div className="space-y-3">
         {history.map((h) => (
-          <div key={h.id} className="flex items-start gap-3 p-3 bg-white/[0.02] border border-white/5 rounded-lg">
-            <ArrowLeftRight size={14} className="text-ice-400 mt-0.5 flex-shrink-0" />
+          <div
+            key={h.id}
+            className="flex items-start gap-3 p-3 bg-white/[0.02] border border-white/5 rounded-lg"
+          >
+            <ArrowLeftRight
+              size={14}
+              className="text-ice-400 mt-0.5 flex-shrink-0"
+            />
             <div className="flex-1 min-w-0">
               <p className="text-sm text-slate-200">
-                <span className="font-semibold">{h.fromFranchise?.name ?? "Unknown"}</span>
+                <span className="font-semibold">
+                  {h.fromFranchise?.name ?? "Unknown"}
+                </span>
                 {" → "}
-                <span className="font-semibold">{h.toFranchise?.name ?? "Unknown"}</span>
+                <span className="font-semibold">
+                  {h.toFranchise?.name ?? "Unknown"}
+                </span>
               </p>
               <p className="text-2xs text-slate-500 mt-1">
-                {new Date(h.transferredAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                {new Date(h.transferredAt).toLocaleDateString("en-IN", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}
                 {h.transferredBy?.name ? ` · by ${h.transferredBy.name}` : ""}
               </p>
-              {h.reason && <p className="text-xs text-slate-400 mt-1 italic">"{h.reason}"</p>}
+              {h.reason && (
+                <p className="text-xs text-slate-400 mt-1 italic">
+                  "{h.reason}"
+                </p>
+              )}
             </div>
           </div>
         ))}
@@ -1572,12 +2173,19 @@ const FranchiseTransferModal: React.FC<{
   onClose: () => void;
   onSubmit: (toFranchiseId: string, reason?: string) => void;
 }> = ({ student, transferring, onClose, onSubmit }) => {
-  const { data: currentFranchise } = useGetFranchiseByIdQuery(student.franchiseId, { skip: !student.franchiseId });
+  const { data: currentFranchise } = useGetFranchiseByIdQuery(
+    student.franchiseId,
+    { skip: !student.franchiseId },
+  );
   const { data: franchises } = useGetFranchisesQuery(
-    currentFranchise ? { academyId: currentFranchise.academyId, isActive: true } : undefined,
+    currentFranchise
+      ? { academyId: currentFranchise.academyId, isActive: true }
+      : undefined,
     { skip: !currentFranchise },
   );
-  const destinationOptions = (franchises ?? []).filter((f) => f.id !== student.franchiseId);
+  const destinationOptions = (franchises ?? []).filter(
+    (f) => f.id !== student.franchiseId,
+  );
   const [toFranchiseId, setToFranchiseId] = useState("");
   const [reason, setReason] = useState("");
 
@@ -1586,7 +2194,9 @@ const FranchiseTransferModal: React.FC<{
       <div className="space-y-4">
         <div>
           <label className="label">Current Franchise</label>
-          <p className="text-sm text-slate-300">{currentFranchise?.name ?? "—"}</p>
+          <p className="text-sm text-slate-300">
+            {currentFranchise?.name ?? "—"}
+          </p>
         </div>
         <div>
           <label className="label">Move to</label>
@@ -1597,11 +2207,15 @@ const FranchiseTransferModal: React.FC<{
           >
             <option value="">Select destination franchise…</option>
             {destinationOptions.map((f) => (
-              <option key={f.id} value={f.id}>{f.name}</option>
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
             ))}
           </select>
           {destinationOptions.length === 0 && (
-            <p className="text-2xs text-slate-500 mt-1.5">No other active franchises in this academy to transfer into.</p>
+            <p className="text-2xs text-slate-500 mt-1.5">
+              No other active franchises in this academy to transfer into.
+            </p>
           )}
         </div>
         <div>
@@ -1615,7 +2229,10 @@ const FranchiseTransferModal: React.FC<{
         </div>
         <div className="flex items-center gap-2.5 p-3 bg-ember-400/5 border border-ember-400/15 rounded">
           <AlertTriangle className="h-4 w-4 text-ember-400 shrink-0" />
-          <p className="text-xs text-ember-400">Their current team and coach assignment will be cleared as part of the move.</p>
+          <p className="text-xs text-ember-400">
+            Their current team and coach assignment will be cleared as part of
+            the move.
+          </p>
         </div>
         <div className="flex gap-3">
           <Button
@@ -1626,7 +2243,9 @@ const FranchiseTransferModal: React.FC<{
           >
             Transfer Player
           </Button>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
         </div>
       </div>
     </Modal>
@@ -1636,10 +2255,23 @@ const FranchiseTransferModal: React.FC<{
 export default StudentDetailPage;
 
 const POSITIONS = [
-  "Goalkeeper", "Sweeper Keeper", "Center Back", "Left Back", "Right Back",
-  "Wing Back", "Defensive Midfielder", "Central Midfielder", "Attacking Midfielder",
-  "Left Midfielder", "Right Midfielder", "Left Winger", "Right Winger",
-  "Center Forward", "Striker", "Second Striker", "False 9"
+  "Goalkeeper",
+  "Sweeper Keeper",
+  "Center Back",
+  "Left Back",
+  "Right Back",
+  "Wing Back",
+  "Defensive Midfielder",
+  "Central Midfielder",
+  "Attacking Midfielder",
+  "Left Midfielder",
+  "Right Midfielder",
+  "Left Winger",
+  "Right Winger",
+  "Center Forward",
+  "Striker",
+  "Second Striker",
+  "False 9",
 ];
 
 const calculateAgeCategory = (dobString: string): string => {
@@ -1655,45 +2287,90 @@ const calculateAgeCategory = (dobString: string): string => {
   return `U-${categoryNum}`;
 };
 
-const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({ student, onClose }) => {
+const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
+  student,
+  onClose,
+}) => {
   const [updateStudent, { isLoading: saving }] = useUpdateStudentMutation();
-  const { data: franchise } = useGetFranchiseByIdQuery(student.franchiseId, { skip: !student.franchiseId });
-  const { data: academy } = academyApi.useGetAcademyByIdQuery(franchise?.academyId ?? "", {
-    skip: !franchise?.academyId,
+  const { data: franchise } = useGetFranchiseByIdQuery(student.franchiseId, {
+    skip: !student.franchiseId,
   });
+  const { data: academy } = academyApi.useGetAcademyByIdQuery(
+    franchise?.academyId ?? "",
+    {
+      skip: !franchise?.academyId,
+    },
+  );
   const categories = academy?.ageGroups ?? [];
   // Team assignment is scoped to the player's current franchise — franchise
   // reassignment is a separate, confirmed action (see "Transfer Franchise"
   // above), not something this form edits, since changing it here without
   // also moving the team/coach assignment would leave the player pointing
   // at a team from a different franchise.
-  const { data: teams } = useListTeamsQuery({ franchiseId: student.franchiseId }, { skip: !student.franchiseId });
+  const { data: teams } = useListTeamsQuery(
+    { franchiseId: student.franchiseId },
+    { skip: !student.franchiseId },
+  );
 
   const [firstName, setFirstName] = useState(student.firstName);
   const [lastName, setLastName] = useState(student.lastName);
-  const [dob, setDob] = useState(student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : "");
+  const [dob, setDob] = useState(
+    student.dateOfBirth
+      ? new Date(student.dateOfBirth).toISOString().split("T")[0]
+      : "",
+  );
   const [ageGroup, setAgeGroup] = useState(student.ageGroup);
   const [teamId, setTeamId] = useState(student.teamId ?? "");
-  const [positions, setPositions] = useState<string[]>(student.positions || (student.position ? [student.position] : []));
-  const [jerseyNumber, setJerseyNumber] = useState(student.jerseyNumber ? String(student.jerseyNumber) : "");
+  const [positions, setPositions] = useState<string[]>(
+    student.positions || (student.position ? [student.position] : []),
+  );
+  const [jerseyNumber, setJerseyNumber] = useState(
+    student.jerseyNumber ? String(student.jerseyNumber) : "",
+  );
   const [jerseySize, setJerseySize] = useState(student.jerseySize ?? "");
 
   // Guardian details state
-  const [guardianName, setGuardianName] = useState(student.guardian?.name ?? "");
-  const [guardianPhone, setGuardianPhone] = useState(student.guardian?.phone ?? "");
-  const [guardianEmail, setGuardianEmail] = useState(student.guardian?.email ?? "");
+  const [guardianName, setGuardianName] = useState(
+    student.guardian?.name ?? "",
+  );
+  const [guardianPhone, setGuardianPhone] = useState(
+    student.guardian?.phone ?? "",
+  );
+  const [guardianEmail, setGuardianEmail] = useState(
+    student.guardian?.email ?? "",
+  );
 
   // Medical info state
-  const [bloodGroup, setBloodGroup] = useState(student.medicalInfo?.bloodGroup ?? "");
-  const [allergies, setAllergies] = useState(student.medicalInfo?.allergies?.join(", ") ?? "");
-  const [medicalConditions, setMedicalConditions] = useState(student.medicalInfo?.medicalConditions?.join(", ") ?? "");
-  const [emergencyContactName, setEmergencyContactName] = useState(student.medicalInfo?.emergencyContactName ?? "");
-  const [emergencyContactPhone, setEmergencyContactPhone] = useState(student.medicalInfo?.emergencyContactPhone ?? "");
-  const [medicalCondition, setMedicalCondition] = useState(student.medicalInfo?.medicalCondition ?? "");
-  const [medicalNotes, setMedicalNotes] = useState(student.medicalInfo?.medicalNotes ?? "");
-  const [medicalReportUrl, setMedicalReportUrl] = useState(student.medicalInfo?.medicalReportUrl);
-  const [medicalCertificateUrl, setMedicalCertificateUrl] = useState(student.medicalInfo?.medicalCertificateUrl);
-  const [scanReportUrl, setScanReportUrl] = useState(student.medicalInfo?.scanReportUrl);
+  const [bloodGroup, setBloodGroup] = useState(
+    student.medicalInfo?.bloodGroup ?? "",
+  );
+  const [allergies, setAllergies] = useState(
+    student.medicalInfo?.allergies?.join(", ") ?? "",
+  );
+  const [medicalConditions, setMedicalConditions] = useState(
+    student.medicalInfo?.medicalConditions?.join(", ") ?? "",
+  );
+  const [emergencyContactName, setEmergencyContactName] = useState(
+    student.medicalInfo?.emergencyContactName ?? "",
+  );
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState(
+    student.medicalInfo?.emergencyContactPhone ?? "",
+  );
+  const [medicalCondition, setMedicalCondition] = useState(
+    student.medicalInfo?.medicalCondition ?? "",
+  );
+  const [medicalNotes, setMedicalNotes] = useState(
+    student.medicalInfo?.medicalNotes ?? "",
+  );
+  const [medicalReportUrl, setMedicalReportUrl] = useState(
+    student.medicalInfo?.medicalReportUrl,
+  );
+  const [medicalCertificateUrl, setMedicalCertificateUrl] = useState(
+    student.medicalInfo?.medicalCertificateUrl,
+  );
+  const [scanReportUrl, setScanReportUrl] = useState(
+    student.medicalInfo?.scanReportUrl,
+  );
 
   const handleDobChange = (value: string) => {
     setDob(value);
@@ -1711,7 +2388,11 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
       toast.error("Select an age category");
       return;
     }
-    if (!guardianName.trim() || !guardianPhone.trim() || !guardianEmail.trim()) {
+    if (
+      !guardianName.trim() ||
+      !guardianPhone.trim() ||
+      !guardianEmail.trim()
+    ) {
       toast.error("Guardian contact details are required");
       return;
     }
@@ -1739,8 +2420,18 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
           },
           medicalInfo: {
             bloodGroup: bloodGroup || undefined,
-            allergies: allergies ? allergies.split(",").map((s) => s.trim()).filter(Boolean) : [],
-            medicalConditions: medicalConditions ? medicalConditions.split(",").map((s) => s.trim()).filter(Boolean) : [],
+            allergies: allergies
+              ? allergies
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+              : [],
+            medicalConditions: medicalConditions
+              ? medicalConditions
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+              : [],
             emergencyContactName: emergencyContactName.trim(),
             emergencyContactPhone: emergencyContactPhone.trim(),
             medicalCondition: medicalCondition.trim() || undefined,
@@ -1759,42 +2450,71 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
   };
 
   const categoriesList = Array.from({ length: 21 }, (_, i) => `U-${i + 5}`);
-  const allCategories = Array.from(new Set([...categories, ...categoriesList])).sort(
-    (a, b) => parseInt(a.replace('U-', '')) - parseInt(b.replace('U-', ''))
+  const allCategories = Array.from(
+    new Set([...categories, ...categoriesList]),
+  ).sort(
+    (a, b) => parseInt(a.replace("U-", "")) - parseInt(b.replace("U-", "")),
   );
 
   return (
-    <Modal isOpen onClose={onClose} title={`Edit ${student.firstName} ${student.lastName}`} size="xl">
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={`Edit ${student.firstName} ${student.lastName}`}
+      size="xl"
+    >
       <div className="space-y-6">
-        
         {/* Responsive Content Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-start max-h-[60vh] overflow-y-auto pr-2 no-scrollbar">
-          
           {/* COLUMN 1: Player Info & Guardian Details */}
           <div className="space-y-4">
             <div>
               <p className="section-title mb-3 text-volt-400">Player Info</p>
               <div className="grid grid-cols-2 gap-3">
-                <Input label="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-                <Input label="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+                <Input
+                  label="First name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                />
+                <Input
+                  label="Last name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Date of Birth" type="date" value={dob} onChange={(e) => handleDobChange(e.target.value)} required />
+              <Input
+                label="Date of Birth"
+                type="date"
+                value={dob}
+                onChange={(e) => handleDobChange(e.target.value)}
+                required
+              />
               <div>
                 <label className="label">Age group</label>
-                <select value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)} className="input !w-full">
+                <select
+                  value={ageGroup}
+                  onChange={(e) => setAgeGroup(e.target.value)}
+                  className="input !w-full"
+                >
                   {allCategories.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
                 </select>
               </div>
             </div>
 
             <div>
-              <label className="label">Playing Positions (Select all that apply)</label>
-              <div className="flex flex-wrap gap-1.5 mt-1 border border-slate-200 dark:border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-slate-50 dark:bg-pitch-900">
+              <label className="label">
+                Playing Positions (Select all that apply)
+              </label>
+              <div className="flex flex-wrap gap-1.5 mt-1 border border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-pitch-900">
                 {POSITIONS.map((pos) => {
                   const isSelected = positions.includes(pos);
                   return (
@@ -1812,7 +2532,7 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
                         "px-2 py-0.5 rounded text-[10px] font-semibold uppercase border transition-all duration-150",
                         isSelected
                           ? "bg-volt-400 border-volt-400 text-pitch-900 font-extrabold"
-                          : "bg-slate-100 dark:bg-pitch-800 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/10 hover:text-slate-900 dark:hover:text-white"
+                          : "bg-slate-100 dark:bg-pitch-800 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
                       )}
                     >
                       {pos}
@@ -1830,20 +2550,31 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
                 value={jerseyNumber}
                 onChange={(e) => setJerseyNumber(e.target.value)}
               />
-              <Input label="Jersey size" value={jerseySize} onChange={(e) => setJerseySize(e.target.value)} placeholder="e.g. M" />
+              <Input
+                label="Jersey size"
+                value={jerseySize}
+                onChange={(e) => setJerseySize(e.target.value)}
+                placeholder="e.g. M"
+              />
             </div>
 
             <div>
               <label className="label">Franchise</label>
               <div className="input !w-full flex items-center justify-between text-slate-400 cursor-not-allowed">
                 <span>{franchise?.name ?? "—"}</span>
-                <span className="text-2xs uppercase tracking-wide text-slate-600">Use Transfer Franchise to move this player</span>
+                <span className="text-2xs uppercase tracking-wide text-slate-600">
+                  Use Transfer Franchise to move this player
+                </span>
               </div>
             </div>
 
             <div>
               <label className="label">Team Assignment</label>
-              <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className="input !w-full">
+              <select
+                value={teamId}
+                onChange={(e) => setTeamId(e.target.value)}
+                className="input !w-full"
+              >
                 <option value="">No team assigned</option>
                 {(teams ?? []).map((t) => (
                   <option key={t.id} value={t.id}>
@@ -1854,11 +2585,28 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
             </div>
 
             <div className="border-t border-white/5 pt-4 mt-2">
-              <p className="section-title mb-3 text-volt-400">Guardian Details</p>
+              <p className="section-title mb-3 text-volt-400">
+                Guardian Details
+              </p>
               <div className="space-y-3">
-                <Input label="Guardian name" value={guardianName} onChange={(e) => setGuardianName(e.target.value)} required />
-                <Input label="Guardian phone" value={guardianPhone} onChange={(e) => setGuardianPhone(e.target.value)} required />
-                <Input label="Guardian email" value={guardianEmail} onChange={(e) => setGuardianEmail(e.target.value)} required />
+                <Input
+                  label="Guardian name"
+                  value={guardianName}
+                  onChange={(e) => setGuardianName(e.target.value)}
+                  required
+                />
+                <Input
+                  label="Guardian phone"
+                  value={guardianPhone}
+                  onChange={(e) => setGuardianPhone(e.target.value)}
+                  required
+                />
+                <Input
+                  label="Guardian email"
+                  value={guardianEmail}
+                  onChange={(e) => setGuardianEmail(e.target.value)}
+                  required
+                />
               </div>
             </div>
           </div>
@@ -1866,47 +2614,114 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
           {/* COLUMN 2: Emergency & Medical details */}
           <div className="space-y-4 md:border-l md:border-white/5 md:pl-6 h-full">
             <div>
-              <p className="section-title mb-3 text-volt-400">Emergency & Medical</p>
+              <p className="section-title mb-3 text-volt-400">
+                Emergency & Medical
+              </p>
               <div className="space-y-3">
-                <Input label="Emergency contact name" value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} required />
-                <Input label="Emergency contact phone" value={emergencyContactPhone} onChange={(e) => setEmergencyContactPhone(e.target.value)} required />
-                <Input label="Blood group" value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} placeholder="O+" />
-                <Input label="Allergies (comma separated)" value={allergies} onChange={(e) => setAllergies(e.target.value)} placeholder="Peanuts, Dust" />
-                <Input label="Medical conditions (comma separated)" value={medicalConditions} onChange={(e) => setMedicalConditions(e.target.value)} placeholder="Asthma" />
-                <Input label="Medical Condition Detail" value={medicalCondition} onChange={(e) => setMedicalCondition(e.target.value)} placeholder="Describe any current conditions" />
+                <Input
+                  label="Emergency contact name"
+                  value={emergencyContactName}
+                  onChange={(e) => setEmergencyContactName(e.target.value)}
+                  required
+                />
+                <Input
+                  label="Emergency contact phone"
+                  value={emergencyContactPhone}
+                  onChange={(e) => setEmergencyContactPhone(e.target.value)}
+                  required
+                />
+                <Input
+                  label="Blood group"
+                  value={bloodGroup}
+                  onChange={(e) => setBloodGroup(e.target.value)}
+                  placeholder="O+"
+                />
+                <Input
+                  label="Allergies (comma separated)"
+                  value={allergies}
+                  onChange={(e) => setAllergies(e.target.value)}
+                  placeholder="Peanuts, Dust"
+                />
+                <Input
+                  label="Medical conditions (comma separated)"
+                  value={medicalConditions}
+                  onChange={(e) => setMedicalConditions(e.target.value)}
+                  placeholder="Asthma"
+                />
+                <Input
+                  label="Medical Condition Detail"
+                  value={medicalCondition}
+                  onChange={(e) => setMedicalCondition(e.target.value)}
+                  placeholder="Describe any current conditions"
+                />
                 <div>
                   <label className="label">Medical Notes</label>
-                  <textarea className="input w-full min-h-[60px] text-xs py-2" value={medicalNotes} onChange={(e) => setMedicalNotes(e.target.value)} placeholder="Any notes for coaches..." />
+                  <textarea
+                    className="input w-full min-h-[60px] text-xs py-2"
+                    value={medicalNotes}
+                    onChange={(e) => setMedicalNotes(e.target.value)}
+                    placeholder="Any notes for coaches..."
+                  />
                 </div>
                 <div className="space-y-3 pt-2">
                   <DocumentUploadField
                     label="Medical Report (PDF/Word)"
                     category="notification_document"
-                    value={medicalReportUrl ? { url: medicalReportUrl, filename: "medical-report.pdf" } : undefined}
+                    value={
+                      medicalReportUrl
+                        ? {
+                            url: medicalReportUrl,
+                            filename: "medical-report.pdf",
+                          }
+                        : undefined
+                    }
                     onChange={(file) => setMedicalReportUrl(file?.url)}
                   />
                   <DocumentUploadField
                     label="Medical Certificate (PDF/Word)"
                     category="notification_document"
-                    value={medicalCertificateUrl ? { url: medicalCertificateUrl, filename: "medical-certificate.pdf" } : undefined}
+                    value={
+                      medicalCertificateUrl
+                        ? {
+                            url: medicalCertificateUrl,
+                            filename: "medical-certificate.pdf",
+                          }
+                        : undefined
+                    }
                     onChange={(file) => setMedicalCertificateUrl(file?.url)}
                   />
                   <DocumentUploadField
                     label="Scan Report (PDF/Word)"
                     category="notification_document"
-                    value={scanReportUrl ? { url: scanReportUrl, filename: "scan-report.pdf" } : undefined}
+                    value={
+                      scanReportUrl
+                        ? { url: scanReportUrl, filename: "scan-report.pdf" }
+                        : undefined
+                    }
                     onChange={(file) => setScanReportUrl(file?.url)}
                   />
                 </div>
               </div>
             </div>
           </div>
-
         </div>
 
         <div className="flex gap-3 pt-4 border-t border-white/5 justify-end">
-          <Button type="button" variant="secondary" onClick={onClose} className="px-5">Cancel</Button>
-          <Button loading={saving} onClick={handleSave} className="px-8 bg-volt-400 text-pitch-900 font-bold hover:bg-volt-300">Save changes</Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            className="px-5"
+          >
+            Cancel
+          </Button>
+          <Button
+            loading={saving}
+            onClick={handleSave}
+            className="px-8 bg-volt-400 text-pitch-900 font-bold hover:bg-volt-300"
+          >
+            Save changes
+          </Button>
         </div>
       </div>
     </Modal>

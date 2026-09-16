@@ -30,7 +30,12 @@ import {
   type GuardianChild,
 } from "../../store/api/guardianApi";
 import { useTogglePublicProfileMutation } from "../../store/api/consentApi";
-import { NoxSkeleton, NoxEmptyState, NoxStatusBadge, NoxStatCard } from "../../components/portal-ui";
+import {
+  NoxSkeleton,
+  NoxEmptyState,
+  NoxStatusBadge,
+  NoxStatCard,
+} from "../../components/portal-ui";
 
 type Tab = "attendance" | "schedule" | "fees" | "performance";
 
@@ -46,9 +51,11 @@ const GuardianChildDetailPage: React.FC = () => {
   const studentId = id!;
   const [tab, setTab] = useState<Tab>("attendance");
 
-  const { data: profile, isLoading: profileLoading } = useGetChildProfileQuery(studentId);
+  const { data: profile, isLoading: profileLoading } =
+    useGetChildProfileQuery(studentId);
 
-  const teamName = typeof profile?.teamId === "object" ? profile?.teamId?.name : undefined;
+  const teamName =
+    typeof profile?.teamId === "object" ? profile?.teamId?.name : undefined;
 
   return (
     <div>
@@ -80,8 +87,16 @@ const GuardianChildDetailPage: React.FC = () => {
             </div>
           </div>
           <div className="flex gap-3 sm:gap-4 w-full sm:w-auto">
-            <NoxStatCard label="Attendance" value={`${profile.attendancePercentage}%`} accent="ion" />
-            <NoxStatCard label="Rating" value={profile.overallRating?.toFixed(1) ?? "—"} accent="plasma" />
+            <NoxStatCard
+              label="Attendance"
+              value={`${profile.attendancePercentage}%`}
+              accent="ion"
+            />
+            <NoxStatCard
+              label="Rating"
+              value={profile.overallRating?.toFixed(1) ?? "—"}
+              accent="plasma"
+            />
           </div>
         </div>
       )}
@@ -96,7 +111,9 @@ const GuardianChildDetailPage: React.FC = () => {
         </button>
       )}
 
-      {profile && <PublicProfileToggleCard studentId={studentId} profile={profile} />}
+      {profile && (
+        <PublicProfileToggleCard studentId={studentId} profile={profile} />
+      )}
 
       <div className="flex gap-2 border-b border-white/[0.06] mb-6 overflow-x-auto no-scrollbar flex-nowrap -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
         {TABS.map((t) => {
@@ -127,10 +144,10 @@ const GuardianChildDetailPage: React.FC = () => {
   );
 };
 
-const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianChild }> = ({
-  studentId,
-  profile,
-}) => {
+const PublicProfileToggleCard: React.FC<{
+  studentId: string;
+  profile: GuardianChild;
+}> = ({ studentId, profile }) => {
   const [toggle, { isLoading }] = useTogglePublicProfileMutation();
   const [copied, setCopied] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
@@ -156,7 +173,9 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
   const handleToggle = async () => {
     try {
       await toggle({ studentId, enabled: !enabled, settings }).unwrap();
-      toast.success(enabled ? "Public player page disabled" : "Public player page enabled");
+      toast.success(
+        enabled ? "Public player page disabled" : "Public player page enabled",
+      );
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't update this — try again");
     }
@@ -189,15 +208,23 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold text-nox-high">Public Player Profile &amp; QR Code</p>
-              <span className={`text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded-full font-semibold ${
-                enabled ? "bg-emerald-500/10 text-emerald-600 dark:text-field-400 border border-emerald-500/20" : "bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-transparent"
-              }`}>
+              <p className="text-sm font-semibold text-nox-high">
+                Public Player Profile &amp; QR Code
+              </p>
+              <span
+                className={`text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded-full font-semibold ${
+                  enabled
+                    ? "bg-field-400/10 text-field-400"
+                    : "bg-white/10 text-slate-400"
+                }`}
+              >
                 {enabled ? "Active" : "Disabled"}
               </span>
             </div>
             <p className="text-xs text-nox-mid mt-0.5 max-w-xl">
-              Turn this on to share {profile.firstName}&apos;s verified public player card (ratings, match stats, and profile) with scouts and academy administrators.
+              Turn this on to share {profile.firstName}&apos;s verified public
+              player card (ratings, match stats, and profile) with scouts and
+              academy administrators.
             </p>
           </div>
         </div>
@@ -208,11 +235,11 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
           onClick={handleToggle}
           disabled={isLoading}
           className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-            enabled ? "bg-core-400" : "bg-slate-300 dark:bg-white/10"
+            enabled ? "bg-core-400" : "bg-white/10"
           }`}
         >
           <span
-            className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-xs transition-transform ${
+            className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
               enabled ? "translate-x-5" : "translate-x-0.5"
             }`}
           />
@@ -220,16 +247,22 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
       </div>
 
       {enabled && publicUrl && (
-        <div className="pt-2 border-t border-slate-200 dark:border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-lg px-3 py-2 w-full sm:max-w-md">
-            <code className="text-xs text-core-400 truncate flex-1 font-mono">{publicUrl}</code>
+        <div className="pt-2 border-t border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 w-full sm:max-w-md">
+            <code className="text-xs text-core-400 truncate flex-1 font-mono">
+              {publicUrl}
+            </code>
             <button
               type="button"
               onClick={handleCopy}
               className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors flex-shrink-0"
               title="Copy link"
             >
-              {copied ? <CheckCircle2 size={14} className="text-emerald-600 dark:text-field-400" /> : <Copy size={14} />}
+              {copied ? (
+                <CheckCircle2 size={14} className="text-field-400" />
+              ) : (
+                <Copy size={14} />
+              )}
             </button>
           </div>
 
@@ -239,7 +272,11 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
               onClick={handleCopy}
               className="nox-btn-secondary !py-2 !px-3 text-xs flex-1 sm:flex-initial"
             >
-              {copied ? <CheckCircle2 size={13} className="text-emerald-600 dark:text-field-400" /> : <Copy size={13} />}
+              {copied ? (
+                <CheckCircle2 size={13} className="text-field-400" />
+              ) : (
+                <Copy size={13} />
+              )}
               {copied ? "Copied" : "Copy Link"}
             </button>
             <button
@@ -272,12 +309,14 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
 
       {/* Visibility Preferences & Academy Lock Notice */}
       {enabled && showSettings && (
-        <div className="pt-4 border-t border-slate-200 dark:border-white/[0.08] space-y-4 animate-fade-in">
+        <div className="pt-4 border-t border-white/[0.08] space-y-4 animate-fade-in">
           <div className="flex items-center justify-between">
             <h4 className="font-orbital text-xs font-semibold uppercase tracking-wider text-nox-high">
               Public Profile Visibility Controls
             </h4>
-            <span className="text-[11px] text-nox-low">Select what data can be viewed publicly</span>
+            <span className="text-[11px] text-nox-low">
+              Select what data can be viewed publicly
+            </span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -298,7 +337,7 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
                   className={`flex items-center justify-between p-3 rounded-xl border text-left text-xs transition-all ${
                     active
                       ? "bg-core-400/10 border-core-400/40 text-nox-high font-semibold"
-                      : "bg-slate-100 dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.06] text-slate-500 dark:text-nox-low hover:text-slate-900 dark:hover:text-nox-mid"
+                      : "bg-white/[0.02] border-white/[0.06] text-nox-low hover:text-nox-mid"
                   }`}
                 >
                   <span>{label}</span>
@@ -306,10 +345,12 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
                     className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] shrink-0 ml-2 ${
                       active
                         ? "bg-core-400 border-core-400 text-pitch-950 font-bold"
-                        : "border-slate-300 dark:border-white/20 bg-transparent"
+                        : "border-white/20 bg-transparent"
                     }`}
                   >
-                    {active && <Check size={11} className="text-pitch-950 stroke-[3]" />}
+                    {active && (
+                      <Check size={11} className="text-pitch-950 stroke-[3]" />
+                    )}
                   </div>
                 </button>
               );
@@ -323,7 +364,9 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
               </label>
               <textarea
                 value={settings.bio}
-                onChange={(e) => setSettings((s) => ({ ...s, bio: e.target.value }))}
+                onChange={(e) =>
+                  setSettings((s) => ({ ...s, bio: e.target.value }))
+                }
                 placeholder="Write a brief intro or scout statement for this player..."
                 rows={2}
                 maxLength={300}
@@ -336,7 +379,9 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
               </label>
               <select
                 value={settings.preferredFoot}
-                onChange={(e) => setSettings((s) => ({ ...s, preferredFoot: e.target.value }))}
+                onChange={(e) =>
+                  setSettings((s) => ({ ...s, preferredFoot: e.target.value }))
+                }
                 className="input text-xs w-full"
               >
                 <option value="">Unspecified</option>
@@ -355,7 +400,11 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
                 Official Academy Roster Player · Data Locked
               </p>
               <p className="text-[11px] text-nox-low mt-0.5 leading-relaxed">
-                Core student information (Legal Name, Date of Birth, Squad assignment, Jersey #) is verified and administered directly by the academy coaching staff. Directly editing these official roster records is prohibited. If any player details need correction, please contact your academy coach or manager.
+                Core student information (Legal Name, Date of Birth, Squad
+                assignment, Jersey #) is verified and administered directly by
+                the academy coaching staff. Directly editing these official
+                roster records is prohibited. If any player details need
+                correction, please contact your academy coach or manager.
               </p>
             </div>
           </div>
@@ -387,7 +436,7 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
             <button
               type="button"
               onClick={() => setShowQrModal(false)}
-              className="absolute top-4 right-4 text-nox-mid hover:text-white transition-colors"
+              className="absolute top-4 right-4 text-nox-mid hover:text-slate-900 dark:hover:text-white transition-colors"
             >
               <X size={18} />
             </button>
@@ -399,7 +448,8 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
               {profile.firstName} {profile.lastName}
             </h3>
             <p className="text-xs text-nox-mid mb-5">
-              Scan this QR code to view the public verified player card and stats.
+              Scan this QR code to view the public verified player card and
+              stats.
             </p>
 
             <div className="bg-white p-4 rounded-xl inline-block shadow-xl border border-slate-200 mb-5">
@@ -412,13 +462,17 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
                 onClick={handleCopy}
                 className="nox-btn-secondary w-full text-xs justify-center py-2.5"
               >
-                {copied ? <CheckCircle2 size={14} className="text-field-400" /> : <Copy size={14} />}
+                {copied ? (
+                  <CheckCircle2 size={14} className="text-field-400" />
+                ) : (
+                  <Copy size={14} />
+                )}
                 {copied ? "Link Copied to Clipboard" : "Copy Profile Link"}
               </button>
               <button
                 type="button"
                 onClick={() => setShowQrModal(false)}
-                className="w-full text-xs text-slate-400 hover:text-white py-2"
+                className="w-full text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white py-2"
               >
                 Close
               </button>
@@ -436,21 +490,35 @@ const AttendanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
   if (isLoading) return <NoxSkeleton className="h-64" />;
   if (!data || data.records.length === 0) {
     return (
-      <NoxEmptyState title="No attendance records yet" body="Sessions will appear here once marked by a coach." />
+      <NoxEmptyState
+        title="No attendance records yet"
+        body="Sessions will appear here once marked by a coach."
+      />
     );
   }
 
   return (
     <div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <NoxStatCard label="Present" value={data.summary.present} accent="ion" />
+        <NoxStatCard
+          label="Present"
+          value={data.summary.present}
+          accent="ion"
+        />
         <NoxStatCard label="Absent" value={data.summary.absent} accent="core" />
         <NoxStatCard label="Late" value={data.summary.late} accent="plasma" />
-        <NoxStatCard label="Rate" value={`${data.summary.percentage}%`} accent="ion" />
+        <NoxStatCard
+          label="Rate"
+          value={`${data.summary.percentage}%`}
+          accent="ion"
+        />
       </div>
       <div className="nox-card divide-y divide-white/[0.06]">
         {data.records.map((r) => (
-          <div key={r._id} className="flex items-center justify-between px-5 py-4">
+          <div
+            key={r._id}
+            className="flex items-center justify-between px-5 py-4"
+          >
             <div>
               <div className="text-sm text-nox-high">
                 {new Date(r.sessionDate).toLocaleDateString(undefined, {
@@ -459,7 +527,9 @@ const AttendanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
                   day: "numeric",
                 })}
               </div>
-              {r.remarks && <div className="text-xs text-nox-low mt-0.5">{r.remarks}</div>}
+              {r.remarks && (
+                <div className="text-xs text-nox-low mt-0.5">{r.remarks}</div>
+              )}
             </div>
             <NoxStatusBadge status={r.status} />
           </div>
@@ -498,13 +568,14 @@ const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
                 {s.targetType === "batch"
                   ? "Custom Batch"
                   : s.targetType === "category"
-                  ? s.category || "Category"
-                  : s.teamName || "Team"}
+                    ? s.category || "Category"
+                    : s.teamName || "Team"}
               </span>
               <NoxStatusBadge status={s.status} />
             </div>
             <h4 className="font-orbital text-sm font-semibold text-nox-high">
-              {s.notes || `${s.type.charAt(0).toUpperCase() + s.type.slice(1)} Session`}
+              {s.notes ||
+                `${s.type.charAt(0).toUpperCase() + s.type.slice(1)} Session`}
             </h4>
             <div className="flex flex-wrap items-center gap-4 text-xs text-nox-mid pt-1">
               <span className="flex items-center gap-1.5">
@@ -539,7 +610,12 @@ const FeesTab: React.FC<{ studentId: string }> = ({ studentId }) => {
 
   if (isLoading) return <NoxSkeleton className="h-64" />;
   if (!data || data.length === 0) {
-    return <NoxEmptyState title="No fee records yet" body="Fee plans set up by your academy will appear here." />;
+    return (
+      <NoxEmptyState
+        title="No fee records yet"
+        body="Fee plans set up by your academy will appear here."
+      />
+    );
   }
 
   return (
@@ -569,7 +645,8 @@ const FeesTab: React.FC<{ studentId: string }> = ({ studentId }) => {
                 </span>
                 <div className="flex items-center gap-3">
                   <span className="text-nox-high font-mono">
-                    ₹{inst.paidAmount.toLocaleString("en-IN")} / ₹{inst.amount.toLocaleString("en-IN")}
+                    ₹{inst.paidAmount.toLocaleString("en-IN")} / ₹
+                    {inst.amount.toLocaleString("en-IN")}
                   </span>
                   <NoxStatusBadge status={inst.status} />
                 </div>
@@ -583,10 +660,13 @@ const FeesTab: React.FC<{ studentId: string }> = ({ studentId }) => {
 };
 
 const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
-  const { data: performanceRecords, isLoading: loadingPerformance } = useGetChildPerformanceQuery(studentId);
-  const { data: remarks, isLoading: loadingRemarks } = useGetChildRemarksQuery(studentId);
+  const { data: performanceRecords, isLoading: loadingPerformance } =
+    useGetChildPerformanceQuery(studentId);
+  const { data: remarks, isLoading: loadingRemarks } =
+    useGetChildRemarksQuery(studentId);
 
-  if (loadingPerformance || loadingRemarks) return <NoxSkeleton className="h-64" />;
+  if (loadingPerformance || loadingRemarks)
+    return <NoxSkeleton className="h-64" />;
 
   return (
     <div className="space-y-6">
@@ -599,7 +679,8 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
               Coach Remarks &amp; Developmental Notes
             </h3>
             <p className="text-xs text-nox-mid mt-0.5">
-              Personalized developmental guidance and progress updates from your child's coaches.
+              Personalized developmental guidance and progress updates from your
+              child's coaches.
             </p>
           </div>
           <span className="text-xs font-mono text-nox-low">
@@ -608,7 +689,9 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
         </div>
 
         {!remarks || remarks.length === 0 ? (
-          <p className="text-xs text-nox-mid italic py-2">No coach remarks or notes added yet.</p>
+          <p className="text-xs text-nox-mid italic py-2">
+            No coach remarks or notes added yet.
+          </p>
         ) : (
           <div className="space-y-2.5">
             {remarks.map((r) => {
@@ -622,7 +705,9 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
                   className="bg-white/[0.02] border-l-2 border-core-400 border-t border-r border-b border-white/[0.06] rounded-r-lg p-3.5 space-y-1"
                 >
                   <div className="flex items-center justify-between text-2xs">
-                    <span className="text-core-400 font-semibold">{coachName}</span>
+                    <span className="text-core-400 font-semibold">
+                      {coachName}
+                    </span>
                     <span className="text-nox-low font-mono">
                       {new Date(r.date).toLocaleDateString(undefined, {
                         month: "short",
@@ -631,7 +716,9 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
                       })}
                     </span>
                   </div>
-                  <p className="text-xs text-nox-high italic leading-relaxed">"{r.text}"</p>
+                  <p className="text-xs text-nox-high italic leading-relaxed">
+                    "{r.text}"
+                  </p>
                 </div>
               );
             })}
@@ -648,11 +735,13 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
               Session Performance Breakdown
             </h3>
             <p className="text-xs text-nox-mid mt-0.5">
-              Individual technical scores and coach assessments for each attended session.
+              Individual technical scores and coach assessments for each
+              attended session.
             </p>
           </div>
           <span className="text-xs font-mono text-nox-low">
-            {performanceRecords?.length ?? 0} session{(performanceRecords?.length ?? 0) === 1 ? "" : "s"} logged
+            {performanceRecords?.length ?? 0} session
+            {(performanceRecords?.length ?? 0) === 1 ? "" : "s"} logged
           </span>
         </div>
 
@@ -664,22 +753,33 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
         ) : (
           <div className="space-y-4">
             {performanceRecords.map((p) => {
-              const sessionObj = typeof p.sessionId === "object" ? p.sessionId : null;
-              const sessionTitle = sessionObj?.title || `${sessionObj?.type ? sessionObj.type.toUpperCase() : "Training"} Session`;
+              const sessionObj =
+                typeof p.sessionId === "object" ? p.sessionId : null;
+              const sessionTitle =
+                sessionObj?.title ||
+                `${sessionObj?.type ? sessionObj.type.toUpperCase() : "Training"} Session`;
               const sessionDate = p.sessionDate || p.createdAt;
               const coachName =
                 p.coachId && typeof p.coachId === "object"
                   ? `${p.coachId.firstName} ${p.coachId.lastName}`
                   : null;
-              const score = typeof p.overallScore === "number" ? p.overallScore : p.overallRating;
+              const score =
+                typeof p.overallScore === "number"
+                  ? p.overallScore
+                  : p.overallRating;
 
               return (
-                <div key={p._id} className="nox-card p-5 space-y-4 hover:border-core-400/30 transition-colors">
+                <div
+                  key={p._id}
+                  className="nox-card p-5 space-y-4 hover:border-core-400/30 transition-colors"
+                >
                   {/* Session Header */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.06] pb-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-orbital text-sm font-semibold text-nox-high">{sessionTitle}</h4>
+                        <h4 className="font-orbital text-sm font-semibold text-nox-high">
+                          {sessionTitle}
+                        </h4>
                         {sessionObj?.type && (
                           <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-core-400/10 text-core-400 border border-core-400/20 font-semibold">
                             {sessionObj.type}
@@ -710,7 +810,10 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
                         )}
                         {coachName && (
                           <span>
-                            Evaluated by: <strong className="text-nox-high font-medium">{coachName}</strong>
+                            Evaluated by:{" "}
+                            <strong className="text-nox-high font-medium">
+                              {coachName}
+                            </strong>
                           </span>
                         )}
                       </div>
@@ -719,9 +822,14 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
                     {typeof score === "number" && (
                       <div className="flex items-center gap-2 self-end sm:self-center">
                         <div className="text-right">
-                          <span className="text-2xs text-nox-low uppercase tracking-widest font-bold block">Rating</span>
+                          <span className="text-2xs text-nox-low uppercase tracking-widest font-bold block">
+                            Rating
+                          </span>
                           <span className="font-orbital text-xl font-bold text-core-400">
-                            {score.toFixed(1)} <span className="text-xs text-nox-mid font-normal">/ 10</span>
+                            {score.toFixed(1)}{" "}
+                            <span className="text-xs text-nox-mid font-normal">
+                              / 10
+                            </span>
                           </span>
                         </div>
                       </div>
@@ -741,7 +849,9 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
                             className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-2.5 flex flex-col justify-between gap-1.5"
                           >
                             <div className="flex items-center justify-between text-xs">
-                              <span className="text-nox-high font-medium truncate">{skill.parameter}</span>
+                              <span className="text-nox-high font-medium truncate">
+                                {skill.parameter}
+                              </span>
                               <span className="font-orbital font-semibold text-xs text-core-400">
                                 {skill.score} / 10
                               </span>
@@ -749,7 +859,9 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
                             <div className="h-1.5 w-full bg-white/[0.06] rounded-full overflow-hidden">
                               <div
                                 className="h-full bg-core-400 transition-all duration-300"
-                                style={{ width: `${Math.min(100, Math.max(0, (skill.score / 10) * 100))}%` }}
+                                style={{
+                                  width: `${Math.min(100, Math.max(0, (skill.score / 10) * 100))}%`,
+                                }}
                               />
                             </div>
                           </div>

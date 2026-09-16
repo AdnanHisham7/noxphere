@@ -73,7 +73,19 @@
     color: #e2e8f0;
   }
 
-  /* Universal border compatibility in light mode */
+  /* In light mode, map slate tints if needed */
+  html:not(.dark) .text-slate-100 {
+    color: #0f172a;
+  }
+  html:not(.dark) .text-slate-200 {
+    color: #1e293b;
+  }
+  html:not(.dark) .text-slate-300 {
+    color: #334155;
+  }
+  html:not(.dark) .text-slate-400 {
+    color: #475569;
+  }
   html:not(.dark) .border-white\/5,
   html:not(.dark) .border-white\/10,
   html:not(.dark) .border-white\/15,
@@ -96,6 +108,20 @@
   }
   html:not(.dark) tbody tr:hover {
     background-color: rgba(241, 245, 249, 0.7);
+  }
+
+  /* Keep white text on filled colored buttons/badges in light mode */
+  html:not(.dark) .btn-danger,
+  html:not(.dark) .btn-danger *,
+  html:not(.dark) .bg-ember-500,
+  html:not(.dark) .bg-ember-500 *,
+  html:not(.dark) .bg-red-500,
+  html:not(.dark) .bg-red-500 *,
+  html:not(.dark) .bg-blue-600,
+  html:not(.dark) .bg-blue-600 *,
+  html:not(.dark) [data-keep-white],
+  html:not(.dark) [data-keep-white] * {
+    color: #ffffff !important;
   }
 
   /* Custom scrollbar */
@@ -149,7 +175,7 @@
   /* ── Buttons ── */
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
-           bg-volt-400 text-white dark:text-pitch-900 font-display font-bold uppercase tracking-wide
+           bg-volt-400 text-pitch-900 font-display font-bold uppercase tracking-wide
            rounded text-sm
            transition-all duration-150
            hover:bg-volt-500 active:scale-95
@@ -158,12 +184,12 @@
 
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
-           bg-white border border-slate-300 text-slate-700 font-body font-medium text-sm
+           bg-white border border-slate-200 text-slate-700 font-body font-medium text-sm
            rounded transition-all duration-150
-           hover:border-slate-400 hover:text-slate-900 hover:bg-slate-50
+           hover:border-slate-300 hover:text-slate-900 hover:bg-slate-50
            dark:bg-transparent dark:border-white/15 dark:text-slate-300
            dark:hover:border-white/30 dark:hover:text-white dark:hover:bg-white/5
-           active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs;
+           active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .btn-danger {
@@ -171,7 +197,7 @@
            bg-ember-500 text-white font-display font-semibold uppercase tracking-wide
            rounded text-sm
            transition-all duration-150
-           hover:bg-ember-600 active:scale-95 shadow-sm;
+           hover:bg-ember-600 active:scale-95;
   }
 
   .btn-ghost {
@@ -209,18 +235,18 @@
 
   /* ── Section header ── */
   .section-title {
-    @apply text-xs font-display font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400;
+    @apply text-xs font-display font-bold uppercase tracking-widest text-slate-600 dark:text-slate-500;
   }
 
   /* ── Status pills ── */
   .pill {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide;
   }
-  .pill-green { @apply pill bg-emerald-500/10 text-emerald-700 border border-emerald-500/30 dark:bg-field-400/15 dark:text-field-400 dark:border-field-400/20; }
-  .pill-red { @apply pill bg-rose-500/10 text-rose-700 border border-rose-500/30 dark:bg-ember-400/15 dark:text-ember-400 dark:border-ember-400/20; }
-  .pill-blue { @apply pill bg-sky-500/10 text-sky-700 border border-sky-500/30 dark:bg-ice-400/15 dark:text-ice-400 dark:border-ice-400/20; }
-  .pill-yellow { @apply pill bg-amber-500/15 text-amber-800 border border-amber-500/30 dark:bg-volt-400/20 dark:text-volt-400 dark:border-volt-400/20; }
-  .pill-gray { @apply pill bg-slate-100 text-slate-700 border border-slate-200 dark:bg-white/5 dark:text-slate-400 dark:border-white/10; }
+  .pill-green { @apply pill bg-field-400/15 text-field-500 border border-field-400/30 dark:text-field-400 dark:border-field-400/20; }
+  .pill-red { @apply pill bg-ember-400/15 text-ember-600 border border-ember-400/30 dark:text-ember-400 dark:border-ember-400/20; }
+  .pill-blue { @apply pill bg-ice-400/15 text-ice-600 border border-ice-400/30 dark:text-ice-400 dark:border-ice-400/20; }
+  .pill-yellow { @apply pill bg-volt-400/20 text-slate-900 border border-volt-400/40 dark:text-volt-400 dark:border-volt-400/20; }
+  .pill-gray { @apply pill bg-slate-100 text-slate-600 border border-slate-200 dark:bg-white/5 dark:text-slate-400 dark:border-white/10; }
 
   /* ── Loading skeleton ── */
   .skeleton {

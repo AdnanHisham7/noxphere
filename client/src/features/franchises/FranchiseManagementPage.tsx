@@ -97,7 +97,7 @@ const FranchiseManagementPage: React.FC = () => {
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <p className="section-title mb-1">Structure</p>
-          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">Franchises</h1>
+          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">Franchises</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             {isSuperAdmin
               ? "Manage the operational franchises under any academy"
@@ -156,7 +156,7 @@ const FranchiseManagementPage: React.FC = () => {
             <div key={f.id} className="card p-5 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-display font-bold text-white truncate">{f.name}</p>
+                  <p className="font-display font-bold text-slate-900 dark:text-white truncate">{f.name}</p>
                   <p className="text-2xs text-slate-500 font-mono">{f.franchiseCode}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

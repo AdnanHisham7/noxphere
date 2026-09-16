@@ -104,7 +104,7 @@ const EmployeesManagementPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
           <p className="section-title mb-1">Academy Staff</p>
-          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">Employees</h1>
+          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">Employees</h1>
         </div>
         <Button icon={<UserPlus size={15} />} onClick={() => setShowAddEmployee(true)} className="w-full sm:w-auto justify-center">Add Employee</Button>
       </div>
@@ -143,7 +143,7 @@ const EmployeesManagementPage: React.FC = () => {
                     {emp.firstName[0]}{emp.lastName[0]}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">{emp.firstName} {emp.lastName}</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{emp.firstName} {emp.lastName}</p>
                     <p className="text-2xs text-slate-500 truncate">
                       {emp.employeeType === "staff" ? (typeof emp.roleId === "object" ? emp.roleId?.name : "Staff") : "External"}
                       {emp.email ? ` · ${emp.email}` : ""}
@@ -185,7 +185,7 @@ const EmployeesManagementPage: React.FC = () => {
               {roles.map((role) => (
                 <div key={role.id} className="card p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-white">{role.name}</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">{role.name}</p>
                     <div className="flex items-center gap-2">
                       <button onClick={() => setShowRoleModal(role)} className="text-slate-500 hover:text-volt-400"><Pencil size={13} /></button>
                       <button onClick={() => handleDeleteRole(role)} className="text-slate-500 hover:text-ember-400"><Trash2 size={13} /></button>
