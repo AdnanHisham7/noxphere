@@ -750,8 +750,8 @@ const FeesPage: React.FC = () => {
       {/* VIEW MODE 2: Compact High-Density Table / List */}
       {!isLoading && !isError && filteredFees.length > 0 && viewMode === "table" && (
         <div className="card overflow-hidden border-white/10 bg-pitch-900/80">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+          <div className="table-responsive">
+            <table className="w-full min-w-[680px] text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/10 bg-white/[0.02] text-slate-400 uppercase text-[10px] tracking-wider font-semibold">
                   <th className="py-2.5 px-3">Player</th>

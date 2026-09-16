@@ -207,8 +207,8 @@ export const RegistrationRequestsTab: React.FC<RegistrationRequestsTabProps> = (
         />
       ) : (
         <div className="card overflow-hidden border-slate-200 dark:border-white/10 shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="table-responsive">
+            <table className="w-full min-w-[640px] text-left text-xs">
               <thead className="bg-slate-50 dark:bg-pitch-900/60 text-slate-600 dark:text-slate-400 uppercase tracking-wider font-mono text-2xs border-b border-slate-200 dark:border-white/10">
                 <tr>
                   <th className="py-3 px-4">Applicant</th>

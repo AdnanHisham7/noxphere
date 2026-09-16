@@ -597,8 +597,8 @@ const StudentsPage: React.FC = () => {
 
       {/* List view */}
       {!isLoading && viewMode === "list" && students.length > 0 && (
-        <div className="card overflow-hidden overflow-x-auto border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 shadow-sm">
-          <table className="w-full">
+        <div className="card overflow-hidden table-responsive border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 shadow-sm">
+          <table className="w-full min-w-[540px]">
             <thead>
               <tr className="border-b border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
                 <th className="text-left px-4 py-3 section-title text-slate-600 dark:text-slate-400">Player</th>

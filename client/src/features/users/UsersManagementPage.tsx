@@ -112,8 +112,8 @@ const UsersManagementPage: React.FC = () => {
       )}
 
       {!isLoading && users.length > 0 && (
-        <div className="card overflow-hidden overflow-x-auto">
-          <table className="w-full">
+        <div className="card overflow-hidden table-responsive">
+          <table className="w-full min-w-[540px]">
             <thead>
               <tr className="border-b border-white/5 bg-pitch-700/30">
                 <th className="text-left px-5 py-3 section-title">User</th>
@@ -132,6 +132,9 @@ const UsersManagementPage: React.FC = () => {
                       <div>
                         <p className="text-sm font-semibold text-white">{u.firstName} {u.lastName}</p>
                         <p className="text-2xs text-slate-500">{u.email}</p>
+                        <div className="sm:hidden mt-1">
+                          <Badge variant={ROLE_BADGE[u.role]}>{ROLE_LABEL[u.role]}</Badge>
+                        </div>
                       </div>
                     </div>
                   </td>

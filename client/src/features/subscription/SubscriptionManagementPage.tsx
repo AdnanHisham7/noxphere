@@ -100,12 +100,12 @@ export const SubscriptionManagementPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6">
+    <div className="space-y-6 max-w-7xl mx-auto p-0 sm:p-2 md:p-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 dark:border-white/5 pb-5">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
               <CreditCard className="text-volt-400" size={24} />
               Subscription & Billing
             </h1>
@@ -116,13 +116,13 @@ export const SubscriptionManagementPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
           >
             <RefreshCw size={13} className={clsx(isFetching && "animate-spin")} />
             Sync
@@ -132,7 +132,7 @@ export const SubscriptionManagementPage: React.FC = () => {
             variant="primary"
             size="sm"
             onClick={() => openModal(hasSubscription ? "upgrade" : "subscribe")}
-            className="flex items-center gap-1.5 text-xs font-bold"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs font-bold"
           >
             <Zap size={14} />
             {hasSubscription ? "Upgrade Capacity" : "Subscribe Now"}
@@ -395,8 +395,8 @@ export const SubscriptionManagementPage: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
+          <div className="table-responsive">
+            <table className="w-full min-w-[560px] text-xs text-left">
               <thead className="text-2xs uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-pitch-950/60 border-b border-slate-200/80 dark:border-white/5 font-mono">
                 <tr>
                   <th className="py-3 px-4">Invoice #</th>

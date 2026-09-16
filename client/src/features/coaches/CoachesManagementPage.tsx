@@ -172,7 +172,7 @@ const CoachesManagementPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 pt-2 border-t border-white/5">
+                <div className="flex items-center flex-wrap gap-2.5 sm:gap-3 pt-2 border-t border-white/5">
                   <button
                     onClick={() => setEditingCoach(c)}
                     className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"

@@ -141,7 +141,7 @@ const SelectionPage: React.FC = () => {
       </div>
 
       {/* Status summary strip */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
         {[
           { key: 'selected', label: 'Selected', color: 'text-field-400', border: 'border-field-400/20' },
           { key: 'shortlisted', label: 'Shortlisted', color: 'text-ice-400', border: 'border-ice-400/20' },
@@ -149,7 +149,7 @@ const SelectionPage: React.FC = () => {
           { key: 'not_selected', label: 'Not Selected', color: 'text-ember-400', border: 'border-ember-400/20' },
         ].map((s) => (
           <div key={s.key} className={clsx('card p-3 text-center border', s.border)}>
-            <p className={clsx('font-display font-900 text-2xl', s.color)}>
+            <p className={clsx('font-display font-900 text-xl sm:text-2xl', s.color)}>
               {counts[s.key as keyof typeof counts]}
             </p>
             <p className="text-2xs text-slate-500 uppercase tracking-wide mt-0.5">{s.label}</p>
@@ -175,12 +175,12 @@ const SelectionPage: React.FC = () => {
 
       {/* Selection table */}
       {!isLoading && list.length > 0 && (
-        <div className="card overflow-hidden overflow-x-auto">
-          <table className="w-full">
+        <div className="card overflow-hidden table-responsive">
+          <table className="w-full min-w-[540px]">
             <thead>
               <tr className="border-b border-white/5 bg-pitch-700/30">
                 <th className="text-left px-5 py-3 section-title">Player</th>
-                <th className="text-center px-5 py-3 section-title hidden sm:table-cell">Rating</th>
+                <th className="text-center px-5 py-3 section-title">Rating</th>
                 <th className="text-center px-5 py-3 section-title hidden md:table-cell">Coach Vote</th>
                 <th className="text-left px-5 py-3 section-title hidden lg:table-cell">Coach Note</th>
                 <th className="text-center px-5 py-3 section-title">Status</th>

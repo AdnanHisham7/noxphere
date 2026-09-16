@@ -70,7 +70,7 @@ const FranchiseSwitcher: React.FC = () => {
 
   if (isFranchiseManager) {
     return (
-      <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 rounded px-2.5 sm:px-3 py-1.5 max-w-[130px] sm:max-w-xs">
+      <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 rounded px-2 sm:px-3 py-1.5 max-w-[110px] sm:max-w-xs">
         <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />
         <span className="text-xs font-medium truncate">
           {currentFranchise?.name ?? "Loading…"}
@@ -83,7 +83,7 @@ const FranchiseSwitcher: React.FC = () => {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/20 rounded px-2.5 sm:px-3 py-1.5 transition-colors max-w-[140px] sm:max-w-xs"
+        className="flex items-center gap-1 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/20 rounded px-2 sm:px-3 py-1.5 transition-colors max-w-[115px] sm:max-w-xs"
       >
         <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />
         <span className="text-xs font-medium truncate">
@@ -286,9 +286,9 @@ export const TopBar: React.FC = () => {
   };
 
   return (
-    <header className="h-16 bg-white/90 dark:bg-pitch-900/80 backdrop-blur-sm border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-3.5 sm:px-6 sticky top-0 z-30 transition-colors duration-200">
+    <header className="h-16 bg-white/90 dark:bg-pitch-900/80 backdrop-blur-sm border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-2.5 sm:px-6 sticky top-0 z-30 transition-colors duration-200">
       {/* Left: Mobile hamburger menu + Mobile logo + Franchise selector / breadcrumb */}
-      <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+      <div className="flex items-center gap-1.5 sm:gap-4 min-w-0">
         <button
           type="button"
           onClick={() => dispatch(toggleMobileSidebar())}

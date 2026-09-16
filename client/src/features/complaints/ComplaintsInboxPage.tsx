@@ -39,30 +39,30 @@ const ComplaintsInboxPage: React.FC = () => {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 bg-slate-100 dark:bg-pitch-900/80 p-1 rounded-xl border border-slate-200 dark:border-white/10 self-start sm:self-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-2 bg-slate-100 dark:bg-pitch-900/80 p-1 rounded-xl border border-slate-200 dark:border-white/10 w-full sm:w-auto">
           <button
             onClick={() => setActiveTab("academy_inquiries")}
             className={clsx(
-              "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2",
+              "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2",
               activeTab === "academy_inquiries"
                 ? "bg-volt-400 text-pitch-900 shadow-sm"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             )}
           >
             <MessageSquareWarning size={14} />
-            Academy Complaints
+            <span>Academy Complaints</span>
           </button>
           <button
             onClick={() => setActiveTab("platform_support")}
             className={clsx(
-              "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2",
+              "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2",
               activeTab === "platform_support"
                 ? "bg-volt-400 text-pitch-900 shadow-sm"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             )}
           >
             <LifeBuoy size={14} />
-            Platform Support (To Super Admin)
+            <span>Platform Support <span className="hidden sm:inline">(To Super Admin)</span></span>
           </button>
         </div>
       </div>

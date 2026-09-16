@@ -297,8 +297,8 @@ export const AcademyNfcManagementPage: React.FC = () => {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
+          <div className="table-responsive">
+            <table className="w-full min-w-[640px] text-left text-sm text-slate-300">
               <thead className="bg-white/[0.02] text-2xs font-mono uppercase tracking-wider text-slate-400 border-b border-white/5">
                 <tr>
                   <th className="py-3 px-4">Batch ID</th>

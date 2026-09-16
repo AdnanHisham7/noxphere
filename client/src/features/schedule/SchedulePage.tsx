@@ -214,18 +214,18 @@ const SchedulePage: React.FC = () => {
             Operational session dispatcher, field utilization, and roster attendance tracking.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
           {canBroadcast && (
             <Button
               variant="secondary"
               icon={<Bell size={15} />}
               onClick={() => setConfirmBroadcastModal(true)}
-              className="text-xs font-semibold"
+              className="text-xs font-semibold flex-1 sm:flex-initial justify-center"
             >
               Broadcast Alert
             </Button>
           )}
-          <Button icon={<Plus size={15} />} onClick={() => setShowCreate(true)} className="text-xs font-semibold">
+          <Button icon={<Plus size={15} />} onClick={() => setShowCreate(true)} className="text-xs font-semibold flex-1 sm:flex-initial justify-center">
             New Session
           </Button>
         </div>
@@ -336,8 +336,8 @@ const SchedulePage: React.FC = () => {
 
       {!isLoading && !isError && filteredSessions.length > 0 && (
         <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-800/50 shadow-sm dark:shadow-none overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="table-responsive">
+            <table className="w-full min-w-[680px] text-left text-xs">
               <thead className="bg-slate-50 dark:bg-pitch-900/80 border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 font-mono uppercase text-2xs tracking-wider">
                 <tr>
                   <th className="py-3 px-4">Time Window</th>

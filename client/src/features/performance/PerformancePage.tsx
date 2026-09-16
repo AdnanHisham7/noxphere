@@ -98,8 +98,8 @@ const PerformancePage: React.FC = () => {
         ) : !records?.length ? (
           <EmptyState title="No performance logged yet" description="Log performance from a scheduled session above." />
         ) : (
-          <Card className="overflow-hidden">
-            <table className="w-full">
+          <Card className="overflow-hidden table-responsive">
+            <table className="w-full min-w-[460px]">
               <thead>
                 <tr className="border-b border-white/5 bg-pitch-700/30">
                   <th className="text-left px-4 py-3 section-title">Player</th>
@@ -111,7 +111,12 @@ const PerformancePage: React.FC = () => {
               <tbody>
                 {records.map((r, i) => (
                   <tr key={r._id} className={i % 2 === 0 ? "" : "bg-white/1"}>
-                    <td className="px-4 py-3 text-sm text-white">{r.studentId.firstName} {r.studentId.lastName}</td>
+                    <td className="px-4 py-3 text-sm text-white">
+                      <div>{r.studentId.firstName} {r.studentId.lastName}</div>
+                      <div className="sm:hidden text-2xs text-slate-400">
+                        {new Date(r.sessionDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-xs text-slate-400 hidden sm:table-cell">
                       {new Date(r.sessionDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                     </td>

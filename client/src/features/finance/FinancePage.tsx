@@ -214,7 +214,7 @@ const FinancePage: React.FC = () => {
         </div>
 
         {showInternalFeeAudit && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-200 dark:border-white/5 animate-fade-in">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-200 dark:border-white/5 animate-fade-in">
             <div className="p-2.5 rounded-lg bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/5">
               <span className="text-2xs uppercase text-slate-400 font-mono">Total Billed by Academies</span>
               <p className="font-display font-bold text-sm text-slate-900 dark:text-white mt-0.5">
@@ -332,7 +332,7 @@ const FinancePage: React.FC = () => {
           </div>
 
           {/* Filter Tabs */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-800/60 p-0.5 rounded-lg border border-slate-200/60 dark:border-white/[0.04] overflow-x-auto max-w-full">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-800/60 p-0.5 rounded-lg border border-slate-200/60 dark:border-white/[0.04] overflow-x-auto no-scrollbar max-w-full w-full sm:w-auto">
             <button
               type="button"
               onClick={() => setTxFilter("platform_all")}
@@ -400,7 +400,7 @@ const FinancePage: React.FC = () => {
               return (
                 <div
                   key={`${tx.feeId}-${i}`}
-                  className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-pitch-900/60 border border-slate-200/80 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg bg-white dark:bg-pitch-900/60 border border-slate-200/80 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 transition-colors"
                 >
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -422,7 +422,7 @@ const FinancePage: React.FC = () => {
                       )}
                     </div>
 
-                    <p className="text-2xs text-slate-500 flex items-center gap-2">
+                    <p className="text-2xs text-slate-500 flex items-center gap-2 flex-wrap">
                       <span>{new Date(tx.paidAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
                       <span>·</span>
                       <span>Method: {tx.method || "Stripe"}</span>
@@ -447,7 +447,7 @@ const FinancePage: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="text-right shrink-0">
+                  <div className="text-left sm:text-right shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100 dark:border-white/5 flex sm:block items-center justify-between">
                     <span
                       className={`font-display font-bold text-sm ${
                         isSub

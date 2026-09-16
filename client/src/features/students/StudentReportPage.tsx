@@ -60,35 +60,35 @@ const StudentReportPage: React.FC = () => {
         </Button>
       </div>
 
-      <div className="max-w-3xl mx-auto p-8 space-y-8">
-        <div className="flex items-start justify-between border-b border-slate-200 pb-6">
+      <div className="max-w-3xl mx-auto p-4 sm:p-8 space-y-6 sm:space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 border-b border-slate-200 pb-6">
           <div>
-            <h1 className="text-2xl font-bold">{student.firstName} {student.lastName}</h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <h1 className="text-xl sm:text-2xl font-bold">{student.firstName} {student.lastName}</h1>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
               {student.position ?? "—"} · {student.ageGroup} · Jersey #{student.jerseyNumber ?? "—"}
             </p>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-2xs sm:text-xs text-slate-400">
             Generated {new Date(summary.generatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
           </p>
         </div>
 
-        <div className="grid grid-cols-4 gap-4 report-section">
-          <div className="border border-slate-200 rounded-lg p-4 text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 report-section">
+          <div className="border border-slate-200 rounded-lg p-3 sm:p-4 text-center">
             <p className="text-2xs text-slate-500 uppercase">Attendance</p>
-            <p className="text-xl font-bold mt-1">{summary.attendanceRate}%</p>
+            <p className="text-lg sm:text-xl font-bold mt-1">{summary.attendanceRate}%</p>
           </div>
-          <div className="border border-slate-200 rounded-lg p-4 text-center">
+          <div className="border border-slate-200 rounded-lg p-3 sm:p-4 text-center">
             <p className="text-2xs text-slate-500 uppercase">Sessions</p>
-            <p className="text-xl font-bold mt-1">{summary.totalSessions}</p>
+            <p className="text-lg sm:text-xl font-bold mt-1">{summary.totalSessions}</p>
           </div>
-          <div className="border border-slate-200 rounded-lg p-4 text-center">
+          <div className="border border-slate-200 rounded-lg p-3 sm:p-4 text-center">
             <p className="text-2xs text-slate-500 uppercase">Total Paid</p>
-            <p className="text-xl font-bold mt-1">₹{summary.totalPaid.toLocaleString("en-IN")}</p>
+            <p className="text-lg sm:text-xl font-bold mt-1">₹{summary.totalPaid.toLocaleString("en-IN")}</p>
           </div>
-          <div className="border border-slate-200 rounded-lg p-4 text-center">
+          <div className="border border-slate-200 rounded-lg p-3 sm:p-4 text-center">
             <p className="text-2xs text-slate-500 uppercase">Outstanding</p>
-            <p className={`text-xl font-bold mt-1 ${summary.totalOutstanding > 0 ? "text-red-600" : ""}`}>
+            <p className={`text-lg sm:text-xl font-bold mt-1 ${summary.totalOutstanding > 0 ? "text-red-600" : ""}`}>
               ₹{summary.totalOutstanding.toLocaleString("en-IN")}
             </p>
           </div>
@@ -99,24 +99,26 @@ const StudentReportPage: React.FC = () => {
           {performances.length === 0 ? (
             <p className="text-sm text-slate-400">No performance records yet.</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-2xs uppercase text-slate-500">
-                  <th className="py-2">Date</th>
-                  <th className="py-2">Overall Score</th>
-                  <th className="py-2">Remarks</th>
-                </tr>
-              </thead>
-              <tbody>
-                {performances.slice(0, 30).map((p, i) => (
-                  <tr key={i} className="border-b border-slate-100">
-                    <td className="py-2">{new Date(p.sessionDate).toLocaleDateString("en-IN")}</td>
-                    <td className="py-2">{p.overallScore.toFixed(1)}</td>
-                    <td className="py-2 text-slate-500">{p.remarks ?? "—"}</td>
+            <div className="table-responsive">
+              <table className="w-full min-w-[340px] text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-2xs uppercase text-slate-500">
+                    <th className="py-2">Date</th>
+                    <th className="py-2">Overall Score</th>
+                    <th className="py-2">Remarks</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {performances.slice(0, 30).map((p, i) => (
+                    <tr key={i} className="border-b border-slate-100">
+                      <td className="py-2">{new Date(p.sessionDate).toLocaleDateString("en-IN")}</td>
+                      <td className="py-2">{p.overallScore.toFixed(1)}</td>
+                      <td className="py-2 text-slate-500">{p.remarks ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
 
@@ -125,22 +127,24 @@ const StudentReportPage: React.FC = () => {
           {attendance.length === 0 ? (
             <p className="text-sm text-slate-400">No attendance records yet.</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-2xs uppercase text-slate-500">
-                  <th className="py-2">Date</th>
-                  <th className="py-2">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendance.slice(0, 60).map((a, i) => (
-                  <tr key={i} className="border-b border-slate-100">
-                    <td className="py-2">{new Date(a.sessionDate).toLocaleDateString("en-IN")}</td>
-                    <td className="py-2 capitalize">{a.status}</td>
+            <div className="table-responsive">
+              <table className="w-full min-w-[280px] text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-2xs uppercase text-slate-500">
+                    <th className="py-2">Date</th>
+                    <th className="py-2">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {attendance.slice(0, 60).map((a, i) => (
+                    <tr key={i} className="border-b border-slate-100">
+                      <td className="py-2">{new Date(a.sessionDate).toLocaleDateString("en-IN")}</td>
+                      <td className="py-2 capitalize">{a.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
 

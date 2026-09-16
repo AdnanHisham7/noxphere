@@ -499,7 +499,7 @@ const StudentDashboardPage: React.FC = () => {
                   </p>
 
                   <form onSubmit={handleSaveVisibility} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {[
                         { key: "showPhoto", label: "Show Photo / Avatar" },
                         { key: "showPosition", label: "Show Position" },

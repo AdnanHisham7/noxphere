@@ -666,21 +666,23 @@ const StudentDetailPage: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-800 p-1 rounded border border-slate-200 dark:border-white/5 w-fit">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={clsx(
-              "px-4 py-1.5 rounded text-xs font-display font-bold uppercase tracking-wide transition-all duration-150",
-              activeTab === tab
-                ? "bg-volt-400 text-pitch-900 shadow-sm"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
-            )}
-          >
-            {tab}
-          </button>
-        ))}
+      <div className="overflow-x-auto no-scrollbar -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-800 p-1 rounded border border-slate-200 dark:border-white/5 w-max">
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={clsx(
+                "px-3.5 sm:px-4 py-1.5 rounded text-xs font-display font-bold uppercase tracking-wide transition-all duration-150 whitespace-nowrap",
+                activeTab === tab
+                  ? "bg-volt-400 text-pitch-900 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
+              )}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Overview tab */}

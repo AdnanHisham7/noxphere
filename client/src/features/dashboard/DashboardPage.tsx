@@ -349,13 +349,13 @@ const DashboardPage: React.FC = () => {
 
       {/* Franchise Performance list (only on the academy-wide overview) */}
       {isConsolidated && stats?.franchisePerformance && stats.franchisePerformance.length > 0 && (
-        <div className="card p-5 space-y-4 animate-fade-in">
+        <div className="card p-3.5 sm:p-5 space-y-4 animate-fade-in">
           <div>
             <p className="section-title">Franchise Performance</p>
             <p className="text-xs text-slate-500 mt-0.5">Consolidated overview of all operational branches</p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="table-responsive">
+            <table className="w-full min-w-[680px] text-left border-collapse">
               <thead>
                 <tr className="border-b border-white/5 pb-2">
                   <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider">Franchise</th>

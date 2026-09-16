@@ -309,9 +309,9 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
           </div>
 
           {/* Filters right side: Type filter + Search bar */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
             <select
-              className="input text-xs !w-auto"
+              className="input text-xs w-full sm:!w-auto"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
             >
@@ -320,7 +320,7 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
               <option value="academy">Academies (Bulk)</option>
             </select>
 
-            <div className="relative min-w-[200px]">
+            <div className="relative w-full sm:min-w-[200px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
@@ -347,8 +347,8 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
             icon={<CreditCard size={36} />}
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
+          <div className="table-responsive">
+            <table className="w-full min-w-[700px] text-left text-sm text-slate-300">
               <thead className="bg-white/[0.02] text-2xs font-mono uppercase tracking-wider text-slate-400 border-b border-white/5">
                 <tr>
                   <th className="py-3 px-4">Request</th>
