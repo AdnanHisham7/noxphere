@@ -78,7 +78,7 @@ export class FranchiseUseCases {
       maxStudents: dto.maxStudents,
       alertBeforeMinutes: dto.alertBeforeMinutes,
       notificationAlertAfterMinutes: dto.notificationAlertAfterMinutes,
-      skillParameters: dto.skillParameters ?? academy.skillParameters,
+      skillParameters: academy.skillParameters,
       isActive: true,
     });
     return toCard(franchise);
@@ -95,7 +95,6 @@ export class FranchiseUseCases {
     if (dto.maxStudents !== undefined) franchise.maxStudents = dto.maxStudents;
     if (dto.alertBeforeMinutes !== undefined) franchise.alertBeforeMinutes = dto.alertBeforeMinutes;
     if (dto.notificationAlertAfterMinutes !== undefined) franchise.notificationAlertAfterMinutes = dto.notificationAlertAfterMinutes;
-    if (dto.skillParameters !== undefined) franchise.skillParameters = dto.skillParameters;
 
     await franchise.save();
     return toCard(franchise);

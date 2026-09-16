@@ -59,10 +59,31 @@ export class GuardianController {
     }
   };
 
+  getChildRemarks = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const remarks = await this.guardianUseCases.getChildRemarks(
+        req.user!.sub,
+        req.params.studentId,
+      );
+      ResponseHandler.success(res, remarks, "Remarks retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
+
   getChildProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const student = await this.guardianUseCases.getChildProfile(req.user!.sub, req.params.studentId);
       ResponseHandler.success(res, student, "Student profile retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  getChildSessions = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const sessions = await this.guardianUseCases.getChildSessions(req.user!.sub, req.params.studentId);
+      ResponseHandler.success(res, sessions, "Sessions retrieved");
     } catch (err) {
       next(err);
     }

@@ -32,4 +32,13 @@ export class CoachPortalController {
       next(err);
     }
   };
+
+  getMyAvailability = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const availability = await this.coachPortalUseCases.getMyAvailability(req.user!.sub);
+      ResponseHandler.success(res, availability, "Availability retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
 }

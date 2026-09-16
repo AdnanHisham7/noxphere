@@ -11,12 +11,16 @@ import { academyApi } from "../store/api/academyApi";
  * hide/disable something for manager/coach, never to gate super_admin.
  */
 export function useTransferWallEnabled(): boolean {
-  const franchiseId = useSelector((s: RootState) => s.auth.user?.franchiseId);
+  const { user } = useSelector((s: RootState) => s.auth);
+  const franchiseId = user?.franchiseId;
+  const academyId = user?.academyId;
+
   const { data: franchise } = useGetFranchiseByIdQuery(franchiseId ?? "", { skip: !franchiseId });
-  const { data: academy } = academyApi.useGetAcademyByIdQuery(franchise?.academyId ?? "", {
-    skip: !franchise?.academyId,
+  const targetAcademyId = academyId || franchise?.academyId;
+  const { data: academy } = academyApi.useGetAcademyByIdQuery(targetAcademyId ?? "", {
+    skip: !targetAcademyId,
   });
 
-  if (!franchiseId || !franchise || !academy) return true;
+  if (!targetAcademyId || !academy) return true;
   return academy.transferWallEnabled;
 }

@@ -6,7 +6,8 @@ import { NotFoundError, BadRequestError } from "../../../shared/errors/AppError"
 export interface CreateTeamInput {
   name: string;
   ageGroup: string;
-  franchiseId: string;
+  franchiseId?: string;
+  academyId?: string;
   coachId?: string;
   description?: string;
   logoUrl?: string;
@@ -28,7 +29,17 @@ export interface UpdateTeamInput {
 
 export class TeamUseCases {
   async createTeam(input: CreateTeamInput) {
-    const team = await TeamModel.create(input);
+    let academyId = input.academyId;
+    if (input.franchiseId) {
+      const franchise = await FranchiseModel.findById(input.franchiseId).select("academyId").lean();
+      if (franchise) {
+        academyId = franchise.academyId.toString();
+      }
+    }
+    const team = await TeamModel.create({
+      ...input,
+      academyId,
+    });
     return team.toJSON();
   }
 
@@ -38,14 +49,20 @@ export class TeamUseCases {
     }
     let query: Record<string, unknown> = { deletedAt: { $exists: false } };
     if (filter.franchiseId) {
-      query.franchiseId = filter.franchiseId;
+      const franchise = await FranchiseModel.findById(filter.franchiseId).select("academyId").lean();
+      const academyId = franchise?.academyId;
+      query.$or = [
+        { franchiseId: filter.franchiseId },
+        { academyId: academyId, franchiseId: { $exists: false } },
+        { academyId: academyId, franchiseId: null }
+      ];
     } else {
-      const franchises = await FranchiseModel.find({ academyId: filter.academyId }).select("_id").lean();
-      query.franchiseId = { $in: franchises.map((f) => f._id) };
+      query.academyId = filter.academyId;
     }
 
     const teams = await TeamModel.find(query)
       .populate("coachId", "firstName lastName")
+      .populate("franchiseId", "name")
       .sort({ name: 1 })
       .lean();
 
@@ -55,10 +72,15 @@ export class TeamUseCases {
     ]);
     const countMap = new Map(counts.map((c) => [c._id.toString(), c.count]));
 
-    return teams.map((t) => ({
+    return teams.map((t: any) => ({
       id: t._id.toString(),
       name: t.name,
       ageGroup: t.ageGroup,
+      franchiseId: t.franchiseId?._id?.toString() || t.franchiseId?.toString(),
+      franchise: t.franchiseId && typeof t.franchiseId === 'object' ? {
+        id: t.franchiseId._id.toString(),
+        name: t.franchiseId.name
+      } : undefined,
       coach: t.coachId,
       description: t.description,
       logoUrl: t.logoUrl,

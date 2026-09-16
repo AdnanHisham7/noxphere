@@ -120,13 +120,13 @@ export const OrbitSystem: React.FC<OrbitSystemProps> = ({
           return (
             <g key={node.label}>
               {/* Dot indicator */}
-              <circle cx={p.x} cy={p.y} r={7} fill="#ccff00" />
+              <circle cx={p.x} cy={p.y} r={7} className="fill-emerald-600 dark:fill-[#ccff00]" />
               <circle
                 cx={p.x}
                 cy={p.y}
                 r={13}
                 fill="none"
-                stroke="#ccff00"
+                className="stroke-emerald-600 dark:stroke-[#ccff00]"
                 strokeOpacity="0.35"
               />
 
@@ -141,12 +141,12 @@ export const OrbitSystem: React.FC<OrbitSystemProps> = ({
                     y={p.y + 24}
                     textAnchor="middle"
                     dominantBaseline="middle"
+                    className="fill-slate-900 dark:fill-slate-200"
                     style={{
                       fontFamily: "'JetBrains Mono', monospace",
                       fontSize: 11,
-                      fontWeight: 600,
+                      fontWeight: 700,
                       letterSpacing: "0.04em",
-                      fill: "#e2e8f0",
                     }}
                   >
                     {node.label}
@@ -189,12 +189,12 @@ export const OrbitSystem: React.FC<OrbitSystemProps> = ({
                     y={p.y + 24}
                     textAnchor="middle"
                     dominantBaseline="middle"
+                    className="fill-slate-900 dark:fill-slate-200"
                     style={{
                       fontFamily: "'JetBrains Mono', monospace",
                       fontSize: 11,
-                      fontWeight: 600,
+                      fontWeight: 700,
                       letterSpacing: "0.04em",
-                      fill: "#e2e8f0",
                     }}
                   >
                     {node.label}

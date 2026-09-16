@@ -12,6 +12,14 @@ export const MedicalInfoSchema = z.object({
   medicalConditions: z.array(z.string()).default([]),
   emergencyContactName: z.string().min(1),
   emergencyContactPhone: z.string().min(1),
+  medicalCondition: z.string().optional(),
+  medicalNotes: z.string().optional(),
+  medicalReportUrl: z.string().url().optional().or(z.literal('')),
+  medicalCertificateUrl: z.string().url().optional().or(z.literal('')),
+  scanReportUrl: z.string().url().optional().or(z.literal('')),
+  pdfAttachmentUrl: z.string().url().optional().or(z.literal('')),
+  imageAttachmentUrl: z.string().url().optional().or(z.literal('')),
+  docAttachmentUrl: z.string().url().optional().or(z.literal('')),
 });
 
 export const CreateStudentSchema = z.object({
@@ -26,7 +34,8 @@ export const CreateStudentSchema = z.object({
   jerseyNumber: z.number().min(1).max(99).optional(),
   jerseySize: z.string().optional(),
   position: z.string().optional(),
-  photo: z.string().url().optional(),
+  positions: z.array(z.string()).optional(),
+  photo: z.string().url().optional().or(z.literal('')),
   guardian: GuardianInfoSchema,
   medicalInfo: MedicalInfoSchema,
 });
@@ -52,8 +61,69 @@ export const AddCoachRemarkSchema = z.object({
   text: z.string().min(1),
 });
 
+export const UpdateStudentStatusSchema = z.object({
+  status: z.enum(["active", "inactive", "on_leave", "graduated", "dropped_out"]),
+});
+
+export const TransferStudentFranchiseSchema = z.object({
+  toFranchiseId: z.string().min(1),
+  reason: z.string().max(500).optional(),
+});
+
+export const RegisterPublicStudentSchema = z
+  .object({
+    email: z.string().email().optional(),
+    guardianEmail: z.string().email().optional(),
+    password: z.string().min(6).max(100),
+    firstName: z.string().min(1).max(50),
+    lastName: z.string().min(1).max(50),
+    phone: z.string().optional(),
+    guardianPhone: z.string().optional(),
+    guardianName: z.string().optional(),
+    dateOfBirth: z.string(),
+    gender: z.string().optional(),
+    ageGroup: z.string().optional(),
+    position: z.string().optional(),
+    positions: z.array(z.string()).optional(),
+    guardian: GuardianInfoSchema.optional(),
+  })
+  .refine((data) => !!(data.email || data.guardianEmail), {
+    message: "Student email is required",
+    path: ["email"],
+  });
+
+export const SendGuardianOtpSchema = z.object({
+  guardianEmail: z.string().email("A valid guardian email is required"),
+  invitationId: z.string().min(1, "Invitation ID is required"),
+});
+
+export const RespondSquadInvitationSchema = z.object({
+  action: z.enum(["accept", "reject"]),
+  rejectionReason: z.string().max(500).optional(),
+  guardianEmail: z.string().email().optional(),
+  guardianName: z.string().optional(),
+  guardianPhone: z.string().optional(),
+  guardianPassword: z.string().min(6).optional(),
+  otp: z.string().optional(),
+});
+
+export const ClaimStudentSchema = z.object({
+  franchiseId: z.string().min(1),
+  teamId: z.string().optional(),
+  coachId: z.string().optional(),
+  jerseyNumber: z.number().optional(),
+  jerseySize: z.string().optional(),
+  position: z.string().optional(),
+});
+
 export type CreateStudentDto = z.infer<typeof CreateStudentSchema>;
 export type UpdateStudentDto = z.infer<typeof UpdateStudentSchema>;
 export type AddPerformanceDto = z.infer<typeof AddPerformanceSchema>;
 export type MarkAttendanceDto = z.infer<typeof MarkAttendanceSchema>;
 export type AddCoachRemarkDto = z.infer<typeof AddCoachRemarkSchema>;
+export type UpdateStudentStatusDto = z.infer<typeof UpdateStudentStatusSchema>;
+export type TransferStudentFranchiseDto = z.infer<typeof TransferStudentFranchiseSchema>;
+export type RegisterPublicStudentDto = z.infer<typeof RegisterPublicStudentSchema>;
+export type SendGuardianOtpDto = z.infer<typeof SendGuardianOtpSchema>;
+export type RespondSquadInvitationDto = z.infer<typeof RespondSquadInvitationSchema>;
+export type ClaimStudentDto = z.infer<typeof ClaimStudentSchema>;

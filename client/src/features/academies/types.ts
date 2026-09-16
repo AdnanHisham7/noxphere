@@ -6,6 +6,15 @@ export interface Location {
   fieldNumber?: string;
 }
 
+export interface AcademyPitch {
+  id: string;
+  name: string;
+  fieldNumber?: string;
+  surfaceType?: string;
+  address?: string;
+  isActive?: boolean;
+}
+
 export interface Manager {
   id: string;
   firstName: string;
@@ -20,8 +29,12 @@ export interface Academy {
   managerId: string;
   manager?: Manager; // populated from backend
   location: Location;
+  pitches?: AcademyPitch[];
   ageGroups: string[];
   maxStudents: number;
+  subscriptionRateOverride?: number;
+  staffRateOverride?: number;
+  dataProtectionContactEmail?: string;
   isActive: boolean;
   transferWallEnabled: boolean;
   alertBeforeMinutes: number;
@@ -29,6 +42,7 @@ export interface Academy {
   absentAlertDays: number;
   dueDateAlertDays: number;
   feeQrImageUrl?: string;
+  logo?: string;
   skillParameters: string[];
   createdAt: string;
   updatedAt: string;
@@ -38,8 +52,8 @@ export interface CreateAcademyPayload {
   name: string;
   academyCode?: string;
   location: Location;
+  logo?: string;
   ageGroups: string[];
-  maxStudents: number;
   alertBeforeMinutes: number;
   notificationAlertAfterMinutes: number;
   absentAlertDays?: number;
@@ -57,13 +71,17 @@ export interface CreateAcademyPayload {
 export interface AcademyConfigPayload {
   name?: string;
   location?: Partial<Location>;
+  pitches?: AcademyPitch[];
   maxStudents?: number;
+  subscriptionRateOverride?: number;
+  staffRateOverride?: number;
+  dataProtectionContactEmail?: string;
   ageGroups?: string[];
   alertBeforeMinutes?: number;
   notificationAlertAfterMinutes?: number;
   absentAlertDays?: number;
   dueDateAlertDays?: number;
   feeQrImageUrl?: string;
-  skillParameters?: string[];
+  logo?: string;
   isActive?: boolean;
 }

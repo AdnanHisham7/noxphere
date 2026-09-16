@@ -8,6 +8,7 @@ export type UploadCategory =
   | "player_photo"
   | "team_logo"
   | "team_banner"
+  | "academy_logo"
   | "coach_resource"
   | "fee_qr"
   | "fee_receipt"
@@ -18,6 +19,7 @@ const FOLDER_BY_CATEGORY: Record<UploadCategory, string> = {
   player_photo: "noxphere/players/photos",
   team_logo: "noxphere/teams/logos",
   team_banner: "noxphere/teams/banners",
+  academy_logo: "noxphere/academies/logos",
   coach_resource: "noxphere/resources",
   fee_qr: "noxphere/fees/qr",
   fee_receipt: "noxphere/fees/receipts",
@@ -31,6 +33,7 @@ const RESOURCE_TYPE_BY_CATEGORY: Record<UploadCategory, "image" | "raw"> = {
   player_photo: "image",
   team_logo: "image",
   team_banner: "image",
+  academy_logo: "image",
   coach_resource: "raw",
   fee_qr: "image",
   fee_receipt: "raw",
@@ -65,15 +68,30 @@ export class CloudinaryService {
     ensureConfigured();
 
     return new Promise((resolve, reject) => {
+      const isImage = RESOURCE_TYPE_BY_CATEGORY[category] === "image";
+      const isFeeQrOrNotification = category === "fee_qr" || category === "notification_image";
+      const isWebp = originalFilename.toLowerCase().endsWith(".webp");
+
+      const uploadOptions: Record<string, unknown> = {
+        folder: FOLDER_BY_CATEGORY[category],
+        resource_type: RESOURCE_TYPE_BY_CATEGORY[category],
+        use_filename: true,
+        unique_filename: true,
+        filename_override: isImage && (isWebp || isFeeQrOrNotification)
+          ? originalFilename.replace(/\.webp$/i, ".png")
+          : originalFilename,
+        overwrite: false,
+      };
+
+      // WhatsApp Cloud API only accepts JPEG or PNG for image messages (rejecting WebP).
+      // Force PNG format for fee QR codes, notification banners, and any WebP upload
+      // so Cloudinary reliably stores and serves crisp, WhatsApp-compatible PNGs.
+      if (isImage && (isFeeQrOrNotification || isWebp)) {
+        uploadOptions.format = "png";
+      }
+
       const stream = cloudinary.uploader.upload_stream(
-        {
-          folder: FOLDER_BY_CATEGORY[category],
-          resource_type: RESOURCE_TYPE_BY_CATEGORY[category],
-          public_id: originalFilename,   // includes .pdf
-          use_filename: false,
-          unique_filename: true,
-          overwrite: false,
-        },
+        uploadOptions,
         (error, result?: UploadApiResponse) => {
           if (error || !result) {
             logger.error("Cloudinary upload failed", error);
@@ -94,7 +112,7 @@ export class CloudinaryService {
 
   async deleteByUrl(url: string, category: UploadCategory): Promise<void> {
     ensureConfigured();
-    const publicId = this.extractPublicId(url);
+    const publicId = this.extractPublicId(url, category);
     if (!publicId) return;
     try {
       await cloudinary.uploader.destroy(publicId, {
@@ -108,9 +126,13 @@ export class CloudinaryService {
     }
   }
 
-  private extractPublicId(url: string): string | null {
-    // e.g. https://res.cloudinary.com/<cloud>/image/upload/v169.../noxphere/players/photos/abc123.jpg
-    const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z0-9]+$/);
+  private extractPublicId(url: string, category: UploadCategory): string | null {
+    const isRaw = RESOURCE_TYPE_BY_CATEGORY[category] === "raw";
+    if (isRaw) {
+      const match = url.match(/\/upload\/(?:v\d+\/)?(.+)$/);
+      return match ? match[1] : null;
+    }
+    const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[a-zA-Z0-9]+)?$/);
     return match ? match[1] : null;
   }
 }

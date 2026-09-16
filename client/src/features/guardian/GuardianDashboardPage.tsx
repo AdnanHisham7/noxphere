@@ -63,7 +63,7 @@ const GuardianDashboardPage: React.FC = () => {
           ) : (
             <>
               <h2 className="font-orbital text-lg font-medium text-nox-high mb-4">Your children</h2>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
                 {data.children.map((child) => {
                   const todayStatus = attendanceByStudent.get(child.id);
                   return (
@@ -86,13 +86,18 @@ const GuardianDashboardPage: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                      <div className="mt-4 flex items-center justify-between">
-                        <span className="text-xs text-nox-mid">Today</span>
-                        {todayStatus ? (
-                          <NoxStatusBadge status={todayStatus} />
-                        ) : (
-                          <span className="text-xs text-nox-low font-mono">Not marked</span>
-                        )}
+                      <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs text-nox-mid">
+                          <span>Today:</span>
+                          {todayStatus ? (
+                            <NoxStatusBadge status={todayStatus} />
+                          ) : (
+                            <span className="text-xs text-nox-low font-mono">Not marked</span>
+                          )}
+                        </div>
+                        <span className="text-2xs font-mono text-core-400 group-hover:underline flex items-center gap-1">
+                          View &amp; QR &rarr;
+                        </span>
                       </div>
                     </Link>
                   );

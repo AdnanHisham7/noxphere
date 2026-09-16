@@ -1,6 +1,7 @@
 // src/components/ui/Modal.tsx
 import React from "react";
 import { clsx } from "clsx";
+import { X } from "lucide-react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -27,7 +28,7 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -42,20 +43,21 @@ export const Modal: React.FC<ModalProps> = ({
         )}
       >
         {/* Fixed Header */}
-        <div className="flex items-center justify-between p-5 border-b border-white/5 flex-shrink-0">
-          <h2 className="font-display font-bold text-white uppercase tracking-wide">
+        <div className="flex items-center justify-between px-4 py-3.5 sm:p-5 border-b border-slate-200 dark:border-white/5 flex-shrink-0">
+          <h2 className="font-display font-bold text-slate-900 dark:text-white uppercase tracking-wide text-sm sm:text-base">
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="btn-ghost text-slate-400 hover:text-white p-1 transition-colors"
+            className="btn-ghost text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 transition-colors"
+            aria-label="Close"
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
         
         {/* Scrollable Body Content */}
-        <div className="p-5 overflow-y-auto min-h-0 custom-scrollbar">
+        <div className="p-4 sm:p-5 overflow-y-auto min-h-0 custom-scrollbar">
           {children}
         </div>
       </div>

@@ -5,11 +5,16 @@ import { UserEntity, UserRole, UserPermissions, defaultPermissions } from "../..
 import { NotFoundError, ConflictError, BadRequestError } from "../../../shared/errors/AppError";
 import { CreateUserDto, UpdateUserDto, ResetPasswordDto } from "../../dtos/users.dto";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
+import { UserModel } from "../../../infrastructure/database/models/User.model";
+import { EmployeeModel } from "../../../infrastructure/database/models/Employee.model";
+import { EmployeeRoleModel } from "../../../infrastructure/database/models/EmployeeRole.model";
+import { normalizePhone, getPhoneMatchVariants } from "../../../shared/utils/phone";
 
 export interface RequestingUser {
   sub: string;
   role: UserRole;
   franchiseId?: string;
+  academyId?: string;
 }
 
 function sanitize(user: UserEntity) {
@@ -67,6 +72,15 @@ export class UsersUseCases {
     const existing = await this.userRepo.findByEmail(dto.email);
     if (existing) throw new ConflictError("A user with this email already exists");
 
+    if (dto.phone) {
+      const cleanPhone = normalizePhone(dto.phone);
+      const existingPhone = await UserModel.findOne({
+        phone: { $in: getPhoneMatchVariants(cleanPhone) },
+      });
+      if (existingPhone) throw new ConflictError("A user with this phone number already exists");
+      dto.phone = cleanPhone;
+    }
+
     // A coach belongs to an academy, not to a single franchise within it —
     // this is what lets them operate across every franchise of that
     // academy without ever being bound to one branch. A manager's own
@@ -76,22 +90,21 @@ export class UsersUseCases {
     let academyId: string | undefined;
     let franchiseId: string | undefined = dto.franchiseId;
     if (dto.role === "coach") {
-      academyId = dto.academyId;
+      academyId = dto.academyId || requester?.academyId;
       if (!academyId && requester?.role === "manager") {
-        if (!requester.franchiseId) {
-          throw new BadRequestError("Your account isn't linked to a franchise, so a coach's academy can't be resolved");
+        if (requester.franchiseId) {
+          const franchise = await FranchiseModel.findById(requester.franchiseId).select("academyId").lean();
+          if (franchise) {
+            academyId = franchise.academyId.toString();
+          }
         }
-        const franchise = await FranchiseModel.findById(requester.franchiseId).select("academyId").lean();
-        if (!franchise) throw new NotFoundError("Franchise");
-        academyId = franchise.academyId.toString();
       }
       if (!academyId) {
-        throw new BadRequestError("academyId is required to create a coach");
+        throw new BadRequestError("Your account isn't linked to a franchise, so a coach's academy can't be resolved");
       }
-      // Coaches are never scoped by franchiseId going forward — any value
-      // sent for a coach is ignored so a stale/incorrect binding can never
-      // be created.
-      franchiseId = undefined;
+      if (!franchiseId || franchiseId === "") {
+        franchiseId = undefined;
+      }
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
@@ -109,12 +122,73 @@ export class UsersUseCases {
       franchiseId,
       academyId,
     });
+
+    // If a coach was created and belongs to an academy, automatically ensure an Employee record
+    // with the 'Coach' role exists so the academy manager can manage the coach's salary.
+    if (dto.role === "coach" && academyId) {
+      try {
+        let coachRole = await EmployeeRoleModel.findOne({ academyId, name: "Coach" });
+        if (!coachRole) {
+          coachRole = await EmployeeRoleModel.create({
+            academyId,
+            name: "Coach",
+            permissions: ["canManageSessions", "canManageAttendance", "canManagePerformance", "canManageSelection"],
+          });
+        }
+
+        const existingEmp = await EmployeeModel.findOne({
+          academyId,
+          $or: [{ userId: user.id }, { email: dto.email.toLowerCase() }],
+        });
+
+        if (!existingEmp) {
+          await EmployeeModel.create({
+            academyId,
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            phone: dto.phone,
+            email: dto.email.toLowerCase(),
+            employeeType: "staff",
+            userId: user.id as any,
+            roleId: coachRole._id,
+            salaryAmount: dto.salaryAmount ?? 0,
+            joinDate: new Date(),
+            isActive: true,
+          });
+        } else {
+          existingEmp.userId = user.id as any;
+          existingEmp.roleId = coachRole._id as any;
+          existingEmp.employeeType = "staff";
+          if (dto.salaryAmount !== undefined) {
+            existingEmp.salaryAmount = dto.salaryAmount;
+          }
+          await existingEmp.save();
+        }
+      } catch (empErr) {
+        console.error("Failed to auto-create employee profile for coach:", empErr);
+      }
+    }
+
     return sanitize(user);
   }
 
   async updateUser(id: string, dto: UpdateUserDto) {
     const { permissions: _permissionsPatch, ...rest } = dto;
-    const updates: Partial<UserEntity> = { ...rest };
+    const updates: any = { ...rest };
+    if (updates.franchiseId === "") {
+      updates.franchiseId = null;
+    }
+
+    if (dto.phone) {
+      const cleanPhone = normalizePhone(dto.phone);
+      const existingPhone = await UserModel.findOne({
+        _id: { $ne: id },
+        phone: { $in: getPhoneMatchVariants(cleanPhone) },
+      });
+      if (existingPhone) throw new ConflictError("Another user with this phone number already exists");
+      updates.phone = cleanPhone;
+    }
+
     if (dto.role) {
       updates.permissions = {
         ...defaultPermissions[dto.role],
@@ -127,6 +201,21 @@ export class UsersUseCases {
     }
     const user = await this.userRepo.update(id, updates);
     if (!user) throw new NotFoundError("User");
+
+    // Sync any name/phone/salary updates to linked Employee record
+    if (dto.firstName || dto.lastName || dto.phone || dto.salaryAmount !== undefined) {
+      const empUpdates: any = {};
+      if (dto.firstName) empUpdates.firstName = dto.firstName;
+      if (dto.lastName) empUpdates.lastName = dto.lastName;
+      if (dto.phone) empUpdates.phone = dto.phone;
+      if (dto.salaryAmount !== undefined) empUpdates.salaryAmount = dto.salaryAmount;
+      try {
+        await EmployeeModel.findOneAndUpdate({ userId: id }, empUpdates);
+      } catch (empErr) {
+        console.error("Failed to sync employee details for user update:", empErr);
+      }
+    }
+
     return sanitize(user);
   }
 
@@ -135,6 +224,14 @@ export class UsersUseCases {
     if (!user) throw new NotFoundError("User");
     const updated = await this.userRepo.update(id, { isActive: !user.isActive });
     if (!updated) throw new NotFoundError("User");
+
+    // Sync active status to linked Employee
+    try {
+      await EmployeeModel.findOneAndUpdate({ userId: id }, { isActive: updated.isActive });
+    } catch (empErr) {
+      console.error("Failed to sync employee active status:", empErr);
+    }
+
     return sanitize(updated);
   }
 
@@ -153,5 +250,12 @@ export class UsersUseCases {
     }
     const success = await this.userRepo.softDelete(id);
     if (!success) throw new NotFoundError("User");
+
+    // Deactivate linked employee
+    try {
+      await EmployeeModel.findOneAndUpdate({ userId: id }, { isActive: false });
+    } catch (empErr) {
+      console.error("Failed to deactivate linked employee on deleteUser:", empErr);
+    }
   }
 }

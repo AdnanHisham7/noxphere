@@ -17,11 +17,39 @@ export const authApi = baseApi.injectEndpoints({
     }),
     getMe: builder.query<any, void>({
       query: () => '/auth/me',
+      transformResponse: (res: { data: any }) => res.data,
+      providesTags: ['User'],
+    }),
+    updateProfile: builder.mutation<any, { firstName?: string; lastName?: string; avatar?: string; photo?: string }>({
+      query: (body) => ({ url: '/auth/profile', method: 'PATCH', body }),
+      transformResponse: (res: { data: any }) => res.data,
+      invalidatesTags: ['User'],
+    }),
+    changePassword: builder.mutation<void, { currentPassword: string; newPassword: string }>({
+      query: (body) => ({ url: '/auth/change-password', method: 'POST', body }),
+    }),
+    checkAvailability: builder.query<{ available: boolean; field?: 'email' | 'phone' | 'both'; message?: string }, { email?: string; phone?: string; purpose?: 'student' | 'guardian' }>({
+      query: (params) => ({
+        url: '/auth/check-availability',
+        method: 'GET',
+        params,
+      }),
+      transformResponse: (res: { data: any }) => res.data,
     }),
   }),
 });
 
-export const { useLoginMutation, useRegisterMutation, useRefreshTokenMutation, useLogoutMutation, useGetMeQuery } = authApi;
+export const {
+  useLoginMutation,
+  useRegisterMutation,
+  useRefreshTokenMutation,
+  useLogoutMutation,
+  useGetMeQuery,
+  useUpdateProfileMutation,
+  useChangePasswordMutation,
+  useCheckAvailabilityQuery,
+  useLazyCheckAvailabilityQuery,
+} = authApi;
 
 
 

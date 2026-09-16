@@ -8,6 +8,15 @@ export interface Location {
   fieldNumber?: string;
 }
 
+export interface AcademyPitch {
+  id: string;
+  name: string;
+  fieldNumber?: string;
+  surfaceType?: string;
+  address?: string;
+  isActive?: boolean;
+}
+
 export interface AcademyManager {
   id: string;
   firstName: string;
@@ -19,10 +28,23 @@ export interface AcademyEntity {
   id: string;
   name: string;
   academyCode: string;
+  managerId?: string;
   manager?: AcademyManager;
   location: Location;
   ageGroups: string[];
   maxStudents: number;
+  // Overrides PlatformSettings.defaultRatePerStudentPerDay for this
+  // academy's subscription checkout — e.g. a negotiated rate. Unset means
+  // "use the platform default".
+  subscriptionRateOverride?: number;
+  // Per-academy override of PlatformSettings.defaultStaffRatePerStaffPerMonth
+  // — same override pattern as subscriptionRateOverride above, for the
+  // staff-seat billing line instead of the student one.
+  staffRateOverride?: number;
+  // Surfaced in the DPDP consent notice as the contact for exercising
+  // data-principal rights (access, correction, erasure, grievance) and
+  // for consent withdrawal — Rule 3(c) requires a communication link.
+  dataProtectionContactEmail?: string;
   isActive: boolean;
   transferWallEnabled: boolean;
   alertBeforeMinutes: number;
@@ -30,7 +52,9 @@ export interface AcademyEntity {
   absentAlertDays: number;
   dueDateAlertDays: number;
   feeQrImageUrl?: string;
+  logo?: string;
   skillParameters: string[];
+  pitches?: AcademyPitch[];
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -41,6 +65,7 @@ export interface CreateAcademyEntity {
   academyCode: string;
   managerId: string;
   location: Location;
+  pitches?: AcademyPitch[];
   ageGroups: string[];
   maxStudents: number;
   isActive: boolean;
@@ -48,5 +73,7 @@ export interface CreateAcademyEntity {
   notificationAlertAfterMinutes: number;
   absentAlertDays: number;
   dueDateAlertDays: number;
+  feeQrImageUrl?: string;
+  logo?: string;
   skillParameters: string[];
 }

@@ -140,8 +140,12 @@ export class TransferUseCases {
     }
     const student = await StudentModel.findById(input.studentId);
     if (!student) throw new NotFoundError("Student");
+    if (!student.franchiseId) {
+      throw new BadRequestError("Only enrolled players affiliated with a franchise can be listed on the transfer wall");
+    }
 
     const academy = await this.resolveAcademyForFranchise(student.franchiseId.toString());
+
     if (!academy.transferWallEnabled) {
       throw new ForbiddenError("The transfer wall is disabled for your academy — contact your platform admin");
     }

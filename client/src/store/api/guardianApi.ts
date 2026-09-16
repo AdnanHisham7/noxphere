@@ -1,5 +1,6 @@
-// src/store/api/guardianApi.ts
 import { baseApi } from "./baseApi";
+import type { Session } from "./scheduleApi";
+import type { PublicProfileSettings } from "./consentApi";
 
 export interface GuardianChild {
   _id: string;
@@ -11,7 +12,11 @@ export interface GuardianChild {
   jerseyNumber?: number;
   attendancePercentage: number;
   overallRating: number;
-  teamId?: { name: string; ageGroup: string };
+  franchiseId?: { _id?: string; name?: string; academyId?: string } | string;
+  teamId?: { _id?: string; name: string; ageGroup?: string } | string;
+  publicProfileEnabled?: boolean;
+  publicProfileToken?: string;
+  publicProfileSettings?: PublicProfileSettings;
 }
 
 export interface GuardianDashboard {
@@ -67,10 +72,34 @@ export interface FeeRecord {
 
 export interface PerformanceRecord {
   _id: string;
+  sessionId?: {
+    _id?: string;
+    id?: string;
+    title?: string;
+    type?: string;
+    date?: string;
+    startTime?: string;
+    endTime?: string;
+    location?: string;
+    notes?: string;
+  } | string;
+  sessionDate: string;
+  skillScores?: { parameter: string; score: number }[];
+  overallScore: number;
+  remarks?: string;
+  videoUrl?: string;
+  coachId?: { _id?: string; firstName: string; lastName: string } | string;
   createdAt: string;
   overallRating?: number;
   notes?: string;
   [key: string]: unknown;
+}
+
+export interface GuardianCoachRemark {
+  _id: string;
+  text: string;
+  date: string;
+  coachId?: { _id?: string; firstName: string; lastName: string } | string;
 }
 
 export const guardianApi = baseApi.injectEndpoints({
@@ -108,6 +137,17 @@ export const guardianApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: PerformanceRecord[] }) => res.data,
       providesTags: (_r, _e, studentId) => [{ type: "Performance", id: studentId }],
     }),
+    getChildRemarks: builder.query<GuardianCoachRemark[], string>({
+      query: (studentId) => `/guardian/children/${studentId}/remarks`,
+      transformResponse: (res: { data: GuardianCoachRemark[] }) => res.data,
+      providesTags: (_r, _e, studentId) => [{ type: "Student", id: studentId }],
+    }),
+    getChildSessions: builder.query<Session[], string>({
+      query: (studentId) => `/guardian/children/${studentId}/sessions`,
+      transformResponse: (res: { data: Session[] } | Session[]) =>
+        Array.isArray(res) ? res : (res as any).data ?? [],
+      providesTags: (_r, _e, studentId) => [{ type: "Schedule", id: `child-${studentId}` }],
+    }),
   }),
 });
 
@@ -118,4 +158,6 @@ export const {
   useGetChildAttendanceQuery,
   useGetChildFeesQuery,
   useGetChildPerformanceQuery,
+  useGetChildRemarksQuery,
+  useGetChildSessionsQuery,
 } = guardianApi;

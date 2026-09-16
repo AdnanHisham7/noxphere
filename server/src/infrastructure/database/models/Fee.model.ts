@@ -1,6 +1,18 @@
 // src/infrastructure/database/models/Fee.model.ts
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface FeeAuditLog {
+  action: string;
+  amount: number;
+  installmentNumber: number;
+  paymentMethod?: string;
+  transactionId?: string;
+  timestamp: Date;
+  performedBy: mongoose.Types.ObjectId;
+  performedByName: string;
+  details?: string;
+}
+
 export interface FeeDocument extends Document {
   studentId: mongoose.Types.ObjectId;
   franchiseId: mongoose.Types.ObjectId;
@@ -27,6 +39,7 @@ export interface FeeDocument extends Document {
   overallStatus: string;
   notes?: string;
   createdBy: mongoose.Types.ObjectId;
+  auditLog: FeeAuditLog[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -50,6 +63,18 @@ const InstallmentSchema = new Schema({
   lastReminderAt: Date,
 }, { _id: false });
 
+const AuditLogSchema = new Schema({
+  action: { type: String, required: true },
+  amount: { type: Number, required: true },
+  installmentNumber: { type: Number, required: true },
+  paymentMethod: String,
+  transactionId: String,
+  timestamp: { type: Date, default: Date.now },
+  performedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  performedByName: { type: String, required: true },
+  details: { type: String },
+}, { _id: false });
+
 const FeeSchema = new Schema<FeeDocument>(
   {
     studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
@@ -69,6 +94,7 @@ const FeeSchema = new Schema<FeeDocument>(
     },
     notes: String,
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    auditLog: { type: [AuditLogSchema], default: [] },
   },
   { timestamps: true }
 );

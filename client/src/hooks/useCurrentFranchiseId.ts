@@ -2,6 +2,31 @@
 import { useSelector } from "react-redux";
 import { RootState } from "../store";
 
+export const NO_SWITCH_PREFIXES = [
+  "/dashboard",
+  "/franchises",
+  "/coaches",
+  "/employees",
+  "/complaints",
+  "/subscription",
+  "/settings",
+  "/nfc-cards",
+  "/academies",
+  "/users",
+  "/finance",
+  "/profile",
+];
+
+export const isNoFranchiseSwitchPage = (pathname: string): boolean => {
+  return NO_SWITCH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+};
+
+export const isFranchiseRequiredPage = (pathname: string): boolean => {
+  return !isNoFranchiseSwitchPage(pathname);
+};
+
 export const useCurrentFranchiseId = (): string | null => {
   return useSelector((state: RootState) => {
     // Coaches are no longer locked to a single franchise — like a

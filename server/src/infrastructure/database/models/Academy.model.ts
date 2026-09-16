@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 import {
   AcademyEntity,
+  AcademyPitch,
   Location,
 } from "../../../domain/entities/Academy.entity";
 
@@ -9,12 +10,16 @@ export interface AcademyDocument extends Document {
   academyCode: string;
   managerId: mongoose.Types.ObjectId;
   location: Location;
+  pitches?: AcademyPitch[];
   ageGroups: string[];
   maxStudents: number;
+  subscriptionRateOverride?: number;
   isActive: boolean;
   transferWallEnabled: boolean;
   alertBeforeMinutes: number;
   notificationAlertAfterMinutes: number;
+  staffRateOverride?: number;
+  dataProtectionContactEmail?: string;
   // Guardian alert thresholds — how many consecutive absent days before
   // an automated alert fires, and how many days before an installment's
   // due date the reminder goes out. Editable per-academy from the
@@ -25,6 +30,7 @@ export interface AcademyDocument extends Document {
   // WhatsApp alert (see NotificationService.sendFeeDueAlert). Uploaded by
   // the manager from the Fees page.
   feeQrImageUrl?: string;
+  logo?: string;
   skillParameters: string[];
   deletedAt?: Date;
   createdAt: Date;
@@ -42,6 +48,18 @@ const LocationSchema = new Schema<Location>(
   { _id: false },
 );
 
+const PitchSchema = new Schema<AcademyPitch>(
+  {
+    id: { type: String, required: true },
+    name: { type: String, required: true, trim: true },
+    fieldNumber: { type: String, trim: true },
+    surfaceType: { type: String, trim: true, default: "Artificial Turf" },
+    address: { type: String, trim: true },
+    isActive: { type: Boolean, default: true },
+  },
+  { _id: false },
+);
+
 const AcademySchema = new Schema<AcademyDocument>(
   {
     name: { type: String, required: true, trim: true },
@@ -53,8 +71,15 @@ const AcademySchema = new Schema<AcademyDocument>(
       index: true,
     },
     location: { type: LocationSchema, required: true },
+    pitches: { type: [PitchSchema], default: [] },
     ageGroups: [{ type: String }],
     maxStudents: { type: Number, default: 100 },
+    // Per-academy override of PlatformSettings.defaultRatePerStudentPerDay
+    // for this academy's subscription — e.g. a negotiated rate. Set only
+    // by super_admin; unset means "use the platform default".
+    subscriptionRateOverride: { type: Number, min: 0 },
+    staffRateOverride: { type: Number, min: 0 },
+    dataProtectionContactEmail: { type: String, trim: true, lowercase: true },
     isActive: { type: Boolean, default: true, index: true },
     transferWallEnabled: { type: Boolean, default: true },
     alertBeforeMinutes: { type: Number, default: 60 },
@@ -62,8 +87,15 @@ const AcademySchema = new Schema<AcademyDocument>(
     absentAlertDays: { type: Number, default: 5, min: 1 },
     dueDateAlertDays: { type: Number, default: 3, min: 0 },
     feeQrImageUrl: { type: String },
+    logo: { type: String, trim: true },
     skillParameters: {
       type: [String],
+      validate: {
+        validator: function (v: string[]) {
+          return !v || (Array.isArray(v) && v.length === 6);
+        },
+        message: "Academy must have exactly 6 skill parameters",
+      },
       default: [
         "Dribbling",
         "Passing",

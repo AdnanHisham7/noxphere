@@ -4,6 +4,8 @@ import { StudentModel } from "../../../infrastructure/database/models/Student.mo
 import { AttendanceModel } from "../../../infrastructure/database/models/Attendance.model";
 import { FeeModel } from "../../../infrastructure/database/models/Fee.model";
 import { PerformanceModel } from "../../../infrastructure/database/models/Performance.model";
+import { SessionModel } from "../../../infrastructure/database/models/Session.model";
+import { CoachRemarkModel } from "../../../infrastructure/database/models/CoachRemark.model";
 import { ForbiddenError } from "../../../shared/errors/AppError";
 
 export class GuardianUseCases {
@@ -134,12 +136,59 @@ export class GuardianUseCases {
 
   async getChildPerformance(guardianUserId: string, studentId: string) {
     await this.assertOwnsStudent(guardianUserId, studentId);
-    const records = await PerformanceModel.find({ studentId }).sort({ createdAt: -1 }).limit(20).lean();
+    const records = await PerformanceModel.find({ studentId })
+      .populate("sessionId", "title date startTime endTime location type notes")
+      .populate("coachId", "firstName lastName")
+      .sort({ sessionDate: -1, createdAt: -1 })
+      .limit(50)
+      .lean();
     return records;
   }
 
+  async getChildRemarks(guardianUserId: string, studentId: string) {
+    await this.assertOwnsStudent(guardianUserId, studentId);
+    const remarks = await CoachRemarkModel.find({ studentId })
+      .populate("coachId", "firstName lastName")
+      .sort({ date: -1 })
+      .lean();
+    return remarks;
+  }
+
   async getChildProfile(guardianUserId: string, studentId: string) {
-    const student = await this.assertOwnsStudent(guardianUserId, studentId);
+    await this.assertOwnsStudent(guardianUserId, studentId);
+    const student = await StudentModel.findById(studentId)
+      .populate("teamId", "name ageGroup")
+      .populate("franchiseId", "name academyId")
+      .lean();
     return student;
+  }
+
+  async getChildSessions(guardianUserId: string, studentId: string) {
+    const student = await this.assertOwnsStudent(guardianUserId, studentId);
+    const conditions: Array<Record<string, unknown>> = [
+      { playerIds: student._id },
+      { rosterPlayerIds: student._id },
+    ];
+    if (student.teamId) {
+      conditions.push({ targetType: "team", teamId: student.teamId });
+    }
+    if (student.ageGroup) {
+      conditions.push(
+        { targetType: "category", category: student.ageGroup },
+        { targetType: "category", categories: student.ageGroup },
+      );
+    }
+    const filter: Record<string, unknown> = {
+      franchiseId: student.franchiseId,
+      deletedAt: { $exists: false },
+      $or: conditions,
+    };
+    const sessions = await SessionModel.find(filter)
+      .populate("teamId", "name")
+      .populate("coachId", "firstName lastName")
+      .sort({ date: 1, startTime: 1 })
+      .limit(30)
+      .lean();
+    return sessions;
   }
 }

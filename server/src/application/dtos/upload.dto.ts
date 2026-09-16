@@ -6,6 +6,7 @@ export const UploadImageSchema = z.object({
     "player_photo",
     "team_logo",
     "team_banner",
+    "academy_logo",
     "fee_qr",
     "notification_image",
     "notification_document",

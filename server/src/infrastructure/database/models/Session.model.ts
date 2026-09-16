@@ -3,14 +3,20 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface SessionDocument extends Document {
   franchiseId: mongoose.Types.ObjectId;
-  targetType: "team" | "category";
+  targetType: "team" | "category" | "batch";
   teamId?: mongoose.Types.ObjectId;
   category?: string;
-  coachId: mongoose.Types.ObjectId;
+  categories?: string[];
+  coachId?: mongoose.Types.ObjectId;
+  coachIds?: mongoose.Types.ObjectId[];
   type: string;
-  date: string;
-  startTime: string;
-  endTime: string;
+  date: string; // YYYY-MM-DD (start date for multi-day)
+  startTime: string; // HH:MM (start time for first day)
+  endTime: string; // HH:MM (end time for first day)
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD
+  dailyStartTime?: string; // HH:MM
+  dailyEndTime?: string; // HH:MM
   location: string;
   fieldNumber?: string;
   status: string;
@@ -20,6 +26,9 @@ export interface SessionDocument extends Document {
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  playerIds?: mongoose.Types.ObjectId[];
+  rosterPlayerIds?: mongoose.Types.ObjectId[];
+  documents?: { name: string; url: string }[];
 }
 
 const SessionSchema = new Schema<SessionDocument>(
@@ -27,25 +36,26 @@ const SessionSchema = new Schema<SessionDocument>(
     franchiseId: { type: Schema.Types.ObjectId, ref: "Franchise", required: true, index: true },
     targetType: {
       type: String,
-      enum: ["team", "category"],
+      enum: ["team", "category", "batch"],
       default: "team",
       required: true,
     },
-    // Exactly one of teamId / category is set, depending on targetType —
-    // enforced in the pre-validate hook below rather than at the schema
-    // level, since Mongoose can't express "required if sibling field
-    // equals X" declaratively.
     teamId: { type: Schema.Types.ObjectId, ref: "Team", index: true },
     category: { type: String, index: true },
-    coachId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    categories: [{ type: String }],
+    coachId: { type: Schema.Types.ObjectId, ref: "User", index: true },
+    coachIds: [{ type: Schema.Types.ObjectId, ref: "User" }],
     type: {
       type: String,
-      enum: ["training", "match", "trial", "fitness"],
       default: "training",
     },
     date: { type: String, required: true, index: true }, // YYYY-MM-DD
     startTime: { type: String, required: true },
     endTime: { type: String, required: true },
+    startDate: String,
+    endDate: String,
+    dailyStartTime: String,
+    dailyEndTime: String,
     location: { type: String, required: true },
     fieldNumber: String,
     status: {
@@ -58,6 +68,14 @@ const SessionSchema = new Schema<SessionDocument>(
     cancelReason: String,
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     deletedAt: { type: Date, select: false },
+    playerIds: [{ type: Schema.Types.ObjectId, ref: "Student" }],
+    rosterPlayerIds: [{ type: Schema.Types.ObjectId, ref: "Student" }],
+    documents: [
+      {
+        name: { type: String, required: true },
+        url: { type: String, required: true },
+      },
+    ],
   },
   {
     timestamps: true,
@@ -73,12 +91,28 @@ const SessionSchema = new Schema<SessionDocument>(
 );
 
 SessionSchema.pre("validate", function (this: SessionDocument, next) {
+  if (this.coachIds && this.coachIds.length > 0 && !this.coachId) {
+    this.coachId = this.coachIds[0];
+  }
+  if (this.coachId && (!this.coachIds || this.coachIds.length === 0)) {
+    this.coachIds = [this.coachId];
+  }
+  if (this.coachId && this.coachIds && !this.coachIds.some((id) => id.toString() === this.coachId!.toString())) {
+    this.coachIds.unshift(this.coachId);
+  }
+  if (this.categories && this.categories.length > 0 && !this.category) {
+    this.category = this.categories[0];
+  }
   if (this.targetType === "team" && !this.teamId) {
     next(new Error("teamId is required when targetType is 'team'"));
     return;
   }
-  if (this.targetType === "category" && !this.category) {
-    next(new Error("category is required when targetType is 'category'"));
+  if (this.targetType === "category" && !this.category && (!this.categories || this.categories.length === 0)) {
+    next(new Error("category or categories are required when targetType is 'category'"));
+    return;
+  }
+  if (this.targetType === "batch" && (!this.playerIds || this.playerIds.length === 0)) {
+    next(new Error("playerIds are required when targetType is 'batch'"));
     return;
   }
   next();

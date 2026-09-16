@@ -18,7 +18,6 @@ export const CreateFranchiseSchema = z.object({
   maxStudents: z.number().min(1).default(100),
   alertBeforeMinutes: z.number().min(0).default(60),
   notificationAlertAfterMinutes: z.number().min(0).default(15),
-  skillParameters: z.array(z.string()).optional(),
 });
 
 export const UpdateFranchiseSchema = z.object({
@@ -29,7 +28,6 @@ export const UpdateFranchiseSchema = z.object({
   maxStudents: z.number().min(1).optional(),
   alertBeforeMinutes: z.number().min(0).optional(),
   notificationAlertAfterMinutes: z.number().min(0).optional(),
-  skillParameters: z.array(z.string()).optional(),
 });
 
 export type CreateFranchiseDto = z.infer<typeof CreateFranchiseSchema>;

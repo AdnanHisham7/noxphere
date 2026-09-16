@@ -61,8 +61,10 @@ export class AcademyController {
       const { id } = req.params;
       const dto = AcademyConfigSchema.parse(req.body);
       const academy = await this.academyUseCases.updateAcademyConfig(id, dto, {
+        sub: req.user!.sub,
         role: req.user!.role,
         franchiseId: req.user!.franchiseId,
+        academyId: req.user!.academyId,
       });
       ResponseHandler.success(res, academy, 'Configuration updated successfully');
     } catch (err) {

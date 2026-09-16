@@ -1,5 +1,5 @@
 // src/domain/entities/User.entity.ts
-export type UserRole = 'super_admin' | 'manager' | 'coach' | 'student' | 'guardian';
+export type UserRole = 'super_admin' | 'manager' | 'coach' | 'student' | 'guardian' | 'employee';
 
 export interface UserPermissions {
   canManageUsers: boolean;
@@ -11,6 +11,12 @@ export interface UserPermissions {
   canManagePerformance: boolean;
   canManageSelection: boolean;
   canSendNotifications: boolean;
+}
+
+export interface WeeklyAvailability {
+  dayOfWeek: number; // 0 = Sunday, 1 = Monday, etc.
+  startTime: string; // HH:MM
+  endTime: string; // HH:MM
 }
 
 export interface UserEntity {
@@ -27,12 +33,9 @@ export interface UserEntity {
   permissions: UserPermissions;
   fcmTokens: string[];
   franchiseId?: string;
-  // Set for coaches (and optionally other roles). A coach is scoped to an
-  // academy, not to a single franchise within it — this is what lets them
-  // operate across every franchise of that academy without being bound to
-  // one branch. franchiseId is kept only as legacy/optional metadata for
-  // coaches and is never used to restrict their access.
   academyId?: string;
+  weeklyAvailability?: WeeklyAvailability[];
+  customUnavailableDates?: string[];
   lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -85,6 +88,22 @@ export const defaultPermissions: Record<UserRole, UserPermissions> = {
     canSendNotifications: false,
   },
   guardian: {
+    canManageUsers: false,
+    canManageFranchises: false,
+    canManageSessions: false,
+    canManageFinance: false,
+    canViewReports: false,
+    canManageAttendance: false,
+    canManagePerformance: false,
+    canManageSelection: false,
+    canSendNotifications: false,
+  },
+  // Every permission starts false — an employee's actual grants come
+  // entirely from their assigned EmployeeRole (see EmployeeUseCases),
+  // copied onto their User.permissions at account-creation time. There's
+  // no sensible "default" employee access the way there is for the
+  // fixed system roles above.
+  employee: {
     canManageUsers: false,
     canManageFranchises: false,
     canManageSessions: false,

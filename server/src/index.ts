@@ -1,4 +1,4 @@
-// src/index.ts
+// src/index.ts - Noxphere Server
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -8,6 +8,7 @@ import rateLimit from "express-rate-limit";
 import mongoSanitize from "express-mongo-sanitize";
 import { createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
+import { setSocketServer } from "./infrastructure/services/SocketRegistry";
 import mongoose from "mongoose";
 
 import { config } from "./config/app.config";
@@ -40,6 +41,9 @@ import { AdminPerformanceController } from "./interfaces/http/controllers/AdminP
 import { AdminPerformanceUseCases } from "./application/use-cases/performance/AdminPerformanceUseCases";
 import { AdminNotificationController } from "./interfaces/http/controllers/AdminNotificationController";
 import { AdminNotificationUseCases } from "./application/use-cases/notification/AdminNotificationUseCases";
+import { UserNotificationController } from "./interfaces/http/controllers/UserNotificationController";
+import { UserNotificationUseCases } from "./application/use-cases/notification/UserNotificationUseCases";
+import { schedulerService } from "./infrastructure/services/SchedulerService";
 import { ScheduleController } from "./interfaces/http/controllers/ScheduleController";
 import { ScheduleUseCases } from "./application/use-cases/schedule/ScheduleUseCases";
 import { SelectionController } from "./interfaces/http/controllers/SelectionController";
@@ -57,8 +61,27 @@ import { UploadController } from "./interfaces/http/controllers/UploadController
 import { CloudinaryService } from "./infrastructure/services/CloudinaryService";
 import { ResourceController } from "./interfaces/http/controllers/ResourceController";
 import { ResourceUseCases } from "./application/use-cases/resource/ResourceUseCases";
+import { AcademySubscriptionController } from "./interfaces/http/controllers/AcademySubscriptionController";
+import { AcademySubscriptionUseCases } from "./application/use-cases/subscription/AcademySubscriptionUseCases";
+import { ConsentController } from "./interfaces/http/controllers/ConsentController";
+import { ConsentUseCases } from "./application/use-cases/consent/ConsentUseCases";
+import { PublicPlayerController } from "./interfaces/http/controllers/PublicPlayerController";
+import { PublicPlayerUseCases } from "./application/use-cases/public-player/PublicPlayerUseCases";
+import { EmployeeController } from "./interfaces/http/controllers/EmployeeController";
+import { EmployeeUseCases } from "./application/use-cases/employee/EmployeeUseCases";
+import { ComplaintController } from "./interfaces/http/controllers/ComplaintController";
+import { ComplaintUseCases } from "./application/use-cases/complaint/ComplaintUseCases";
+import { RegistrationController } from "./interfaces/http/controllers/RegistrationController";
+import { RegistrationUseCases } from "./application/use-cases/student/RegistrationUseCases";
+import { NfcCardController } from "./interfaces/http/controllers/NfcCardController";
+import { NfcCardUseCases } from "./application/use-cases/nfc/NfcCardUseCases";
+import { SquadInvitationController } from "./interfaces/http/controllers/SquadInvitationController";
+import { SquadInvitationUseCases } from "./application/use-cases/student/SquadInvitationUseCases";
+import { PlatformTicketController } from "./interfaces/http/controllers/PlatformTicketController";
+import { PlatformTicketUseCases } from "./application/use-cases/platformTicket/PlatformTicketUseCases";
 
 const app = express();
+
 const httpServer = createServer(app);
 
 // Socket.IO for real-time features
@@ -68,6 +91,7 @@ export const io = new SocketIOServer(httpServer, {
     methods: ["GET", "POST"],
   },
 });
+setSocketServer(io);
 
 // ─── Security Middleware ───────────────────────────────────────────────────────
 app.use(helmet());
@@ -95,6 +119,19 @@ const limiter = rateLimit({
 // ─── General Middleware ────────────────────────────────────────────────────────
 app.use(compression());
 app.use(morgan(config.env === "development" ? "dev" : "combined"));
+
+// Stripe webhook — mounted before express.json() and with express.raw()
+// instead, because Stripe's signature verification needs the exact raw
+// request bytes. Every other route in this app gets its body parsed as
+// JSON below; this one deliberately doesn't.
+app.post(
+  `${config.apiPrefix}/academy-subscriptions/webhook`,
+  express.raw({ type: "application/json" }),
+  (req, res, next) => {
+    req.app.locals.controllers.academySubscription.webhook(req, res, next);
+  },
+);
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
@@ -118,7 +155,8 @@ async function bootstrapDI() {
 
   // Use Cases
   const authUseCases = new AuthUseCases(userRepository as any);
-  const studentUseCases = new StudentUseCases(studentRepository, userRepository);
+  const academySubscriptionUseCases = new AcademySubscriptionUseCases();
+  const studentUseCases = new StudentUseCases(studentRepository, userRepository, academySubscriptionUseCases);
 
   // Controllers
   const authController = new AuthController(authUseCases);
@@ -154,6 +192,8 @@ const academyController = new AcademyController(academyUseCases);
 
   const adminNotificationUseCases = new AdminNotificationUseCases();
   const notificationController = new AdminNotificationController(adminNotificationUseCases);
+  const userNotificationUseCases = new UserNotificationUseCases();
+  const userNotificationController = new UserNotificationController(userNotificationUseCases);
 
   const scheduleUseCases = new ScheduleUseCases();
   const scheduleController = new ScheduleController(scheduleUseCases);
@@ -177,6 +217,23 @@ const academyController = new AcademyController(academyUseCases);
   const uploadController = new UploadController(cloudinaryService);
   const resourceUseCases = new ResourceUseCases(cloudinaryService);
   const resourceController = new ResourceController(resourceUseCases);
+  const academySubscriptionController = new AcademySubscriptionController(academySubscriptionUseCases);
+  const consentUseCases = new ConsentUseCases();
+  const consentController = new ConsentController(consentUseCases);
+  const publicPlayerUseCases = new PublicPlayerUseCases();
+  const publicPlayerController = new PublicPlayerController(publicPlayerUseCases);
+  const employeeUseCases = new EmployeeUseCases(academySubscriptionUseCases);
+  const employeeController = new EmployeeController(employeeUseCases);
+  const complaintUseCases = new ComplaintUseCases();
+  const complaintController = new ComplaintController(complaintUseCases);
+  const registrationUseCases = new RegistrationUseCases(academySubscriptionUseCases);
+  const registrationController = new RegistrationController(registrationUseCases);
+  const nfcCardUseCases = new NfcCardUseCases();
+  const nfcCardController = new NfcCardController(nfcCardUseCases);
+  const squadInvitationUseCases = new SquadInvitationUseCases(academySubscriptionUseCases);
+  const squadInvitationController = new SquadInvitationController(squadInvitationUseCases);
+  const platformTicketUseCases = new PlatformTicketUseCases();
+  const platformTicketController = new PlatformTicketController(platformTicketUseCases);
 
   app.locals.controllers = {
     auth: authController,
@@ -191,6 +248,7 @@ const academyController = new AcademyController(academyUseCases);
     fees: feesController,
     performance: performanceController,
     notification: notificationController,
+    userNotification: userNotificationController,
     schedule: scheduleController,
     selection: selectionController,
     users: usersController,
@@ -199,8 +257,18 @@ const academyController = new AcademyController(academyUseCases);
     franchise: franchiseController,
     upload: uploadController,
     resource: resourceController,
+    academySubscription: academySubscriptionController,
+    consent: consentController,
+    publicPlayer: publicPlayerController,
+    employee: employeeController,
+    complaint: complaintController,
+    registration: registrationController,
+    nfcCard: nfcCardController,
+    squadInvitation: squadInvitationController,
+    platformTicket: platformTicketController,
   };
 }
+
 
 // ─── Routes ────────────────────────────────────────────────────────────────────
 app.use(config.apiPrefix, apiRouter);
@@ -242,6 +310,18 @@ async function startServer() {
 
     await bootstrapDI();
     logger.info("✅ Dependency injection bootstrapped");
+
+    // Schedules today's remaining pre/post-session guardian alerts. This
+    // was previously written but never called from anywhere, so no
+    // session reminder ever fired. It only covers the remainder of
+    // *today* — it needs to run again at the start of each day to pick
+    // up the next day's sessions, which currently requires a restart or
+    // an external daily trigger (e.g. a node-cron job or a platform-level
+    // scheduled task hitting a dedicated endpoint); wiring that
+    // recurrence is a follow-up, not done here.
+    schedulerService.initDailySchedule().catch((err) => {
+      logger.error("❌ Failed to initialize daily notification schedule:", err);
+    });
 
     httpServer.listen(config.port, () => {
       logger.info(`🚀 Server running on port ${config.port} [${config.env}]`);

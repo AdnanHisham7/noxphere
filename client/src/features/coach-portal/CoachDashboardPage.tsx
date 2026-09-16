@@ -2,14 +2,17 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { Users, CalendarCheck, CalendarClock } from "lucide-react";
+import { Users, CalendarCheck, CalendarClock, Clock3 } from "lucide-react";
 import { RootState } from "../../store";
-import { useGetCoachDashboardQuery } from "../../store/api/coachPortalApi";
+import { useGetCoachDashboardQuery, useGetMyAvailabilityQuery } from "../../store/api/coachPortalApi";
 import { NoxPageHeader, NoxStatCard, NoxSkeleton, NoxEmptyState } from "../../components/portal-ui";
+
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const CoachDashboardPage: React.FC = () => {
   const user = useSelector((s: RootState) => s.auth.user);
   const { data, isLoading, isError } = useGetCoachDashboardQuery();
+  const { data: availability, isLoading: availabilityLoading } = useGetMyAvailabilityQuery();
 
   return (
     <div>
@@ -20,7 +23,7 @@ const CoachDashboardPage: React.FC = () => {
       />
 
       {isLoading && (
-        <div className="grid sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
           {[1, 2, 3].map((i) => (
             <NoxSkeleton key={i} className="h-24" />
           ))}
@@ -33,7 +36,7 @@ const CoachDashboardPage: React.FC = () => {
 
       {data && (
         <>
-          <div className="grid sm:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
             <NoxStatCard label="Assigned players" value={data.roster.length} icon={<Users size={18} />} accent="ion" />
             <NoxStatCard
               label="Today's sessions"
@@ -73,6 +76,54 @@ const CoachDashboardPage: React.FC = () => {
             </div>
           )}
 
+          <div className="mb-10">
+            <h2 className="font-orbital text-lg font-medium text-nox-high mb-4">Your availability</h2>
+            {availabilityLoading ? (
+              <NoxSkeleton className="h-24" />
+            ) : !availability?.weeklyAvailability.length && !availability?.customUnavailableDates.length ? (
+              <NoxEmptyState
+                title="No availability set"
+                body="Your manager hasn't set your weekly availability yet — you'll be shown as available every day until they do."
+                icon={<Clock3 size={28} />}
+              />
+            ) : (
+              <div className="nox-card p-5 space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                  {DAY_LABELS.map((label, i) => {
+                    const slot = availability?.weeklyAvailability.find((wa) => wa.dayOfWeek === i);
+                    return (
+                      <div
+                        key={label}
+                        className={`rounded-lg border px-2 py-3 text-center ${
+                          slot ? "border-core-400/30 bg-core-400/[0.08]" : "border-white/[0.06] bg-white/[0.02]"
+                        }`}
+                      >
+                        <p className={`text-2xs uppercase tracking-wide font-semibold ${slot ? "text-core-300" : "text-nox-low"}`}>
+                          {label}
+                        </p>
+                        <p className="text-[10px] font-mono mt-1 text-nox-mid">
+                          {slot ? `${slot.startTime}–${slot.endTime}` : "Off"}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+                {availability && availability.customUnavailableDates.length > 0 && (
+                  <div>
+                    <p className="text-2xs uppercase tracking-wide text-nox-low mb-2">Marked unavailable on</p>
+                    <div className="flex flex-wrap gap-2">
+                      {availability.customUnavailableDates.map((d) => (
+                        <span key={d} className="text-2xs font-mono px-2 py-1 rounded bg-white/[0.04] text-nox-mid">
+                          {new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div>
             <h2 className="font-orbital text-lg font-medium text-nox-high mb-4">
               {data.todaySessions.length === 0 ? "Upcoming sessions" : "Later this week"}
@@ -84,7 +135,7 @@ const CoachDashboardPage: React.FC = () => {
                 icon={<CalendarClock size={28} />}
               />
             ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {data.upcomingSessions.map((s) => (
                   <Link
                     key={s.id}
@@ -108,7 +159,7 @@ const CoachDashboardPage: React.FC = () => {
           {data.roster.length > 0 && (
             <div className="mt-10">
               <h2 className="font-orbital text-lg font-medium text-nox-high mb-4">Your players</h2>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {data.roster.map((s) => (
                   <Link
                     key={s.id}

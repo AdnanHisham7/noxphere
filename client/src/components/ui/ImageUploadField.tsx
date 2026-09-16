@@ -17,6 +17,36 @@ interface ImageUploadFieldProps {
   helperText?: string;
 }
 
+const convertWebPToPNG = async (file: File): Promise<File> => {
+  if (file.type !== "image/webp") return file;
+  return new Promise<File>((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return resolve(file);
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return resolve(file);
+          const newName = file.name.replace(/\.webp$/i, ".png");
+          resolve(new File([blob], newName, { type: "image/png" }));
+        },
+        "image/png",
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file);
+    };
+    img.src = objectUrl;
+  });
+};
+
 export const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
   label,
   category,
@@ -44,7 +74,14 @@ export const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
     const objectUrl = URL.createObjectURL(file);
     setLocalPreview(objectUrl);
     try {
-      const result = await uploadImage({ file, category }).unwrap();
+      // If the file is WebP, seamlessly transcode it to PNG in the browser canvas
+      // so the backend and WhatsApp always receive a 100% compliant PNG format.
+      let fileToUpload = file;
+      if (file.type === "image/webp") {
+        fileToUpload = await convertWebPToPNG(file);
+      }
+
+      const result = await uploadImage({ file: fileToUpload, category }).unwrap();
       onChange(result.url);
     } catch (err: any) {
       toast.error(err?.data?.message || "Upload failed — try again");
@@ -57,10 +94,10 @@ export const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
 
   return (
     <div>
-      <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">{label}</label>
+      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-400 uppercase tracking-wide mb-1.5">{label}</label>
       <div
         className={clsx(
-          "relative w-full max-w-[220px] border border-dashed border-white/15 bg-white/[0.03] overflow-hidden cursor-pointer group hover:border-volt-400/50 transition-colors",
+          "relative w-full max-w-[220px] border border-dashed border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-white/[0.03] overflow-hidden cursor-pointer group hover:border-volt-500 dark:hover:border-volt-400/50 transition-colors",
           shape === "wide" && "max-w-full",
           shapeClass,
         )}
@@ -69,14 +106,14 @@ export const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
         {displayUrl ? (
           <img src={displayUrl} alt={label} className="h-full w-full object-cover" />
         ) : (
-          <div className="h-full w-full flex flex-col items-center justify-center gap-1.5 text-slate-500 group-hover:text-slate-400">
+          <div className="h-full w-full flex flex-col items-center justify-center gap-1.5 text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-400">
             <ImagePlus size={20} />
             <span className="text-2xs">Click to upload</span>
           </div>
         )}
         {isLoading && (
-          <div className="absolute inset-0 bg-pitch-900/70 flex items-center justify-center">
-            <Loader2 size={20} className="animate-spin text-volt-400" />
+          <div className="absolute inset-0 bg-white/80 dark:bg-pitch-900/70 flex items-center justify-center">
+            <Loader2 size={20} className="animate-spin text-volt-500 dark:text-volt-400" />
           </div>
         )}
         {displayUrl && !isLoading && (
@@ -88,7 +125,7 @@ export const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
               onChange(undefined);
               if (inputRef.current) inputRef.current.value = "";
             }}
-            className="absolute top-1.5 right-1.5 bg-pitch-900/80 hover:bg-ember-600 text-white rounded-full p-1 transition-colors"
+            className="absolute top-1.5 right-1.5 bg-slate-900/80 hover:bg-ember-600 text-white rounded-full p-1 transition-colors shadow-sm"
             aria-label={`Remove ${label.toLowerCase()}`}
           >
             <X size={12} />

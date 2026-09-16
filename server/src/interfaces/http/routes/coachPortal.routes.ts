@@ -18,6 +18,10 @@ coachPortalRouter.get("/roster", (req, res, next) => {
   req.app.locals.controllers.coachPortal.getMyRoster(req, res, next);
 });
 
+coachPortalRouter.get("/availability", (req, res, next) => {
+  req.app.locals.controllers.coachPortal.getMyAvailability(req, res, next);
+});
+
 // Attendance/performance are recorded against a real scheduled session:
 //   POST /api/v1/schedule/:id/attendance
 //   POST /api/v1/schedule/:id/performance

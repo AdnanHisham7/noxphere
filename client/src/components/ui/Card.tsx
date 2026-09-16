@@ -15,7 +15,7 @@ export const Card: React.FC<CardProps> = ({
   onClick,
 }) => (
   <div
-    className={clsx(hover ? "card-hover cursor-pointer" : "card", className)}
+    className={clsx(hover ? "card-hover cursor-pointer" : "card p-4", className)}
     onClick={onClick}
   >
     {children}

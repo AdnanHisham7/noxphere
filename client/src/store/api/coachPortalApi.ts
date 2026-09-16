@@ -55,6 +55,17 @@ export interface CoachFranchise {
   name: string;
 }
 
+export interface CoachWeeklyAvailability {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+}
+
+export interface CoachAvailability {
+  weeklyAvailability: CoachWeeklyAvailability[];
+  customUnavailableDates: string[];
+}
+
 export const coachPortalApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getStudentBasic: builder.query<StudentBasic, string>({
@@ -77,6 +88,11 @@ export const coachPortalApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: RosterStudent[] }) => res.data,
       providesTags: ["Student"],
     }),
+    getMyAvailability: builder.query<CoachAvailability, void>({
+      query: () => "/coach/availability",
+      transformResponse: (res: { data: CoachAvailability }) => res.data,
+      providesTags: ["User"],
+    }),
     addCoachRemark: builder.mutation<unknown, AddRemarkBody>({
       query: ({ studentId, text }) => ({
         url: `/students/${studentId}/remarks`,
@@ -94,4 +110,5 @@ export const {
   useGetMyFranchisesQuery,
   useGetStudentBasicQuery,
   useAddCoachRemarkMutation,
+  useGetMyAvailabilityQuery,
 } = coachPortalApi;

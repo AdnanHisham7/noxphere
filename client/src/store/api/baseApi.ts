@@ -92,6 +92,17 @@ export const baseApi = createApi({
     "Dashboard",
     "Finance",
     "Resource",
+    "TransferHistory",
+    "Consent",
+    "EmployeeRole",
+    "Employee",
+    "SalaryPayment",
+    "Complaint",
+    "RegistrationRequest",
+    "NfcRequest",
+    "PlatformSettings",
+    "PlatformTicket",
   ],
   endpoints: () => ({}),
+
 });

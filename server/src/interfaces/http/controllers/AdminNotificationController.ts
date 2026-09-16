@@ -8,12 +8,34 @@ export class AdminNotificationController {
 
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { franchiseId, title, body, audience, teamId, imageUrl, documentUrl, documentFilename } = req.body;
+      const {
+        franchiseId,
+        title,
+        body,
+        audience,
+        teamId,
+        imageUrl,
+        documentUrl,
+        documentFilename,
+        attachments,
+        channels,
+      } = req.body;
       if (!franchiseId || !title || !body || !audience) {
         throw new BadRequestError("franchiseId, title, body and audience are required");
       }
       const notification = await this.notificationUseCases.create(
-        { franchiseId, title, body, audience, teamId, imageUrl, documentUrl, documentFilename },
+        {
+          franchiseId,
+          title,
+          body,
+          audience,
+          teamId,
+          imageUrl,
+          documentUrl,
+          documentFilename,
+          attachments,
+          channels,
+        },
         req.user!.sub,
       );
       ResponseHandler.created(res, notification, "Notification sent");

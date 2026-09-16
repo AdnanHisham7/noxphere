@@ -7,6 +7,7 @@ import { AttendanceModel } from "../../../infrastructure/database/models/Attenda
 import { PerformanceModel } from "../../../infrastructure/database/models/Performance.model";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
 import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
+import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { notificationService } from "../../../infrastructure/services/NotificationService";
 import { NotFoundError, BadRequestError, ForbiddenError } from "../../../shared/errors/AppError";
 import {
@@ -52,7 +53,7 @@ function resolveRefId(value: any): string | undefined {
 function toCard(doc: any) {
   const json = doc.toJSON ? doc.toJSON() : doc;
   return {
-    id: json.id,
+    id: json.id || json._id?.toString(),
     franchiseId: json.franchiseId?.toString ? json.franchiseId.toString() : json.franchiseId,
     targetType: json.targetType ?? "team",
     teamId: resolveRefId(json.teamId),
@@ -63,6 +64,16 @@ function toCard(doc: any) {
       ? `${json.coachId.firstName} ${json.coachId.lastName ?? ""}`.trim()
       : undefined,
     coachId: resolveRefId(json.coachId),
+    coachIds: (json.coachIds || []).map((id: any) => resolveRefId(id) || id?.toString()).filter(Boolean),
+    coaches: (json.coachIds || []).map((c: any) => c.firstName ? `${c.firstName} ${c.lastName || ""}`.trim() : (c.name || resolveRefId(c) || c.toString())).filter(Boolean),
+    categories: json.categories ?? [],
+    startDate: json.startDate,
+    endDate: json.endDate,
+    dailyStartTime: json.dailyStartTime,
+    dailyEndTime: json.dailyEndTime,
+    playerIds: json.playerIds?.map((id: any) => id._id?.toString() || id.toString() || id) ?? [],
+    rosterPlayerIds: json.rosterPlayerIds?.map((id: any) => id._id?.toString() || id.toString() || id) ?? [],
+    documents: json.documents ?? [],
     type: json.type,
     date: json.date,
     startTime: json.startTime,
@@ -79,17 +90,36 @@ function toCard(doc: any) {
 
 export class ScheduleUseCases {
   async listSessions(filters: {
-    franchiseId: string;
+    franchiseId?: string;
+    academyId?: string;
     from?: string;
     to?: string;
     teamId?: string;
     coachId?: string;
     status?: string;
   }) {
-    if (!filters.franchiseId) throw new BadRequestError("franchiseId is required");
-    const query: Record<string, unknown> = { franchiseId: filters.franchiseId };
+    const query: Record<string, unknown> = {};
+    if (filters.franchiseId) {
+      query.franchiseId = filters.franchiseId;
+    } else if (filters.academyId) {
+      const franchises = await FranchiseModel.find({ academyId: filters.academyId }).select("_id").lean();
+      query.franchiseId = { $in: franchises.map((f) => f._id) };
+    } else if (filters.coachId) {
+      // Allowed for a coach querying their assigned sessions across franchises
+    } else {
+      throw new BadRequestError("franchiseId or academyId is required");
+    }
+
     if (filters.teamId) query.teamId = filters.teamId;
-    if (filters.coachId) query.coachId = filters.coachId;
+    if (filters.coachId) {
+      const coachIdStr = filters.coachId.toString();
+      const coachObjId = mongoose.isValidObjectId(coachIdStr) ? new mongoose.Types.ObjectId(coachIdStr) : null;
+      const coachConditions: any[] = [{ coachId: coachIdStr }, { coachIds: coachIdStr }];
+      if (coachObjId) {
+        coachConditions.push({ coachId: coachObjId }, { coachIds: coachObjId });
+      }
+      query.$or = coachConditions;
+    }
     if (filters.status) query.status = filters.status;
     if (filters.from || filters.to) {
       query.date = {
@@ -98,16 +128,19 @@ export class ScheduleUseCases {
       };
     }
     const sessions = await SessionModel.find(query)
-      .populate("teamId", "name ageGroup")
       .populate("coachId", "firstName lastName")
-      .sort({ date: 1, startTime: 1 });
+      .populate("coachIds", "firstName lastName")
+      .populate("teamId", "name ageGroup")
+      .sort({ date: -1, startTime: -1 })
+      .lean();
     return sessions.map(toCard);
   }
 
   async getSessionById(id: string) {
     const session = await SessionModel.findById(id)
       .populate("teamId", "name ageGroup")
-      .populate("coachId", "firstName lastName");
+      .populate("coachId", "firstName lastName")
+      .populate("coachIds", "firstName lastName");
     if (!session) throw new NotFoundError("Session");
     return toCard(session);
   }
@@ -121,86 +154,261 @@ export class ScheduleUseCases {
    * coach is this coach. This is enforced here — not just in the
    * controller — so the rule holds no matter what calls this use-case.
    */
-  async createSession(dto: CreateSessionDto, createdBy: string, requestingCoachId?: string) {
+  // A manager can mark a coach unavailable for a day of the week
+  // (weeklyAvailability) or a specific date (customUnavailableDates).
+  // The session-assignment UI disables picking such a coach for a
+  // conflicting date, but this backend check exists too so the same
+  // rule holds for any direct API call, not just the form. A coach with
+  // no weeklyAvailability configured at all is treated as always
+  // available — nothing has been set for them to conflict with.
+  private async assertCoachesAvailable(coachIds: string[], dates: string[]): Promise<void> {
+    const uniqueCoachIds = Array.from(new Set(coachIds.filter(Boolean)));
+    if (uniqueCoachIds.length === 0 || dates.length === 0) return;
+
+    const coaches = await UserModel.find({ _id: { $in: uniqueCoachIds } })
+      .select("firstName lastName weeklyAvailability customUnavailableDates")
+      .lean();
+
+    for (const coach of coaches) {
+      const hasWeeklyRules = (coach.weeklyAvailability?.length ?? 0) > 0;
+      const unavailableDates = new Set(coach.customUnavailableDates ?? []);
+      const availableDays = new Set((coach.weeklyAvailability ?? []).map((wa) => wa.dayOfWeek));
+      const coachName = `${coach.firstName} ${coach.lastName}`;
+
+      for (const dateStr of dates) {
+        if (unavailableDates.has(dateStr)) {
+          throw new BadRequestError(`${coachName} has been marked unavailable on ${dateStr}`);
+        }
+        if (hasWeeklyRules) {
+          const [year, month, day] = dateStr.split("-").map(Number);
+          const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+          if (!availableDays.has(dayOfWeek)) {
+            throw new BadRequestError(`${coachName} isn't available on that day of the week`);
+          }
+        }
+      }
+    }
+  }
+
+  async createSession(dto: CreateSessionDto & { coachIds?: string[]; categories?: string[]; startDate?: string; endDate?: string; dailyStartTime?: string; dailyEndTime?: string; playerIds?: string[]; documents?: { name: string; url: string }[] }, createdBy: string, requestingCoachId?: string) {
     if (dto.endTime <= dto.startTime) {
       throw new BadRequestError("endTime must be after startTime");
     }
-    if (!dto.coachId) {
-      throw new BadRequestError("coachId is required");
+    if (!dto.coachId && (!dto.coachIds || dto.coachIds.length === 0)) {
+      throw new BadRequestError("coachId or coachIds are required");
+    }
+    if (dto.coachIds && dto.coachIds.length > 0 && !dto.coachId) {
+      dto.coachId = dto.coachIds[0];
     }
     if (requestingCoachId && dto.targetType === "category") {
       throw new ForbiddenError("Coaches can only schedule sessions for a team they are assigned to");
     }
 
-    if (dto.targetType === "category") {
-      if (!dto.category) throw new BadRequestError("category is required for a category session");
-      const franchise = await FranchiseModel.findById(dto.franchiseId).select("ageGroups").lean();
-      if (!franchise) throw new NotFoundError("Franchise");
-      if (franchise.ageGroups?.length && !franchise.ageGroups.includes(dto.category)) {
-        throw new BadRequestError(
-          `"${dto.category}" isn't one of this franchise's configured age groups (${franchise.ageGroups.join(", ")})`,
-        );
+    if (dto.targetType === "batch") {
+      if (!dto.playerIds || dto.playerIds.length === 0) {
+        throw new BadRequestError("playerIds are required for a batch session");
       }
+    } else if (dto.targetType === "category") {
+      if (!dto.category && (!dto.categories || dto.categories.length === 0)) {
+        throw new BadRequestError("category or categories are required for a category session");
+      }
+      if (dto.categories && dto.categories.length > 0 && !dto.category) {
+        dto.category = dto.categories[0];
+      }
+      const franchise = await FranchiseModel.findById(dto.franchiseId).select("_id").lean();
+      if (!franchise) throw new NotFoundError("Franchise");
     } else {
       if (!dto.teamId) throw new BadRequestError("teamId is required for a team session");
       const team = await TeamModel.findById(dto.teamId);
       if (!team) throw new NotFoundError("Team");
-      if (team.franchiseId.toString() !== dto.franchiseId) {
-        throw new BadRequestError("That team doesn't belong to this franchise");
+      if (team.franchiseId) {
+        if (team.franchiseId.toString() !== dto.franchiseId) {
+          throw new BadRequestError("That team doesn't belong to this franchise");
+        }
+      } else {
+        const franchise = await FranchiseModel.findById(dto.franchiseId).select("academyId").lean();
+        if (!franchise || franchise.academyId.toString() !== team.academyId?.toString()) {
+          throw new BadRequestError("That global team is not part of this franchise's academy");
+        }
       }
       if (requestingCoachId && team.coachId?.toString() !== requestingCoachId) {
         throw new ForbiddenError("You can only schedule sessions for a team assigned to you");
       }
     }
 
-    const session = await SessionModel.create({
+    let resolvedPlayerIds: any[] = [];
+    if (dto.targetType === "batch") {
+      resolvedPlayerIds = (dto.playerIds || []).map((id) => new mongoose.Types.ObjectId(id));
+    } else if (dto.targetType === "category") {
+      const categoriesFilter = dto.categories && dto.categories.length > 0 ? { $in: dto.categories } : dto.category;
+      const baseStudents = await StudentModel.find({
+        franchiseId: dto.franchiseId,
+        ageGroup: categoriesFilter,
+        isActive: true,
+        deletedAt: { $exists: false },
+      }).select("_id").lean();
+      resolvedPlayerIds = baseStudents.map((s) => s._id);
+    } else {
+      const baseStudents = await StudentModel.find({
+        teamId: dto.teamId,
+        isActive: true,
+        deletedAt: { $exists: false },
+      }).select("_id").lean();
+      resolvedPlayerIds = baseStudents.map((s) => s._id);
+    }
+
+    let datesToCreate: string[] = [dto.date];
+    if (dto.startDate && dto.endDate && dto.startDate !== dto.endDate) {
+      const [startYear, startMonth, startDay] = dto.startDate.split("-").map(Number);
+      const [endYear, endMonth, endDay] = dto.endDate.split("-").map(Number);
+      
+      let currentDate = new Date(Date.UTC(startYear, startMonth - 1, startDay));
+      const endDateUTC = new Date(Date.UTC(endYear, endMonth - 1, endDay));
+      
+      datesToCreate = [];
+      while (currentDate <= endDateUTC) {
+        const year = currentDate.getUTCFullYear();
+        const month = String(currentDate.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(currentDate.getUTCDate()).padStart(2, "0");
+        datesToCreate.push(`${year}-${month}-${day}`);
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+      }
+    }
+
+    await this.assertCoachesAvailable(dto.coachIds && dto.coachIds.length > 0 ? dto.coachIds : [dto.coachId!], datesToCreate);
+
+    const sessionsToCreate = datesToCreate.map((dateStr) => ({
       franchiseId: dto.franchiseId,
       targetType: dto.targetType,
       teamId: dto.targetType === "team" ? dto.teamId : undefined,
       category: dto.targetType === "category" ? dto.category : undefined,
+      categories: dto.categories || (dto.category ? [dto.category] : []),
       coachId: dto.coachId,
+      coachIds: dto.coachIds || [dto.coachId],
       type: dto.type,
-      date: dto.date,
-      startTime: dto.startTime,
-      endTime: dto.endTime,
+      date: dateStr,
+      startTime: dto.dailyStartTime || dto.startTime,
+      endTime: dto.dailyEndTime || dto.endTime,
+      startDate: dateStr,
+      endDate: dateStr,
+      dailyStartTime: dto.dailyStartTime || dto.startTime,
+      dailyEndTime: dto.dailyEndTime || dto.endTime,
       location: dto.location,
       fieldNumber: dto.fieldNumber,
       notes: dto.notes,
+      playerIds: dto.targetType === "category" ? resolvedPlayerIds.map((id) => id.toString()) : dto.playerIds,
+      rosterPlayerIds: resolvedPlayerIds,
+      documents: dto.documents,
       createdBy,
       status: "upcoming",
-    });
-    const populated = await SessionModel.findById(session.id)
-      .populate("teamId", "name ageGroup")
-      .populate("coachId", "firstName lastName");
+    }));
 
-    // A coach scheduling their own session already knows about it — only
-    // notify when a manager created it on the coach's behalf.
-    if (!requestingCoachId) {
-      const target = dto.targetType === "team" ? (populated?.teamId as any)?.name : dto.category;
-      const sessionDate = new Date(dto.date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+    const createdSessions = await SessionModel.create(sessionsToCreate);
+    const firstSession = createdSessions[0];
+
+    const populated = await SessionModel.findById(firstSession.id)
+      .populate("teamId", "name ageGroup")
+      .populate("coachId", "firstName lastName")
+      .populate("coachIds", "firstName lastName");
+
+    const sessionDate = new Date(dto.date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+    const categoryLabel = dto.categories && dto.categories.length > 0 ? dto.categories.join(", ") : dto.category;
+    const target =
+      dto.targetType === "team"
+        ? (populated?.teamId as any)?.name
+        : dto.targetType === "batch"
+        ? "custom batch squad"
+        : `${categoryLabel} squad`;
+
+    // A coach scheduling their own session already knows about it —
+    // notify any assigned coach who did not create it.
+    const allAssignedCoachIds = Array.from(
+      new Set([
+        ...(dto.coachIds || []),
+        ...(dto.coachId ? [dto.coachId] : []),
+      ])
+    ).filter(Boolean);
+
+    const coachesToNotify = allAssignedCoachIds.filter(
+      (cid) => cid !== requestingCoachId && cid !== createdBy
+    );
+
+    for (const cid of coachesToNotify) {
       await notificationService
         .sendSessionCreatedAlert(
-          dto.coachId,
+          cid,
           `A new session has been scheduled for ${target ?? "your squad"} on ${sessionDate}, ${dto.startTime}–${dto.endTime} at ${dto.location}.`,
           dto.franchiseId,
         )
         .catch(() => undefined);
     }
 
+    // Whoever creates the session (manager, super_admin, or coach), all players assigned/included
+    // in the session (and their guardians) must be alerted of the scheduled session.
+    if (resolvedPlayerIds.length > 0) {
+      const students = await StudentModel.find({ _id: { $in: resolvedPlayerIds } })
+        .select("userId guardianIds firstName")
+        .lean();
+      const recipientUserIds = Array.from(
+        new Set(
+          students.flatMap((s) => [s.userId?.toString(), ...(s.guardianIds || []).map((g: any) => g.toString())]).filter(Boolean)
+        )
+      );
+      if (recipientUserIds.length > 0) {
+        await notificationService.send({
+          userIds: recipientUserIds,
+          type: "session_created",
+          title: "New Session Scheduled",
+          body: `A new session has been scheduled for ${target ?? "your squad"} on ${sessionDate}, ${dto.startTime}–${dto.endTime} at ${dto.location}.`,
+          franchiseId: dto.franchiseId,
+          channels: ["push"],
+        }).catch(() => undefined);
+      }
+    }
+
     return toCard(populated);
   }
 
-  async updateSession(id: string, dto: UpdateSessionDto) {
+  async updateSession(id: string, dto: UpdateSessionDto & { coachIds?: string[]; categories?: string[]; startDate?: string; endDate?: string; dailyStartTime?: string; dailyEndTime?: string; playerIds?: string[]; documents?: { name: string; url: string }[] }) {
     const session = await SessionModel.findById(id);
     if (!session) throw new NotFoundError("Session");
     if (dto.startTime && dto.endTime && dto.endTime <= dto.startTime) {
       throw new BadRequestError("endTime must be after startTime");
     }
+    if (dto.coachIds && dto.coachIds.length > 0) {
+      dto.coachId = dto.coachIds[0];
+    }
+    if (dto.coachId || (dto.coachIds && dto.coachIds.length > 0)) {
+      const nextCoachIds = dto.coachIds && dto.coachIds.length > 0 ? dto.coachIds : [dto.coachId!];
+      const sessionDate = dto.date ?? session.date;
+      await this.assertCoachesAvailable(nextCoachIds, [sessionDate]);
+    }
+    if (dto.categories && dto.categories.length > 0) {
+      dto.category = dto.categories[0];
+    }
+    const targetType = dto.targetType ?? session.targetType;
+    if (targetType === "category") {
+      const activeFranchiseId = dto.franchiseId ?? session.franchiseId;
+      const cats = dto.categories && dto.categories.length > 0 ? dto.categories : (dto.category ? [dto.category] : session.categories);
+      const catFilter = cats && cats.length > 0 ? { $in: cats } : (dto.category ?? session.category);
+      if (catFilter) {
+        const matchingStudents = await StudentModel.find({
+          franchiseId: activeFranchiseId,
+          ageGroup: catFilter,
+          isActive: true,
+          deletedAt: { $exists: false },
+        }).select("_id").lean();
+        const resolvedIds = matchingStudents.map((s) => s._id);
+        (dto as any).rosterPlayerIds = resolvedIds;
+        (dto as any).playerIds = resolvedIds.map((id) => id.toString());
+      }
+    }
     Object.assign(session, dto);
     await session.save();
     const populated = await SessionModel.findById(id)
       .populate("teamId", "name ageGroup")
-      .populate("coachId", "firstName lastName");
+      .populate("coachId", "firstName lastName")
+      .populate("coachIds", "firstName lastName");
     return toCard(populated);
   }
 
@@ -268,14 +476,26 @@ export class ScheduleUseCases {
    * there by the manager), not by the Franchise — every session belongs to
    * a franchise, and every franchise belongs to exactly one academy, so we
    * resolve franchise -> academy to find the parameter list that's allowed
-   * to be scored against. Falls back to the platform default set if
-   * somehow neither record carries any (keeps old data / dev fixtures
-   * from hard-failing).
+   * to be scored against. Guaranteed to reflect the 6 skill parameters
+   * established when the parent academy was created. Falls back to the
+   * platform default set if neither record carries any.
    */
   private async getSkillParametersForFranchise(franchiseId: mongoose.Types.ObjectId | string): Promise<string[]> {
-    const franchise = await FranchiseModel.findById(franchiseId).select("skillParameters").lean();
+    const franchise = await FranchiseModel.findById(franchiseId).select("skillParameters academyId").lean();
     if (!franchise) throw new NotFoundError("Franchise");
-    // Return franchise-specific skills; fallback to default set if empty
+
+    // Parent academy's parameters configured at academy creation time take top precedence
+    if (franchise.academyId) {
+      const academy = await AcademyModel.findById(franchise.academyId).select("skillParameters").lean();
+      if (academy?.skillParameters && academy.skillParameters.length === 6) {
+        return academy.skillParameters;
+      }
+      if (academy?.skillParameters && academy.skillParameters.length > 0) {
+        return academy.skillParameters;
+      }
+    }
+
+    // Fallback to franchise-specific skills; fallback to default set if empty
     return franchise.skillParameters?.length ? franchise.skillParameters : [
       "Dribbling", "Passing", "Shooting", "Speed", "Tactical Awareness", "Attitude"
     ];
@@ -291,13 +511,26 @@ export class ScheduleUseCases {
   async getSessionRoster(sessionId: string) {
     const session = await SessionModel.findById(sessionId)
       .populate("teamId", "name ageGroup")
-      .populate("coachId", "firstName lastName");
+      .populate("coachId", "firstName lastName")
+      .populate("coachIds", "firstName lastName");
     if (!session) throw new NotFoundError("Session");
 
-    const studentQuery =
-      session.targetType === "category"
-        ? { franchiseId: session.franchiseId, ageGroup: session.category, isActive: true }
-        : { teamId: session.teamId, isActive: true };
+    const studentQuery: any = { isActive: true, deletedAt: { $exists: false } };
+    if (session.rosterPlayerIds !== undefined && session.rosterPlayerIds.length > 0) {
+      const allRosterPlayerIds = [...(session.rosterPlayerIds || []), ...(session.playerIds || [])];
+      studentQuery._id = { $in: allRosterPlayerIds };
+    } else {
+      const categoriesFilter = session.categories && session.categories.length > 0 ? { $in: session.categories } : session.category;
+      const playerQueryList = session.playerIds && session.playerIds.length > 0 ? { _id: { $in: session.playerIds } } : null;
+
+      if (session.targetType === "category") {
+        const defaultFilter = { franchiseId: session.franchiseId, ageGroup: categoriesFilter };
+        studentQuery.$or = playerQueryList ? [defaultFilter, playerQueryList] : [defaultFilter];
+      } else {
+        const defaultFilter = { teamId: session.teamId };
+        studentQuery.$or = playerQueryList ? [defaultFilter, playerQueryList] : [defaultFilter];
+      }
+    }
 
     const students = await StudentModel.find(studentQuery)
       .select("firstName lastName photo position jerseyNumber teamId")
@@ -350,11 +583,44 @@ export class ScheduleUseCases {
       throw new BadRequestError("This session was cancelled — attendance can't be marked for it");
     }
 
+    // Resolve full roster of students to ensure attendance is mandatory for all athletes
+    const studentQuery: any = { isActive: true, deletedAt: { $exists: false } };
+    if (session.rosterPlayerIds !== undefined && session.rosterPlayerIds.length > 0) {
+      const allRosterPlayerIds = [...(session.rosterPlayerIds || []), ...(session.playerIds || [])];
+      studentQuery._id = { $in: allRosterPlayerIds };
+    } else {
+      const categoriesFilter = session.categories && session.categories.length > 0 ? { $in: session.categories } : session.category;
+      const playerQueryList = session.playerIds && session.playerIds.length > 0 ? { _id: { $in: session.playerIds } } : null;
+
+      if (session.targetType === "category") {
+        const defaultFilter = { franchiseId: session.franchiseId, ageGroup: categoriesFilter };
+        studentQuery.$or = playerQueryList ? [defaultFilter, playerQueryList] : [defaultFilter];
+      } else {
+        const defaultFilter = { teamId: session.teamId };
+        studentQuery.$or = playerQueryList ? [defaultFilter, playerQueryList] : [defaultFilter];
+      }
+    }
+
+    const students = await StudentModel.find(studentQuery)
+      .select("_id firstName lastName teamId")
+      .lean();
+
+    if (students.length > 0) {
+      const markedIds = new Set(
+        records
+          .filter((r) => r.status && ["present", "absent", "late", "excused"].includes(r.status))
+          .map((r) => r.studentId.toString())
+      );
+      const missing = students.filter((s) => !markedIds.has(s._id.toString()));
+      if (missing.length > 0) {
+        throw new BadRequestError(
+          `Attendance is mandatory for all roster athletes before saving. Missing attendance status for ${missing.length} athlete(s).`
+        );
+      }
+    }
+
     const studentTeamMap = new Map<string, mongoose.Types.ObjectId | undefined>();
     if (session.targetType === "category") {
-      const students = await StudentModel.find({ _id: { $in: records.map((r) => r.studentId) } })
-        .select("teamId")
-        .lean();
       for (const s of students) studentTeamMap.set(s._id.toString(), s.teamId);
     }
 
@@ -546,13 +812,19 @@ export class ScheduleUseCases {
   }
 
   private async notifySessionGuardians(
-    session: { targetType: string; teamId?: mongoose.Types.ObjectId; category?: string; franchiseId: mongoose.Types.ObjectId },
+    session: { targetType: string; teamId?: mongoose.Types.ObjectId; category?: string; franchiseId: mongoose.Types.ObjectId; rosterPlayerIds?: mongoose.Types.ObjectId[]; playerIds?: mongoose.Types.ObjectId[] },
     opts: { title: string; body: string; type: "session_location_change" },
   ) {
-    const query =
-      session.targetType === "category"
-        ? { franchiseId: session.franchiseId, ageGroup: session.category, isActive: true }
-        : { teamId: session.teamId, isActive: true };
+    let query: any;
+    if (session.rosterPlayerIds !== undefined) {
+      const allRosterPlayerIds = [...(session.rosterPlayerIds || []), ...(session.playerIds || [])];
+      query = { _id: { $in: allRosterPlayerIds }, isActive: true };
+    } else {
+      query =
+        session.targetType === "category"
+          ? { franchiseId: session.franchiseId, ageGroup: session.category, isActive: true }
+          : { teamId: session.teamId, isActive: true };
+    }
     const students = await StudentModel.find(query);
     const guardianIds = Array.from(
       new Set(students.flatMap((s) => s.guardianIds.map((g) => g.toString()))),

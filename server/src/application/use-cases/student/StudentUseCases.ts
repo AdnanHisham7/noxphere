@@ -1,5 +1,6 @@
 import { IStudentRepository } from "../../../domain/repositories/IStudentRepository";
 import { IUserRepository } from "../../../domain/repositories/IUserRepository";
+import crypto from "crypto";
 import { StudentEntity } from "../../../domain/entities/Student.entity";
 import {
   defaultPermissions,
@@ -11,36 +12,82 @@ import {
   NotFoundError,
   ConflictError,
   BadRequestError,
+  ForbiddenError,
 } from "../../../shared/errors/AppError";
 import {
   CreateStudentDto,
   UpdateStudentDto,
   AddCoachRemarkDto,
+  TransferStudentFranchiseDto,
+  RegisterPublicStudentDto,
+  ClaimStudentDto,
 } from "../../dtos/student.dto";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import { config } from "../../../config/app.config";
+import { StudentModel } from "../../../infrastructure/database/models/Student.model";
+import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { CoachRemarkModel } from "../../../infrastructure/database/models/CoachRemark.model";
 import { TeamModel } from "../../../infrastructure/database/models/Team.model";
+import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
+import { FranchiseTransferLogModel } from "../../../infrastructure/database/models/FranchiseTransferLog.model";
+import { AcademySubscriptionUseCases } from "../subscription/AcademySubscriptionUseCases";
+import { FeeModel } from "../../../infrastructure/database/models/Fee.model";
+import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
+import { notificationService } from "../../../infrastructure/services/NotificationService";
+import {
+  normalizePhone,
+  getPhoneMatchVariants,
+} from "../../../shared/utils/phone";
+import { calculateAgeCategory } from "../../../shared/utils/ageCategory";
 
 export class StudentUseCases {
   constructor(
     private studentRepo: IStudentRepository,
     private userRepo: IUserRepository,
+    private academySubscriptionUseCases: AcademySubscriptionUseCases,
   ) {}
 
-  // Used both at registration and when assigning a player to a team after
-  // the fact — a team picked from a stale dropdown, or a crafted request,
-  // can never silently attach a player to a team in a different franchise.
-  private async validateTeamAssignment(franchiseId: string, teamId: string): Promise<void> {
+  private async validateTeamAssignment(
+    franchiseId: string,
+    teamId: string,
+  ): Promise<void> {
     const team = await TeamModel.findOne({
       _id: teamId,
-      franchiseId,
       deletedAt: { $exists: false },
     })
-      .select("_id")
+      .select("franchiseId academyId")
       .lean();
     if (!team) {
-      throw new BadRequestError("That team doesn't exist in this player's franchise");
+      throw new BadRequestError("That team doesn't exist");
+    }
+
+    const playerFranchise = await FranchiseModel.findById(franchiseId)
+      .select("academyId")
+      .lean();
+    if (!playerFranchise) {
+      throw new BadRequestError("Franchise not found");
+    }
+
+    let teamAcademyId = team.academyId?.toString();
+    if (!teamAcademyId && team.franchiseId) {
+      const teamFranchise = await FranchiseModel.findById(team.franchiseId)
+        .select("academyId")
+        .lean();
+      if (teamFranchise) {
+        teamAcademyId = teamFranchise.academyId.toString();
+      }
+    }
+
+    if (!teamAcademyId) {
+      throw new BadRequestError("Team's academy context could not be resolved");
+    }
+
+    if (playerFranchise.academyId.toString() !== teamAcademyId) {
+      throw new BadRequestError(
+        "That team is not part of this academy's ecosystem",
+      );
     }
   }
 
@@ -48,75 +95,159 @@ export class StudentUseCases {
     dto: CreateStudentDto,
     createdBy: string,
   ): Promise<StudentEntity> {
-    // 1. Create (or reuse) a guardian-role account for the guardian's email.
-    // This is what the Guardian Portal logs into, and it's what every
-    // guardian notification (schedule alerts, selection updates, fee
-    // reminders, attendance/performance) is addressed to via
-    // student.guardianIds.
-    let guardianUser = await this.userRepo.findByEmail(dto.guardian.email);
-    if (!guardianUser) {
-      const tempPassword = Math.random().toString(36).slice(-8);
-      const passwordHash = await bcrypt.hash(tempPassword, 12);
-      const [guardianFirstName, ...guardianLastParts] = dto.guardian.name.trim().split(" ");
-      guardianUser = await this.userRepo.create({
-        email: dto.guardian.email,
-        passwordHash,
-        role: "guardian",
-        firstName: guardianFirstName || dto.guardian.name,
-        lastName: guardianLastParts.join(" ") || "-",
-        phone: dto.guardian.phone,
-        isActive: true,
-        isEmailVerified: false,
-        permissions: defaultPermissions["guardian" as UserRole],
-        fcmTokens: [],
-        franchiseId: dto.franchiseId,
-      });
-      // TODO: Send email with temp password
-    }
+    // 0. Enforce subscription/capacity before creating anything — fail
+    // fast so we never create a guardian/student login account and then
+    // have to roll it back because the academy can't add another player.
+    const franchise = await FranchiseModel.findById(dto.franchiseId)
+      .select("academyId")
+      .lean();
+    if (!franchise) throw new NotFoundError("Franchise");
+    await this.academySubscriptionUseCases.assertCanAddStudent(
+      franchise.academyId.toString(),
+    );
 
-    // 2. Create a separate student-role account for the player themself.
-    // `dto.email` is usually the same as the guardian's email in youth
-    // academies (players rarely have their own inbox) — in that case we
-    // don't want to collide with the guardian account we just created, so
-    // we derive a distinct, non-loginable placeholder address instead. An
-    // admin can later give the player their own real login email via
-    // profile edit once they're old enough to want one.
-    const studentEmail =
-      dto.email.trim().toLowerCase() === dto.guardian.email.trim().toLowerCase()
-        ? `student.${new mongoose.Types.ObjectId().toHexString()}@accounts.internal`
-        : dto.email;
-
-    let studentUser = await this.userRepo.findByEmail(studentEmail);
-    if (!studentUser) {
-      const tempPassword = Math.random().toString(36).slice(-8);
-      const passwordHash = await bcrypt.hash(tempPassword, 12);
-      studentUser = await this.userRepo.create({
-        email: studentEmail,
-        passwordHash,
-        role: "student",
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        phone: dto.guardian.phone,
-        isActive: true,
-        isEmailVerified: false,
-        permissions: defaultPermissions["student" as UserRole],
-        fcmTokens: [],
-        franchiseId: dto.franchiseId,
-      });
-      // TODO: Send email with temp password
-    }
-
-    // 3. Create student document, linked to both accounts
     if (dto.teamId) {
       await this.validateTeamAssignment(dto.franchiseId, dto.teamId);
     }
+
+    let academyName = "Your Academy";
+    try {
+      const academy = await AcademyModel.findById(franchise.academyId)
+        .select("name")
+        .lean();
+      if (academy?.name) academyName = academy.name;
+    } catch {}
+
+    const loginEmail = (dto.guardian?.email || dto.email).trim().toLowerCase();
+    const cleanPhone = normalizePhone(dto.guardian?.phone || "");
+
+    // Check if an account already exists with this guardian email and/or phone
+    const [existingUserByEmail, existingUserByPhone] = await Promise.all([
+      UserModel.findOne({ email: loginEmail }),
+      cleanPhone
+        ? UserModel.findOne({
+            phone: { $in: getPhoneMatchVariants(cleanPhone) },
+          })
+        : null,
+    ]);
+
+    if (
+      existingUserByEmail &&
+      existingUserByPhone &&
+      existingUserByEmail._id.toString() !== existingUserByPhone._id.toString()
+    ) {
+      throw new ConflictError(
+        "This guardian email and phone number belong to two different registered accounts. Please use matching contact details.",
+      );
+    }
+
+    if (existingUserByEmail && existingUserByEmail.role !== "guardian") {
+      throw new ConflictError(
+        `An account with this email already exists with role: ${existingUserByEmail.role}.`,
+      );
+    }
+
+    if (existingUserByPhone && existingUserByPhone.role !== "guardian") {
+      throw new ConflictError(
+        `An account with this phone number already exists with role: ${existingUserByPhone.role}.`,
+      );
+    }
+
+    if (
+      existingUserByPhone &&
+      !existingUserByEmail &&
+      existingUserByPhone.email.toLowerCase() !== loginEmail
+    ) {
+      throw new ConflictError(
+        "An account with this phone number is already registered under a different email address.",
+      );
+    }
+
+    const existingUser = existingUserByEmail || existingUserByPhone;
+
+    let guardianUser: any;
+    let isNewGuardian = false;
+    let tempPassword = "";
+    const guardianParts = (dto.guardian?.name || "").trim().split(" ");
+    const guardianFirstName = guardianParts[0] || dto.firstName;
+    const guardianLastName = guardianParts.slice(1).join(" ") || "Guardian";
+
+    if (existingUser) {
+      // Check if this student is already registered under this guardian
+      const duplicateStudent = await StudentModel.findOne({
+        guardianIds: existingUser._id,
+        firstName: new RegExp(`^${dto.firstName.trim()}$`, "i"),
+        lastName: new RegExp(`^${dto.lastName.trim()}$`, "i"),
+        deletedAt: { $exists: false },
+      });
+      if (duplicateStudent) {
+        throw new ConflictError(
+          `Player ${dto.firstName} ${dto.lastName} is already registered under this guardian.`,
+        );
+      }
+
+      if (!existingUser.phone && cleanPhone) {
+        existingUser.phone = cleanPhone;
+        await existingUser.save();
+      }
+
+      guardianUser = existingUser;
+      isNewGuardian = false;
+    } else {
+      // Check if an active student is already registered with this guardian email/phone
+      const existingStudent = await StudentModel.findOne({
+        $or: [
+          { "guardian.email": loginEmail },
+          ...(cleanPhone
+            ? [{ "guardian.phone": { $in: getPhoneMatchVariants(cleanPhone) } }]
+            : []),
+        ],
+        firstName: new RegExp(`^${dto.firstName.trim()}$`, "i"),
+        lastName: new RegExp(`^${dto.lastName.trim()}$`, "i"),
+        deletedAt: { $exists: false },
+      });
+      if (existingStudent) {
+        throw new ConflictError(
+          "A player with this name and guardian contact is already registered.",
+        );
+      }
+
+      tempPassword = Math.random().toString(36).slice(-8) + "!1Aa";
+      const passwordHash = await bcrypt.hash(tempPassword, 12);
+
+      const createdUser = await this.userRepo.create({
+        email: loginEmail,
+        passwordHash,
+        role: "guardian",
+        firstName: guardianFirstName,
+        lastName: guardianLastName,
+        phone: cleanPhone || undefined,
+        isActive: true,
+        isEmailVerified: true,
+        permissions: defaultPermissions["guardian" as UserRole],
+        fcmTokens: [],
+        franchiseId: dto.franchiseId,
+        academyId: franchise.academyId.toString(),
+      });
+      guardianUser = createdUser;
+      isNewGuardian = true;
+    }
+
     const studentData: Partial<StudentEntity> = {
-      userId: studentUser.id,
+      userId: guardianUser._id ? guardianUser._id.toString() : guardianUser.id,
       franchiseId: dto.franchiseId,
       teamId: dto.teamId,
       coachId: dto.coachId,
-      guardianIds: [guardianUser.id],
-      guardian: dto.guardian,
+      guardianIds: [
+        guardianUser._id ? guardianUser._id.toString() : guardianUser.id,
+      ],
+      guardian: {
+        name:
+          dto.guardian?.name ||
+          `${guardianUser.firstName} ${guardianUser.lastName}`,
+        email: guardianUser.email || loginEmail,
+        phone: cleanPhone || guardianUser.phone || dto.guardian?.phone || "",
+      },
       firstName: dto.firstName,
       lastName: dto.lastName,
       dateOfBirth: new Date(dto.dateOfBirth),
@@ -124,6 +255,7 @@ export class StudentUseCases {
       jerseyNumber: dto.jerseyNumber,
       jerseySize: dto.jerseySize,
       position: dto.position,
+      positions: dto.positions,
       photo: dto.photo,
       medicalInfo: dto.medicalInfo,
       enrollmentDate: new Date(),
@@ -132,8 +264,75 @@ export class StudentUseCases {
       overallRating: 0,
       selectionStatus: "pending",
       transferStatus: "not_listed",
+      publicProfileToken: crypto.randomBytes(16).toString("hex"),
+      publicProfileEnabled: true,
     };
-    return await this.studentRepo.create(studentData);
+
+    let createdStudent: StudentEntity;
+    try {
+      createdStudent = await this.studentRepo.create(studentData);
+    } catch (err) {
+      if (isNewGuardian) {
+        const uid = guardianUser._id || guardianUser.id;
+        await UserModel.deleteOne({ _id: uid }).catch(() => undefined);
+      }
+      throw err;
+    }
+
+    // Send notification email
+    if (isNewGuardian && tempPassword) {
+      try {
+        await notificationService.sendAccountCredentialsEmail({
+          to: loginEmail,
+          recipientName:
+            dto.guardian?.name || `${guardianFirstName} ${guardianLastName}`,
+          role: "guardian",
+          password: tempPassword,
+          loginUrl: `${config.clientUrl}/login`,
+          studentName: `${dto.firstName} ${dto.lastName}`,
+          academyName,
+        });
+      } catch (mailErr) {
+        console.error(
+          "[createStudent] Failed to send credentials email:",
+          mailErr,
+        );
+      }
+    } else if (!isNewGuardian) {
+      try {
+        await notificationService.sendStudentLinkedEmail({
+          to: loginEmail,
+          guardianName:
+            dto.guardian?.name ||
+            `${guardianUser.firstName} ${guardianUser.lastName}`,
+          studentName: `${dto.firstName} ${dto.lastName}`,
+          academyName,
+          loginUrl: `${config.clientUrl}/login`,
+        });
+      } catch (mailErr) {
+        console.error(
+          "[createStudent] Failed to send student linked email:",
+          mailErr,
+        );
+      }
+    }
+
+    // Sync age category to franchise and academy
+    const effectiveAgeGroup =
+      createdStudent.ageGroup ||
+      calculateAgeCategory(createdStudent.dateOfBirth);
+    if (effectiveAgeGroup) {
+      await Promise.all([
+        FranchiseModel.findByIdAndUpdate(dto.franchiseId, {
+          $addToSet: { ageGroups: effectiveAgeGroup },
+        }),
+        AcademyModel.findByIdAndUpdate(franchise.academyId, {
+          $addToSet: { ageGroups: effectiveAgeGroup },
+        }),
+      ]).catch(() => undefined);
+    }
+
+    return createdStudent;
   }
 
   async getStudents(
@@ -167,7 +366,10 @@ export class StudentUseCases {
       }
       filter.teamId = filters.teamId;
     } else if (allowedTeamIds) {
-      filter.$or = [{ teamId: { $in: allowedTeamIds } }, { coachId: restrictToCoachId }];
+      filter.$or = [
+        { teamId: { $in: allowedTeamIds } },
+        { coachId: restrictToCoachId },
+      ];
     }
 
     if (filters.ageGroup) filter.ageGroup = filters.ageGroup;
@@ -215,8 +417,14 @@ export class StudentUseCases {
       if (teamId) {
         const existing = await this.studentRepo.findById(id);
         if (!existing) throw new NotFoundError("Student");
+        if (!existing.franchiseId) {
+          throw new BadRequestError(
+            "Student must belong to a franchise before being assigned to a team",
+          );
+        }
         await this.validateTeamAssignment(existing.franchiseId, teamId);
       }
+
       // null explicitly clears the assignment (unassign from team); a
       // string id sets/reassigns it. StudentEntity's teamId is typed as
       // string | undefined for normal reads, but the repository passes
@@ -226,12 +434,200 @@ export class StudentUseCases {
     }
     const student = await this.studentRepo.update(id, updateData);
     if (!student) throw new NotFoundError("Student");
+
+    const effectiveAgeGroup =
+      student.ageGroup ||
+      (student.dateOfBirth
+        ? calculateAgeCategory(student.dateOfBirth)
+        : undefined);
+    if (effectiveAgeGroup && student.franchiseId) {
+      const fr = await FranchiseModel.findById(student.franchiseId)
+        .select("academyId")
+        .lean();
+      if (fr) {
+        await Promise.all([
+          FranchiseModel.findByIdAndUpdate(student.franchiseId, {
+            $addToSet: { ageGroups: effectiveAgeGroup },
+          }),
+          AcademyModel.findByIdAndUpdate(fr.academyId, {
+            $addToSet: { ageGroups: effectiveAgeGroup },
+          }),
+        ]).catch(() => undefined);
+      }
+    }
+
     return student;
+  }
+
+  async getDistinctAgeCategories(
+    franchiseId?: string,
+    academyId?: string,
+  ): Promise<string[]> {
+    const filter: any = {
+      isActive: true,
+      deletedAt: { $exists: false },
+      ageGroup: { $ne: null, $exists: true },
+    };
+
+    if (franchiseId && mongoose.Types.ObjectId.isValid(franchiseId)) {
+      filter.franchiseId = new mongoose.Types.ObjectId(franchiseId);
+    } else if (academyId && mongoose.Types.ObjectId.isValid(academyId)) {
+      const franchises = await FranchiseModel.find({
+        academyId: new mongoose.Types.ObjectId(academyId),
+      })
+        .select("_id")
+        .lean();
+      filter.franchiseId = { $in: franchises.map((f) => f._id) };
+    }
+
+    const raw = await StudentModel.distinct("ageGroup", filter);
+    return raw
+      .filter((c): c is string => typeof c === "string" && c.trim().length > 0)
+      .sort((a, b) => {
+        const numA = parseInt(a.replace(/\D/g, ""), 10) || 0;
+        const numB = parseInt(b.replace(/\D/g, ""), 10) || 0;
+        return numA !== numB ? numA - numB : a.localeCompare(b);
+      });
   }
 
   async deleteStudent(id: string): Promise<void> {
     const success = await this.studentRepo.delete(id);
     if (!success) throw new NotFoundError("Student");
+  }
+
+  async updateStudentStatus(
+    id: string,
+    status: StudentEntity["status"],
+  ): Promise<StudentEntity> {
+    const student = await this.studentRepo.update(id, { status });
+    if (!student) throw new NotFoundError("Student");
+    return student;
+  }
+
+  // Moves a player from their current franchise to another franchise
+  // within the SAME academy — distinct from the Transfer Wall marketplace
+  // (TransferListing/TransferRequest), which is for cross-manager
+  // negotiated transfers. This is a direct administrative reassignment,
+  // restricted to Head Office (an academy-owner manager, or super_admin) —
+  // see StudentController.transferFranchise for the role check.
+  async transferStudentFranchise(
+    studentId: string,
+    dto: TransferStudentFranchiseDto,
+    requester: { userId: string; academyId?: string; isSuperAdmin: boolean },
+  ): Promise<StudentEntity> {
+    const student = await this.studentRepo.findById(studentId);
+    if (!student) throw new NotFoundError("Student");
+
+    if (dto.toFranchiseId === student.franchiseId) {
+      throw new BadRequestError("Player is already assigned to that franchise");
+    }
+
+    const [fromFranchise, toFranchise] = await Promise.all([
+      FranchiseModel.findById(student.franchiseId).select("academyId").lean(),
+      FranchiseModel.findById(dto.toFranchiseId)
+        .select("academyId isActive")
+        .lean(),
+    ]);
+    if (!fromFranchise) throw new NotFoundError("Current franchise");
+    if (!toFranchise) throw new NotFoundError("Destination franchise");
+    if (!toFranchise.isActive) {
+      throw new BadRequestError(
+        "Cannot transfer a player into an inactive franchise",
+      );
+    }
+    if (
+      fromFranchise.academyId.toString() !== toFranchise.academyId.toString()
+    ) {
+      throw new BadRequestError(
+        "Players can only be transferred between franchises of the same academy",
+      );
+    }
+    if (
+      !requester.isSuperAdmin &&
+      requester.academyId &&
+      requester.academyId !== fromFranchise.academyId.toString()
+    ) {
+      throw new ForbiddenError(
+        "You can only transfer players within your own academy",
+      );
+    }
+
+    // Team/coach assignments are franchise-scoped (see
+    // validateTeamAssignment above) — moving academies without clearing
+    // them would leave the player pointing at a team that belongs to the
+    // franchise they just left.
+    const franchiseUpdate: Record<string, unknown> = {
+      franchiseId: dto.toFranchiseId,
+      teamId: null,
+      coachId: null,
+    };
+    const updated = await this.studentRepo.update(
+      studentId,
+      franchiseUpdate as Partial<StudentEntity>,
+    );
+    if (!updated) throw new NotFoundError("Student");
+
+    await FranchiseTransferLogModel.create({
+      studentId,
+      academyId: fromFranchise.academyId,
+      fromFranchiseId: student.franchiseId,
+      toFranchiseId: dto.toFranchiseId,
+      transferredBy: requester.userId,
+      reason: dto.reason,
+    });
+
+    // Keep the player's own login account and every linked guardian
+    // account in sync so a fresh login carries the correct franchise
+    // scope going forward.
+    const accountIds = [student.userId, ...student.guardianIds];
+    await Promise.all(
+      accountIds.map((accId) =>
+        this.userRepo.update(accId, {
+          franchiseId: dto.toFranchiseId,
+        } as Partial<UserEntity>),
+      ),
+    );
+
+    return updated;
+  }
+
+  async getFranchiseTransferHistory(studentId: string): Promise<
+    Array<{
+      id: string;
+      fromFranchise: { id: string; name: string } | null;
+      toFranchise: { id: string; name: string } | null;
+      transferredBy: { id: string; name: string } | null;
+      reason?: string;
+      transferredAt: Date;
+    }>
+  > {
+    const logs = await FranchiseTransferLogModel.find({ studentId })
+      .sort({ createdAt: -1 })
+      .populate("fromFranchiseId", "name")
+      .populate("toFranchiseId", "name")
+      .populate("transferredBy", "firstName lastName")
+      .lean();
+
+    return logs.map((log: any) => ({
+      id: log._id.toString(),
+      fromFranchise: log.fromFranchiseId
+        ? {
+            id: log.fromFranchiseId._id.toString(),
+            name: log.fromFranchiseId.name,
+          }
+        : null,
+      toFranchise: log.toFranchiseId
+        ? { id: log.toFranchiseId._id.toString(), name: log.toFranchiseId.name }
+        : null,
+      transferredBy: log.transferredBy
+        ? {
+            id: log.transferredBy._id.toString(),
+            name: `${log.transferredBy.firstName} ${log.transferredBy.lastName}`,
+          }
+        : null,
+      reason: log.reason,
+      transferredAt: log.createdAt,
+    }));
   }
 
   // NOTE: freeform per-student addPerformance()/markAttendance() methods
@@ -270,5 +666,401 @@ export class StudentUseCases {
     );
     const remarks = await this.studentRepo.getRemarks(studentId);
     return { student, performances, attendance, remarks };
+  }
+
+  // Backs the printable per-student report (performance, attendance,
+  // fees) reachable from the player's page — pulls a longer history than
+  // getPlayerCard (which is tuned for the at-a-glance ID-card view) since
+  // a report is meant to be a fuller record, not a summary.
+  //
+  // Unlike getPlayerCard (loosely authenticate-only — see its route
+  // comment), this returns full fee/payment history and coach remarks,
+  // so it gets its own real authorization check rather than inheriting
+  // that same looseness: manager/coach of the student's own
+  // academy/franchise, the student's own guardian, an employee with
+  // canViewReports, or super_admin.
+  async getStudentReport(
+    studentId: string,
+    requester: {
+      userId: string;
+      role: string;
+      academyId?: string;
+      franchiseId?: string;
+      permissions?: Record<string, boolean>;
+    },
+  ): Promise<any> {
+    const student = await this.getStudentById(studentId);
+    const franchise = await FranchiseModel.findById(student.franchiseId)
+      .select("academyId")
+      .lean();
+    const studentAcademyId = franchise?.academyId?.toString();
+
+    const isSuperAdmin = requester.role === "super_admin";
+    const isSameAcademyStaff =
+      (requester.role === "manager" || requester.role === "coach") &&
+      (requester.academyId === studentAcademyId ||
+        requester.franchiseId === student.franchiseId);
+    const isOwnGuardian =
+      requester.role === "guardian" &&
+      student.guardianIds.includes(requester.userId);
+    const isPermittedEmployee =
+      requester.role === "employee" &&
+      requester.academyId === studentAcademyId &&
+      !!requester.permissions?.canViewReports;
+
+    if (
+      !isSuperAdmin &&
+      !isSameAcademyStaff &&
+      !isOwnGuardian &&
+      !isPermittedEmployee
+    ) {
+      throw new ForbiddenError("You don't have access to this player's report");
+    }
+
+    const [performances, attendance, remarks, fees] = await Promise.all([
+      this.studentRepo.getPerformanceHistory(studentId, 100),
+      this.studentRepo.getAttendanceHistory(studentId, 180),
+      this.studentRepo.getRemarks(studentId),
+      FeeModel.find({ studentId }).sort({ createdAt: -1 }).lean(),
+    ]);
+
+    const totalSessions = attendance.length;
+    const presentCount = attendance.filter(
+      (a: any) => a.status === "present" || a.status === "late",
+    ).length;
+    const attendanceRate =
+      totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
+
+    const feesSummary = fees.reduce(
+      (acc, fee: any) => {
+        acc.totalBilled += fee.finalAmount;
+        acc.totalPaid += fee.installments.reduce(
+          (s: number, i: any) => s + i.paidAmount,
+          0,
+        );
+        return acc;
+      },
+      { totalBilled: 0, totalPaid: 0 },
+    );
+
+    return {
+      student,
+      performances,
+      attendance,
+      remarks,
+      fees,
+      summary: {
+        attendanceRate,
+        totalSessions,
+        totalBilled: feesSummary.totalBilled,
+        totalPaid: feesSummary.totalPaid,
+        totalOutstanding: feesSummary.totalBilled - feesSummary.totalPaid,
+        generatedAt: new Date(),
+      },
+    };
+  }
+
+  // ─── Free Public Student Registration (Standalone) ──────────────────────────
+  async registerPublicStudent(dto: RegisterPublicStudentDto): Promise<{
+    user: any;
+    tokens: { accessToken: string; refreshToken: string; expiresIn: number };
+    token: string;
+    student: any;
+  }> {
+    const cleanEmail = (dto.email || dto.guardianEmail)!.trim().toLowerCase();
+    const rawPhone = (dto.phone || dto.guardianPhone || "").trim();
+    const cleanPhone = rawPhone ? normalizePhone(rawPhone) : "";
+
+    const [existingEmailUser, existingPhoneUser] = await Promise.all([
+      UserModel.findOne({ email: cleanEmail }),
+      cleanPhone
+        ? UserModel.findOne({
+            phone: { $in: getPhoneMatchVariants(cleanPhone) },
+          })
+        : null,
+    ]);
+
+    if (
+      existingEmailUser &&
+      existingPhoneUser &&
+      existingEmailUser._id.toString() !== existingPhoneUser._id.toString()
+    ) {
+      throw new ConflictError(
+        "This email and phone number belong to two different registered accounts. Please log in or use your own credentials.",
+      );
+    }
+
+    if (existingEmailUser) {
+      if (existingEmailUser.role === "student") {
+        const existingStudent = await StudentModel.findOne({
+          userId: existingEmailUser._id,
+        });
+        if (!existingStudent) {
+          // Incomplete public student registration attempt from earlier - clean up orphaned record
+          await UserModel.deleteOne({ _id: existingEmailUser._id });
+        } else {
+          throw new ConflictError(
+            "An account with this email already exists. Please log in.",
+          );
+        }
+      } else {
+        throw new ConflictError(
+          `An account with this email already exists with role: ${existingEmailUser.role}. Please log in with your credentials.`,
+        );
+      }
+    }
+
+    if (existingPhoneUser) {
+      // Re-verify in case existingPhoneUser was the same orphaned student user just deleted above
+      if (
+        !existingEmailUser ||
+        existingPhoneUser._id.toString() !== existingEmailUser._id.toString()
+      ) {
+        if (existingPhoneUser.role === "student") {
+          const existingStudent = await StudentModel.findOne({
+            userId: existingPhoneUser._id,
+          });
+          if (!existingStudent) {
+            await UserModel.deleteOne({ _id: existingPhoneUser._id });
+          } else {
+            throw new ConflictError(
+              "An account with this phone number already exists. Please log in.",
+            );
+          }
+        } else {
+          throw new ConflictError(
+            `An account with this phone number already exists with role: ${existingPhoneUser.role}. Please log in with your credentials.`,
+          );
+        }
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+    const user = await this.userRepo.create({
+      email: cleanEmail,
+      passwordHash,
+      role: "student",
+      firstName: dto.firstName.trim(),
+      lastName: dto.lastName.trim(),
+      phone: cleanPhone || undefined,
+      isActive: true,
+      isEmailVerified: true,
+      permissions: defaultPermissions["student" as UserRole],
+      fcmTokens: [],
+    });
+
+    const birthDate = new Date(dto.dateOfBirth);
+    const age = Math.floor(
+      (Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
+    );
+    const ageGroup = dto.ageGroup || `U-${Math.max(6, Math.min(25, age + 1))}`;
+
+    let student;
+    try {
+      student = await StudentModel.create({
+        userId: user.id,
+        firstName: dto.firstName.trim(),
+        lastName: dto.lastName.trim(),
+        dateOfBirth: birthDate,
+        ageGroup,
+        position: dto.position || "Forward",
+        guardian: dto.guardian || {
+          name: dto.guardianName || `${dto.firstName} ${dto.lastName}`,
+          phone: cleanPhone || "",
+          email: "",
+        },
+        guardianIds: [],
+        medicalInfo: {
+          emergencyContactName:
+            dto.guardianName || `${dto.firstName} ${dto.lastName}`,
+          emergencyContactPhone: cleanPhone || "",
+        },
+        enrollmentDate: new Date(),
+        isActive: true,
+        status: "active",
+        attendancePercentage: 0,
+        overallRating: 0,
+        selectionStatus: "pending",
+        transferStatus: "not_listed",
+        publicProfileToken: crypto.randomBytes(16).toString("hex"),
+        publicProfileEnabled: true,
+      });
+    } catch (err) {
+      await UserModel.deleteOne({ _id: user.id }).catch(() => undefined);
+      throw err;
+    }
+
+    const tokens = {
+      accessToken: jwt.sign(
+        { sub: user.id, role: user.role, permissions: user.permissions },
+        config.jwt.accessSecret,
+        { expiresIn: config.jwt.accessExpiresIn },
+      ),
+      refreshToken: jwt.sign({ sub: user.id }, config.jwt.refreshSecret, {
+        expiresIn: config.jwt.refreshExpiresIn,
+      }),
+      expiresIn: 15 * 60,
+    };
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      },
+      token: tokens.accessToken,
+      tokens,
+      student,
+    };
+  }
+
+  // ─── Unattached Public Students List (For Academy Managers) ─────────────────
+  async getUnattachedStudents(
+    query?: string,
+    ageGroup?: string,
+    page = 1,
+    limit = 50,
+  ) {
+    const conditions: any[] = [
+      { $or: [{ franchiseId: { $exists: false } }, { franchiseId: null }] },
+      { isActive: true },
+    ];
+
+    if (ageGroup) {
+      conditions.push({ ageGroup });
+    }
+
+    if (query && query.trim()) {
+      const clean = query.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const terms = clean.split(/\s+/).filter(Boolean);
+      const termFilters = terms.map((term) => ({
+        $or: [
+          { firstName: { $regex: term, $options: "i" } },
+          { lastName: { $regex: term, $options: "i" } },
+          { position: { $regex: term, $options: "i" } },
+        ],
+      }));
+      conditions.push({ $and: termFilters });
+    }
+
+    const filter =
+      conditions.length === 1 ? conditions[0] : { $and: conditions };
+
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      StudentModel.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      StudentModel.countDocuments(filter),
+    ]);
+
+    const mapped = items.map((s: any) => ({
+      id: s._id.toString(),
+      userId: s.userId?.toString(),
+      firstName: s.firstName,
+      lastName: s.lastName,
+      dateOfBirth: s.dateOfBirth,
+      ageGroup: s.ageGroup,
+      position: s.position,
+      photo: s.photo,
+      overallRating: s.overallRating,
+      guardian: s.guardian,
+      publicProfileToken: s.publicProfileToken,
+      createdAt: s.createdAt,
+    }));
+
+    return {
+      students: mapped,
+      items: mapped,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  // ─── Claim Unattached Student into Franchise ────────────────────────────────
+  async claimUnattachedStudent(
+    studentId: string,
+    dto: ClaimStudentDto,
+    managerAcademyId: string,
+  ): Promise<StudentEntity> {
+    const student = await StudentModel.findById(studentId);
+    if (!student) throw new NotFoundError("Student");
+
+    if (student.franchiseId) {
+      throw new BadRequestError(
+        "This student is already registered with an academy franchise",
+      );
+    }
+
+    const franchise = await FranchiseModel.findById(dto.franchiseId)
+      .select("academyId name")
+      .lean();
+    if (!franchise) throw new NotFoundError("Franchise");
+
+    if (franchise.academyId.toString() !== managerAcademyId) {
+      throw new ForbiddenError(
+        "You can only add students into franchises belonging to your academy",
+      );
+    }
+
+    // Check subscription quota
+    await this.academySubscriptionUseCases.assertCanAddStudent(
+      managerAcademyId,
+    );
+
+    if (dto.teamId) {
+      await this.validateTeamAssignment(dto.franchiseId, dto.teamId);
+    }
+
+    student.franchiseId = new mongoose.Types.ObjectId(dto.franchiseId);
+    if (dto.teamId) student.teamId = new mongoose.Types.ObjectId(dto.teamId);
+    if (dto.coachId) student.coachId = new mongoose.Types.ObjectId(dto.coachId);
+    if (dto.jerseyNumber !== undefined) student.jerseyNumber = dto.jerseyNumber;
+    if (dto.jerseySize) student.jerseySize = dto.jerseySize;
+    if (dto.position) student.position = dto.position;
+    student.enrollmentDate = new Date();
+    await student.save();
+
+    // Update student user record with franchise and academy context
+    await UserModel.findByIdAndUpdate(student.userId, {
+      franchiseId: new mongoose.Types.ObjectId(dto.franchiseId),
+      academyId: new mongoose.Types.ObjectId(managerAcademyId),
+    });
+
+    // Also update any linked guardian users
+    if (student.guardianIds && student.guardianIds.length > 0) {
+      await UserModel.updateMany(
+        { _id: { $in: student.guardianIds } },
+        {
+          $set: {
+            franchiseId: new mongoose.Types.ObjectId(dto.franchiseId),
+            academyId: new mongoose.Types.ObjectId(managerAcademyId),
+          },
+        },
+      )
+        .exec()
+        .catch(() => undefined);
+    }
+
+    // Send internal system alert to student
+    await notificationService
+      .send({
+        userIds: [student.userId.toString()],
+        type: "announcement",
+        title: "Enrolled in Academy",
+        body: `You have been added to ${franchise.name}! You can now see training sessions, attendance, and coach feedback in your portal.`,
+        franchiseId: dto.franchiseId,
+        channels: ["push"],
+      })
+      .catch(() => undefined);
+
+    const updated = await this.studentRepo.findById(studentId);
+    return updated!;
   }
 }

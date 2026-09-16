@@ -4,6 +4,8 @@ import { StudentModel } from "../../../infrastructure/database/models/Student.mo
 import { SessionModel } from "../../../infrastructure/database/models/Session.model";
 import { TeamModel } from "../../../infrastructure/database/models/Team.model";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
+import { UserModel } from "../../../infrastructure/database/models/User.model";
+import { NotFoundError } from "../../../shared/errors/AppError";
 
 export class CoachPortalUseCases {
   /** Reads here are scoped to students on a team assigned to the logged-in
@@ -52,10 +54,19 @@ export class CoachPortalUseCases {
    */
   async getMyFranchises(coachUserId: string) {
     const coachObjectId = new mongoose.Types.ObjectId(coachUserId);
+    const coachSessionFilter = {
+      $or: [
+        { coachId: coachObjectId },
+        { coachId: coachUserId },
+        { coachIds: coachObjectId },
+        { coachIds: coachUserId },
+      ],
+      deletedAt: { $exists: false },
+    };
     const [teamFranchiseIds, sessionFranchiseIds] = await Promise.all([
       TeamModel.find({ coachId: coachObjectId, deletedAt: { $exists: false } })
         .distinct("franchiseId"),
-      SessionModel.find({ coachId: coachObjectId, deletedAt: { $exists: false } })
+      SessionModel.find(coachSessionFilter)
         .distinct("franchiseId"),
     ]);
     const franchiseIds = Array.from(
@@ -92,8 +103,14 @@ export class CoachPortalUseCases {
     weekEnd.setDate(weekEnd.getDate() + 7);
     weekEnd.setHours(23, 59, 59, 999);
 
+    const coachObjectId = new mongoose.Types.ObjectId(coachUserId);
     const sessions = await SessionModel.find({
-      coachId: new mongoose.Types.ObjectId(coachUserId),
+      $or: [
+        { coachId: coachObjectId },
+        { coachId: coachUserId },
+        { coachIds: coachObjectId },
+        { coachIds: coachUserId },
+      ],
       status: { $ne: "cancelled" },
     })
       .populate("teamId", "name")
@@ -122,6 +139,20 @@ export class CoachPortalUseCases {
       roster: roundedRoster,
       todaySessions: todaySessions.map(toCard),
       upcomingSessions: upcomingSessions.map(toCard),
+    };
+  }
+
+  // A manager sets this from Coaches Management, but until now nothing
+  // ever read it back — a coach had no way to see their own availability
+  // reflected anywhere in their portal.
+  async getMyAvailability(coachUserId: string) {
+    const coach = await UserModel.findById(coachUserId)
+      .select("weeklyAvailability customUnavailableDates")
+      .lean();
+    if (!coach) throw new NotFoundError("Coach");
+    return {
+      weeklyAvailability: coach.weeklyAvailability ?? [],
+      customUnavailableDates: coach.customUnavailableDates ?? [],
     };
   }
 }

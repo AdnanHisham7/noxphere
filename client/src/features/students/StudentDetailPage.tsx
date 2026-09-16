@@ -1,5 +1,5 @@
 // src/features/students/StudentDetailPage.tsx
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useMemo } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import {
   RadarChart,
@@ -15,25 +15,72 @@ import {
   CartesianGrid,
 } from "recharts";
 import { clsx } from "clsx";
-import { Repeat2, Mail, Pencil } from "lucide-react";
-import { Button, Badge, Avatar, Modal, Skeleton, EmptyState, Input } from "../../components/ui";
+import {
+  Repeat2,
+  Mail,
+  Pencil,
+  ArrowLeftRight,
+  History,
+  FileText,
+  Camera,
+  Loader2,
+  Calendar,
+  Clock,
+  MapPin,
+  User,
+  Video,
+  Eye,
+  Check,
+  TrendingUp,
+  FolderOpen,
+  AlertTriangle,
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Star,
+  Award,
+  Target,
+  Zap,
+  SlidersHorizontal,
+  Plus,
+} from "lucide-react";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store";
+import { Button, Badge, Avatar, Modal, Skeleton, EmptyState, Input, DocumentUploadField } from "../../components/ui";
 import { toast } from "react-hot-toast";
 import { useTransferWallEnabled } from "../../hooks/useTransferWallEnabled";
+import { useConfirm } from "../../hooks/useConfirm";
 import mannequinPng from "../../assets/players/mannequin.png";
 import { PlayerPlaceholder } from "@/components/ui/PlayerPlaceholder";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import QRCode from "react-qr-code";
-import { useGetPlayerCardQuery, useUpdateStudentPhotoMutation, useUpdateStudentMutation, type Student } from "../../store/api/studentsApi";
-import { useGetFranchiseByIdQuery } from "../../store/api/franchiseApi";
+import {
+  useGetPlayerCardQuery,
+  useUpdateStudentPhotoMutation,
+  useUpdateStudentMutation,
+  useUpdateStudentStatusMutation,
+  useTransferStudentFranchiseMutation,
+  useGetTransferHistoryQuery,
+  useAddCoachRemarkMutation,
+  type Student,
+  type StudentStatus,
+} from "../../store/api/studentsApi";
+import { useGetFranchiseByIdQuery, useGetFranchisesQuery } from "../../store/api/franchiseApi";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
 import { academyApi } from "../../store/api/academyApi";
 import { useListPlayerMutation } from "../../store/api/transferApi";
 import { useUploadImageMutation } from "../../store/api/uploadApi";
-import { Camera, Loader2 } from "lucide-react";
 
 const getRatingColor = (r: number) =>
   r >= 9 ? "text-volt-400" : r >= 8 ? "text-field-400" : r >= 7 ? "text-ice-400" : "text-slate-400";
+
+const getRatingTier = (score: number) => {
+  if (score >= 9) return { label: "Elite", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30" };
+  if (score >= 8) return { label: "Strong", color: "text-volt-400 bg-volt-400/10 border-volt-400/30" };
+  if (score >= 7) return { label: "Good", color: "text-amber-400 bg-amber-400/10 border-amber-400/30" };
+  return { label: "Developing", color: "text-rose-400 bg-rose-500/10 border-rose-500/30" };
+};
 
 const attendanceColors: Record<string, string> = {
   present: "bg-field-400",
@@ -49,20 +96,84 @@ const attendanceTextColors: Record<string, string> = {
   excused: "text-ice-400",
 };
 
+const isImage = (url: string) => {
+  return /\.(jpg|jpeg|png|webp|gif|svg)($|\?)/i.test(url);
+};
+
+const isPdf = (url: string) => {
+  return /\.pdf($|\?)/i.test(url);
+};
+
 const StudentDetailPage: React.FC = () => {
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState<"overview" | "attendance" | "performance" | "info">("overview");
   const [transferModal, setTransferModal] = useState(false);
+  const [franchiseTransferModal, setFranchiseTransferModal] = useState(false);
   const [editModal, setEditModal] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const { user } = useSelector((s: RootState) => s.auth);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewName, setPreviewName] = useState<string>("");
+  const { confirm, ConfirmDialog } = useConfirm();
+
+  // Performance Tab State
+  const [performanceChartView, setPerformanceChartView] = useState<"trend" | "radar">("trend");
+  const [sessionRatingFilter, setSessionRatingFilter] = useState<"all" | "high" | "low">("all");
+  const [expandedSessionIds, setExpandedSessionIds] = useState<Record<string, boolean>>({});
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
 
   const { data: card, isLoading, isError } = useGetPlayerCardQuery(id ?? "", { skip: !id });
   const [listPlayer, { isLoading: listing }] = useListPlayerMutation();
   const [uploadImage, { isLoading: uploadingPhoto }] = useUploadImageMutation();
   const [updateStudentPhoto] = useUpdateStudentPhotoMutation();
+  const [updateStudentStatus, { isLoading: statusUpdating }] = useUpdateStudentStatusMutation();
+  const [transferFranchise, { isLoading: transferringFranchise }] = useTransferStudentFranchiseMutation();
   const transferWallEnabled = useTransferWallEnabled();
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // Only Head Office (an academy-owner manager, or super_admin) may move a
+  // player between franchises — matches the backend authorization check.
+  const canTransferFranchise = user?.role === "super_admin" || (user?.role === "manager" && !user?.franchiseId);
+  const canEditStatus = user?.role === "manager" || user?.role === "super_admin";
+  const canManagePerformance =
+    user?.role === "super_admin" ||
+    user?.role === "manager" ||
+    user?.role === "coach" ||
+    !!user?.permissions?.canManagePerformance;
+
+  const [newRemarkText, setNewRemarkText] = useState("");
+  const [addCoachRemark, { isLoading: isAddingRemark }] = useAddCoachRemarkMutation();
+
+  const handleAddRemark = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRemarkText.trim() || !id) return;
+    try {
+      await addCoachRemark({ id, data: { text: newRemarkText.trim() } }).unwrap();
+      toast.success("Note added successfully");
+      setNewRemarkText("");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to add note");
+    }
+  };
+
+  const handleStatusChange = async (status: StudentStatus) => {
+    if (!id) return;
+    if (status !== "active") {
+      const ok = await confirm({
+        title: "Change player status",
+        message: `Mark this player as "${status.replace("_", " ")}"? This is visible across the roster and to guardians.`,
+        confirmLabel: "Change status",
+      });
+      if (!ok) return;
+    }
+    try {
+      await updateStudentStatus({ id, status }).unwrap();
+      toast.success("Player status updated");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Couldn't update status — try again");
+    }
+  };
 
   const handlePhotoChange = async (file: File | undefined) => {
     if (!file || !id) return;
@@ -85,34 +196,15 @@ const StudentDetailPage: React.FC = () => {
 
   const tabs = ["overview", "attendance", "performance", "info"] as const;
 
-  if (!id) return <Navigate to="/students" replace />;
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64 rounded-lg" />
-        <Skeleton className="h-96 rounded-lg" />
-      </div>
-    );
-  }
-
-  if (isError || !card) {
-    return (
-      <EmptyState
-        title="Player not found"
-        description="This player may have been removed, or you don't have access."
-        action={<Link to="/students" className="text-volt-400 hover:underline text-sm">← Back to Squad</Link>}
-      />
-    );
-  }
-
-  const { student, performances, attendance, remarks } = card;
+  const performances = card?.performances ?? [];
+  const attendance = card?.attendance ?? [];
+  const remarks = card?.remarks ?? [];
+  const student = card?.student;
 
   // Aggregate skill scores across recent performances into a radar profile
   const skillTotals = new Map<string, { sum: number; count: number }>();
   for (const p of performances) {
-    for (const s of p.skillScores) {
+    for (const s of p.skillScores || []) {
       const bucket = skillTotals.get(s.parameter) ?? { sum: 0, count: 0 };
       bucket.sum += s.score;
       bucket.count += 1;
@@ -137,6 +229,87 @@ const StudentDetailPage: React.FC = () => {
     late: attendance.filter((a) => a.status === "late").length,
     absent: attendance.filter((a) => a.status === "absent").length,
     excused: attendance.filter((a) => a.status === "excused").length,
+  };
+
+  // Performance analytics calculations
+  const performanceStats = useMemo(() => {
+    if (!performances || performances.length === 0) {
+      return {
+        avgScore: 0,
+        highestSkill: null as { parameter: string; score: number } | null,
+        lowestSkill: null as { parameter: string; score: number } | null,
+        totalSessions: 0,
+        peakScore: 0,
+        latestDate: null as string | null,
+      };
+    }
+
+    const total = performances.reduce((acc, p) => acc + (p.overallScore || 0), 0);
+    const avg = total / performances.length;
+    const peak = Math.max(...performances.map((p) => p.overallScore || 0));
+
+    // Sort skills by average score
+    const sortedSkills = [...skillScores].sort((a, b) => b.score - a.score);
+    const highestSkill = sortedSkills.length > 0 ? sortedSkills[0] : null;
+    const lowestSkill = sortedSkills.length > 0 ? sortedSkills[sortedSkills.length - 1] : null;
+
+    const sortedByDate = [...performances].sort(
+      (a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime()
+    );
+    const latestDate = sortedByDate[0]?.sessionDate
+      ? new Date(sortedByDate[0].sessionDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+      : null;
+
+    return {
+      avgScore: Math.round(avg * 10) / 10,
+      highestSkill,
+      lowestSkill,
+      totalSessions: performances.length,
+      peakScore: Math.round(peak * 10) / 10,
+      latestDate,
+    };
+  }, [performances, skillScores]);
+
+  const filteredSessions = useMemo(() => {
+    const list = [...performances].sort(
+      (a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime()
+    );
+    if (sessionRatingFilter === "high") {
+      return list.filter((s) => (s.overallScore || 0) >= 8);
+    }
+    if (sessionRatingFilter === "low") {
+      return list.filter((s) => (s.overallScore || 0) < 7);
+    }
+    return list;
+  }, [performances, sessionRatingFilter]);
+
+  if (!id) return <Navigate to="/students" replace />;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 rounded-lg" />
+        <Skeleton className="h-96 rounded-lg" />
+      </div>
+    );
+  }
+
+  if (isError || !card || !student) {
+    return (
+      <EmptyState
+        title="Player not found"
+        description="This player may have been removed, or you don't have access."
+        action={<Link to="/students" className="inline-flex items-center gap-1.5 text-volt-400 hover:underline text-sm"><ArrowLeft size={14} /> Back to Squad</Link>}
+      />
+    );
+  }
+
+  const toggleSessionExpand = (sessionId: string) => {
+    setExpandedSessionIds((prev) => ({
+      ...prev,
+      [sessionId]: !prev[sessionId],
+    }));
   };
 
   const handleDownloadCard = async () => {
@@ -182,7 +355,13 @@ const StudentDetailPage: React.FC = () => {
     }
   };
 
-  const profileUrl = `${window.location.origin}/transfer-wall`;
+  // Only ever points at the real public player page once the guardian
+  // has opted in (see Student.publicProfileEnabled / the toggle in
+  // GuardianChildDetailPage) — printing a QR code for a page that isn't
+  // public yet would just print a 404.
+  const publicProfileUrl = student.publicProfileEnabled && student.publicProfileToken
+    ? `${window.location.origin}/players/${student.publicProfileToken}`
+    : null;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -215,13 +394,37 @@ const StudentDetailPage: React.FC = () => {
                     </Badge>
                     {student.transferStatus === "listed" && <Badge variant="blue">↔ On Transfer</Badge>}
                     {student.transferStatus === "sold" && <Badge variant="green">Transferred</Badge>}
+                    {canEditStatus ? (
+                      <select
+                        value={student.status}
+                        disabled={statusUpdating}
+                        onChange={(e) => handleStatusChange(e.target.value as StudentStatus)}
+                        className={clsx(
+                          "text-2xs font-bold uppercase tracking-wide rounded px-2 py-1 border bg-pitch-800",
+                          student.status === "active" ? "text-field-400 border-field-400/30" : "text-ember-400 border-ember-400/30",
+                        )}
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="on_leave">On Leave</option>
+                        <option value="graduated">Graduated</option>
+                        <option value="dropped_out">Dropped Out</option>
+                      </select>
+                    ) : (
+                      <Badge variant={student.status === "active" ? "green" : "gray"}>
+                        {student.status.replace("_", " ")}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Quick stat chips */}
               <div className="flex flex-wrap items-center gap-3 mt-4">
-                <span className="stat-badge text-field-400">✓ {student.attendancePercentage}% attendance</span>
+                <span className="stat-badge text-field-400 flex items-center gap-1.5">
+                  <Check size={12} className="text-field-400" />
+                  {student.attendancePercentage}% attendance
+                </span>
                 <span className="stat-badge text-slate-400">Enrolled {new Date(student.enrollmentDate).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}</span>
               </div>
 
@@ -230,7 +433,7 @@ const StudentDetailPage: React.FC = () => {
                 <Button
                   size="sm"
                   variant="secondary"
-                  icon={isDownloading ? <span className="animate-spin">🌀</span> : <span>📄</span>}
+                  icon={isDownloading ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
                   onClick={handleDownloadCard}
                   disabled={isDownloading}
                 >
@@ -347,12 +550,22 @@ const StudentDetailPage: React.FC = () => {
                           </div>
                         </div>
                         <div className="col-span-4 flex flex-col items-end">
-                          <div className="bg-white p-2 rounded-xl">
-                            <QRCode value={profileUrl} size={110} level="H" bgColor="#FFFFFF" fgColor="#000000" />
-                          </div>
-                          <p className="text-white/30 text-[9px] uppercase font-black mt-3 tracking-tighter text-right">
-                            Scan for full digital history<br />and video highlights
-                          </p>
+                          {publicProfileUrl ? (
+                            <>
+                              <div className="bg-white p-2 rounded-xl">
+                                <QRCode value={publicProfileUrl} size={110} level="H" bgColor="#FFFFFF" fgColor="#000000" />
+                              </div>
+                              <p className="text-white/30 text-[9px] uppercase font-black mt-3 tracking-tighter text-right">
+                                Scan for player profile
+                              </p>
+                            </>
+                          ) : (
+                            <div className="border border-dashed border-white/15 rounded-xl px-3 py-4 w-[130px] text-center">
+                              <p className="text-white/30 text-[8px] uppercase font-black tracking-tighter leading-relaxed">
+                                Public page not yet enabled by guardian
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -368,6 +581,26 @@ const StudentDetailPage: React.FC = () => {
                 <Button size="sm" variant="secondary" icon={<Pencil size={14} />} onClick={() => setEditModal(true)}>
                   Edit details
                 </Button>
+
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={<FileText size={14} />}
+                  onClick={() => window.open(`/students/${student.id}/report`, "_blank")}
+                >
+                  Generate Report
+                </Button>
+
+                {canTransferFranchise && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    icon={<ArrowLeftRight size={14} />}
+                    onClick={() => setFranchiseTransferModal(true)}
+                  >
+                    Transfer Franchise
+                  </Button>
+                )}
 
                 {student.transferStatus !== "listed" && student.transferStatus !== "sold" && transferWallEnabled && (
                   <Button size="sm" variant="secondary" icon={<Repeat2 size={14} />} onClick={() => setTransferModal(true)}>
@@ -433,14 +666,16 @@ const StudentDetailPage: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 bg-pitch-800 p-1 rounded border border-white/5 w-fit">
+      <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-800 p-1 rounded border border-slate-200 dark:border-white/5 w-fit">
         {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={clsx(
               "px-4 py-1.5 rounded text-xs font-display font-bold uppercase tracking-wide transition-all duration-150",
-              activeTab === tab ? "bg-volt-400 text-pitch-900" : "text-slate-500 hover:text-white",
+              activeTab === tab
+                ? "bg-volt-400 text-pitch-900 shadow-sm"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
             )}
           >
             {tab}
@@ -459,16 +694,16 @@ const StudentDetailPage: React.FC = () => {
               <>
                 <ResponsiveContainer width="100%" height={200}>
                   <RadarChart data={skillScores}>
-                    <PolarGrid stroke="rgba(255,255,255,0.06)" />
+                    <PolarGrid stroke="rgba(100,116,139,0.2)" />
                     <PolarAngleAxis dataKey="parameter" tick={{ fill: "#64748b", fontSize: 10 }} />
-                    <Radar dataKey="score" stroke="#ccff00" fill="#ccff00" fillOpacity={0.08} strokeWidth={2} dot={{ fill: "#ccff00", r: 3, strokeWidth: 0 }} />
+                    <Radar dataKey="score" stroke="#ccff00" fill="#ccff00" fillOpacity={0.12} strokeWidth={2} dot={{ fill: "#ccff00", r: 3, strokeWidth: 0 }} />
                   </RadarChart>
                 </ResponsiveContainer>
                 <div className="space-y-2 mt-4">
                   {skillScores.map((s) => (
                     <div key={s.parameter} className="flex items-center gap-2">
                       <span className="text-2xs text-slate-500 w-24">{s.parameter}</span>
-                      <div className="flex-1 h-1.5 bg-pitch-600 rounded-full overflow-hidden">
+                      <div className="flex-1 h-1.5 bg-slate-200 dark:bg-pitch-600 rounded-full overflow-hidden">
                         <div className="h-full bg-volt-400 transition-all duration-500" style={{ width: `${s.score * 10}%` }} />
                       </div>
                       <span className="font-display font-bold text-xs text-volt-400 w-6 text-right">{s.score}</span>
@@ -486,11 +721,11 @@ const StudentDetailPage: React.FC = () => {
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={sessionHistory}>
-                  <CartesianGrid stroke="rgba(255,255,255,0.04)" />
+                  <CartesianGrid stroke="rgba(100,116,139,0.15)" strokeDasharray="3 3" />
                   <XAxis dataKey="session" tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis domain={[0, 10]} tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ background: "#1a1a24", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, fontSize: 12 }} />
-                  <Line type="monotone" dataKey="score" stroke="#ccff00" strokeWidth={2} dot={{ fill: "#ccff00", r: 4, strokeWidth: 0 }} activeDot={{ fill: "#ccff00", r: 6, strokeWidth: 0 }} />
+                  <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, fontSize: 12, color: "#fff" }} />
+                  <Line type="monotone" dataKey="score" stroke="#16a34a" activeDot={{ r: 6 }} strokeWidth={2} dot={{ r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -499,16 +734,16 @@ const StudentDetailPage: React.FC = () => {
               <p className="section-title">Recent Remarks</p>
               {remarks.length === 0 && <p className="text-xs text-slate-500">No coach remarks yet.</p>}
               {remarks.slice(0, 5).map((r) => (
-                <div key={r._id} className="bg-pitch-700 rounded p-3 border-l-2 border-volt-400">
+                <div key={r._id} className="bg-slate-50 dark:bg-pitch-700 border border-slate-200 dark:border-white/5 rounded p-3 border-l-2 border-volt-400">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-2xs text-volt-400 font-semibold">
+                    <span className="text-2xs text-volt-500 dark:text-volt-400 font-semibold">
                       {r.coachId ? `${r.coachId.firstName} ${r.coachId.lastName}` : "Coach"}
                     </span>
-                    <span className="text-2xs text-slate-600">
+                    <span className="text-2xs text-slate-500 dark:text-slate-600">
                       {new Date(r.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 italic">"{r.text}"</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 italic">"{r.text}"</p>
                 </div>
               ))}
             </div>
@@ -556,53 +791,577 @@ const StudentDetailPage: React.FC = () => {
         </div>
       )}
 
-      {/* Performance tab */}
+      {/* Performance tab - Simplified & Analytical View */}
       {activeTab === "performance" && (
-        <div className="space-y-4">
-          {performances.length === 0 ? (
-            <EmptyState title="No sessions logged yet" description="Coaches can log performance from the coach portal." />
-          ) : (
-            [...performances]
-              .sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime())
-              .map((session) => (
-                <div key={session._id} className="card p-4 flex items-center justify-between">
-                  <span className="text-sm text-slate-300">
-                    {new Date(session.sessionDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+        <div className="space-y-6">
+          {/* 1. Executive Performance Analytics Summary */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {/* OVR Rating Card */}
+            <div className="card p-4 bg-white dark:bg-gradient-to-br dark:from-pitch-800 dark:to-pitch-900/90 border border-slate-200 dark:border-white/10 relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Average Rating</span>
+                <span className="w-7 h-7 rounded-lg bg-volt-400/10 text-volt-500 dark:text-volt-400 flex items-center justify-center">
+                  <Star size={14} className="fill-volt-400/30 text-volt-500 dark:text-volt-400" />
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className={clsx("font-display font-black text-3xl", getRatingColor(performanceStats.avgScore))}>
+                  {performanceStats.avgScore > 0 ? performanceStats.avgScore.toFixed(1) : "—"}
+                </span>
+                <span className="text-xs text-slate-500 font-mono">/ 10</span>
+                {performanceStats.avgScore > 0 && (
+                  <span className={clsx("text-2xs font-bold px-2 py-0.5 rounded-full border ml-auto", getRatingTier(performanceStats.avgScore).color)}>
+                    {getRatingTier(performanceStats.avgScore).label}
                   </span>
-                  <div className="flex items-center gap-3">
-                    <div className="w-32 h-1.5 bg-pitch-600 rounded-full overflow-hidden">
-                      <div className="h-full bg-volt-400" style={{ width: `${(session.overallScore / 10) * 100}%` }} />
-                    </div>
-                    <span className="font-display font-extrabold text-volt-400 text-lg w-8 text-right">
-                      {session.overallScore.toFixed(1)}
-                    </span>
-                  </div>
+                )}
+              </div>
+              <p className="text-2xs text-slate-500 mt-1 font-mono">
+                {performanceStats.totalSessions > 0
+                  ? `Peak: ${performanceStats.peakScore.toFixed(1)} / 10 across ${performanceStats.totalSessions} sessions`
+                  : "No sessions evaluated"}
+              </p>
+            </div>
+
+            {/* Key Strength Card */}
+            <div className="card p-4 bg-white dark:bg-gradient-to-br dark:from-pitch-800 dark:to-pitch-900/90 border border-slate-200 dark:border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Top Strength</span>
+                <span className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 flex items-center justify-center">
+                  <Zap size={14} />
+                </span>
+              </div>
+              <div className="mt-2">
+                <div className="font-display font-bold text-base text-slate-900 dark:text-white truncate">
+                  {performanceStats.highestSkill?.parameter ?? "—"}
                 </div>
-              ))
-          )}
+                <div className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">
+                  {performanceStats.highestSkill ? `${performanceStats.highestSkill.score.toFixed(1)} / 10 Avg` : "Awaiting evaluations"}
+                </div>
+              </div>
+              <p className="text-2xs text-slate-500 mt-1">Player's highest-rated technical skill</p>
+            </div>
+
+            {/* Development Focus Card */}
+            <div className="card p-4 bg-white dark:bg-gradient-to-br dark:from-pitch-800 dark:to-pitch-900/90 border border-slate-200 dark:border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Growth Focus</span>
+                <span className="w-7 h-7 rounded-lg bg-amber-400/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <Target size={14} />
+                </span>
+              </div>
+              <div className="mt-2">
+                <div className="font-display font-bold text-base text-slate-900 dark:text-white truncate">
+                  {performanceStats.lowestSkill?.parameter ?? "—"}
+                </div>
+                <div className="text-xs font-mono text-amber-600 dark:text-amber-400 font-bold mt-0.5">
+                  {performanceStats.lowestSkill ? `${performanceStats.lowestSkill.score.toFixed(1)} / 10 Avg` : "Awaiting evaluations"}
+                </div>
+              </div>
+              <p className="text-2xs text-slate-500 mt-1">Key area for coaching development</p>
+            </div>
+
+            {/* Total Evaluations Card */}
+            <div className="card p-4 bg-white dark:bg-gradient-to-br dark:from-pitch-800 dark:to-pitch-900/90 border border-slate-200 dark:border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Track Record</span>
+                <span className="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 dark:text-ice-400 flex items-center justify-center">
+                  <Award size={14} />
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <span className="font-display font-bold text-2xl text-slate-900 dark:text-white">
+                  {performanceStats.totalSessions}
+                </span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">Sessions</span>
+              </div>
+              <p className="text-2xs text-slate-500 mt-1 font-mono truncate">
+                {performanceStats.latestDate ? `Latest: ${performanceStats.latestDate}` : "No evaluations on file"}
+              </p>
+            </div>
+          </div>
+
+          {/* 2. Visual Skill Profile & Progression Trend (2 Columns) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Skill Mastery Breakdown */}
+            <div className="card p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <div>
+                  <h3 className="section-title text-white flex items-center gap-2">
+                    <SlidersHorizontal size={15} className="text-volt-400" />
+                    Skill Mastery Breakdown
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Average proficiency rating across all completed evaluations.</p>
+                </div>
+                <span className="text-2xs font-mono text-slate-500 uppercase">{skillScores.length} Skills</span>
+              </div>
+
+              {skillScores.length === 0 ? (
+                <EmptyState title="No skill data yet" description="Ratings will aggregate here as coaches log session evaluations." />
+              ) : (
+                <div className="space-y-3 pt-1">
+                  {skillScores.map((s) => {
+                    const ratingTier = getRatingTier(s.score);
+                    return (
+                      <div key={s.parameter} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-300 font-medium">{s.parameter}</span>
+                          <div className="flex items-center gap-2">
+                            <span className={clsx("text-2xs font-bold px-1.5 py-0.5 rounded border", ratingTier.color)}>
+                              {ratingTier.label}
+                            </span>
+                            <span className="font-mono font-bold text-volt-400 w-12 text-right">
+                              {s.score.toFixed(1)} <span className="text-slate-500 text-2xs font-normal">/10</span>
+                            </span>
+                          </div>
+                        </div>
+                        <div className="h-2 w-full bg-pitch-900 rounded-full overflow-hidden border border-white/5">
+                          <div
+                            className={clsx(
+                              "h-full transition-all duration-500 rounded-full",
+                              s.score >= 8.5 ? "bg-emerald-400" : s.score >= 7.0 ? "bg-volt-400" : s.score >= 5.5 ? "bg-amber-400" : "bg-rose-500"
+                            )}
+                            style={{ width: `${Math.min(100, Math.max(0, (s.score / 10) * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Visual Chart Card with Interactive Toggle */}
+            <div className="card p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <div>
+                  <h3 className="section-title text-white flex items-center gap-2">
+                    <TrendingUp size={15} className="text-volt-400" />
+                    Performance Visualizer
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Analyze player growth trajectory and skill balance.</p>
+                </div>
+                <div className="flex items-center bg-pitch-900 p-0.5 rounded-lg border border-white/10 text-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setPerformanceChartView("trend")}
+                    className={clsx(
+                      "px-2.5 py-1 rounded font-semibold transition-all",
+                      performanceChartView === "trend" ? "bg-volt-400 text-pitch-900 font-bold" : "text-slate-400 hover:text-white"
+                    )}
+                  >
+                    Progression
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPerformanceChartView("radar")}
+                    className={clsx(
+                      "px-2.5 py-1 rounded font-semibold transition-all",
+                      performanceChartView === "radar" ? "bg-volt-400 text-pitch-900 font-bold" : "text-slate-400 hover:text-white"
+                    )}
+                  >
+                    Radar
+                  </button>
+                </div>
+              </div>
+
+              {sessionHistory.length === 0 ? (
+                <EmptyState title="No trend data yet" description="Visual insights appear once session ratings are recorded." />
+              ) : performanceChartView === "trend" ? (
+                <div className="pt-2">
+                  <div className="text-2xs font-mono text-slate-400 flex items-center justify-between mb-2">
+                    <span>Session Rating Timeline (Oldest → Latest)</span>
+                    <span className="text-volt-400 font-bold">1–10 Scale</span>
+                  </div>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={sessionHistory} margin={{ top: 10, right: 10, bottom: 5, left: -20 }}>
+                      <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+                      <XAxis dataKey="session" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} />
+                      <YAxis domain={[0, 10]} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} ticks={[0, 2, 4, 6, 8, 10]} />
+                      <Tooltip
+                        contentStyle={{ background: "#09090b", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, fontSize: 12, color: "#fff" }}
+                        formatter={(val: any) => [`${val} / 10`, "Overall Rating"]}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="score"
+                        stroke="#ccff00"
+                        strokeWidth={2.5}
+                        dot={{ fill: "#ccff00", r: 4, strokeWidth: 0 }}
+                        activeDot={{ fill: "#ffffff", r: 6, stroke: "#ccff00", strokeWidth: 2 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="pt-2">
+                  <div className="text-2xs font-mono text-slate-400 text-center mb-2">
+                    Technical Attribute Distribution
+                  </div>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <RadarChart data={skillScores}>
+                      <PolarGrid stroke="rgba(255,255,255,0.08)" />
+                      <PolarAngleAxis dataKey="parameter" tick={{ fill: "#94a3b8", fontSize: 10 }} />
+                      <Radar dataKey="score" stroke="#ccff00" fill="#ccff00" fillOpacity={0.15} strokeWidth={2} dot={{ fill: "#ccff00", r: 3, strokeWidth: 0 }} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 3. Streamlined Session Evaluations Log */}
+          <div className="card p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
+              <div>
+                <h3 className="section-title text-white flex items-center gap-2">
+                  <Calendar size={15} className="text-volt-400" />
+                  Session Performance Log
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Compact session history with expandable granular skill breakdowns.
+                </p>
+              </div>
+
+              {/* Rating Filter Tabs */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-2xs text-slate-500 font-mono mr-1">Filter:</span>
+                {[
+                  { id: "all", label: `All (${performances.length})` },
+                  { id: "high", label: `Top Rated (8+)` },
+                  { id: "low", label: `Needs Focus (<7)` },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setSessionRatingFilter(f.id as any)}
+                    className={clsx(
+                      "px-2.5 py-1 rounded text-2xs font-mono font-semibold transition-all border",
+                      sessionRatingFilter === f.id
+                        ? "bg-volt-400 text-pitch-900 border-volt-400 font-bold"
+                        : "bg-pitch-900/60 text-slate-400 border-white/10 hover:text-white"
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {filteredSessions.length === 0 ? (
+              <EmptyState
+                title="No matching sessions"
+                description={
+                  sessionRatingFilter !== "all"
+                    ? "No sessions match the selected filter. Try switching back to 'All Sessions'."
+                    : "No session performance evaluations have been logged for this athlete yet."
+                }
+              />
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-white/10 divide-y divide-white/5">
+                {filteredSessions.map((session) => {
+                  const isExpanded = !!expandedSessionIds[session._id];
+                  const sessionObj = typeof session.sessionId === "object" ? session.sessionId : null;
+                  const sessionTitle = sessionObj?.title || `${sessionObj?.type ? sessionObj.type.toUpperCase() : "Training"} Session`;
+                  const coachName =
+                    session.coachId && typeof session.coachId === "object"
+                      ? `${session.coachId.firstName} ${session.coachId.lastName}`
+                      : "Evaluator";
+
+                  // Extract top 2 skills for this session
+                  const sortedSessionSkills = session.skillScores
+                    ? [...session.skillScores].sort((a, b) => b.score - a.score)
+                    : [];
+                  const topHighlights = sortedSessionSkills.slice(0, 2);
+
+                  const tier = getRatingTier(session.overallScore);
+
+                  return (
+                    <div key={session._id} className="bg-pitch-900/40 hover:bg-pitch-900/70 transition-colors">
+                      {/* Compact Primary Row */}
+                      <div
+                        onClick={() => toggleSessionExpand(session._id)}
+                        className="p-3.5 sm:px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none"
+                      >
+                        {/* Session Identity */}
+                        <div className="space-y-1 min-w-[200px]">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-display font-bold text-white text-sm">
+                              {sessionTitle}
+                            </span>
+                            {sessionObj?.type && (
+                              <span className="text-3xs uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-white/5 text-slate-300 border border-white/10">
+                                {sessionObj.type}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2.5 text-2xs text-slate-400 font-mono">
+                            <span>
+                              {new Date(session.sessionDate).toLocaleDateString("en-IN", {
+                                weekday: "short",
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
+                            <span>•</span>
+                            <span className="text-slate-300">{coachName}</span>
+                          </div>
+                        </div>
+
+                        {/* Middle: Highlights Pills */}
+                        <div className="hidden md:flex items-center gap-1.5 flex-wrap flex-1 max-w-sm">
+                          {topHighlights.map((sk) => (
+                            <span
+                              key={sk.parameter}
+                              className="text-2xs px-2 py-0.5 rounded bg-white/5 border border-white/5 text-slate-300 font-mono"
+                            >
+                              {sk.parameter}: <strong className="text-volt-400">{sk.score}</strong>
+                            </span>
+                          ))}
+                          {session.remarks && (
+                            <span className="text-2xs text-slate-400 truncate max-w-[120px] italic" title={session.remarks}>
+                              "{session.remarks}"
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Right: Score & Expand Toggle */}
+                        <div className="flex items-center gap-3 self-end sm:self-center">
+                          <div className="text-right">
+                            <div className="flex items-center gap-1.5">
+                              <span className={clsx("font-display font-black text-lg", getRatingColor(session.overallScore))}>
+                                {session.overallScore.toFixed(1)}
+                              </span>
+                              <span className="text-3xs text-slate-500 font-mono">/10</span>
+                              <span className={clsx("text-3xs font-bold px-1.5 py-0.5 rounded border ml-1", tier.color)}>
+                                {tier.label}
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                            aria-label={isExpanded ? "Collapse session details" : "Expand session details"}
+                          >
+                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Expandable Granular Breakdown */}
+                      {isExpanded && (
+                        <div className="px-4 pb-4 pt-2 border-t border-white/5 bg-pitch-950/60 space-y-3 animate-fade-in">
+                          {/* Granular Parameter Badges */}
+                          {session.skillScores && session.skillScores.length > 0 && (
+                            <div>
+                              <span className="text-3xs uppercase tracking-wider text-slate-400 font-mono block mb-2">
+                                Technical Evaluation Details:
+                              </span>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                                {session.skillScores.map((skill) => (
+                                  <div
+                                    key={skill.parameter}
+                                    className="p-2 rounded-lg bg-pitch-900/80 border border-white/5 text-center"
+                                  >
+                                    <span className="text-3xs text-slate-400 block truncate font-medium">{skill.parameter}</span>
+                                    <span className={clsx("font-mono font-black text-sm", getRatingColor(skill.score))}>
+                                      {skill.score} <span className="text-3xs text-slate-600 font-normal">/10</span>
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Coach Note & Video Link */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs pt-1">
+                            {session.remarks ? (
+                              <p className="text-slate-300 text-xs italic bg-white/[0.02] p-2 rounded-lg border border-white/5 flex-1">
+                                <span className="text-volt-400 font-semibold not-italic text-2xs font-mono mr-1.5">Coach Remark:</span>
+                                "{session.remarks}"
+                              </p>
+                            ) : (
+                              <span className="text-2xs text-slate-500 italic">No written remarks for this session.</span>
+                            )}
+
+                            {session.videoUrl && (
+                              <a
+                                href={session.videoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-volt-400 hover:underline inline-flex items-center gap-1.5 font-medium shrink-0 ml-auto"
+                              >
+                                <Video size={13} className="text-volt-400" />
+                                Drill Video
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 4. Coach & Staff Notes Accordion */}
+          <div className="card p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="section-title text-volt-400 flex items-center gap-2">
+                  <FileText size={15} className="text-volt-400" />
+                  Staff Developmental Notes &amp; Observations
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  General coaching notes, scouting reports, and developmental recommendations.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono text-slate-500">
+                  {remarks.length} note{remarks.length === 1 ? "" : "s"}
+                </span>
+                {canManagePerformance && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setIsNotesOpen((v) => !v)}
+                    className="text-xs"
+                    icon={<Plus size={13} />}
+                  >
+                    {isNotesOpen ? "Close Form" : "Add Note"}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Note Composer Form (Collapsible) */}
+            {canManagePerformance && isNotesOpen && (
+              <form onSubmit={handleAddRemark} className="space-y-3 bg-pitch-900/50 p-4 rounded-xl border border-white/5 animate-fade-in">
+                <textarea
+                  value={newRemarkText}
+                  onChange={(e) => setNewRemarkText(e.target.value)}
+                  placeholder="Write an evaluator note for this player (e.g. key areas to improve, match feedback, tactical discipline)..."
+                  className="input min-h-20 w-full resize-none text-xs"
+                  rows={3}
+                />
+                <div className="flex items-center justify-between">
+                  <span className="text-2xs text-slate-500">Visible to academy coaches, staff, and in official reports.</span>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={isAddingRemark || !newRemarkText.trim()}
+                    className="bg-volt-400 text-pitch-900 font-bold hover:bg-volt-300"
+                  >
+                    {isAddingRemark ? "Saving Note..." : "Save Note"}
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {/* Notes List */}
+            <div className="space-y-2">
+              {remarks.length === 0 ? (
+                <p className="text-xs text-slate-500 italic py-1">No staff notes or remarks recorded yet.</p>
+              ) : (
+                remarks.map((r) => {
+                  const coachName =
+                    r.coachId && typeof r.coachId === "object"
+                      ? `${r.coachId.firstName} ${r.coachId.lastName}`
+                      : "Coach / Evaluator";
+                  return (
+                    <div key={r._id} className="bg-pitch-800/60 rounded-xl p-3.5 border-l-2 border-volt-400 space-y-1">
+                      <div className="flex items-center justify-between text-2xs">
+                        <span className="text-volt-400 font-bold">{coachName}</span>
+                        <span className="text-slate-500 font-mono">
+                          {new Date(r.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-200 leading-relaxed italic">"{r.text}"</p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
         </div>
       )}
 
       {/* Info tab */}
       {activeTab === "info" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {[
-            { label: "Date of Birth", value: new Date(student.dateOfBirth).toLocaleDateString("en-IN") },
-            { label: "Enrolled", value: new Date(student.enrollmentDate).toLocaleDateString("en-IN") },
-            { label: "Blood Group", value: student.medicalInfo.bloodGroup || "Not on file" },
-            { label: "Emergency Contact", value: `${student.medicalInfo.emergencyContactName} — ${student.medicalInfo.emergencyContactPhone}` },
-            { label: "Guardian", value: student.guardian.name },
-            { label: "Guardian Phone", value: student.guardian.phone },
-            { label: "Guardian Email", value: student.guardian.email },
-            { label: "Allergies", value: student.medicalInfo.allergies?.length ? student.medicalInfo.allergies.join(", ") : "None" },
-            { label: "Medical Conditions", value: student.medicalInfo.medicalConditions?.length ? student.medicalInfo.medicalConditions.join(", ") : "None" },
-            { label: "Jersey Size", value: student.jerseySize || "Not on file" },
-          ].map((item) => (
-            <div key={item.label} className="card p-4">
-              <p className="section-title mb-1">{item.label}</p>
-              <p className="text-sm text-slate-200">{item.value}</p>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[
+              { label: "Date of Birth", value: new Date(student.dateOfBirth).toLocaleDateString("en-IN") },
+              { label: "Enrolled", value: new Date(student.enrollmentDate).toLocaleDateString("en-IN") },
+              { label: "Blood Group", value: student.medicalInfo.bloodGroup || "Not on file" },
+              { label: "Emergency Contact", value: `${student.medicalInfo.emergencyContactName} — ${student.medicalInfo.emergencyContactPhone}` },
+              { label: "Guardian", value: student.guardian.name },
+              { label: "Guardian Phone", value: student.guardian.phone },
+              { label: "Guardian Email", value: student.guardian.email },
+              { label: "Allergies", value: student.medicalInfo.allergies?.length ? student.medicalInfo.allergies.join(", ") : "None" },
+              { label: "Medical Conditions", value: student.medicalInfo.medicalConditions?.length ? student.medicalInfo.medicalConditions.join(", ") : "None" },
+              { label: "Jersey Size", value: student.jerseySize || "Not on file" },
+            ].map((item) => (
+              <div key={item.label} className="card p-4">
+                <p className="section-title mb-1">{item.label}</p>
+                <p className="text-sm text-slate-200">{item.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Franchise Transfer History */}
+          <FranchiseTransferHistoryCard studentId={student.id} />
+
+          {/* Uploaded Documents Section */}
+          {(user?.role === "super_admin" || user?.role === "manager" || user?.role === "coach") && (
+            <div className="card p-5 space-y-4">
+              <p className="section-title text-volt-400">Uploaded Documents</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                  { label: "Medical Report", url: student.medicalInfo?.medicalReportUrl },
+                  { label: "Medical Certificate", url: student.medicalInfo?.medicalCertificateUrl },
+                  { label: "Scan Report", url: student.medicalInfo?.scanReportUrl },
+                  { label: "PDF Attachment", url: student.medicalInfo?.pdfAttachmentUrl },
+                  { label: "Image Attachment", url: student.medicalInfo?.imageAttachmentUrl },
+                  { label: "Document Attachment", url: student.medicalInfo?.docAttachmentUrl },
+                ]
+                  .filter((doc) => !!doc.url)
+                  .map((doc) => (
+                    <div
+                      key={doc.label}
+                      className="p-4 bg-white/[0.02] border border-white/10 rounded-lg hover:border-volt-400 hover:bg-white/[0.04] transition-all cursor-pointer flex flex-col justify-between h-28"
+                      onClick={() => {
+                        setPreviewUrl(doc.url!);
+                        setPreviewName(doc.label);
+                      }}
+                    >
+                      <div>
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{doc.label}</p>
+                        <p className="text-2xs text-slate-500 mt-1 truncate">
+                          {doc.url?.split("/").pop() || "view-document"}
+                        </p>
+                      </div>
+                      <span className="text-2xs font-bold text-volt-400 uppercase tracking-wider flex items-center gap-1.5 mt-3">
+                        <Eye size={13} /> View Document
+                      </span>
+                    </div>
+                  ))}
+                {![
+                  student.medicalInfo?.medicalReportUrl,
+                  student.medicalInfo?.medicalCertificateUrl,
+                  student.medicalInfo?.scanReportUrl,
+                  student.medicalInfo?.pdfAttachmentUrl,
+                  student.medicalInfo?.imageAttachmentUrl,
+                  student.medicalInfo?.docAttachmentUrl,
+                ].some(Boolean) && (
+                  <p className="text-xs text-slate-500 italic col-span-3">No documents uploaded for this player.</p>
+                )}
+              </div>
             </div>
-          ))}
+          )}
         </div>
       )}
 
@@ -619,6 +1378,86 @@ const StudentDetailPage: React.FC = () => {
 
       {editModal && (
         <EditStudentModal student={student} onClose={() => setEditModal(false)} />
+      )}
+
+      {franchiseTransferModal && (
+        <FranchiseTransferModal
+          student={student}
+          transferring={transferringFranchise}
+          onClose={() => setFranchiseTransferModal(false)}
+          onSubmit={async (toFranchiseId, reason) => {
+            const ok = await confirm({
+              title: "Transfer player",
+              message: `Move ${student.firstName} ${student.lastName} to the selected franchise? Their team and coach assignment will be cleared, and a record of this transfer will be kept on their profile.`,
+              confirmLabel: "Transfer player",
+              danger: true,
+            });
+            if (!ok) return;
+            try {
+              await transferFranchise({ id: student.id, toFranchiseId, reason }).unwrap();
+              toast.success("Player transferred to new franchise");
+              setFranchiseTransferModal(false);
+            } catch (err: any) {
+              toast.error(err?.data?.message || "Couldn't transfer player — try again");
+            }
+          }}
+        />
+      )}
+
+      {ConfirmDialog}
+
+      {previewUrl && (
+        <Modal
+          isOpen={true}
+          onClose={() => {
+            setPreviewUrl(null);
+            setPreviewName("");
+          }}
+          title={previewName}
+          size="xl"
+        >
+          <div className="flex flex-col items-center justify-center p-2 min-h-[50vh]">
+            {isImage(previewUrl) ? (
+              <img
+                src={previewUrl}
+                alt={previewName}
+                className="max-w-full max-h-[75vh] object-contain rounded-lg border border-white/10"
+              />
+            ) : isPdf(previewUrl) ? (
+              <iframe
+                src={previewUrl}
+                className="w-full h-[75vh] border-0 rounded-lg bg-white"
+                title={previewName}
+              />
+            ) : (
+              <div className="text-center p-6 space-y-4">
+                <div className="flex justify-center">
+                  <FolderOpen className="w-12 h-12 text-slate-400" />
+                </div>
+                <p className="text-sm text-slate-300">
+                  This document format cannot be previewed directly in the browser.
+                </p>
+                <div className="flex justify-center gap-3">
+                  <a
+                    href={previewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-volt-400 hover:bg-volt-300 text-pitch-900 rounded font-semibold text-xs transition-colors flex items-center justify-center"
+                  >
+                    Open in New Tab
+                  </a>
+                  <a
+                    href={previewUrl}
+                    download
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded font-semibold text-xs border border-white/10 transition-colors flex items-center justify-center"
+                  >
+                    Download File
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal>
       )}
     </div>
   );
@@ -685,9 +1524,134 @@ const TransferListingModal: React.FC<{
   );
 };
 
+const FranchiseTransferHistoryCard: React.FC<{ studentId: string }> = ({ studentId }) => {
+  const { data: history, isLoading } = useGetTransferHistoryQuery(studentId);
+
+  if (isLoading) {
+    return (
+      <div className="card p-5 space-y-3">
+        <p className="section-title text-volt-400">Franchise Transfer History</p>
+        <Skeleton className="h-10 rounded" />
+      </div>
+    );
+  }
+
+  if (!history || history.length === 0) return null;
+
+  return (
+    <div className="card p-5 space-y-4">
+      <p className="section-title text-volt-400">Franchise Transfer History</p>
+      <div className="space-y-3">
+        {history.map((h) => (
+          <div key={h.id} className="flex items-start gap-3 p-3 bg-white/[0.02] border border-white/5 rounded-lg">
+            <ArrowLeftRight size={14} className="text-ice-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-slate-200">
+                <span className="font-semibold">{h.fromFranchise?.name ?? "Unknown"}</span>
+                {" → "}
+                <span className="font-semibold">{h.toFranchise?.name ?? "Unknown"}</span>
+              </p>
+              <p className="text-2xs text-slate-500 mt-1">
+                {new Date(h.transferredAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                {h.transferredBy?.name ? ` · by ${h.transferredBy.name}` : ""}
+              </p>
+              {h.reason && <p className="text-xs text-slate-400 mt-1 italic">"{h.reason}"</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const FranchiseTransferModal: React.FC<{
+  student: Student;
+  transferring: boolean;
+  onClose: () => void;
+  onSubmit: (toFranchiseId: string, reason?: string) => void;
+}> = ({ student, transferring, onClose, onSubmit }) => {
+  const { data: currentFranchise } = useGetFranchiseByIdQuery(student.franchiseId, { skip: !student.franchiseId });
+  const { data: franchises } = useGetFranchisesQuery(
+    currentFranchise ? { academyId: currentFranchise.academyId, isActive: true } : undefined,
+    { skip: !currentFranchise },
+  );
+  const destinationOptions = (franchises ?? []).filter((f) => f.id !== student.franchiseId);
+  const [toFranchiseId, setToFranchiseId] = useState("");
+  const [reason, setReason] = useState("");
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title="Transfer Franchise" size="sm">
+      <div className="space-y-4">
+        <div>
+          <label className="label">Current Franchise</label>
+          <p className="text-sm text-slate-300">{currentFranchise?.name ?? "—"}</p>
+        </div>
+        <div>
+          <label className="label">Move to</label>
+          <select
+            value={toFranchiseId}
+            onChange={(e) => setToFranchiseId(e.target.value)}
+            className="input !w-full"
+          >
+            <option value="">Select destination franchise…</option>
+            {destinationOptions.map((f) => (
+              <option key={f.id} value={f.id}>{f.name}</option>
+            ))}
+          </select>
+          {destinationOptions.length === 0 && (
+            <p className="text-2xs text-slate-500 mt-1.5">No other active franchises in this academy to transfer into.</p>
+          )}
+        </div>
+        <div>
+          <label className="label">Reason (optional)</label>
+          <textarea
+            className="input min-h-16 resize-none"
+            placeholder="e.g. Family relocation, closer to new franchise"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2.5 p-3 bg-ember-400/5 border border-ember-400/15 rounded">
+          <AlertTriangle className="h-4 w-4 text-ember-400 shrink-0" />
+          <p className="text-xs text-ember-400">Their current team and coach assignment will be cleared as part of the move.</p>
+        </div>
+        <div className="flex gap-3">
+          <Button
+            className="flex-1"
+            loading={transferring}
+            disabled={!toFranchiseId}
+            onClick={() => onSubmit(toFranchiseId, reason.trim() || undefined)}
+          >
+            Transfer Player
+          </Button>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
 export default StudentDetailPage;
 
-const POSITIONS = ["Goalkeeper", "Defender", "Midfielder", "Forward"];
+const POSITIONS = [
+  "Goalkeeper", "Sweeper Keeper", "Center Back", "Left Back", "Right Back",
+  "Wing Back", "Defensive Midfielder", "Central Midfielder", "Attacking Midfielder",
+  "Left Midfielder", "Right Midfielder", "Left Winger", "Right Winger",
+  "Center Forward", "Striker", "Second Striker", "False 9"
+];
+
+const calculateAgeCategory = (dobString: string): string => {
+  if (!dobString) return "U-13";
+  const dobDate = new Date(dobString);
+  const today = new Date();
+  let age = today.getFullYear() - dobDate.getFullYear();
+  const m = today.getMonth() - dobDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) {
+    age--;
+  }
+  const categoryNum = Math.max(5, Math.min(25, age + 1));
+  return `U-${categoryNum}`;
+};
 
 const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({ student, onClose }) => {
   const [updateStudent, { isLoading: saving }] = useUpdateStudentMutation();
@@ -696,15 +1660,45 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
     skip: !franchise?.academyId,
   });
   const categories = academy?.ageGroups ?? [];
+  // Team assignment is scoped to the player's current franchise — franchise
+  // reassignment is a separate, confirmed action (see "Transfer Franchise"
+  // above), not something this form edits, since changing it here without
+  // also moving the team/coach assignment would leave the player pointing
+  // at a team from a different franchise.
   const { data: teams } = useListTeamsQuery({ franchiseId: student.franchiseId }, { skip: !student.franchiseId });
 
   const [firstName, setFirstName] = useState(student.firstName);
   const [lastName, setLastName] = useState(student.lastName);
+  const [dob, setDob] = useState(student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : "");
   const [ageGroup, setAgeGroup] = useState(student.ageGroup);
   const [teamId, setTeamId] = useState(student.teamId ?? "");
-  const [position, setPosition] = useState(student.position ?? "");
+  const [positions, setPositions] = useState<string[]>(student.positions || (student.position ? [student.position] : []));
   const [jerseyNumber, setJerseyNumber] = useState(student.jerseyNumber ? String(student.jerseyNumber) : "");
   const [jerseySize, setJerseySize] = useState(student.jerseySize ?? "");
+
+  // Guardian details state
+  const [guardianName, setGuardianName] = useState(student.guardian?.name ?? "");
+  const [guardianPhone, setGuardianPhone] = useState(student.guardian?.phone ?? "");
+  const [guardianEmail, setGuardianEmail] = useState(student.guardian?.email ?? "");
+
+  // Medical info state
+  const [bloodGroup, setBloodGroup] = useState(student.medicalInfo?.bloodGroup ?? "");
+  const [allergies, setAllergies] = useState(student.medicalInfo?.allergies?.join(", ") ?? "");
+  const [medicalConditions, setMedicalConditions] = useState(student.medicalInfo?.medicalConditions?.join(", ") ?? "");
+  const [emergencyContactName, setEmergencyContactName] = useState(student.medicalInfo?.emergencyContactName ?? "");
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState(student.medicalInfo?.emergencyContactPhone ?? "");
+  const [medicalCondition, setMedicalCondition] = useState(student.medicalInfo?.medicalCondition ?? "");
+  const [medicalNotes, setMedicalNotes] = useState(student.medicalInfo?.medicalNotes ?? "");
+  const [medicalReportUrl, setMedicalReportUrl] = useState(student.medicalInfo?.medicalReportUrl);
+  const [medicalCertificateUrl, setMedicalCertificateUrl] = useState(student.medicalInfo?.medicalCertificateUrl);
+  const [scanReportUrl, setScanReportUrl] = useState(student.medicalInfo?.scanReportUrl);
+
+  const handleDobChange = (value: string) => {
+    setDob(value);
+    if (value) {
+      setAgeGroup(calculateAgeCategory(value));
+    }
+  };
 
   const handleSave = async () => {
     if (!firstName.trim() || !lastName.trim()) {
@@ -715,17 +1709,44 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
       toast.error("Select an age category");
       return;
     }
+    if (!guardianName.trim() || !guardianPhone.trim() || !guardianEmail.trim()) {
+      toast.error("Guardian contact details are required");
+      return;
+    }
+    if (!emergencyContactName.trim() || !emergencyContactPhone.trim()) {
+      toast.error("Emergency contact details are required");
+      return;
+    }
     try {
       await updateStudent({
         id: student.id,
         data: {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
+          dateOfBirth: new Date(dob).toISOString(),
           ageGroup,
           teamId: teamId || null,
-          position: position || undefined,
+          position: positions[0] || "Forward",
+          positions: positions,
           jerseyNumber: jerseyNumber ? parseInt(jerseyNumber, 10) : undefined,
           jerseySize: jerseySize || undefined,
+          guardian: {
+            name: guardianName.trim(),
+            phone: guardianPhone.trim(),
+            email: guardianEmail.trim(),
+          },
+          medicalInfo: {
+            bloodGroup: bloodGroup || undefined,
+            allergies: allergies ? allergies.split(",").map((s) => s.trim()).filter(Boolean) : [],
+            medicalConditions: medicalConditions ? medicalConditions.split(",").map((s) => s.trim()).filter(Boolean) : [],
+            emergencyContactName: emergencyContactName.trim(),
+            emergencyContactPhone: emergencyContactPhone.trim(),
+            medicalCondition: medicalCondition.trim() || undefined,
+            medicalNotes: medicalNotes.trim() || undefined,
+            medicalReportUrl: medicalReportUrl || undefined,
+            medicalCertificateUrl: medicalCertificateUrl || undefined,
+            scanReportUrl: scanReportUrl || undefined,
+          },
         },
       }).unwrap();
       toast.success("Player details updated");
@@ -735,64 +1756,155 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
     }
   };
 
+  const categoriesList = Array.from({ length: 21 }, (_, i) => `U-${i + 5}`);
+  const allCategories = Array.from(new Set([...categories, ...categoriesList])).sort(
+    (a, b) => parseInt(a.replace('U-', '')) - parseInt(b.replace('U-', ''))
+  );
+
   return (
-    <Modal isOpen onClose={onClose} title={`Edit ${student.firstName} ${student.lastName}`} size="md">
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <Input label="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-          <Input label="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+    <Modal isOpen onClose={onClose} title={`Edit ${student.firstName} ${student.lastName}`} size="xl">
+      <div className="space-y-6">
+        
+        {/* Responsive Content Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-start max-h-[60vh] overflow-y-auto pr-2 no-scrollbar">
+          
+          {/* COLUMN 1: Player Info & Guardian Details */}
+          <div className="space-y-4">
+            <div>
+              <p className="section-title mb-3 text-volt-400">Player Info</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+                <Input label="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Date of Birth" type="date" value={dob} onChange={(e) => handleDobChange(e.target.value)} required />
+              <div>
+                <label className="label">Age group</label>
+                <select value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)} className="input !w-full">
+                  {allCategories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Playing Positions (Select all that apply)</label>
+              <div className="flex flex-wrap gap-1.5 mt-1 border border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-pitch-900">
+                {POSITIONS.map((pos) => {
+                  const isSelected = positions.includes(pos);
+                  return (
+                    <button
+                      key={pos}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setPositions(positions.filter((p) => p !== pos));
+                        } else {
+                          setPositions([...positions, pos]);
+                        }
+                      }}
+                      className={clsx(
+                        "px-2 py-0.5 rounded text-[10px] font-semibold uppercase border transition-all duration-150",
+                        isSelected
+                          ? "bg-volt-400 border-volt-400 text-pitch-900 font-extrabold"
+                          : "bg-pitch-800 border-white/5 text-slate-400 hover:border-white/10 hover:text-white"
+                      )}
+                    >
+                      {pos}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Jersey number"
+                type="number"
+                min={0}
+                value={jerseyNumber}
+                onChange={(e) => setJerseyNumber(e.target.value)}
+              />
+              <Input label="Jersey size" value={jerseySize} onChange={(e) => setJerseySize(e.target.value)} placeholder="e.g. M" />
+            </div>
+
+            <div>
+              <label className="label">Franchise</label>
+              <div className="input !w-full flex items-center justify-between text-slate-400 cursor-not-allowed">
+                <span>{franchise?.name ?? "—"}</span>
+                <span className="text-2xs uppercase tracking-wide text-slate-600">Use Transfer Franchise to move this player</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Team Assignment</label>
+              <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className="input !w-full">
+                <option value="">No team assigned</option>
+                {(teams ?? []).map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.ageGroup})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="border-t border-white/5 pt-4 mt-2">
+              <p className="section-title mb-3 text-volt-400">Guardian Details</p>
+              <div className="space-y-3">
+                <Input label="Guardian name" value={guardianName} onChange={(e) => setGuardianName(e.target.value)} required />
+                <Input label="Guardian phone" value={guardianPhone} onChange={(e) => setGuardianPhone(e.target.value)} required />
+                <Input label="Guardian email" value={guardianEmail} onChange={(e) => setGuardianEmail(e.target.value)} required />
+              </div>
+            </div>
+          </div>
+
+          {/* COLUMN 2: Emergency & Medical details */}
+          <div className="space-y-4 md:border-l md:border-white/5 md:pl-6 h-full">
+            <div>
+              <p className="section-title mb-3 text-volt-400">Emergency & Medical</p>
+              <div className="space-y-3">
+                <Input label="Emergency contact name" value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} required />
+                <Input label="Emergency contact phone" value={emergencyContactPhone} onChange={(e) => setEmergencyContactPhone(e.target.value)} required />
+                <Input label="Blood group" value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} placeholder="O+" />
+                <Input label="Allergies (comma separated)" value={allergies} onChange={(e) => setAllergies(e.target.value)} placeholder="Peanuts, Dust" />
+                <Input label="Medical conditions (comma separated)" value={medicalConditions} onChange={(e) => setMedicalConditions(e.target.value)} placeholder="Asthma" />
+                <Input label="Medical Condition Detail" value={medicalCondition} onChange={(e) => setMedicalCondition(e.target.value)} placeholder="Describe any current conditions" />
+                <div>
+                  <label className="label">Medical Notes</label>
+                  <textarea className="input w-full min-h-[60px] text-xs py-2" value={medicalNotes} onChange={(e) => setMedicalNotes(e.target.value)} placeholder="Any notes for coaches..." />
+                </div>
+                <div className="space-y-3 pt-2">
+                  <DocumentUploadField
+                    label="Medical Report (PDF/Word)"
+                    category="notification_document"
+                    value={medicalReportUrl ? { url: medicalReportUrl, filename: "medical-report.pdf" } : undefined}
+                    onChange={(file) => setMedicalReportUrl(file?.url)}
+                  />
+                  <DocumentUploadField
+                    label="Medical Certificate (PDF/Word)"
+                    category="notification_document"
+                    value={medicalCertificateUrl ? { url: medicalCertificateUrl, filename: "medical-certificate.pdf" } : undefined}
+                    onChange={(file) => setMedicalCertificateUrl(file?.url)}
+                  />
+                  <DocumentUploadField
+                    label="Scan Report (PDF/Word)"
+                    category="notification_document"
+                    value={scanReportUrl ? { url: scanReportUrl, filename: "scan-report.pdf" } : undefined}
+                    onChange={(file) => setScanReportUrl(file?.url)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
-        <div>
-          <label className="label">Age group</label>
-          <select value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)} className="input !w-full">
-            <option value="" disabled>
-              Select a category
-            </option>
-            {/* Always offer the player's current category even if it was
-                since removed from academy settings, so this can't force a
-                silent blank. */}
-            {(categories.includes(ageGroup) ? categories : [ageGroup, ...categories].filter(Boolean)).map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="label">Team</label>
-          <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className="input !w-full">
-            <option value="">No team assigned</option>
-            {(teams ?? []).map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name} ({t.ageGroup})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="label">Position</label>
-          <select value={position} onChange={(e) => setPosition(e.target.value)} className="input !w-full">
-            <option value="">Not set</option>
-            {POSITIONS.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            label="Jersey number"
-            type="number"
-            min={0}
-            value={jerseyNumber}
-            onChange={(e) => setJerseyNumber(e.target.value)}
-          />
-          <Input label="Jersey size" value={jerseySize} onChange={(e) => setJerseySize(e.target.value)} placeholder="e.g. M" />
-        </div>
-        <div className="flex gap-3 pt-2">
-          <Button loading={saving} onClick={handleSave} className="flex-1">Save changes</Button>
-          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+
+        <div className="flex gap-3 pt-4 border-t border-white/5 justify-end">
+          <Button type="button" variant="secondary" onClick={onClose} className="px-5">Cancel</Button>
+          <Button loading={saving} onClick={handleSave} className="px-8 bg-volt-400 text-pitch-900 font-bold hover:bg-volt-300">Save changes</Button>
         </div>
       </div>
     </Modal>

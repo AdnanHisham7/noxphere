@@ -13,6 +13,7 @@ import {
   useDeleteResourceMutation,
   type Resource,
 } from "../../store/api/resourcesApi";
+import { useConfirm } from "../../hooks/useConfirm";
 
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -76,7 +77,17 @@ const ResourcesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const { confirm, ConfirmDialog } = useConfirm();
+
+  const handleDelete = async (id: string, fileName?: string) => {
+    const ok = await confirm({
+      title: "Remove Resource",
+      message: `Are you sure you want to delete ${fileName ? `"${fileName}"` : "this resource"}? This action cannot be undone.`,
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
+
     setDeletingId(id);
     try {
       await deleteResource(id).unwrap();
@@ -171,10 +182,11 @@ const ResourcesPage: React.FC = () => {
             isOwner={resource.uploadedBy === user?.id}
             deleting={deletingId === resource.id}
             onVerify={() => handleVerify(resource.id)}
-            onDelete={() => handleDelete(resource.id)}
+            onDelete={() => handleDelete(resource.id, resource.fileName)}
           />
         ))}
       </div>
+      {ConfirmDialog}
     </div>
   );
 };

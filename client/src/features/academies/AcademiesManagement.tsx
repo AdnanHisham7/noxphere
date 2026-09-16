@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { clsx } from "clsx";
 import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 import {
   LayoutGrid,
   List,
@@ -15,10 +16,14 @@ import {
   Loader2,
   Repeat2,
   Ban,
+  LayoutDashboard,
+  AlertTriangle,
 } from "lucide-react";
-import { Button, Input, Modal, Badge, StatCard } from "../../components/ui";
+import { Button, Input, Modal, Badge, StatCard, ImageUploadField } from "../../components/ui";
+import { PlatformBillingCard } from "./PlatformBillingCard";
 import { baseApi } from "../../store/api/baseApi";
 import { academyApi } from "@/store/api/academyApi";
+import { useConfirm } from "../../hooks/useConfirm";
 import { Academy, AcademyConfigPayload, CreateAcademyPayload } from "./types";
 
 // Hooks
@@ -38,6 +43,8 @@ const getManagerName = (academy: Academy): string => {
 
 // ==================== Component ====================
 const AcademiesManagement: React.FC = () => {
+  const navigate = useNavigate();
+  const { confirm, ConfirmDialog } = useConfirm();
   const [viewMode, setViewMode] = useState<"card" | "table">("table");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedAcademy, setSelectedAcademy] = useState<Academy | null>(null);
@@ -78,7 +85,17 @@ const AcademiesManagement: React.FC = () => {
   const totalStudents = "—";
 
   // Toggle status handler
-  const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+  const handleToggleStatus = async (id: string, currentStatus: boolean, academyName?: string) => {
+    const ok = await confirm({
+      title: currentStatus ? "Deactivate Academy" : "Activate Academy",
+      message: currentStatus
+        ? `Are you sure you want to deactivate ${academyName ? `"${academyName}"` : "this academy"}? Staff and coaches will temporarily lose access to their portal.`
+        : `Activate ${academyName ? `"${academyName}"` : "this academy"}? Staff will regain full portal operations.`,
+      confirmLabel: currentStatus ? "Deactivate" : "Activate",
+      danger: currentStatus,
+    });
+    if (!ok) return;
+
     try {
       await toggleStatus(id).unwrap();
       toast.success(`Academy ${currentStatus ? "deactivated" : "activated"}`);
@@ -100,6 +117,7 @@ const AcademiesManagement: React.FC = () => {
   const [newAcademyForm, setNewAcademyForm] = useState({
     name: "",
     academyCode: "",
+    logo: "",
     location: {
       name: "",
       address: "",
@@ -107,8 +125,6 @@ const AcademiesManagement: React.FC = () => {
       longitude: 0,
       fieldNumber: "",
     },
-    ageGroups: "",
-    maxStudents: 100,
     alertBeforeMinutes: 60,
     notificationAlertAfterMinutes: 15,
     skillParameters:
@@ -123,27 +139,39 @@ const AcademiesManagement: React.FC = () => {
   });
 
   const handleAddSubmit = async () => {
+    const parsedSkills = newAcademyForm.skillParameters
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (parsedSkills.length !== 6) {
+      toast.error(
+        `Exactly 6 skill parameters are required (currently ${parsedSkills.length}). It cannot be more or less.`
+      );
+      return;
+    }
+
+    const uniqueSkills = new Set(parsedSkills.map((s) => s.toLowerCase()));
+    if (uniqueSkills.size !== 6) {
+      toast.error("Skill parameter names must be unique");
+      return;
+    }
+
     const payload: CreateAcademyPayload = {
       name: newAcademyForm.name,
       academyCode: newAcademyForm.academyCode || undefined,
+      logo: newAcademyForm.logo || undefined,
       location: {
         ...newAcademyForm.location,
         latitude: Number(newAcademyForm.location.latitude),
         longitude: Number(newAcademyForm.location.longitude),
       },
-      ageGroups: newAcademyForm.ageGroups
-        .split(",")
-        .map((g) => g.trim())
-        .filter(Boolean),
-      maxStudents: Number(newAcademyForm.maxStudents),
+      ageGroups: [],
       alertBeforeMinutes: Number(newAcademyForm.alertBeforeMinutes),
       notificationAlertAfterMinutes: Number(
         newAcademyForm.notificationAlertAfterMinutes,
       ),
-      skillParameters: newAcademyForm.skillParameters
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
+      skillParameters: parsedSkills,
       manager: newAcademyForm.manager,
     };
 
@@ -155,6 +183,7 @@ const AcademiesManagement: React.FC = () => {
       setNewAcademyForm({
         name: "",
         academyCode: "",
+        logo: "",
         location: {
           name: "",
           address: "",
@@ -162,8 +191,6 @@ const AcademiesManagement: React.FC = () => {
           longitude: 0,
           fieldNumber: "",
         },
-        ageGroups: "",
-        maxStudents: 100,
         alertBeforeMinutes: 60,
         notificationAlertAfterMinutes: 15,
         skillParameters:
@@ -186,7 +213,6 @@ const AcademiesManagement: React.FC = () => {
         alertBeforeMinutes: selectedAcademy.alertBeforeMinutes,
         notificationAlertAfterMinutes:
           selectedAcademy.notificationAlertAfterMinutes,
-        skillParameters: selectedAcademy.skillParameters,
         isActive: selectedAcademy.isActive,
       });
     }
@@ -231,23 +257,23 @@ const AcademiesManagement: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <p className="section-title mb-1">Infrastructure</p>
-          <h1 className="font-display font-extrabold text-white text-2xl uppercase tracking-tight">
+          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
             Academies Management
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             {academies.length} total branches
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           {/* Search & Filter */}
           <Input
             placeholder="Search by name or code..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-48"
+            className="w-full sm:w-48"
           />
           <select
-            className="bg-pitch-700 border border-white/5 rounded px-2 py-1 text-sm"
+            className="bg-white dark:bg-pitch-700 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-white rounded px-2 py-1 text-sm flex-1 sm:flex-initial"
             value={
               activeFilter === undefined
                 ? "all"
@@ -266,14 +292,14 @@ const AcademiesManagement: React.FC = () => {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
-          <div className="flex bg-pitch-700 p-1 rounded border border-white/5">
+          <div className="flex bg-slate-100 dark:bg-pitch-700 p-1 rounded border border-slate-200 dark:border-white/5">
             <button
               onClick={() => setViewMode("table")}
               className={clsx(
                 "p-1.5 rounded transition-all",
                 viewMode === "table"
-                  ? "bg-white/10 text-white"
-                  : "text-slate-500 hover:text-slate-300",
+                  ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
               )}
             >
               <List size={16} />
@@ -283,8 +309,8 @@ const AcademiesManagement: React.FC = () => {
               className={clsx(
                 "p-1.5 rounded transition-all",
                 viewMode === "card"
-                  ? "bg-white/10 text-white"
-                  : "text-slate-500 hover:text-slate-300",
+                  ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
               )}
             >
               <LayoutGrid size={16} />
@@ -293,11 +319,14 @@ const AcademiesManagement: React.FC = () => {
           <Button
             onClick={() => setIsAddModalOpen(true)}
             icon={<Plus size={18} />}
+            className="w-full sm:w-auto justify-center"
           >
             New Academy
           </Button>
         </div>
       </div>
+
+      <PlatformBillingCard />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -326,7 +355,7 @@ const AcademiesManagement: React.FC = () => {
 
       {/* Table Mode */}
       {viewMode === "table" && (
-        <div className="card overflow-hidden">
+        <div className="card overflow-hidden overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-white/5 bg-pitch-700/50">
@@ -341,16 +370,25 @@ const AcademiesManagement: React.FC = () => {
               {academies.map((academy) => (
                 <tr
                   key={academy.id}
-                  className="border-b border-white/4 hover:bg-white/2 transition-colors"
+                  className="border-b border-white/4 hover:bg-white/2 transition-colors group"
                 >
                   <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded bg-pitch-700 flex items-center justify-center text-xs font-bold text-volt-400 border border-white/5">
+                    <div
+                      className="flex items-center gap-3 cursor-pointer group-hover:text-volt-400 transition-colors"
+                      onClick={() => navigate(`/academies/${academy.id}/dashboard`)}
+                      title="Open Academy Dashboard"
+                    >
+                      <div className="w-8 h-8 rounded bg-pitch-700 flex items-center justify-center text-xs font-bold text-volt-400 border border-white/5 group-hover:border-volt-400/40 transition-colors">
                         {academy.name.charAt(0)}
                       </div>
-                      <span className="text-sm font-semibold text-white">
-                        {academy.name}
-                      </span>
+                      <div>
+                        <span className="text-sm font-semibold text-white group-hover:text-volt-400 transition-colors block">
+                          {academy.name}
+                        </span>
+                        <span className="text-3xs text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                          <LayoutDashboard size={10} /> View Dashboard
+                        </span>
+                      </div>
                     </div>
                   </td>
                   <td className="px-5 py-4 text-sm font-mono text-slate-400">
@@ -367,8 +405,15 @@ const AcademiesManagement: React.FC = () => {
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2 justify-end">
                       <button
+                        onClick={() => navigate(`/academies/${academy.id}/dashboard`)}
+                        className="p-2 rounded border border-volt-400/20 text-volt-400 bg-volt-400/5 hover:bg-volt-400/15 transition-all"
+                        title="View Academy Dashboard"
+                      >
+                        <LayoutDashboard size={14} />
+                      </button>
+                      <button
                         onClick={() =>
-                          handleToggleStatus(academy.id, academy.isActive)
+                          handleToggleStatus(academy.id, academy.isActive, academy.name)
                         }
                         disabled={isToggling}
                         className={clsx(
@@ -438,15 +483,19 @@ const AcademiesManagement: React.FC = () => {
           {academies.map((academy) => (
             <div
               key={academy.id}
-              className="card p-5 border border-white/5 hover:border-white/10 transition-all"
+              className="card p-5 border border-white/5 hover:border-white/15 transition-all"
             >
               <div className="flex justify-between items-start">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded bg-pitch-700 flex items-center justify-center font-display font-black text-volt-400 text-xl">
+                <div
+                  className="flex items-center gap-3 cursor-pointer group"
+                  onClick={() => navigate(`/academies/${academy.id}/dashboard`)}
+                  title="Open Academy Dashboard"
+                >
+                  <div className="w-12 h-12 rounded bg-pitch-700 flex items-center justify-center font-display font-black text-volt-400 text-xl border border-white/5 group-hover:border-volt-400/40 transition-colors">
                     {academy.name.charAt(0)}
                   </div>
                   <div>
-                    <h3 className="text-white font-bold">{academy.name}</h3>
+                    <h3 className="text-white font-bold group-hover:text-volt-400 transition-colors">{academy.name}</h3>
                     <p className="text-2xs text-slate-500 uppercase tracking-widest">
                       {academy.academyCode}
                     </p>
@@ -459,10 +508,19 @@ const AcademiesManagement: React.FC = () => {
               {!academy.transferWallEnabled && (
                 <Badge variant="gray" className="mt-2">Transfer Wall Disabled</Badge>
               )}
-              <div className="mt-6 flex gap-2">
+              <div className="mt-6 flex flex-wrap gap-2">
+                <Button
+                  variant="primary"
+                  className="flex-1 text-xs"
+                  size="sm"
+                  onClick={() => navigate(`/academies/${academy.id}/dashboard`)}
+                  icon={<LayoutDashboard size={14} />}
+                >
+                  Dashboard
+                </Button>
                 <Button
                   variant="secondary"
-                  className="flex-1 text-xs"
+                  className="text-xs"
                   size="sm"
                   onClick={() => {
                     setSelectedAcademy(academy);
@@ -470,15 +528,15 @@ const AcademiesManagement: React.FC = () => {
                   }}
                   icon={<Settings size={14} />}
                 >
-                  Configuration
+                  Config
                 </Button>
                 <button
                   onClick={() =>
-                    handleToggleStatus(academy.id, academy.isActive)
+                    handleToggleStatus(academy.id, academy.isActive, academy.name)
                   }
                   disabled={isToggling}
                   className={clsx(
-                    "px-4 rounded border transition-all text-xs font-bold uppercase flex items-center gap-2",
+                    "px-3 rounded border transition-all text-xs font-bold uppercase flex items-center gap-2",
                     academy.isActive
                       ? "border-ember-400/20 text-ember-400 bg-ember-400/5 hover:bg-ember-400/10"
                       : "border-field-400/20 text-field-400 bg-field-400/5 hover:bg-field-400/10",
@@ -525,6 +583,17 @@ const AcademiesManagement: React.FC = () => {
         size="md"
       >
         <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+          <ImageUploadField
+            label="Academy Crest / Logo (Optional)"
+            category="academy_logo"
+            value={newAcademyForm.logo}
+            onChange={(url) =>
+              setNewAcademyForm({ ...newAcademyForm, logo: url || "" })
+            }
+            shape="square"
+            helperText="Upload official academy crest or logo (PNG, JPG, WebP)"
+          />
+
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="Academy Name"
@@ -546,8 +615,8 @@ const AcademiesManagement: React.FC = () => {
             />
           </div>
 
-          <div className="bg-white/5 p-3 rounded-lg border border-white/5 space-y-3">
-            <p className="text-xs font-bold text-volt-400 uppercase tracking-tight">
+          <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-lg border border-slate-200 dark:border-white/5 space-y-3">
+            <p className="text-xs font-bold text-volt-500 dark:text-volt-400 uppercase tracking-tight">
               Manager Account
             </p>
             <div className="grid grid-cols-2 gap-3">
@@ -620,8 +689,8 @@ const AcademiesManagement: React.FC = () => {
             />
           </div>
 
-          <div className="bg-pitch-700/50 p-3 rounded-lg border border-white/5 space-y-3">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-tight">
+          <div className="bg-slate-50 dark:bg-pitch-700/50 p-3 rounded-lg border border-slate-200 dark:border-white/5 space-y-3">
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight">
               Location Details
             </p>
             <Input
@@ -699,30 +768,7 @@ const AcademiesManagement: React.FC = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Max Students"
-              type="number"
-              value={newAcademyForm.maxStudents}
-              onChange={(e) =>
-                setNewAcademyForm({
-                  ...newAcademyForm,
-                  maxStudents: parseInt(e.target.value) || 0,
-                })
-              }
-            />
-            <Input
-              label="Age Groups (comma separated)"
-              value={newAcademyForm.ageGroups}
-              onChange={(e) =>
-                setNewAcademyForm({
-                  ...newAcademyForm,
-                  ageGroups: e.target.value,
-                })
-              }
-              placeholder="U-12, U-14, U-16"
-            />
-          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="Pre-Session Alert (mins)"
@@ -747,16 +793,42 @@ const AcademiesManagement: React.FC = () => {
               }
             />
           </div>
-          <Input
-            label="Skill Parameters (comma separated)"
-            value={newAcademyForm.skillParameters}
-            onChange={(e) =>
-              setNewAcademyForm({
-                ...newAcademyForm,
-                skillParameters: e.target.value,
-              })
-            }
-          />
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="label mb-0">Skill Parameters * (comma separated)</label>
+              <span
+                className={`text-2xs font-mono font-bold ${
+                  newAcademyForm.skillParameters
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean).length === 6
+                    ? "text-volt-400"
+                    : "text-ember-400"
+                }`}
+              >
+                {
+                  newAcademyForm.skillParameters
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean).length
+                } / 6 parameters
+              </span>
+            </div>
+            <Input
+              value={newAcademyForm.skillParameters}
+              onChange={(e) =>
+                setNewAcademyForm({
+                  ...newAcademyForm,
+                  skillParameters: e.target.value,
+                })
+              }
+              placeholder="e.g. Dribbling, Passing, Shooting, Speed, Tactical Awareness, Attitude"
+            />
+            <p className="text-3xs text-amber-400/90 mt-1.5 flex items-center gap-1.5">
+              <AlertTriangle size={12} className="shrink-0 text-amber-400" />
+              <span>Exactly 6 skill parameters required. Once configured, they cannot be changed.</span>
+            </p>
+          </div>
 
           <div className="flex gap-3 mt-6">
             <Button
@@ -790,32 +862,59 @@ const AcademiesManagement: React.FC = () => {
         >
           <div className="space-y-5">
             <div className="space-y-3">
-              <p className="section-title">Capacity & Eligibility</p>
+              <p className="section-title">Subscription Billing</p>
               <div className="grid grid-cols-2 gap-4">
                 <Input
-                  label="Max Students"
+                  label="Rate override (₹/student/day)"
                   type="number"
-                  value={configForm.maxStudents ?? selectedAcademy.maxStudents}
+                  step="0.01"
+                  value={configForm.subscriptionRateOverride ?? selectedAcademy.subscriptionRateOverride ?? ""}
                   onChange={(e) =>
                     setConfigForm({
                       ...configForm,
-                      maxStudents: parseInt(e.target.value) || 0,
+                      subscriptionRateOverride: e.target.value === "" ? undefined : parseFloat(e.target.value),
                     })
                   }
+                  placeholder="Platform default"
                 />
                 <Input
-                  label="Age Groups (Comma separated)"
-                  value={
-                    configForm.ageGroups?.join(", ") ??
-                    selectedAcademy.ageGroups.join(", ")
-                  }
+                  label="Staff rate override (₹/staff/month)"
+                  type="number"
+                  step="0.01"
+                  value={configForm.staffRateOverride ?? selectedAcademy.staffRateOverride ?? ""}
                   onChange={(e) =>
                     setConfigForm({
                       ...configForm,
-                      ageGroups: e.target.value.split(",").map((s) => s.trim()),
+                      staffRateOverride: e.target.value === "" ? undefined : parseFloat(e.target.value),
                     })
                   }
+                  placeholder="Platform default"
                 />
+              </div>
+              <p className="text-2xs text-slate-500">Leave either blank to use the platform default rate.</p>
+            </div>
+            <div className="space-y-3">
+              <p className="section-title">Age Categories</p>
+              <div>
+                <p className="text-2xs text-slate-400 mb-2">
+                  Age categories populate automatically when players enroll with their birthdates.
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedAcademy.ageGroups && selectedAcademy.ageGroups.length > 0 ? (
+                    selectedAcademy.ageGroups.map((group) => (
+                      <span
+                        key={group}
+                        className="px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                      >
+                        {group}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-500 italic">
+                      No categories registered yet (added automatically as players enter birthdates).
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -854,53 +953,21 @@ const AcademiesManagement: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-3">
-              <p className="section-title text-volt-400">Skill Parameters</p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="section-title text-volt-400">Skill Parameters</p>
+                <span className="text-3xs text-slate-500 font-mono">Locked (Established at creation)</span>
+              </div>
               <div className="flex flex-wrap gap-2 p-3 bg-white/5 rounded border border-white/5">
-                {(
-                  configForm.skillParameters ?? selectedAcademy.skillParameters
-                ).map((skill, idx) => (
+                {(selectedAcademy.skillParameters || []).map((skill, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-2 bg-pitch-700 px-2 py-1 rounded text-xs text-white"
+                    className="flex items-center gap-1.5 bg-pitch-700 px-2.5 py-1 rounded text-xs text-white border border-white/10 font-medium"
                   >
+                    <span className="w-1.5 h-1.5 rounded-full bg-volt-400"></span>
                     {skill}
-                    <button
-                      type="button"
-                      className="text-ember-400 hover:text-ember-300"
-                      onClick={() => {
-                        const newSkills = (
-                          configForm.skillParameters ??
-                          selectedAcademy.skillParameters
-                        ).filter((_, i) => i !== idx);
-                        setConfigForm({
-                          ...configForm,
-                          skillParameters: newSkills,
-                        });
-                      }}
-                    >
-                      <X size={12} />
-                    </button>
                   </div>
                 ))}
-                <button
-                  type="button"
-                  className="text-xs text-volt-400 font-bold px-2 flex items-center gap-1 hover:text-volt-300"
-                  onClick={() => {
-                    const newSkill = prompt("Enter new skill parameter:");
-                    if (newSkill) {
-                      const current =
-                        configForm.skillParameters ??
-                        selectedAcademy.skillParameters;
-                      setConfigForm({
-                        ...configForm,
-                        skillParameters: [...current, newSkill],
-                      });
-                    }
-                  }}
-                >
-                  <Plus size={12} /> Add
-                </button>
               </div>
             </div>
 
@@ -943,6 +1010,7 @@ const AcademiesManagement: React.FC = () => {
           </div>
         </Modal>
       )}
+      {ConfirmDialog}
     </div>
   );
 };

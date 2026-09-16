@@ -10,9 +10,19 @@ studentRouter.post('/', authenticate, requirePermission('canManageFranchises'), 
 studentRouter.get('/', authenticate, (req, res, next) => {
   req.app.locals.controllers.student.list(req, res, next);
 });
+studentRouter.get('/age-categories', authenticate, (req, res, next) => {
+  req.app.locals.controllers.student.getAgeCategories(req, res, next);
+});
+studentRouter.get('/unattached', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
+  req.app.locals.controllers.student.getUnattached(req, res, next);
+});
+studentRouter.post('/:id/claim', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
+  req.app.locals.controllers.student.claimUnattached(req, res, next);
+});
 studentRouter.get('/:id', authenticate, (req, res, next) => {
   req.app.locals.controllers.student.getById(req, res, next);
 });
+
 studentRouter.put('/:id', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
   req.app.locals.controllers.student.update(req, res, next);
 });
@@ -21,6 +31,15 @@ studentRouter.patch('/:id/photo', authenticate, requirePermission('canManagePerf
 });
 studentRouter.delete('/:id', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
   req.app.locals.controllers.student.delete(req, res, next);
+});
+studentRouter.patch('/:id/status', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
+  req.app.locals.controllers.student.updateStatus(req, res, next);
+});
+studentRouter.post('/:id/transfer-franchise', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
+  req.app.locals.controllers.student.transferFranchise(req, res, next);
+});
+studentRouter.get('/:id/transfer-history', authenticate, (req, res, next) => {
+  req.app.locals.controllers.student.getTransferHistory(req, res, next);
 });
 
 // Attendance/Performance are now only recorded against a real scheduled
@@ -34,4 +53,8 @@ studentRouter.post('/:id/remarks', authenticate, requirePermission('canManagePer
 // Player Card (public? use authentication)
 studentRouter.get('/:id/playercard', authenticate, (req, res, next) => {
   req.app.locals.controllers.student.getPlayerCard(req, res, next);
+});
+
+studentRouter.get('/:id/report', authenticate, (req, res, next) => {
+  req.app.locals.controllers.student.getReport(req, res, next);
 });

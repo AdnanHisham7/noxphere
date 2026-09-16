@@ -11,3 +11,4 @@ export { EmptyState } from "./EmptyState";
 export { Spinner } from "./Spinner";
 export { ImageUploadField } from "./ImageUploadField";
 export { DocumentUploadField } from "./DocumentUploadField";
+export { ConfirmModal } from "./ConfirmModal";

@@ -4,11 +4,13 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 export interface AuthUser {
   id: string;
   email: string;
-  role: 'super_admin' | 'manager' | 'coach' | 'student' | 'guardian';
+  role: 'super_admin' | 'manager' | 'coach' | 'student' | 'guardian' | 'employee';
   firstName: string;
   lastName: string;
+  phone?: string;
   avatar?: string;
   franchiseId?: string;
+  academyId?: string;
   permissions: Record<string, boolean>;
 }
 
@@ -67,15 +69,25 @@ const authSlice = createSlice({
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
+      localStorage.removeItem('activeFranchiseId');
+      try {
+        sessionStorage.clear();
+      } catch {}
     },
     updateAccessToken: (state, action: PayloadAction<string>) => {
       state.accessToken = action.payload;
       localStorage.setItem('accessToken', action.payload);
     },
+    updateUser: (state, action: PayloadAction<Partial<AuthUser>>) => {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+        localStorage.setItem('user', JSON.stringify(state.user));
+      }
+    },
   },
 });
 
-export const { setCredentials, clearCredentials, updateAccessToken } = authSlice.actions;
+export const { setCredentials, clearCredentials, updateAccessToken, updateUser } = authSlice.actions;
 export default authSlice.reducer;
 
 

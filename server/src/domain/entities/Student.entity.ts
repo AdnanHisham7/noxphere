@@ -4,6 +4,14 @@ export interface MedicalInfo {
   medicalConditions?: string[];
   emergencyContactName: string;
   emergencyContactPhone: string;
+  medicalCondition?: string;
+  medicalNotes?: string;
+  medicalReportUrl?: string;
+  medicalCertificateUrl?: string;
+  scanReportUrl?: string;
+  pdfAttachmentUrl?: string;
+  imageAttachmentUrl?: string;
+  docAttachmentUrl?: string;
 }
 
 export interface GuardianInfo {
@@ -20,11 +28,28 @@ export type SelectionStatus =
   | "not_selected"
   | "released";
 export type TransferStatus = "not_listed" | "listed" | "sold";
+export type StudentStatus =
+  | "active"
+  | "inactive"
+  | "on_leave"
+  | "graduated"
+  | "dropped_out";
+
+export interface PublicProfileSettings {
+  showPhoto?: boolean;
+  showPosition?: boolean;
+  showJerseyNumber?: boolean;
+  showAgeGroup?: boolean;
+  showRating?: boolean;
+  showTeam?: boolean;
+  bio?: string;
+  preferredFoot?: string;
+}
 
 export interface StudentEntity {
   id: string;
   userId: string;
-  franchiseId: string;
+  franchiseId?: string;
   teamId?: string;
   coachId?: string;
   guardianIds: string[]; // additional guardian users (if any)
@@ -36,10 +61,12 @@ export interface StudentEntity {
   jerseyNumber?: number;
   jerseySize?: string;
   position?: string;
+  positions?: string[];
   photo?: string;
   medicalInfo: MedicalInfo;
   enrollmentDate: Date;
   isActive: boolean;
+  status: StudentStatus;
   attendancePercentage: number;
   overallRating: number;
   selectionStatus: SelectionStatus;
@@ -49,6 +76,9 @@ export interface StudentEntity {
   transferPrice?: number;
   transferListedAt?: Date;
   transferNote?: string;
+  publicProfileToken: string;
+  publicProfileEnabled: boolean;
+  publicProfileSettings?: PublicProfileSettings;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;

@@ -1,5 +1,7 @@
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
 import { useCurrentFranchiseId } from "./useCurrentFranchiseId";
-import { useGetFranchiseByIdQuery } from "../store/api/franchiseApi";
+import { useGetFranchiseByIdQuery, useGetFranchisesQuery } from "../store/api/franchiseApi";
 
 /**
  * Resolves the academyId of the currently active franchise. Coaches and
@@ -8,9 +10,13 @@ import { useGetFranchiseByIdQuery } from "../store/api/franchiseApi";
  * resource in this academy" should use this instead of franchiseId.
  */
 export const useCurrentAcademyId = (): string | null => {
+  const { user } = useSelector((s: RootState) => s.auth);
   const franchiseId = useCurrentFranchiseId();
   const { data: franchise } = useGetFranchiseByIdQuery(franchiseId ?? "", {
-    skip: !franchiseId,
+    skip: !franchiseId || !!user?.academyId,
   });
-  return franchise?.academyId ?? null;
+  const { data: franchises } = useGetFranchisesQuery(undefined, {
+    skip: !!user?.academyId || !!franchise?.academyId,
+  });
+  return user?.academyId || franchise?.academyId || franchises?.[0]?.academyId || null;
 };

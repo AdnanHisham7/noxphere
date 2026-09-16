@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { RootState } from '../store';
 import { clearCredentials } from '../store/slices/authSlice';
 import { clearActiveFranchise } from '../store/slices/uiSlice';
+import { clearNotifications } from '../store/slices/notificationSlice';
+import { baseApi } from '../store/api/baseApi';
 
 export const useAuth = () => {
   const dispatch = useDispatch();
@@ -13,6 +15,8 @@ export const useAuth = () => {
   const logout = () => {
     dispatch(clearCredentials());
     dispatch(clearActiveFranchise());
+    dispatch(clearNotifications());
+    dispatch(baseApi.util.resetApiState());
     navigate('/login');
   };
 

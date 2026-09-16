@@ -1,9 +1,10 @@
 // src/features/users/UsersManagementPage.tsx
 import React, { useState } from "react";
 import { clsx } from "clsx";
-import { Users, Plus, Trash2, KeyRound, Power } from "lucide-react";
+import { Users, Plus, Trash2, KeyRound, Power, Search } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { Button, Input, Badge, Avatar, Modal, Skeleton, EmptyState } from "../../components/ui";
+import { useConfirm } from "../../hooks/useConfirm";
 import {
   useGetUsersQuery,
   useCreateUserMutation,
@@ -47,6 +48,7 @@ const UsersManagementPage: React.FC = () => {
   const [toggleActive] = useToggleUserActiveMutation();
   const [resetPassword, { isLoading: resetting }] = useResetUserPasswordMutation();
   const [deleteUser] = useDeleteUserMutation();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const handleToggle = async (id: string, isActive: boolean) => {
     try {
@@ -58,7 +60,13 @@ const UsersManagementPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Permanently remove ${name}? This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: "Remove user",
+      message: `Permanently remove ${name}? This cannot be undone.`,
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteUser(id).unwrap();
       toast.success("User removed");
@@ -69,22 +77,22 @@ const UsersManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-start justify-between flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
           <p className="section-title mb-1">Platform</p>
-          <h1 className="font-display font-extrabold text-white text-2xl uppercase tracking-tight">User Management</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{isLoading ? "Loading…" : `${data?.total ?? 0} accounts across all academies`}</p>
+          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">User Management</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{isLoading ? "Loading…" : `${data?.total ?? 0} accounts across all academies`}</p>
         </div>
-        <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)}>New user</Button>
+        <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)} className="w-full sm:w-auto justify-center">New user</Button>
       </div>
 
       {/* Filters */}
-      <div className="card p-4 flex flex-wrap gap-3 items-end">
-        <div className="flex-1 min-w-48">
-          <Input placeholder="Search name or email..." value={search} onChange={(e) => setSearch(e.target.value)} icon={<span className="text-xs">🔍</span>} />
+      <div className="card p-3.5 sm:p-4 flex flex-col sm:flex-row flex-wrap gap-3 sm:items-end">
+        <div className="w-full sm:flex-1 sm:min-w-48">
+          <Input placeholder="Search name or email..." value={search} onChange={(e) => setSearch(e.target.value)} icon={<Search size={14} className="text-slate-400" />} />
         </div>
-        <div className="min-w-40">
-          <select className="input" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+        <div className="w-full sm:w-auto sm:min-w-40">
+          <select className="input w-full" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
             <option value="">All Roles</option>
             {(Object.keys(ROLE_LABEL) as UserRole[]).map((r) => (
               <option key={r} value={r}>{ROLE_LABEL[r]}</option>
@@ -202,6 +210,7 @@ const UsersManagementPage: React.FC = () => {
           />
         </Modal>
       )}
+      {ConfirmDialog}
     </div>
   );
 };

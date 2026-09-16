@@ -5,10 +5,12 @@ export interface AdminNotification {
   id: string;
   title: string;
   body: string;
-  audience: "guardians" | "coaches" | "both" | "team";
+  audience: "players" | "guardians" | "coaches" | "managers" | "franchise" | "academy" | "team";
   imageUrl?: string;
   documentUrl?: string;
   documentFilename?: string;
+  attachments?: { name: string; url: string }[];
+  channels?: string[];
   createdAt: string;
   readBy: string[];
 }
@@ -22,6 +24,8 @@ export interface CreateNotificationBody {
   imageUrl?: string;
   documentUrl?: string;
   documentFilename?: string;
+  attachments?: { name: string; url: string }[];
+  channels?: string[];
 }
 
 export interface NotificationListResult {

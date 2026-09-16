@@ -20,6 +20,15 @@ import { dashboardRouter } from './dashboard.routes';
 import { franchiseRouter } from './franchise.routes';
 import { uploadRouter } from './upload.routes';
 import { resourceRouter } from './resource.routes';
+import { academySubscriptionRouter } from './academySubscription.routes';
+import { consentRouter } from './consent.routes';
+import { publicPlayerRouter } from './publicPlayer.routes';
+import { employeeRouter } from './employee.routes';
+import { complaintRouter } from './complaint.routes';
+import { registrationRouter } from './registration.routes';
+import { nfcCardRouter } from './nfcCard.routes';
+import { squadInvitationRouter } from './squadInvitation.routes';
+import { platformTicketRouter } from './platformTicket.routes';
 
 export const apiRouter = Router();
 
@@ -43,3 +52,12 @@ apiRouter.use('/finance', financeRouter);
 apiRouter.use('/dashboard', dashboardRouter);
 apiRouter.use('/uploads', uploadRouter);
 apiRouter.use('/resources', resourceRouter);
+apiRouter.use('/academy-subscriptions', academySubscriptionRouter);
+apiRouter.use('/consent', consentRouter);
+apiRouter.use('/public/players', publicPlayerRouter);
+apiRouter.use('/employees', employeeRouter);
+apiRouter.use('/complaints', complaintRouter);
+apiRouter.use('/registration', registrationRouter);
+apiRouter.use('/nfc', nfcCardRouter);
+apiRouter.use('/squad-invitations', squadInvitationRouter);
+apiRouter.use('/platform-tickets', platformTicketRouter);

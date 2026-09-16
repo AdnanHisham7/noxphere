@@ -20,6 +20,9 @@ import {
   ForbiddenError,
 } from "../../../shared/errors/AppError";
 import bcrypt from "bcryptjs";
+import { logger } from "../../../shared/utils/logger";
+import { ensureWhatsAppCompatibleImageUrl } from "../../../infrastructure/services/WhatsAppService";
+import { schedulerService } from "../../../infrastructure/services/SchedulerService";
 
 function toFranchiseEntity(doc: FranchiseDocument): FranchiseEntity {
   const json = doc.toJSON() as any;
@@ -95,14 +98,19 @@ export class AcademyUseCases {
       academyCode = await this.generateUniqueCode(dto.name);
     }
 
-    // 5. Create academy
+    // 5. Create academy. maxStudents is no longer collected here — player
+    // capacity is now set when the manager subscribes (see
+    // AcademySubscriptionUseCases), not at academy signup, since a new
+    // academy has no students yet and shouldn't need to guess a cap
+    // before it has ever added one.
     const academy = await this.academyRepository.create({
       name: dto.name,
       academyCode,
       managerId: managerUser.id,
       location: dto.location,
+      logo: dto.logo,
       ageGroups: dto.ageGroups,
-      maxStudents: dto.maxStudents,
+      maxStudents: 0,
       isActive: true,
       alertBeforeMinutes: dto.alertBeforeMinutes,
       notificationAlertAfterMinutes: dto.notificationAlertAfterMinutes,
@@ -118,21 +126,19 @@ export class AcademyUseCases {
     const franchiseCode = await this.generateUniqueFranchiseCode(dto.name);
     const defaultFranchise = await FranchiseModel.create({
       academyId: academy.id,
-      name: `${dto.name} — Main Franchise`,
+      name: dto.name,
       franchiseCode,
       managerId: managerUser.id,
       location: dto.location,
       ageGroups: dto.ageGroups,
-      maxStudents: dto.maxStudents,
       isActive: true,
       alertBeforeMinutes: dto.alertBeforeMinutes,
       notificationAlertAfterMinutes: dto.notificationAlertAfterMinutes,
       skillParameters: dto.skillParameters,
     });
 
-    // 7. Attach the new franchise to the manager so it's auto-selected the
-    // moment they log in.
-    await this.userRepository.update(managerUser.id, { franchiseId: defaultFranchise.id } as Partial<UserEntity>);
+    // 7. Associate the manager user with the academy, keeping franchiseId undefined so they are treated as an Academy Owner (Head Office).
+    await this.userRepository.update(managerUser.id, { academyId: academy.id } as Partial<UserEntity>);
 
     return {
       ...academy,
@@ -177,8 +183,10 @@ export class AcademyUseCases {
       };
     }
 
+    const { ...safeDto } = dto as any;
+    delete safeDto.skillParameters;
     const updated = await this.academyRepository.update(id, {
-      ...dto,
+      ...safeDto,
       location: locationUpdate,
     });
     if (!updated) throw new NotFoundError("Academy");
@@ -188,7 +196,7 @@ export class AcademyUseCases {
   async updateAcademyConfig(
     id: string,
     dto: AcademyConfigDto,
-    requester?: { role: string; franchiseId?: string },
+    requester?: { sub?: string; role: string; franchiseId?: string; academyId?: string },
   ): Promise<AcademyEntity> {
     const academy = await this.academyRepository.findById(id);
     if (!academy) throw new NotFoundError("Academy");
@@ -196,9 +204,10 @@ export class AcademyUseCases {
     // A manager may only edit the academy their own franchise belongs to.
     // super_admin is unrestricted. This is what makes the settings tab —
     // name, location, age categories, guardian alert-day thresholds, and
-    // skillParameters — genuinely editable by the manager of the academy,
+    // feeQrImageUrl — genuinely editable by the manager of the academy,
     // without opening up isActive, maxStudents, or the session-reminder
     // minute fields, which stay super_admin-only.
+    // Skill parameters are permanently established at academy creation.
     //
     // Whitelisting here (rather than blacklisting isActive) means a
     // future field added to AcademyConfigSchema doesn't silently become
@@ -210,28 +219,55 @@ export class AcademyUseCases {
     // the rest.
     const mergedLocation = dto.location ? { ...academy.location, ...dto.location } : undefined;
 
-    let effectiveDto: Partial<AcademyEntity> = { ...dto, location: mergedLocation };
+    let effectiveDto: any = {};
     if (requester && requester.role === "manager") {
-      if (!requester.franchiseId) {
-        throw new ForbiddenError("Your account isn't linked to a franchise");
+      const isOwner =
+        (requester.academyId && requester.academyId === id) ||
+        (academy.manager?.id === requester.sub) ||
+        (academy.managerId === requester.sub);
+      
+      let isFranchiseManager = false;
+      if (requester.franchiseId) {
+        const franchise = await FranchiseModel.findById(requester.franchiseId).select("academyId").lean();
+        if (franchise && franchise.academyId.toString() === id) {
+          isFranchiseManager = true;
+        }
       }
-      const franchise = await FranchiseModel.findById(requester.franchiseId).select("academyId").lean();
-      if (!franchise || franchise.academyId.toString() !== id) {
+
+      if (!isOwner && !isFranchiseManager) {
         throw new ForbiddenError("You can only configure your own academy");
       }
-      effectiveDto = {
-        name: dto.name,
-        location: mergedLocation,
-        ageGroups: dto.ageGroups,
-        absentAlertDays: dto.absentAlertDays,
-        dueDateAlertDays: dto.dueDateAlertDays,
-        feeQrImageUrl: dto.feeQrImageUrl,
-        skillParameters: dto.skillParameters,
-      };
+
+      if (dto.name !== undefined) effectiveDto.name = dto.name;
+      if (mergedLocation !== undefined) effectiveDto.location = mergedLocation;
+      if (dto.pitches !== undefined) effectiveDto.pitches = dto.pitches;
+      if (dto.ageGroups !== undefined) effectiveDto.ageGroups = dto.ageGroups;
+      if (dto.absentAlertDays !== undefined) effectiveDto.absentAlertDays = dto.absentAlertDays;
+      if (dto.dueDateAlertDays !== undefined) effectiveDto.dueDateAlertDays = dto.dueDateAlertDays;
+      if (dto.feeQrImageUrl !== undefined) {
+        effectiveDto.feeQrImageUrl = dto.feeQrImageUrl ? ensureWhatsAppCompatibleImageUrl(dto.feeQrImageUrl) : dto.feeQrImageUrl;
+      }
+      if (dto.logo !== undefined) effectiveDto.logo = dto.logo;
+      if (dto.dataProtectionContactEmail !== undefined) effectiveDto.dataProtectionContactEmail = dto.dataProtectionContactEmail;
+    } else {
+      effectiveDto = { ...dto };
+      delete effectiveDto.skillParameters;
+      if (effectiveDto.feeQrImageUrl) {
+        effectiveDto.feeQrImageUrl = ensureWhatsAppCompatibleImageUrl(effectiveDto.feeQrImageUrl);
+      }
+      if (mergedLocation !== undefined) effectiveDto.location = mergedLocation;
     }
 
     const updated = await this.academyRepository.update(id, effectiveDto);
     if (!updated) throw new NotFoundError("Academy");
+
+    // If dueDateAlertDays was updated, immediately check upcoming installments so newly eligible ones get alerted
+    if (dto.dueDateAlertDays !== undefined) {
+      schedulerService.checkAndSendDueSoonFeeAlerts().catch((err) => {
+        logger.error("[AcademyUseCases] Triggering fee alert check after dueDateAlertDays update failed:", err);
+      });
+    }
+
     return updated;
   }
 

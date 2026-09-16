@@ -1,12 +1,15 @@
 // src/features/franchises/FranchiseManagementPage.tsx
 import React, { useEffect, useState } from "react";
 import { clsx } from "clsx";
-import { Building2, Plus, Power, Trash2, ListChecks, X, Pencil } from "lucide-react";
+import { Building2, Plus, Power, Trash2, ListChecks, X, Pencil, LayoutDashboard } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import { setActiveFranchise } from "../../store/slices/uiSlice";
 import { Button, Input, Badge, Modal, Skeleton, EmptyState } from "../../components/ui";
 import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
+import { useConfirm } from "../../hooks/useConfirm";
 import { academyApi } from "../../store/api/academyApi";
 import {
   useGetFranchisesQuery,
@@ -19,14 +22,20 @@ import {
 } from "../../store/api/franchiseApi";
 
 const FranchiseManagementPage: React.FC = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { confirm, ConfirmDialog } = useConfirm();
   const { user } = useSelector((s: RootState) => s.auth);
   const isSuperAdmin = user?.role === "super_admin";
+  const isHeadOfficeRole = isSuperAdmin || (user?.role === "manager" && !user?.franchiseId);
 
-  // Manager: resolve their own academy via their current franchise.
+  // Manager: resolve their own academy via their user record, fallback to current franchise.
   const currentFranchiseId = useCurrentFranchiseId();
   const { data: currentFranchise } = useGetFranchiseByIdQuery(currentFranchiseId ?? "", {
     skip: !currentFranchiseId || isSuperAdmin,
   });
+
+  const canCreateFranchise = isHeadOfficeRole;
 
   // Super admin: pick any academy from a dropdown.
   const { data: academiesResult } = academyApi.useGetAcademiesQuery(
@@ -36,7 +45,7 @@ const FranchiseManagementPage: React.FC = () => {
   const academies = academiesResult?.data ?? [];
   const [selectedAcademyId, setSelectedAcademyId] = useState("");
 
-  const activeAcademyId = isSuperAdmin ? selectedAcademyId : currentFranchise?.academyId;
+  const activeAcademyId = isSuperAdmin ? selectedAcademyId : (user?.academyId || currentFranchise?.academyId);
 
   const { data: franchises, isLoading, isError } = useGetFranchisesQuery(
     activeAcademyId ? { academyId: activeAcademyId } : undefined,
@@ -47,18 +56,7 @@ const FranchiseManagementPage: React.FC = () => {
   const [toggleActive] = useToggleFranchiseActiveMutation();
   const [deleteFranchise] = useDeleteFranchiseMutation();
   const [showCreate, setShowCreate] = useState(false);
-  const [editingFranchise, setEditingFranchise] = useState<Franchise | null>(null);
-  const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
   const [detailsFranchise, setDetailsFranchise] = useState<Franchise | null>(null);
-
-  const openSkillModal = (franchise: Franchise) => {
-    setEditingFranchise(franchise);
-    setIsSkillModalOpen(true);
-  };
-  const closeSkillModal = () => {
-    setIsSkillModalOpen(false);
-    setEditingFranchise(null);
-  };
 
   const handleToggle = async (id: string, isActive: boolean) => {
     try {
@@ -71,7 +69,13 @@ const FranchiseManagementPage: React.FC = () => {
 
   const handleDelete = async (f: Franchise) => {
     if (!activeAcademyId) return;
-    if (!window.confirm(`Remove "${f.name}"? This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: "Remove franchise",
+      message: `Remove "${f.name}"? This cannot be undone.`,
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteFranchise({ id: f.id, academyId: activeAcademyId }).unwrap();
       toast.success("Franchise removed");
@@ -80,26 +84,34 @@ const FranchiseManagementPage: React.FC = () => {
     }
   };
 
+  // Drill into this franchise's own dashboard — the only place a
+  // franchise-specific view now lives (the top bar no longer carries a
+  // franchise switcher on this page or on /dashboard).
+  const handleViewDashboard = (f: Franchise) => {
+    dispatch(setActiveFranchise(f.id));
+    navigate(`/franchises/${f.id}`);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <p className="section-title mb-1">Structure</p>
-          <h1 className="font-display font-extrabold text-white text-2xl uppercase tracking-tight">Franchises</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">Franchises</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             {isSuperAdmin
               ? "Manage the operational franchises under any academy"
               : "Manage the franchises under your academy"}
           </p>
         </div>
-        {activeAcademyId && (
-          <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)}>New franchise</Button>
+        {activeAcademyId && canCreateFranchise && (
+          <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)} className="w-full sm:w-auto">New franchise</Button>
         )}
       </div>
 
       {isSuperAdmin && (
         <div className="card p-4 flex items-end gap-3">
-          <div className="min-w-64">
+          <div className="w-full sm:w-64">
             <label className="label">Academy</label>
             <select className="input" value={selectedAcademyId} onChange={(e) => setSelectedAcademyId(e.target.value)}>
               <option value="">Select an academy…</option>
@@ -134,7 +146,7 @@ const FranchiseManagementPage: React.FC = () => {
           icon={<Building2 size={28} />}
           title="No franchises yet"
           description="Every academy needs at least one franchise for students, teams, and sessions to belong to."
-          action={<Button onClick={() => setShowCreate(true)}>Create franchise</Button>}
+          action={canCreateFranchise ? <Button onClick={() => setShowCreate(true)}>Create franchise</Button> : undefined}
         />
       )}
 
@@ -174,14 +186,14 @@ const FranchiseManagementPage: React.FC = () => {
                 ) : (
                   <span className="text-2xs text-slate-500 italic">None set</span>
                 )}
-                <button
-                  onClick={() => openSkillModal(f)}
-                  className="ml-auto text-slate-400 hover:text-volt-400 transition-colors"
-                  title="Manage skills"
-                >
-                  <Pencil size={14} />
-                </button>
               </div>
+              <button
+                onClick={() => handleViewDashboard(f)}
+                className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-pitch-900 bg-volt-400 hover:bg-volt-300 rounded px-3 py-2 transition-colors"
+              >
+                <LayoutDashboard size={13} />
+                View Dashboard
+              </button>
               <div className="flex items-center gap-3 pt-2 border-t border-white/5">
                 <button
                   onClick={() => handleToggle(f.id, f.isActive)}
@@ -203,6 +215,8 @@ const FranchiseManagementPage: React.FC = () => {
         </div>
       )}
 
+      {ConfirmDialog}
+
       {showCreate && activeAcademyId && (
         <CreateFranchiseModal
           academyId={activeAcademyId}
@@ -220,12 +234,7 @@ const FranchiseManagementPage: React.FC = () => {
         />
       )}
 
-      {isSkillModalOpen && editingFranchise && (
-        <FranchiseSkillModal
-          franchise={editingFranchise}
-          onClose={closeSkillModal}
-        />
-      )}
+
 
       {detailsFranchise && (
         <FranchiseDetailsModal
@@ -344,94 +353,6 @@ const FranchiseDetailsModal: React.FC<{
   );
 };
 
-const FranchiseSkillModal: React.FC<{
-  franchise: Franchise;
-  onClose: () => void;
-}> = ({ franchise, onClose }) => {
-  const [updateFranchise, { isLoading }] = useUpdateFranchiseMutation();
-  const [skills, setSkills] = useState<string[]>(franchise.skillParameters || []);
-  const [newSkill, setNewSkill] = useState("");
-  const [dirty, setDirty] = useState(false);
 
-  const addSkill = () => {
-    const trimmed = newSkill.trim();
-    if (!trimmed) return;
-    if (skills.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
-      toast.error("That skill already exists");
-      return;
-    }
-    setSkills((prev) => [...prev, trimmed]);
-    setNewSkill("");
-    setDirty(true);
-  };
-
-  const removeSkill = (idx: number) => {
-    setSkills((prev) => prev.filter((_, i) => i !== idx));
-    setDirty(true);
-  };
-
-  const handleSave = async () => {
-    if (skills.length === 0) {
-      toast.error("Keep at least one skill parameter");
-      return;
-    }
-    try {
-      await updateFranchise({
-        id: franchise.id,
-        data: { skillParameters: skills },
-      }).unwrap();
-      toast.success("Skills updated for this franchise");
-      setDirty(false);
-      onClose();
-    } catch (err: any) {
-      toast.error(err?.data?.message || "Update failed");
-    }
-  };
-
-  return (
-    <Modal isOpen onClose={onClose} title={`Manage skills – ${franchise.name}`} size="md">
-      <div className="space-y-4">
-        <div className="flex flex-wrap gap-2 p-3 bg-white/5 rounded border border-white/5">
-          {skills.map((skill, idx) => (
-            <div key={`${skill}-${idx}`} className="flex items-center gap-2 bg-pitch-700 px-2 py-1 rounded text-xs text-white">
-              {skill}
-              <button type="button" className="text-ember-400 hover:text-ember-300" onClick={() => removeSkill(idx)}>
-                <X size={12} />
-              </button>
-            </div>
-          ))}
-          {skills.length === 0 && (
-            <p className="text-2xs text-slate-500">No skills defined for this franchise.</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            className="input flex-1"
-            placeholder="e.g. Dribbling"
-            value={newSkill}
-            onChange={(e) => setNewSkill(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                addSkill();
-              }
-            }}
-          />
-          <Button type="button" variant="secondary" icon={<Plus size={14} />} onClick={addSkill}>
-            Add
-          </Button>
-        </div>
-        <div className="flex gap-3 pt-2">
-          <Button type="button" loading={isLoading} onClick={handleSave} disabled={!dirty}>
-            Save changes
-          </Button>
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-        </div>
-      </div>
-    </Modal>
-  );
-};
 
 export default FranchiseManagementPage;
