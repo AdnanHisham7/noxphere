@@ -72,7 +72,7 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
   return (
     <>
       {/* Top subtle vignette for header text legibility */}
-      <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-white/90 via-white/50 to-transparent dark:from-black/85 dark:via-black/50 dark:to-transparent z-10 pointer-events-none" />
+      <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-white/40 via-white/10 to-transparent dark:from-black/65 dark:via-black/40 dark:to-transparent z-10 pointer-events-none" />
 
       {/* Bottom gradient for footer legibility */}
       <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-white via-white/85 to-transparent dark:from-black dark:via-black/80 dark:to-transparent z-10 pointer-events-none" />
@@ -104,11 +104,11 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
         </div>
       </div>
 
-      <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
+      {/* <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
         <span className="font-display font-black text-[64px] sm:text-[100px] leading-none text-slate-900/[0.04] dark:text-white/[0.06] select-none">
           {student.jerseyNumber ?? "—"}
         </span>
-      </div>
+      </div> */}
 
       <div className="absolute bottom-0 left-0 right-0 z-20 p-2.5">
         <div className="mb-2">
@@ -655,9 +655,9 @@ const StudentsPage: React.FC = () => {
                             number={student.jerseyNumber ?? 0}
                             className="h-full w-full px-6 pb-14"
                             nameTop="28%"
-                            numberTop="32%"
+                            numberTop="34%"
                             nameSize="11px"
-                            numberSize="65px"
+                            numberSize="55px"
                             nameWidth="75%"
                           />
                         )}
@@ -678,10 +678,10 @@ const StudentsPage: React.FC = () => {
                           name={`${student.firstName} ${student.lastName}`}
                           number={student.jerseyNumber ?? 0}
                           className="h-full w-full px-6 pb-14"
-                          nameTop="30%"
-                          numberTop="36%"
+                          nameTop="28%"
+                          numberTop="34%"
                           nameSize="11px"
-                          numberSize="65px"
+                          numberSize="55px"
                           nameWidth="75%"
                         />
                       </div>
