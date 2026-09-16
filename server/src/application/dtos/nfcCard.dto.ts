@@ -2,13 +2,13 @@
 import { z } from "zod";
 
 export const NfcShippingAddressSchema = z.object({
-  recipientName: z.string().min(2, "Recipient name is required"),
-  phone: z.string().min(7, "Valid contact phone is required"),
-  addressLine1: z.string().min(5, "Address line 1 is required"),
-  addressLine2: z.string().optional(),
-  city: z.string().min(2, "City is required"),
-  state: z.string().min(2, "State is required"),
-  postalCode: z.string().min(4, "Postal/PIN code is required"),
+  recipientName: z.string().trim().min(2, "Recipient name must be at least 2 characters"),
+  phone: z.string().trim().min(7, "Valid contact phone is required (at least 7 digits)"),
+  addressLine1: z.string().trim().min(5, "Address line 1 must be at least 5 characters"),
+  addressLine2: z.string().trim().optional(),
+  city: z.string().trim().min(2, "City is required"),
+  state: z.string().trim().min(2, "State is required"),
+  postalCode: z.string().trim().min(4, "Postal/PIN code must be at least 4 digits"),
   country: z.string().default("India"),
 });
 

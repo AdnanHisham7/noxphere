@@ -8,6 +8,7 @@ import {
 } from "@reduxjs/toolkit/query/react";
 import type { RootState } from "../index";
 import { clearCredentials, updateAccessToken } from "../slices/authSlice";
+import { cleanRawMessage } from "../../utils/errorUtils";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
 
@@ -67,6 +68,14 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
     const newAccessToken = await refreshPromise;
     if (newAccessToken) {
       result = await rawBaseQuery(args, api, extraOptions);
+    }
+  }
+
+  // Normalize and clean any stringified JSON or raw errors in the API response message
+  if (result.error?.data && typeof result.error.data === "object") {
+    const errorData = result.error.data as Record<string, any>;
+    if (typeof errorData.message === "string") {
+      errorData.message = cleanRawMessage(errorData.message) || errorData.message;
     }
   }
 
