@@ -13,10 +13,11 @@ import {
   toggleMobileSidebar,
 } from "../../store/slices/uiSlice";
 import { Avatar } from "../ui";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import clsx from "clsx";
 import { RootState } from "../../store";
 import { useCurrentFranchiseId, isNoFranchiseSwitchPage } from "../../hooks/useCurrentFranchiseId";
+import { useClickOutside } from "../../hooks/useClickOutside";
 import {
   useGetFranchiseByIdQuery,
   useGetFranchisesQuery,
@@ -34,6 +35,8 @@ const FranchiseSwitcher: React.FC = () => {
   const dispatch = useDispatch();
   const currentFranchiseId = useCurrentFranchiseId();
   const [open, setOpen] = useState(false);
+  const switcherRef = useRef<HTMLDivElement>(null);
+  useClickOutside(switcherRef, () => setOpen(false), open);
   const { user } = useSelector((s: RootState) => s.auth);
   const isFranchiseManager = user?.role === "manager" && !!user?.franchiseId;
 
@@ -80,7 +83,7 @@ const FranchiseSwitcher: React.FC = () => {
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={switcherRef}>
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/20 rounded px-2 sm:px-3 py-1.5 transition-colors max-w-[115px] sm:max-w-xs"
@@ -95,9 +98,7 @@ const FranchiseSwitcher: React.FC = () => {
       </button>
 
       {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-11 w-64 card shadow-panel z-50 animate-slide-up py-1.5">
+        <div className="absolute left-0 top-11 w-64 card shadow-panel z-50 animate-slide-up py-1.5">
             <p className="px-3 py-1.5 section-title">Switch franchise</p>
 
             <button
@@ -136,7 +137,6 @@ const FranchiseSwitcher: React.FC = () => {
                 </button>
               ))}
           </div>
-        </>
       )}
     </div>
   );
@@ -152,6 +152,8 @@ const CoachFranchiseSwitcher: React.FC = () => {
   const dispatch = useDispatch();
   const currentFranchiseId = useCurrentFranchiseId();
   const [open, setOpen] = useState(false);
+  const switcherRef = useRef<HTMLDivElement>(null);
+  useClickOutside(switcherRef, () => setOpen(false), open);
   const { data: franchises } = useGetMyFranchisesQuery();
 
   useEffect(() => {
@@ -187,7 +189,7 @@ const CoachFranchiseSwitcher: React.FC = () => {
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={switcherRef}>
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/20 rounded px-2.5 sm:px-3 py-1.5 transition-colors"
@@ -200,9 +202,7 @@ const CoachFranchiseSwitcher: React.FC = () => {
       </button>
 
       {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-11 w-64 max-w-[85vw] card shadow-panel z-50 animate-slide-up py-1.5">
+        <div className="absolute left-0 top-11 w-64 max-w-[85vw] card shadow-panel z-50 animate-slide-up py-1.5">
             <p className="px-3 py-1.5 section-title">Switch franchise</p>
             {franchises.map((f) => (
               <button
@@ -223,7 +223,6 @@ const CoachFranchiseSwitcher: React.FC = () => {
               </button>
             ))}
           </div>
-        </>
       )}
     </div>
   );
@@ -238,6 +237,8 @@ export const TopBar: React.FC = () => {
   );
   const currentFranchiseId = useCurrentFranchiseId();
   const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+  useClickOutside(notifRef, () => setNotifOpen(false), notifOpen);
   const transferWallEnabled = useTransferWallEnabled();
   const showTransferWallLink = user?.role === "manager" && transferWallEnabled;
 
@@ -330,7 +331,7 @@ export const TopBar: React.FC = () => {
         <ThemeToggle size="md" />
 
         {/* Notifications */}
-        <div className="relative">
+        <div className="relative" ref={notifRef}>
           <button
             onClick={() => setNotifOpen(!notifOpen)}
             className="relative w-9 h-9 flex items-center justify-center rounded bg-slate-100 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-white/15 transition-colors"
@@ -344,12 +345,7 @@ export const TopBar: React.FC = () => {
           </button>
 
           {notifOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setNotifOpen(false)}
-              />
-              <div className="absolute right-0 top-12 w-[calc(100vw-1.5rem)] sm:w-80 max-w-sm card shadow-panel z-50 animate-slide-up">
+            <div className="absolute right-0 top-12 w-[calc(100vw-1.5rem)] sm:w-80 max-w-sm card shadow-panel z-50 animate-slide-up">
                 <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/5">
                   <span className="section-title">Alerts</span>
                   <button
@@ -443,7 +439,6 @@ export const TopBar: React.FC = () => {
                   </Link>
                 </div>
               </div>
-            </>
           )}
         </div>
 

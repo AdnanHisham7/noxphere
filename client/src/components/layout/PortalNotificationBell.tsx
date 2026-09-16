@@ -1,7 +1,8 @@
 // src/components/layout/PortalNotificationBell.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Bell, FileText, Download } from "lucide-react";
+import { useClickOutside } from "../../hooks/useClickOutside";
 import { RootState } from "../../store";
 import {
   setNotifications,
@@ -26,6 +27,8 @@ export const PortalNotificationBell: React.FC = () => {
     (s: RootState) => s.notifications,
   );
   const [open, setOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+  useClickOutside(notifRef, () => setOpen(false), open);
 
   const { data } = useGetMyNotificationsQuery(
     { limit: 20 },
@@ -50,7 +53,7 @@ export const PortalNotificationBell: React.FC = () => {
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={notifRef}>
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Notifications"
@@ -65,9 +68,7 @@ export const PortalNotificationBell: React.FC = () => {
       </button>
 
       {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-11 w-80 max-w-[90vw] bg-white dark:bg-ink-900 border border-slate-200 dark:border-white/[0.08] rounded-xl shadow-xl z-50 overflow-hidden">
+        <div className="absolute right-0 top-11 w-80 max-w-[90vw] bg-white dark:bg-ink-900 border border-slate-200 dark:border-white/[0.08] rounded-xl shadow-xl z-50 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-white/[0.06] bg-slate-50/60 dark:bg-transparent">
               <span className="text-xs font-mono uppercase tracking-wide text-slate-500 dark:text-nox-low font-semibold">
                 Alerts
@@ -159,7 +160,6 @@ export const PortalNotificationBell: React.FC = () => {
               )}
             </div>
           </div>
-        </>
       )}
     </div>
   );
