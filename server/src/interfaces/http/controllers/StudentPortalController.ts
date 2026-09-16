@@ -72,4 +72,13 @@ export class StudentPortalController {
       next(err);
     }
   };
+
+  getMySessions = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const sessions = await this.studentPortalUseCases.getMySessions(req.user!.sub);
+      ResponseHandler.success(res, sessions, "Sessions retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
 }

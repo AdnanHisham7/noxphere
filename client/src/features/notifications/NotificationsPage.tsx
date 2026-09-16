@@ -6,6 +6,7 @@ import {
   Bell,
   Plus,
   FileText,
+  Download,
   CheckCheck,
   Check,
   Radio,
@@ -443,6 +444,59 @@ const NotificationsPage: React.FC = () => {
                       <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed break-words">
                         {alert.body}
                       </p>
+
+                      {/* Image Preview */}
+                      {alert.data?.imageUrl && (
+                        <div className="mt-2.5">
+                          <img
+                            src={alert.data.imageUrl}
+                            alt=""
+                            className="max-h-48 rounded-lg border border-slate-200 dark:border-white/10 object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(alert.data?.imageUrl, "_blank");
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Attachments */}
+                      {(() => {
+                        let atts: { name: string; url: string }[] = [];
+                        if (Array.isArray(alert.data?.attachments)) {
+                          atts = [...alert.data.attachments];
+                        } else if (typeof alert.data?.attachments === "string") {
+                          try {
+                            const parsed = JSON.parse(alert.data.attachments);
+                            if (Array.isArray(parsed)) atts = [...parsed];
+                          } catch {}
+                        }
+                        if (atts.length === 0 && alert.data?.documentUrl) {
+                          atts.push({
+                            name: (alert.data.documentFilename as string) || "Attached Document",
+                            url: alert.data.documentUrl as string,
+                          });
+                        }
+                        if (atts.length === 0) return null;
+                        return (
+                          <div className="mt-2.5 flex flex-wrap gap-2">
+                            {atts.map((at, idx) => (
+                              <a
+                                key={idx}
+                                href={at.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                download
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1.5 text-xs text-volt-700 dark:text-volt-400 hover:text-volt-800 dark:hover:text-volt-300 bg-volt-400/10 border border-volt-400/30 px-3 py-1.5 rounded-lg font-semibold transition-all hover:shadow-xs"
+                              >
+                                <Download size={13} />
+                                <span className="truncate max-w-[200px]">{at.name}</span>
+                              </a>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Mark as read button */}
@@ -552,32 +606,37 @@ const NotificationsPage: React.FC = () => {
                       />
                     )}
 
-                    {/* Render Multiple Attachments */}
-                    {n.attachments && n.attachments.length > 0 ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {n.attachments.map((at, idx) => (
-                          <a
-                            key={idx}
-                            href={at.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs text-volt-600 dark:text-volt-400 hover:underline bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 px-2.5 py-1 rounded-md"
-                          >
-                            <FileText size={12} /> {at.name}
-                          </a>
-                        ))}
-                      </div>
-                    ) : n.documentUrl ? (
-                      <a
-                        href={n.documentUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-3 inline-flex items-center gap-1.5 text-xs text-volt-600 dark:text-volt-400 hover:underline"
-                      >
-                        <FileText size={13} />{" "}
-                        {n.documentFilename ?? "Attached document"}
-                      </a>
-                    ) : null}
+                    {/* Render Multiple Attachments & Single Document Fallback */}
+                    {(() => {
+                      const atts: { name: string; url: string }[] = [];
+                      if (n.attachments && n.attachments.length > 0) {
+                        atts.push(...n.attachments);
+                      }
+                      if (n.documentUrl && !atts.some((a) => a.url === n.documentUrl)) {
+                        atts.push({
+                          name: n.documentFilename ?? "Attached document",
+                          url: n.documentUrl,
+                        });
+                      }
+                      if (atts.length === 0) return null;
+                      return (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {atts.map((at, idx) => (
+                            <a
+                              key={idx}
+                              href={at.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              download
+                              className="inline-flex items-center gap-1.5 text-xs text-volt-700 dark:text-volt-400 hover:text-volt-800 dark:hover:text-volt-300 bg-volt-400/10 border border-volt-400/30 px-3 py-1.5 rounded-lg font-semibold transition-all hover:shadow-xs"
+                            >
+                              <Download size={13} />
+                              <span className="truncate max-w-[200px]">{at.name}</span>
+                            </a>
+                          ))}
+                        </div>
+                      );
+                    })()}
 
                     <p className="text-xs text-slate-500 font-mono mt-3">
                       {new Date(n.createdAt).toLocaleString()} ·{" "}

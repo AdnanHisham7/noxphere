@@ -30,6 +30,7 @@ export interface AcademyDocument extends Document {
   // WhatsApp alert (see NotificationService.sendFeeDueAlert). Uploaded by
   // the manager from the Fees page.
   feeQrImageUrl?: string;
+  logo?: string;
   skillParameters: string[];
   deletedAt?: Date;
   createdAt: Date;
@@ -86,6 +87,7 @@ const AcademySchema = new Schema<AcademyDocument>(
     absentAlertDays: { type: Number, default: 5, min: 1 },
     dueDateAlertDays: { type: Number, default: 3, min: 0 },
     feeQrImageUrl: { type: String },
+    logo: { type: String, trim: true },
     skillParameters: {
       type: [String],
       validate: {

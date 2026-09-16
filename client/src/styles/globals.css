@@ -97,6 +97,22 @@
     border-color: #e2e8f0;
   }
 
+  /* Universal table rules in light mode */
+  html:not(.dark) thead tr {
+    background-color: #f1f5f9;
+  }
+  html:not(.dark) th {
+    color: #334155 !important;
+    border-color: #e2e8f0 !important;
+  }
+  html:not(.dark) td {
+    color: #0f172a;
+    border-color: #f1f5f9 !important;
+  }
+  html:not(.dark) tbody tr:hover {
+    background-color: rgba(241, 245, 249, 0.7);
+  }
+
   /* Keep white text on filled colored buttons/badges in light mode */
   html:not(.dark) .btn-danger,
   html:not(.dark) .btn-danger *,

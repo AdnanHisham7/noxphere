@@ -19,6 +19,7 @@ import {
   ForbiddenError,
   ConflictError,
 } from '../../../shared/errors/AppError';
+import { normalizePhone, getPhoneMatchVariants } from '../../../shared/utils/phone';
 
 export interface SendSquadInvitationDto {
   studentId: string;
@@ -383,7 +384,17 @@ export class SquadInvitationUseCases {
       const nameParts = guardianName.split(' ');
       const gFirstName = nameParts[0] || 'Guardian';
       const gLastName = nameParts.slice(1).join(' ') || '-';
-      const gPhone = dto.guardianPhone ? dto.guardianPhone.trim() : '';
+      const rawPhone = (dto.guardianPhone || '').trim();
+      const gPhone = rawPhone ? normalizePhone(rawPhone) : '';
+
+      if (gPhone) {
+        const existingPhone = await UserModel.findOne({
+          phone: { $in: getPhoneMatchVariants(gPhone) },
+        });
+        if (existingPhone) {
+          throw new ConflictError('A user account with this phone number already exists.');
+        }
+      }
 
       const passwordHash = await bcrypt.hash(dto.guardianPassword, 12);
       const newGuardian = await UserModel.create({
@@ -392,7 +403,7 @@ export class SquadInvitationUseCases {
         role: 'guardian',
         firstName: gFirstName,
         lastName: gLastName,
-        phone: gPhone,
+        phone: gPhone || undefined,
         isActive: true,
         isEmailVerified: true,
         permissions: defaultPermissions['guardian' as UserRole],

@@ -1,6 +1,6 @@
 import { useSelector, useDispatch } from "react-redux";
 import { Link, useLocation } from "react-router-dom";
-import { Building2, ChevronDown, Check, Bell, Repeat2, Menu } from "lucide-react";
+import { Building2, ChevronDown, Check, Bell, Repeat2, Menu, FileText, Download } from "lucide-react";
 import logoSrc from "../../assets/logo.png";
 import {
   setNotifications,
@@ -380,6 +380,52 @@ export const TopBar: React.FC = () => {
                         <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
                           {n.body}
                         </p>
+                        {n.data?.imageUrl && (
+                          <img
+                            src={n.data.imageUrl}
+                            alt=""
+                            className="mt-1.5 max-h-24 w-full rounded object-cover border border-slate-200 dark:border-white/10"
+                          />
+                        )}
+                        {/* Attachments */}
+                        {(() => {
+                          let atts: { name: string; url: string }[] = [];
+                          if (Array.isArray(n.data?.attachments)) {
+                            atts = [...n.data.attachments];
+                          } else if (typeof n.data?.attachments === "string") {
+                            try {
+                              const p = JSON.parse(n.data.attachments);
+                              if (Array.isArray(p)) atts = [...p];
+                            } catch {}
+                          }
+                          if (atts.length === 0 && n.data?.documentUrl) {
+                            atts.push({
+                              name: (n.data.documentFilename as string) || "Attached Document",
+                              url: n.data.documentUrl as string,
+                            });
+                          }
+                          if (atts.length === 0) return null;
+                          return (
+                            <div
+                              className="mt-1.5 flex flex-wrap gap-1.5"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {atts.map((at, idx) => (
+                                <a
+                                  key={idx}
+                                  href={at.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  download
+                                  className="inline-flex items-center gap-1 text-[11px] text-volt-700 dark:text-volt-400 bg-volt-400/10 border border-volt-400/20 px-2 py-0.5 rounded font-medium hover:underline"
+                                >
+                                  <Download size={11} />
+                                  <span className="truncate max-w-[140px]">{at.name}</span>
+                                </a>
+                              ))}
+                            </div>
+                          );
+                        })()}
                         <p className="text-2xs text-slate-400 dark:text-slate-600 mt-1">
                           {new Date(n.createdAt).toLocaleString()}
                         </p>

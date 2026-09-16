@@ -11,10 +11,21 @@ import { AcademyModel } from "../../../infrastructure/database/models/Academy.mo
 import { TeamModel } from "../../../infrastructure/database/models/Team.model";
 import { AcademySubscriptionUseCases } from "../subscription/AcademySubscriptionUseCases";
 import { notificationService } from "../../../infrastructure/services/NotificationService";
-import { defaultPermissions, UserRole } from "../../../domain/entities/User.entity";
+import {
+  defaultPermissions,
+  UserRole,
+} from "../../../domain/entities/User.entity";
 import { config } from "../../../config/app.config";
-import { NotFoundError, BadRequestError, ForbiddenError, ConflictError } from "../../../shared/errors/AppError";
-import { normalizePhone, getPhoneMatchVariants } from "../../../shared/utils/phone";
+import {
+  NotFoundError,
+  BadRequestError,
+  ForbiddenError,
+  ConflictError,
+} from "../../../shared/errors/AppError";
+import {
+  normalizePhone,
+  getPhoneMatchVariants,
+} from "../../../shared/utils/phone";
 import { ConsentRecordModel } from "../../../infrastructure/database/models/ConsentRecord.model";
 import { CONSENT_NOTICE } from "../consent/ConsentUseCases";
 import { calculateAgeCategory } from "../../../shared/utils/ageCategory";
@@ -67,13 +78,17 @@ export interface ApproveRegistrationDto {
 }
 
 export class RegistrationUseCases {
-  constructor(private readonly academySubscriptionUseCases: AcademySubscriptionUseCases) {}
+  constructor(
+    private readonly academySubscriptionUseCases: AcademySubscriptionUseCases,
+  ) {}
 
   async getAcademyPublicInfo(academyId: string) {
     if (!mongoose.Types.ObjectId.isValid(academyId)) {
       throw new NotFoundError("Academy not found");
     }
-    const academy = await AcademyModel.findById(academyId).select("name location ageGroups").lean();
+    const academy = await AcademyModel.findById(academyId)
+      .select("name location ageGroups")
+      .lean();
     if (!academy) throw new NotFoundError("Academy");
 
     const franchises = await FranchiseModel.find({ academyId, isActive: true })
@@ -98,9 +113,14 @@ export class RegistrationUseCases {
 
   async sendOtp(email: string) {
     const cleanEmail = email.trim().toLowerCase();
-    const user = await UserModel.findOne({ email: cleanEmail, role: "student" });
+    const user = await UserModel.findOne({
+      email: cleanEmail,
+      role: "student",
+    });
     if (!user) {
-      throw new NotFoundError("Student account with this email not found. Please sign up as a student first or proceed without linking.");
+      throw new NotFoundError(
+        "Student account with this email not found. Please sign up as a student first or proceed without linking.",
+      );
     }
 
     const student = await StudentModel.findOne({ userId: user._id });
@@ -125,15 +145,17 @@ export class RegistrationUseCases {
     console.log(`[Registration OTP] Generated OTP for ${cleanEmail}: ${otp}`);
 
     // If notification service has email configured, it will deliver it
-    await notificationService.send({
-      userIds: [user._id.toString()],
-      type: "announcement",
-      title: "Your Noxphere Verification Code",
-      body: `Your verification code to link your student profile is: ${otp}. Valid for 10 minutes.`,
-      emailSubject: "Your Noxphere Verification Code",
-      emailHtml: `<p>Your verification code to link your student profile is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
-      channels: ["email", "push"],
-    }).catch(() => undefined);
+    await notificationService
+      .send({
+        userIds: [user._id.toString()],
+        type: "announcement",
+        title: "Your Noxphere Verification Code",
+        body: `Your verification code to link your student profile is: ${otp}. Valid for 10 minutes.`,
+        emailSubject: "Your Noxphere Verification Code",
+        emailHtml: `<p>Your verification code to link your student profile is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+        channels: ["email", "push"],
+      })
+      .catch(() => undefined);
 
     return {
       success: true,
@@ -159,7 +181,9 @@ export class RegistrationUseCases {
     }
 
     if (new Date() > record.expiresAt) {
-      throw new BadRequestError("Verification code has expired. Please request a new one.");
+      throw new BadRequestError(
+        "Verification code has expired. Please request a new one.",
+      );
     }
 
     record.verified = true;
@@ -185,11 +209,19 @@ export class RegistrationUseCases {
   }
 
   async submitRequest(dto: SubmitRegistrationDto) {
-    if (!dto.franchiseId || typeof dto.franchiseId !== "string" || !dto.franchiseId.trim()) {
-      throw new BadRequestError("Please choose a preferred training branch / franchise");
+    if (
+      !dto.franchiseId ||
+      typeof dto.franchiseId !== "string" ||
+      !dto.franchiseId.trim()
+    ) {
+      throw new BadRequestError(
+        "Please choose a preferred training branch / franchise",
+      );
     }
     if (!dto.dpdpConsent) {
-      throw new BadRequestError("Parental/guardian consent under the Digital Personal Data Protection (DPDP) Act is mandatory for enrollment");
+      throw new BadRequestError(
+        "Parental/guardian consent under the Digital Personal Data Protection (DPDP) Act is mandatory for enrollment",
+      );
     }
 
     const [academy, franchise] = await Promise.all([
@@ -199,13 +231,16 @@ export class RegistrationUseCases {
     if (!academy) throw new NotFoundError("Academy");
     if (!franchise) throw new NotFoundError("Franchise");
     if (franchise.academyId.toString() !== dto.academyId) {
-      throw new BadRequestError("Selected franchise does not belong to this academy");
+      throw new BadRequestError(
+        "Selected franchise does not belong to this academy",
+      );
     }
 
     let existingStudentId: mongoose.Types.ObjectId | undefined;
     if (dto.existingStudentId) {
       const student = await StudentModel.findById(dto.existingStudentId);
-      if (!student) throw new NotFoundError("Existing student profile not found");
+      if (!student)
+        throw new NotFoundError("Existing student profile not found");
       existingStudentId = student._id as mongoose.Types.ObjectId;
 
       const pendingRequest = await RegistrationRequestModel.findOne({
@@ -214,40 +249,91 @@ export class RegistrationUseCases {
         status: "pending",
       });
       if (pendingRequest) {
-        throw new ConflictError("A registration request for this student profile is already pending review.");
+        throw new ConflictError(
+          "A registration request for this student profile is already pending review.",
+        );
       }
     } else {
       const cleanGuardianEmail = dto.guardianDetails.email.trim().toLowerCase();
-      const cleanGuardianPhone = normalizePhone(dto.guardianDetails.phone.trim());
+      const cleanGuardianPhone = normalizePhone(
+        dto.guardianDetails.phone.trim(),
+      );
 
-      // Check if an account already exists with this guardian email or phone
-      const existingUser = await UserModel.findOne({
-        $or: [
-          { email: cleanGuardianEmail },
-          ...(cleanGuardianPhone ? [{ phone: { $in: getPhoneMatchVariants(cleanGuardianPhone) } }] : []),
-        ],
-      });
+      // Check if an account already exists with this guardian email and/or phone
+      const [existingUserByEmail, existingUserByPhone] = await Promise.all([
+        UserModel.findOne({ email: cleanGuardianEmail }),
+        cleanGuardianPhone
+          ? UserModel.findOne({
+              phone: { $in: getPhoneMatchVariants(cleanGuardianPhone) },
+            })
+          : null,
+      ]);
+
+      // 1. Conflict if email and phone belong to two DIFFERENT registered users
+      if (
+        existingUserByEmail &&
+        existingUserByPhone &&
+        existingUserByEmail._id.toString() !== existingUserByPhone._id.toString()
+      ) {
+        throw new ConflictError(
+          "This guardian email and phone number belong to two different registered accounts. Please use matching contact details.",
+        );
+      }
+
+      // 2. Conflict if email is taken by a non-guardian
+      if (existingUserByEmail && existingUserByEmail.role !== "guardian") {
+        throw new ConflictError(
+          `An account with this email already exists with role "${existingUserByEmail.role}". Please use a different email or contact your academy administrator.`,
+        );
+      }
+
+      // 3. Conflict if phone is taken by a non-guardian
+      if (existingUserByPhone && existingUserByPhone.role !== "guardian") {
+        throw new ConflictError(
+          `An account with this phone number already exists with role "${existingUserByPhone.role}". Please use a different phone number or contact your academy administrator.`,
+        );
+      }
+
+      // 4. Conflict if phone is already registered to a guardian under a different email
+      if (
+        existingUserByPhone &&
+        !existingUserByEmail &&
+        existingUserByPhone.email.toLowerCase() !== cleanGuardianEmail
+      ) {
+        throw new ConflictError(
+          "An account with this phone number is already registered under a different email address. Please use your registered email address.",
+        );
+      }
+
+      const existingUser = existingUserByEmail || existingUserByPhone;
 
       if (existingUser) {
-        if (existingUser.role !== "guardian") {
-          throw new ConflictError(
-            `An account with this ${existingUser.email === cleanGuardianEmail ? "email" : "phone number"} already exists with role ${existingUser.role}. Please use a different contact or contact your academy administrator.`,
-          );
-        }
-
         // The user is an existing guardian! Check if THIS player is already registered under this guardian
         const existingStudent = await StudentModel.findOne({
           $or: [
             { guardianIds: existingUser._id },
             { "guardian.email": cleanGuardianEmail },
-            ...(cleanGuardianPhone ? [{ "guardian.phone": { $in: getPhoneMatchVariants(cleanGuardianPhone) } }] : []),
+            ...(cleanGuardianPhone
+              ? [
+                  {
+                    "guardian.phone": {
+                      $in: getPhoneMatchVariants(cleanGuardianPhone),
+                    },
+                  },
+                ]
+              : []),
           ],
-          firstName: new RegExp(`^${dto.studentDetails.firstName.trim()}$`, "i"),
+          firstName: new RegExp(
+            `^${dto.studentDetails.firstName.trim()}$`,
+            "i",
+          ),
           lastName: new RegExp(`^${dto.studentDetails.lastName.trim()}$`, "i"),
           deletedAt: { $exists: false },
         });
         if (existingStudent) {
-          throw new ConflictError("A player with this name is already registered under your guardian account.");
+          throw new ConflictError(
+            "A player with this name is already registered under your guardian account.",
+          );
         }
 
         // Check if a registration request for THIS player is already pending for this academy
@@ -255,14 +341,30 @@ export class RegistrationUseCases {
           academyId: new mongoose.Types.ObjectId(dto.academyId),
           $or: [
             { "guardianDetails.email": cleanGuardianEmail },
-            ...(cleanGuardianPhone ? [{ "guardianDetails.phone": { $in: getPhoneMatchVariants(cleanGuardianPhone) } }] : []),
+            ...(cleanGuardianPhone
+              ? [
+                  {
+                    "guardianDetails.phone": {
+                      $in: getPhoneMatchVariants(cleanGuardianPhone),
+                    },
+                  },
+                ]
+              : []),
           ],
-          "studentDetails.firstName": new RegExp(`^${dto.studentDetails.firstName.trim()}$`, "i"),
-          "studentDetails.lastName": new RegExp(`^${dto.studentDetails.lastName.trim()}$`, "i"),
+          "studentDetails.firstName": new RegExp(
+            `^${dto.studentDetails.firstName.trim()}$`,
+            "i",
+          ),
+          "studentDetails.lastName": new RegExp(
+            `^${dto.studentDetails.lastName.trim()}$`,
+            "i",
+          ),
           status: "pending",
         });
         if (pendingRequest) {
-          throw new ConflictError("A registration request for this player is already pending review.");
+          throw new ConflictError(
+            "A registration request for this player is already pending review.",
+          );
         }
       } else {
         // Brand new guardian registration:
@@ -270,14 +372,27 @@ export class RegistrationUseCases {
         const existingStudent = await StudentModel.findOne({
           $or: [
             { "guardian.email": cleanGuardianEmail },
-            ...(cleanGuardianPhone ? [{ "guardian.phone": { $in: getPhoneMatchVariants(cleanGuardianPhone) } }] : []),
+            ...(cleanGuardianPhone
+              ? [
+                  {
+                    "guardian.phone": {
+                      $in: getPhoneMatchVariants(cleanGuardianPhone),
+                    },
+                  },
+                ]
+              : []),
           ],
-          firstName: new RegExp(`^${dto.studentDetails.firstName.trim()}$`, "i"),
+          firstName: new RegExp(
+            `^${dto.studentDetails.firstName.trim()}$`,
+            "i",
+          ),
           lastName: new RegExp(`^${dto.studentDetails.lastName.trim()}$`, "i"),
           deletedAt: { $exists: false },
         });
         if (existingStudent) {
-          throw new ConflictError("A player with this name and guardian contact is already registered.");
+          throw new ConflictError(
+            "A player with this name and guardian contact is already registered.",
+          );
         }
 
         // Check if a registration request for this player is already pending
@@ -285,20 +400,37 @@ export class RegistrationUseCases {
           academyId: new mongoose.Types.ObjectId(dto.academyId),
           $or: [
             { "guardianDetails.email": cleanGuardianEmail },
-            ...(cleanGuardianPhone ? [{ "guardianDetails.phone": { $in: getPhoneMatchVariants(cleanGuardianPhone) } }] : []),
+            ...(cleanGuardianPhone
+              ? [
+                  {
+                    "guardianDetails.phone": {
+                      $in: getPhoneMatchVariants(cleanGuardianPhone),
+                    },
+                  },
+                ]
+              : []),
           ],
-          "studentDetails.firstName": new RegExp(`^${dto.studentDetails.firstName.trim()}$`, "i"),
-          "studentDetails.lastName": new RegExp(`^${dto.studentDetails.lastName.trim()}$`, "i"),
+          "studentDetails.firstName": new RegExp(
+            `^${dto.studentDetails.firstName.trim()}$`,
+            "i",
+          ),
+          "studentDetails.lastName": new RegExp(
+            `^${dto.studentDetails.lastName.trim()}$`,
+            "i",
+          ),
           status: "pending",
         });
         if (pendingRequest) {
-          throw new ConflictError("A registration request for this player is already pending review.");
+          throw new ConflictError(
+            "A registration request for this player is already pending review.",
+          );
         }
       }
     }
 
     const derivedAgeGroup =
-      dto.studentDetails.ageGroup || calculateAgeCategory(dto.studentDetails.dateOfBirth);
+      dto.studentDetails.ageGroup ||
+      calculateAgeCategory(dto.studentDetails.dateOfBirth);
 
     const request = await RegistrationRequestModel.create({
       academyId: new mongoose.Types.ObjectId(dto.academyId),
@@ -332,14 +464,21 @@ export class RegistrationUseCases {
 
     if (derivedAgeGroup) {
       await Promise.all([
-        FranchiseModel.findByIdAndUpdate(dto.franchiseId, { $addToSet: { ageGroups: derivedAgeGroup } }),
-        AcademyModel.findByIdAndUpdate(dto.academyId, { $addToSet: { ageGroups: derivedAgeGroup } }),
+        FranchiseModel.findByIdAndUpdate(dto.franchiseId, {
+          $addToSet: { ageGroups: derivedAgeGroup },
+        }),
+        AcademyModel.findByIdAndUpdate(dto.academyId, {
+          $addToSet: { ageGroups: derivedAgeGroup },
+        }),
       ]).catch(() => undefined);
     }
 
     // Notify academy managers about the new registration request
     const managers = await UserModel.find({
-      $or: [{ academyId: dto.academyId, role: "manager" }, { franchiseId: dto.franchiseId, role: "manager" }],
+      $or: [
+        { academyId: dto.academyId, role: "manager" },
+        { franchiseId: dto.franchiseId, role: "manager" },
+      ],
       isActive: true,
     })
       .select("_id")
@@ -347,26 +486,39 @@ export class RegistrationUseCases {
 
     if (managers.length > 0) {
       const managerIds = managers.map((m) => m._id.toString());
-      await notificationService.send({
-        userIds: managerIds,
-        type: "registration_received",
-        title: "New Student Registration Request",
-        body: `${dto.studentDetails.firstName} ${dto.studentDetails.lastName} has submitted a registration application for ${franchise.name}.`,
-        franchiseId: dto.franchiseId,
-        channels: ["push"],
-      }).catch(() => undefined);
+      await notificationService
+        .send({
+          userIds: managerIds,
+          type: "registration_received",
+          title: "New Student Registration Request",
+          body: `${dto.studentDetails.firstName} ${dto.studentDetails.lastName} has submitted a registration application for ${franchise.name}.`,
+          franchiseId: dto.franchiseId,
+          channels: ["push"],
+        })
+        .catch(() => undefined);
     }
 
     return {
       id: request._id.toString(),
-      message: "Registration request submitted successfully. The academy manager will review your application.",
+      message:
+        "Registration request submitted successfully. The academy manager will review your application.",
     };
   }
 
-  async listRequests(academyId?: string, franchiseId?: string, status?: string) {
+  async listRequests(
+    academyId?: string,
+    franchiseId?: string,
+    status?: string,
+  ) {
     let targetAcademyId = academyId;
-    if (!targetAcademyId && franchiseId && mongoose.Types.ObjectId.isValid(franchiseId)) {
-      const franchise = await FranchiseModel.findById(franchiseId).select("academyId").lean();
+    if (
+      !targetAcademyId &&
+      franchiseId &&
+      mongoose.Types.ObjectId.isValid(franchiseId)
+    ) {
+      const franchise = await FranchiseModel.findById(franchiseId)
+        .select("academyId")
+        .lean();
       if (franchise?.academyId) {
         targetAcademyId = franchise.academyId.toString();
       }
@@ -376,7 +528,11 @@ export class RegistrationUseCases {
     if (targetAcademyId && mongoose.Types.ObjectId.isValid(targetAcademyId)) {
       filter.academyId = new mongoose.Types.ObjectId(targetAcademyId);
     }
-    if (franchiseId && franchiseId !== "all" && mongoose.Types.ObjectId.isValid(franchiseId)) {
+    if (
+      franchiseId &&
+      franchiseId !== "all" &&
+      mongoose.Types.ObjectId.isValid(franchiseId)
+    ) {
       filter.franchiseId = new mongoose.Types.ObjectId(franchiseId);
     }
     if (status && status !== "all") {
@@ -399,7 +555,9 @@ export class RegistrationUseCases {
       guardianDetails: r.guardianDetails,
       status: r.status,
       rejectionReason: r.rejectionReason,
-      reviewedBy: r.reviewedBy ? `${r.reviewedBy.firstName} ${r.reviewedBy.lastName}` : undefined,
+      reviewedBy: r.reviewedBy
+        ? `${r.reviewedBy.firstName} ${r.reviewedBy.lastName}`
+        : undefined,
       reviewedAt: r.reviewedAt,
       enrolledStudentId: r.enrolledStudentId?.toString(),
       createdAt: r.createdAt,
@@ -410,7 +568,9 @@ export class RegistrationUseCases {
     const request = await RegistrationRequestModel.findById(requestId);
     if (!request) throw new NotFoundError("Registration request");
     if (request.status !== "pending") {
-      throw new BadRequestError(`Cannot reject a request that is already ${request.status}`);
+      throw new BadRequestError(
+        `Cannot reject a request that is already ${request.status}`,
+      );
     }
 
     request.status = "rejected";
@@ -421,38 +581,55 @@ export class RegistrationUseCases {
 
     // Notify applicant if an existing student account is tied
     if (request.existingStudentId) {
-      const student = await StudentModel.findById(request.existingStudentId).select("userId").lean();
+      const student = await StudentModel.findById(request.existingStudentId)
+        .select("userId")
+        .lean();
       if (student?.userId) {
-        await notificationService.send({
-          userIds: [student.userId.toString()],
-          type: "registration_rejected",
-          title: "Registration Request Update",
-          body: `Your registration request was not approved.${reason ? ` Reason: ${reason}` : ""}`,
-          channels: ["push"],
-        }).catch(() => undefined);
+        await notificationService
+          .send({
+            userIds: [student.userId.toString()],
+            type: "registration_rejected",
+            title: "Registration Request Update",
+            body: `Your registration request was not approved.${reason ? ` Reason: ${reason}` : ""}`,
+            channels: ["push"],
+          })
+          .catch(() => undefined);
       }
     }
 
     return { id: request._id.toString(), status: "rejected" };
   }
 
-  async approveRequest(requestId: string, approvalDto: ApproveRegistrationDto, reviewedBy: string) {
+  async approveRequest(
+    requestId: string,
+    approvalDto: ApproveRegistrationDto,
+    reviewedBy: string,
+  ) {
     const request = await RegistrationRequestModel.findById(requestId);
     if (!request) throw new NotFoundError("Registration request");
     if (request.status !== "pending") {
-      throw new BadRequestError(`Cannot approve a request that is already ${request.status}`);
+      throw new BadRequestError(
+        `Cannot approve a request that is already ${request.status}`,
+      );
     }
 
-    const targetFranchiseId = approvalDto.franchiseId || request.franchiseId.toString();
-    const franchise = await FranchiseModel.findById(targetFranchiseId).select("academyId name").lean();
+    const targetFranchiseId =
+      approvalDto.franchiseId || request.franchiseId.toString();
+    const franchise = await FranchiseModel.findById(targetFranchiseId)
+      .select("academyId name")
+      .lean();
     if (!franchise) throw new NotFoundError("Franchise");
 
     // Enforce subscription quota before approving student
-    await this.academySubscriptionUseCases.assertCanAddStudent(franchise.academyId.toString());
+    await this.academySubscriptionUseCases.assertCanAddStudent(
+      franchise.academyId.toString(),
+    );
 
     // Validate team if assigned
     if (approvalDto.teamId) {
-      const team = await TeamModel.findById(approvalDto.teamId).select("franchiseId academyId").lean();
+      const team = await TeamModel.findById(approvalDto.teamId)
+        .select("franchiseId academyId")
+        .lean();
       if (!team) throw new BadRequestError("Selected team not found");
     }
 
@@ -460,31 +637,62 @@ export class RegistrationUseCases {
 
     if (request.existingStudentId) {
       // ── Linking existing public student profile ──
-      const existingStudent = await StudentModel.findById(request.existingStudentId);
-      if (!existingStudent) throw new NotFoundError("Linked student profile not found");
+      const existingStudent = await StudentModel.findById(
+        request.existingStudentId,
+      );
+      if (!existingStudent)
+        throw new NotFoundError("Linked student profile not found");
 
       // Update student profile with academy and franchise assignments
-      existingStudent.franchiseId = new mongoose.Types.ObjectId(targetFranchiseId);
-      if (approvalDto.teamId) existingStudent.teamId = new mongoose.Types.ObjectId(approvalDto.teamId);
-      if (approvalDto.coachId) existingStudent.coachId = new mongoose.Types.ObjectId(approvalDto.coachId);
-      if (approvalDto.jerseyNumber !== undefined) existingStudent.jerseyNumber = approvalDto.jerseyNumber;
-      if (approvalDto.jerseySize) existingStudent.jerseySize = approvalDto.jerseySize;
+      existingStudent.franchiseId = new mongoose.Types.ObjectId(
+        targetFranchiseId,
+      );
+      if (approvalDto.teamId)
+        existingStudent.teamId = new mongoose.Types.ObjectId(
+          approvalDto.teamId,
+        );
+      if (approvalDto.coachId)
+        existingStudent.coachId = new mongoose.Types.ObjectId(
+          approvalDto.coachId,
+        );
+      if (approvalDto.jerseyNumber !== undefined)
+        existingStudent.jerseyNumber = approvalDto.jerseyNumber;
+      if (approvalDto.jerseySize)
+        existingStudent.jerseySize = approvalDto.jerseySize;
       if (approvalDto.position) existingStudent.position = approvalDto.position;
-      if (approvalDto.positions) existingStudent.positions = approvalDto.positions;
+      if (approvalDto.positions)
+        existingStudent.positions = approvalDto.positions;
 
       // Update editable student details if provided in approval
       if (approvalDto.studentDetails) {
-        if (approvalDto.studentDetails.firstName) existingStudent.firstName = approvalDto.studentDetails.firstName.trim();
-        if (approvalDto.studentDetails.lastName) existingStudent.lastName = approvalDto.studentDetails.lastName.trim();
-        if (approvalDto.studentDetails.dateOfBirth) existingStudent.dateOfBirth = new Date(approvalDto.studentDetails.dateOfBirth);
-        if (approvalDto.studentDetails.ageGroup) existingStudent.ageGroup = approvalDto.studentDetails.ageGroup;
-        if (approvalDto.studentDetails.medicalInfo) existingStudent.medicalInfo = approvalDto.studentDetails.medicalInfo as any;
+        if (approvalDto.studentDetails.firstName)
+          existingStudent.firstName =
+            approvalDto.studentDetails.firstName.trim();
+        if (approvalDto.studentDetails.lastName)
+          existingStudent.lastName = approvalDto.studentDetails.lastName.trim();
+        if (approvalDto.studentDetails.dateOfBirth)
+          existingStudent.dateOfBirth = new Date(
+            approvalDto.studentDetails.dateOfBirth,
+          );
+        if (approvalDto.studentDetails.ageGroup)
+          existingStudent.ageGroup = approvalDto.studentDetails.ageGroup;
+        if (approvalDto.studentDetails.medicalInfo)
+          existingStudent.medicalInfo = approvalDto.studentDetails
+            .medicalInfo as any;
       }
 
       // Update guardian info
-      const guardianEmail = (approvalDto.guardianDetails?.email || request.guardianDetails.email).trim().toLowerCase();
-      const guardianName = (approvalDto.guardianDetails?.name || request.guardianDetails.name).trim();
-      const guardianPhone = (approvalDto.guardianDetails?.phone || request.guardianDetails.phone).trim();
+      const guardianEmail = (
+        approvalDto.guardianDetails?.email || request.guardianDetails.email
+      )
+        .trim()
+        .toLowerCase();
+      const guardianName = (
+        approvalDto.guardianDetails?.name || request.guardianDetails.name
+      ).trim();
+      const guardianPhone = (
+        approvalDto.guardianDetails?.phone || request.guardianDetails.phone
+      ).trim();
 
       existingStudent.guardian = {
         name: guardianName,
@@ -517,32 +725,78 @@ export class RegistrationUseCases {
       }
     } else {
       // ── Creating / resolving guardian account under this franchise ──
-      const guardianEmail = (approvalDto.guardianDetails?.email || request.guardianDetails.email).trim().toLowerCase();
-      const guardianName = (approvalDto.guardianDetails?.name || request.guardianDetails.name).trim();
-      const guardianPhone = normalizePhone((approvalDto.guardianDetails?.phone || request.guardianDetails.phone).trim());
+      const guardianEmail = (
+        approvalDto.guardianDetails?.email || request.guardianDetails.email
+      )
+        .trim()
+        .toLowerCase();
+      const guardianName = (
+        approvalDto.guardianDetails?.name || request.guardianDetails.name
+      ).trim();
+      const guardianPhone = normalizePhone(
+        (
+          approvalDto.guardianDetails?.phone || request.guardianDetails.phone
+        ).trim(),
+      );
 
-      // Check if user already exists with this email OR phone
-      const existingUser = await UserModel.findOne({
-        $or: [
-          { email: guardianEmail },
-          ...(guardianPhone ? [{ phone: { $in: getPhoneMatchVariants(guardianPhone) } }] : []),
-        ],
-      });
+      // Check if user already exists with this email and/or phone
+      const [existingUserByEmail, existingUserByPhone] = await Promise.all([
+        UserModel.findOne({ email: guardianEmail }),
+        guardianPhone
+          ? UserModel.findOne({
+              phone: { $in: getPhoneMatchVariants(guardianPhone) },
+            })
+          : null,
+      ]);
+
+      if (
+        existingUserByEmail &&
+        existingUserByPhone &&
+        existingUserByEmail._id.toString() !== existingUserByPhone._id.toString()
+      ) {
+        throw new ConflictError(
+          "The guardian email and phone number belong to two different registered accounts. Cannot enroll player.",
+        );
+      }
+
+      if (existingUserByEmail && existingUserByEmail.role !== "guardian") {
+        throw new ConflictError(
+          `A user account with this email already exists with role: ${existingUserByEmail.role}. Cannot enroll player.`,
+        );
+      }
+
+      if (existingUserByPhone && existingUserByPhone.role !== "guardian") {
+        throw new ConflictError(
+          `A user account with this phone number already exists with role: ${existingUserByPhone.role}. Cannot enroll player.`,
+        );
+      }
+
+      if (
+        existingUserByPhone &&
+        !existingUserByEmail &&
+        existingUserByPhone.email.toLowerCase() !== guardianEmail
+      ) {
+        throw new ConflictError(
+          "A user account with this phone number is already registered under a different email address. Cannot enroll player.",
+        );
+      }
+
+      const existingUser = existingUserByEmail || existingUserByPhone;
 
       let guardianUser: any;
       let isNewGuardianUser = false;
       let tempPassword = "";
 
       if (existingUser) {
-        if (existingUser.role !== "guardian") {
-          throw new ConflictError(
-            `A user account with this ${existingUser.email === guardianEmail ? "email" : "phone number"} already exists with role: ${existingUser.role}. Cannot enroll player.`,
-          );
-        }
-
         // Existing guardian account — check if this player is already enrolled
-        const studentFirstName = (approvalDto.studentDetails?.firstName || request.studentDetails.firstName).trim();
-        const studentLastName = (approvalDto.studentDetails?.lastName || request.studentDetails.lastName).trim();
+        const studentFirstName = (
+          approvalDto.studentDetails?.firstName ||
+          request.studentDetails.firstName
+        ).trim();
+        const studentLastName = (
+          approvalDto.studentDetails?.lastName ||
+          request.studentDetails.lastName
+        ).trim();
         const existingStudent = await StudentModel.findOne({
           guardianIds: existingUser._id,
           firstName: new RegExp(`^${studentFirstName}$`, "i"),
@@ -550,21 +804,20 @@ export class RegistrationUseCases {
           deletedAt: { $exists: false },
         });
         if (existingStudent) {
-          throw new ConflictError("A player with this name is already enrolled under this guardian.");
+          throw new ConflictError(
+            "A player with this name is already enrolled under this guardian.",
+          );
+        }
+
+        // If existing guardian doesn't have phone saved and phone was provided, update it
+        if (!existingUser.phone && guardianPhone) {
+          existingUser.phone = guardianPhone;
+          await existingUser.save();
         }
 
         guardianUser = existingUser;
         isNewGuardianUser = false;
       } else {
-        // If phone is supplied, ensure it's not taken by any other user
-        if (guardianPhone) {
-          const existingPhone = await UserModel.findOne({
-            phone: { $in: getPhoneMatchVariants(guardianPhone) },
-          });
-          if (existingPhone) {
-            throw new ConflictError("A user account with this phone number already exists.");
-          }
-        }
 
         const guardianParts = guardianName.split(" ");
         const gFirstName = guardianParts[0] || "Guardian";
@@ -593,27 +846,45 @@ export class RegistrationUseCases {
         enrolledStudentDoc = await StudentModel.create({
           userId: guardianUser._id,
           franchiseId: new mongoose.Types.ObjectId(targetFranchiseId),
-          teamId: approvalDto.teamId ? new mongoose.Types.ObjectId(approvalDto.teamId) : undefined,
-          coachId: approvalDto.coachId ? new mongoose.Types.ObjectId(approvalDto.coachId) : undefined,
+          teamId: approvalDto.teamId
+            ? new mongoose.Types.ObjectId(approvalDto.teamId)
+            : undefined,
+          coachId: approvalDto.coachId
+            ? new mongoose.Types.ObjectId(approvalDto.coachId)
+            : undefined,
           guardianIds: [guardianUser._id],
           guardian: {
-            name: guardianName || `${guardianUser.firstName} ${guardianUser.lastName}`,
+            name:
+              guardianName ||
+              `${guardianUser.firstName} ${guardianUser.lastName}`,
             phone: guardianPhone || guardianUser.phone,
             email: guardianEmail || guardianUser.email,
           },
-          firstName: approvalDto.studentDetails?.firstName?.trim() || request.studentDetails.firstName,
-          lastName: approvalDto.studentDetails?.lastName?.trim() || request.studentDetails.lastName,
-          dateOfBirth: approvalDto.studentDetails?.dateOfBirth ? new Date(approvalDto.studentDetails.dateOfBirth) : request.studentDetails.dateOfBirth,
-          ageGroup: approvalDto.studentDetails?.ageGroup || request.studentDetails.ageGroup,
-          jerseyNumber: approvalDto.jerseyNumber ?? request.studentDetails.jerseyNumber,
-          jerseySize: approvalDto.jerseySize || request.studentDetails.jerseySize,
+          firstName:
+            approvalDto.studentDetails?.firstName?.trim() ||
+            request.studentDetails.firstName,
+          lastName:
+            approvalDto.studentDetails?.lastName?.trim() ||
+            request.studentDetails.lastName,
+          dateOfBirth: approvalDto.studentDetails?.dateOfBirth
+            ? new Date(approvalDto.studentDetails.dateOfBirth)
+            : request.studentDetails.dateOfBirth,
+          ageGroup:
+            approvalDto.studentDetails?.ageGroup ||
+            request.studentDetails.ageGroup,
+          jerseyNumber:
+            approvalDto.jerseyNumber ?? request.studentDetails.jerseyNumber,
+          jerseySize:
+            approvalDto.jerseySize || request.studentDetails.jerseySize,
           position: approvalDto.position || request.studentDetails.position,
           positions: approvalDto.positions || request.studentDetails.positions,
-          photo: approvalDto.studentDetails?.photo || request.studentDetails.photo,
-          medicalInfo: (approvalDto.studentDetails?.medicalInfo || request.studentDetails.medicalInfo || {
-            emergencyContactName: guardianName,
-            emergencyContactPhone: guardianPhone,
-          }) as any,
+          photo:
+            approvalDto.studentDetails?.photo || request.studentDetails.photo,
+          medicalInfo: (approvalDto.studentDetails?.medicalInfo ||
+            request.studentDetails.medicalInfo || {
+              emergencyContactName: guardianName,
+              emergencyContactPhone: guardianPhone,
+            }) as any,
           enrollmentDate: new Date(),
           isActive: true,
           status: "active",
@@ -640,19 +911,24 @@ export class RegistrationUseCases {
               grantedUserAgent: request.dpdpConsentUserAgent,
             });
           } catch (consentErr) {
-            console.error("[approveRequest] Failed to record DPDP ConsentRecord:", consentErr);
+            console.error(
+              "[approveRequest] Failed to record DPDP ConsentRecord:",
+              consentErr,
+            );
           }
         }
       } catch (err) {
         if (isNewGuardianUser) {
-          await UserModel.deleteOne({ _id: guardianUser._id }).catch(() => undefined);
+          await UserModel.deleteOne({ _id: guardianUser._id }).catch(
+            () => undefined,
+          );
         }
         throw err;
       }
 
       if (isNewGuardianUser && tempPassword) {
-        try {
-          await notificationService.sendAccountCredentialsEmail({
+        notificationService
+          .sendAccountCredentialsEmail({
             to: guardianEmail,
             recipientName: guardianName,
             role: "guardian",
@@ -660,22 +936,30 @@ export class RegistrationUseCases {
             loginUrl: `${config.clientUrl}/login`,
             studentName: `${enrolledStudentDoc.firstName} ${enrolledStudentDoc.lastName}`,
             academyName: franchise.name,
+          })
+          .catch((mailErr) => {
+            console.error(
+              "[approveRequest] Failed to send credentials email:",
+              mailErr,
+            );
           });
-        } catch (mailErr) {
-          console.error("[approveRequest] Failed to send credentials email:", mailErr);
-        }
       } else if (!isNewGuardianUser) {
-        try {
-          await notificationService.sendStudentLinkedEmail({
+        notificationService
+          .sendStudentLinkedEmail({
             to: guardianEmail,
-            guardianName: guardianName || `${guardianUser.firstName} ${guardianUser.lastName}`,
+            guardianName:
+              guardianName ||
+              `${guardianUser.firstName} ${guardianUser.lastName}`,
             studentName: `${enrolledStudentDoc.firstName} ${enrolledStudentDoc.lastName}`,
             academyName: franchise.name,
             loginUrl: `${config.clientUrl}/login`,
+          })
+          .catch((mailErr) => {
+            console.error(
+              "[approveRequest] Failed to send student linked email:",
+              mailErr,
+            );
           });
-        } catch (mailErr) {
-          console.error("[approveRequest] Failed to send student linked email:", mailErr);
-        }
       }
     }
 
@@ -686,34 +970,43 @@ export class RegistrationUseCases {
     await request.save();
 
     const finalAgeGroup =
-      enrolledStudentDoc.ageGroup || calculateAgeCategory(enrolledStudentDoc.dateOfBirth);
+      enrolledStudentDoc.ageGroup ||
+      calculateAgeCategory(enrolledStudentDoc.dateOfBirth);
     if (finalAgeGroup) {
-      await Promise.all([
-        FranchiseModel.findByIdAndUpdate(targetFranchiseId, { $addToSet: { ageGroups: finalAgeGroup } }),
-        AcademyModel.findByIdAndUpdate(franchise.academyId, { $addToSet: { ageGroups: finalAgeGroup } }),
+      Promise.all([
+        FranchiseModel.findByIdAndUpdate(targetFranchiseId, {
+          $addToSet: { ageGroups: finalAgeGroup },
+        }),
+        AcademyModel.findByIdAndUpdate(franchise.academyId, {
+          $addToSet: { ageGroups: finalAgeGroup },
+        }),
       ]).catch(() => undefined);
     }
 
-    // ── Dispatch internal system alerts ──
+    // ── Dispatch internal system alerts (non-blocking) ──
     if (enrolledStudentDoc.userId) {
-      await notificationService.send({
-        userIds: [enrolledStudentDoc.userId.toString()],
-        type: "registration_approved",
-        title: "Welcome to the Academy!",
-        body: `Your registration under ${franchise.name} has been approved. You are now officially enrolled.`,
-        franchiseId: targetFranchiseId,
-        channels: ["push"],
-      }).catch(() => undefined);
+      notificationService
+        .send({
+          userIds: [enrolledStudentDoc.userId.toString()],
+          type: "registration_approved",
+          title: "Welcome to the Academy!",
+          body: `Your registration under ${franchise.name} has been approved. You are now officially enrolled.`,
+          franchiseId: targetFranchiseId,
+          channels: ["push"],
+        })
+        .catch(() => undefined);
     }
 
-    await notificationService.send({
-      userIds: [reviewedBy],
-      type: "registration_approved",
-      title: "Student Enrolled",
-      body: `${enrolledStudentDoc.firstName} ${enrolledStudentDoc.lastName} has been successfully registered under ${franchise.name}.`,
-      franchiseId: targetFranchiseId,
-      channels: ["push"],
-    }).catch(() => undefined);
+    notificationService
+      .send({
+        userIds: [reviewedBy],
+        type: "registration_approved",
+        title: "Student Enrolled",
+        body: `${enrolledStudentDoc.firstName} ${enrolledStudentDoc.lastName} has been successfully registered under ${franchise.name}.`,
+        franchiseId: targetFranchiseId,
+        channels: ["push"],
+      })
+      .catch(() => undefined);
 
     return {
       id: request._id.toString(),

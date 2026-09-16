@@ -83,3 +83,14 @@ export const academyApi = baseApi.injectEndpoints({
     }),
   }),
 });
+
+export const {
+  useGetAcademiesQuery,
+  useGetAcademyByIdQuery,
+  useCreateAcademyMutation,
+  useUpdateAcademyMutation,
+  useUpdateAcademyConfigMutation,
+  useToggleAcademyStatusMutation,
+  useToggleTransferWallMutation,
+  useDeleteAcademyMutation,
+} = academyApi;

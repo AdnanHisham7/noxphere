@@ -859,10 +859,28 @@ const FeesPage: React.FC = () => {
             setCreateInitialStudentId(undefined);
           }}
           creating={creating}
-          onCreate={async (body) => {
+          onCreate={async (body, targetStudentIds) => {
             try {
-              await createFee(body).unwrap();
-              toast.success("Fee scheduled successfully");
+              if (targetStudentIds.length === 1) {
+                await createFee({ ...body, studentId: targetStudentIds[0] }).unwrap();
+                toast.success("Fee scheduled successfully");
+              } else {
+                let successCount = 0;
+                let failCount = 0;
+                for (const sid of targetStudentIds) {
+                  try {
+                    await createFee({ ...body, studentId: sid }).unwrap();
+                    successCount++;
+                  } catch {
+                    failCount++;
+                  }
+                }
+                if (failCount === 0) {
+                  toast.success(`Fee scheduled for all ${successCount} players!`);
+                } else {
+                  toast.success(`Fee scheduled for ${successCount} players (${failCount} failed).`);
+                }
+              }
               setShowCreate(false);
               setCreateInitialStudentId(undefined);
             } catch (err: any) {
@@ -1086,7 +1104,7 @@ const CreateFeeModal: React.FC<{
   franchiseId: string;
   initialStudentId?: string;
   onClose: () => void;
-  onCreate: (body: CreateFeeBody) => void;
+  onCreate: (body: Omit<CreateFeeBody, "studentId">, studentIds: string[]) => void;
   creating: boolean;
 }> = ({ franchiseId, initialStudentId, onClose, onCreate, creating }) => {
   const { data: studentsResult } = useGetStudentsQuery(
@@ -1095,12 +1113,38 @@ const CreateFeeModal: React.FC<{
   );
   const students = studentsResult?.items ?? [];
 
+  const [selectionMode, setSelectionMode] = useState<"single" | "all" | "category" | "custom">(
+    initialStudentId ? "single" : "single"
+  );
   const [studentId, setStudentId] = useState(initialStudentId ?? "");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [customSelectedIds, setCustomSelectedIds] = useState<string[]>(initialStudentId ? [initialStudentId] : []);
+  const [playerFilter, setPlayerFilter] = useState<string>("");
+
   const [feeType, setFeeType] = useState<CreateFeeBody["feeType"]>("one_time");
   const [totalAmount, setTotalAmount] = useState("");
   const [discount, setDiscount] = useState("");
   const [notes, setNotes] = useState("");
   const [installments, setInstallments] = useState([emptyInstallment()]);
+
+  const categories = useMemo(() => {
+    const cats = new Set<string>();
+    students.forEach((s) => {
+      if (s.ageGroup) cats.add(s.ageGroup);
+    });
+    return Array.from(cats).sort();
+  }, [students]);
+
+  // Derived target students
+  const targetStudentIds = useMemo(() => {
+    if (selectionMode === "single") return studentId ? [studentId] : [];
+    if (selectionMode === "all") return students.map((s) => s.id);
+    if (selectionMode === "category") {
+      return selectedCategory ? students.filter((s) => s.ageGroup === selectedCategory).map((s) => s.id) : [];
+    }
+    if (selectionMode === "custom") return customSelectedIds;
+    return [];
+  }, [selectionMode, studentId, students, selectedCategory, customSelectedIds]);
 
   const setFeeTypeAndAdjust = (type: CreateFeeBody["feeType"]) => {
     setFeeType(type);
@@ -1125,8 +1169,8 @@ const CreateFeeModal: React.FC<{
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!studentId) {
-      toast.error("Select a player");
+    if (targetStudentIds.length === 0) {
+      toast.error("Please select at least one player to schedule this fee for");
       return;
     }
     const total = parseFloat(totalAmount);
@@ -1145,32 +1189,156 @@ const CreateFeeModal: React.FC<{
       return;
     }
 
-    onCreate({
-      studentId,
-      franchiseId,
-      feeType,
-      totalAmount: total,
-      discount: parseFloat(discount) || undefined,
-      notes: notes || undefined,
-      installments: installments.map((inst, i) => ({
-        installmentNumber: i + 1,
-        amount: parseFloat(inst.amount),
-        dueDate: new Date(inst.dueDate).toISOString(),
-      })),
-    });
+    onCreate(
+      {
+        franchiseId,
+        feeType,
+        totalAmount: total,
+        discount: parseFloat(discount) || undefined,
+        notes: notes || undefined,
+        installments: installments.map((inst, i) => ({
+          installmentNumber: i + 1,
+          amount: parseFloat(inst.amount),
+          dueDate: new Date(inst.dueDate).toISOString(),
+        })),
+      },
+      targetStudentIds
+    );
   };
 
   return (
     <Modal isOpen onClose={onClose} title="Schedule a fee" size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="label text-xs">Player</label>
-          <select className="input text-xs !w-full" value={studentId} onChange={(e) => setStudentId(e.target.value)} required>
-            <option value="">Select a player…</option>
-            {students.map((s) => (
-              <option key={s.id} value={s.id}>{s.firstName} {s.lastName} · {s.ageGroup}</option>
+          <label className="label text-xs">Assign Fee To</label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+            {[
+              { id: "single", label: "Single Player" },
+              { id: "all", label: `All (${students.length})` },
+              { id: "category", label: "By Category" },
+              { id: "custom", label: `Custom (${customSelectedIds.length})` },
+            ].map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setSelectionMode(m.id as any)}
+                className={clsx(
+                  "px-2.5 py-1.5 rounded border text-xs font-semibold transition-all text-center",
+                  selectionMode === m.id
+                    ? "bg-volt-400 text-pitch-900 border-volt-400 shadow-xs"
+                    : "bg-slate-100 dark:bg-pitch-800 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                )}
+              >
+                {m.label}
+              </button>
             ))}
-          </select>
+          </div>
+
+          {selectionMode === "single" && (
+            <select
+              className="input text-xs !w-full"
+              value={studentId}
+              onChange={(e) => setStudentId(e.target.value)}
+              required
+            >
+              <option value="">Select a player…</option>
+              {students.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.firstName} {s.lastName} {s.ageGroup ? `· ${s.ageGroup}` : ""}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {selectionMode === "all" && (
+            <div className="p-3 rounded-lg bg-volt-400/10 border border-volt-400/20 text-xs text-slate-700 dark:text-slate-300">
+              Fee schedule will be created for <strong className="text-volt-600 dark:text-volt-400">{students.length} active players</strong> in this franchise.
+            </div>
+          )}
+
+          {selectionMode === "category" && (
+            <div className="space-y-2">
+              <select
+                className="input text-xs !w-full"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                required
+              >
+                <option value="">Select an age category / squad…</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c} ({students.filter((s) => s.ageGroup === c).length} players)
+                  </option>
+                ))}
+              </select>
+              {selectedCategory && (
+                <p className="text-2xs text-slate-500">
+                  Targeting {students.filter((s) => s.ageGroup === selectedCategory).length} players in {selectedCategory}.
+                </p>
+              )}
+            </div>
+          )}
+
+          {selectionMode === "custom" && (
+            <div className="space-y-2 border border-slate-200 dark:border-white/10 rounded-lg p-3 bg-slate-50/50 dark:bg-pitch-900/30">
+              <div className="flex items-center justify-between gap-2">
+                <input
+                  type="text"
+                  placeholder="Filter players by name..."
+                  value={playerFilter}
+                  onChange={(e) => setPlayerFilter(e.target.value)}
+                  className="input text-xs flex-1 py-1"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (customSelectedIds.length === students.length) {
+                      setCustomSelectedIds([]);
+                    } else {
+                      setCustomSelectedIds(students.map((s) => s.id));
+                    }
+                  }}
+                  className="text-2xs text-volt-600 dark:text-volt-400 hover:underline font-semibold whitespace-nowrap"
+                >
+                  {customSelectedIds.length === students.length ? "Deselect All" : "Select All"}
+                </button>
+              </div>
+              <div className="max-h-40 overflow-y-auto divide-y divide-slate-100 dark:divide-white/5 pr-1">
+                {students
+                  .filter((s) => `${s.firstName} ${s.lastName} ${s.ageGroup || ""}`.toLowerCase().includes(playerFilter.toLowerCase()))
+                  .map((s) => {
+                    const isChecked = customSelectedIds.includes(s.id);
+                    return (
+                      <label key={s.id} className="flex items-center gap-2.5 py-1.5 px-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded cursor-pointer text-xs">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setCustomSelectedIds([...customSelectedIds, s.id]);
+                            } else {
+                              setCustomSelectedIds(customSelectedIds.filter((id) => id !== s.id));
+                            }
+                          }}
+                          className="rounded text-volt-500 focus:ring-volt-400"
+                        />
+                        <span className="text-slate-800 dark:text-slate-200 font-medium">
+                          {s.firstName} {s.lastName}
+                        </span>
+                        {s.ageGroup && (
+                          <span className="text-2xs text-slate-400 ml-auto font-mono">
+                            {s.ageGroup}
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
+              </div>
+              <p className="text-2xs text-slate-500">
+                {customSelectedIds.length} players selected.
+              </p>
+            </div>
+          )}
         </div>
 
         <div>
@@ -1251,7 +1419,11 @@ const CreateFeeModal: React.FC<{
         </div>
 
         <div className="flex gap-3 pt-2">
-          <Button type="submit" className="flex-1" loading={creating}>Schedule fee</Button>
+          <Button type="submit" className="flex-1" loading={creating}>
+            {targetStudentIds.length > 1
+              ? `Schedule fee for ${targetStudentIds.length} players`
+              : "Schedule fee"}
+          </Button>
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
         </div>
       </form>

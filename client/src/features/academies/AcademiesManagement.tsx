@@ -19,7 +19,7 @@ import {
   LayoutDashboard,
   AlertTriangle,
 } from "lucide-react";
-import { Button, Input, Modal, Badge, StatCard } from "../../components/ui";
+import { Button, Input, Modal, Badge, StatCard, ImageUploadField } from "../../components/ui";
 import { PlatformBillingCard } from "./PlatformBillingCard";
 import { baseApi } from "../../store/api/baseApi";
 import { academyApi } from "@/store/api/academyApi";
@@ -117,6 +117,7 @@ const AcademiesManagement: React.FC = () => {
   const [newAcademyForm, setNewAcademyForm] = useState({
     name: "",
     academyCode: "",
+    logo: "",
     location: {
       name: "",
       address: "",
@@ -159,6 +160,7 @@ const AcademiesManagement: React.FC = () => {
     const payload: CreateAcademyPayload = {
       name: newAcademyForm.name,
       academyCode: newAcademyForm.academyCode || undefined,
+      logo: newAcademyForm.logo || undefined,
       location: {
         ...newAcademyForm.location,
         latitude: Number(newAcademyForm.location.latitude),
@@ -181,6 +183,7 @@ const AcademiesManagement: React.FC = () => {
       setNewAcademyForm({
         name: "",
         academyCode: "",
+        logo: "",
         location: {
           name: "",
           address: "",
@@ -254,7 +257,7 @@ const AcademiesManagement: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <p className="section-title mb-1">Infrastructure</p>
-          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">
+          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
             Academies Management
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
@@ -270,7 +273,7 @@ const AcademiesManagement: React.FC = () => {
             className="w-full sm:w-48"
           />
           <select
-            className="bg-pitch-700 border border-white/5 rounded px-2 py-1 text-sm flex-1 sm:flex-initial"
+            className="bg-white dark:bg-pitch-700 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-white rounded px-2 py-1 text-sm flex-1 sm:flex-initial"
             value={
               activeFilter === undefined
                 ? "all"
@@ -289,14 +292,14 @@ const AcademiesManagement: React.FC = () => {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
-          <div className="flex bg-pitch-700 p-1 rounded border border-white/5">
+          <div className="flex bg-slate-100 dark:bg-pitch-700 p-1 rounded border border-slate-200 dark:border-white/5">
             <button
               onClick={() => setViewMode("table")}
               className={clsx(
                 "p-1.5 rounded transition-all",
                 viewMode === "table"
-                  ? "bg-white/10 text-white"
-                  : "text-slate-500 hover:text-slate-300",
+                  ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
               )}
             >
               <List size={16} />
@@ -306,8 +309,8 @@ const AcademiesManagement: React.FC = () => {
               className={clsx(
                 "p-1.5 rounded transition-all",
                 viewMode === "card"
-                  ? "bg-white/10 text-white"
-                  : "text-slate-500 hover:text-slate-300",
+                  ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
               )}
             >
               <LayoutGrid size={16} />
@@ -580,6 +583,17 @@ const AcademiesManagement: React.FC = () => {
         size="md"
       >
         <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+          <ImageUploadField
+            label="Academy Crest / Logo (Optional)"
+            category="academy_logo"
+            value={newAcademyForm.logo}
+            onChange={(url) =>
+              setNewAcademyForm({ ...newAcademyForm, logo: url || "" })
+            }
+            shape="square"
+            helperText="Upload official academy crest or logo (PNG, JPG, WebP)"
+          />
+
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="Academy Name"
@@ -601,8 +615,8 @@ const AcademiesManagement: React.FC = () => {
             />
           </div>
 
-          <div className="bg-white/5 p-3 rounded-lg border border-white/5 space-y-3">
-            <p className="text-xs font-bold text-volt-400 uppercase tracking-tight">
+          <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-lg border border-slate-200 dark:border-white/5 space-y-3">
+            <p className="text-xs font-bold text-volt-500 dark:text-volt-400 uppercase tracking-tight">
               Manager Account
             </p>
             <div className="grid grid-cols-2 gap-3">
@@ -675,8 +689,8 @@ const AcademiesManagement: React.FC = () => {
             />
           </div>
 
-          <div className="bg-pitch-700/50 p-3 rounded-lg border border-white/5 space-y-3">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-tight">
+          <div className="bg-slate-50 dark:bg-pitch-700/50 p-3 rounded-lg border border-slate-200 dark:border-white/5 space-y-3">
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight">
               Location Details
             </p>
             <Input

@@ -14,7 +14,7 @@ import {
   Layers,
   Sparkles,
 } from "lucide-react";
-import { Button, Input, Card, Badge, Skeleton, EmptyState, Modal, ConfirmModal } from "../../components/ui";
+import { Button, Input, Card, Badge, Skeleton, EmptyState, Modal, ConfirmModal, ImageUploadField } from "../../components/ui";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import { academyApi } from "../../store/api/academyApi";
 import type { Location, AcademyPitch } from "../academies/types";
@@ -38,6 +38,7 @@ const AcademySettingsPage: React.FC = () => {
   const [updateConfig, { isLoading: saving }] = useUpdateAcademyConfig();
 
   const [name, setName] = useState("");
+  const [logo, setLogo] = useState<string | undefined>(undefined);
   const [location, setLocation] = useState<Location>({ name: "", address: "", latitude: 0, longitude: 0, fieldNumber: "" });
   const [pitches, setPitches] = useState<AcademyPitch[]>([]);
   const [absentAlertDays, setAbsentAlertDays] = useState(5);
@@ -61,6 +62,7 @@ const AcademySettingsPage: React.FC = () => {
   useEffect(() => {
     if (!academy) return;
     setName(academy.name);
+    setLogo(academy.logo);
     setLocation(academy.location);
     setPitches(academy.pitches || []);
     setAbsentAlertDays(academy.absentAlertDays);
@@ -91,6 +93,7 @@ const AcademySettingsPage: React.FC = () => {
         id: academyId,
         config: {
           name: name.trim(),
+          logo: logo || undefined,
           location,
           pitches,
           ageGroups: academy?.ageGroups,
@@ -293,6 +296,15 @@ const AcademySettingsPage: React.FC = () => {
           <h2 className="font-display text-sm font-bold text-white uppercase tracking-wide">Academy details</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
+            <ImageUploadField
+              label="Academy Logo"
+              value={logo}
+              onChange={(url) => setLogo(url || undefined)}
+              category="academy_logo"
+              shape="square"
+            />
+          </div>
           <Input label="Academy name" value={name} onChange={(e) => setName(e.target.value)} required />
           <Input
             label="Location name"
@@ -396,19 +408,19 @@ const AcademySettingsPage: React.FC = () => {
             {pitches.map((pitch) => (
               <div
                 key={pitch.id}
-                className="p-3.5 rounded-xl bg-slate-900/50 border border-white/5 hover:border-white/10 transition-all flex flex-col justify-between group"
+                className="p-3.5 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 shadow-sm transition-all flex flex-col justify-between group"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-volt-400 shrink-0" />
-                        <h3 className="font-sans font-bold text-sm text-white truncate" title={pitch.name}>
+                        <h3 className="font-sans font-bold text-sm text-slate-900 dark:text-white truncate" title={pitch.name}>
                           {pitch.name}
                         </h3>
                       </div>
                       {pitch.address && (
-                        <p className="text-[11px] text-slate-400 mt-0.5 truncate pl-3.5" title={pitch.address}>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate pl-3.5" title={pitch.address}>
                           {pitch.address}
                         </p>
                       )}
@@ -427,12 +439,12 @@ const AcademySettingsPage: React.FC = () => {
 
                   <div className="flex flex-wrap items-center gap-1.5 mt-2.5 pl-3.5">
                     {pitch.fieldNumber && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-volt-400/10 text-volt-300 border border-volt-400/20">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-volt-400/10 text-volt-600 dark:text-volt-300 border border-volt-400/20">
                         Field: {pitch.fieldNumber}
                       </span>
                     )}
                     {pitch.surfaceType && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-300 border border-white/5">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/5">
                         {pitch.surfaceType}
                       </span>
                     )}
@@ -537,7 +549,7 @@ const AcademySettingsPage: React.FC = () => {
                 <select
                   value={pitchForm.surfaceType}
                   onChange={(e) => setPitchForm({ ...pitchForm, surfaceType: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg bg-pitch-900 border border-white/10 text-white focus:outline-none focus:border-volt-400 text-xs"
+                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-pitch-900 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-volt-500 dark:focus:border-volt-400 text-xs"
                 >
                   {SURFACE_TYPES.map((type) => (
                     <option key={type} value={type}>

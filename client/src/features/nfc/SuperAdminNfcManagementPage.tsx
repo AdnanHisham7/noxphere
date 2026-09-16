@@ -177,16 +177,16 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
       {/* Header */}
       <div>
         <p className="section-title mb-1">Global Platform Operations</p>
-        <h1 className="font-display font-black text-white text-2xl uppercase tracking-tight">
+        <h1 className="font-display font-black text-slate-900 dark:text-white text-2xl uppercase tracking-tight">
           NFC Card Management
         </h1>
-        <p className="text-sm text-slate-400 mt-0.5">
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
           Configure dynamic pricing, review incoming card requests, and oversee order fulfillment
         </p>
       </div>
 
       {/* Dynamic Pricing Configuration Card */}
-      <div className="card p-5 border-volt-400/20 bg-gradient-to-r from-pitch-900 via-pitch-950 to-pitch-900 shadow-xl">
+      <div className="card p-5 border-slate-200 dark:border-volt-400/20 bg-gradient-to-r from-slate-50 via-white to-slate-50 dark:from-pitch-900 dark:via-pitch-950 dark:to-pitch-900 shadow-xl">
         <form onSubmit={handleSavePricing}>
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
@@ -194,10 +194,10 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
                 <CreditCard size={20} />
               </div>
               <div>
-                <h3 className="font-display font-bold text-white text-sm">
+                <h3 className="font-display font-bold text-slate-900 dark:text-white text-sm">
                   Global Dynamic NFC Pricing (₹ INR)
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Set dynamic card prices charged at Stripe checkout for independent players and academy bulk batches.
                 </p>
               </div>

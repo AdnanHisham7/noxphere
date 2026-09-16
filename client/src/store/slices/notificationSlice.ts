@@ -8,6 +8,7 @@ interface NotificationState {
     title: string;
     body: string;
     type: string;
+    data?: any;
     isRead: boolean;
     createdAt: string;
   }[];

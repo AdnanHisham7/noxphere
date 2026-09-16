@@ -39,6 +39,7 @@ export const CreateAcademySchema = z.object({
   notificationAlertAfterMinutes: z.number().min(0).default(15),
   absentAlertDays: z.number().int().min(1).max(30).default(5),
   dueDateAlertDays: z.number().int().min(0).max(30).default(3),
+  logo: z.string().optional(),
   skillParameters: z
     .array(z.string().trim().min(1, "Skill parameter name cannot be empty"))
     .length(6, "Exactly 6 skill parameters are required")
@@ -69,6 +70,7 @@ export const UpdateAcademySchema = z.object({
   notificationAlertAfterMinutes: z.number().min(0).optional(),
   absentAlertDays: z.number().int().min(1).max(30).optional(),
   dueDateAlertDays: z.number().int().min(0).max(30).optional(),
+  logo: z.string().optional(),
 });
 
 // Config update — this is the endpoint the manager's own Settings tab
@@ -93,6 +95,7 @@ export const AcademyConfigSchema = z.object({
   absentAlertDays: z.number().int().min(1).max(30).optional(),
   dueDateAlertDays: z.number().int().min(0).max(30).optional(),
   feeQrImageUrl: z.string().url().nullable().optional().or(z.literal("")).transform(v => (v === "" || v === null) ? null : v),
+  logo: z.string().nullable().optional().or(z.literal("")).transform(v => (v === "" || v === null) ? null : v),
   isActive: z.boolean().optional(),
 });
 

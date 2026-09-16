@@ -36,7 +36,10 @@ import { AcademySubscriptionUseCases } from "../subscription/AcademySubscription
 import { FeeModel } from "../../../infrastructure/database/models/Fee.model";
 import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
 import { notificationService } from "../../../infrastructure/services/NotificationService";
-import { normalizePhone, getPhoneMatchVariants } from "../../../shared/utils/phone";
+import {
+  normalizePhone,
+  getPhoneMatchVariants,
+} from "../../../shared/utils/phone";
 import { calculateAgeCategory } from "../../../shared/utils/ageCategory";
 
 export class StudentUseCases {
@@ -46,7 +49,10 @@ export class StudentUseCases {
     private academySubscriptionUseCases: AcademySubscriptionUseCases,
   ) {}
 
-  private async validateTeamAssignment(franchiseId: string, teamId: string): Promise<void> {
+  private async validateTeamAssignment(
+    franchiseId: string,
+    teamId: string,
+  ): Promise<void> {
     const team = await TeamModel.findOne({
       _id: teamId,
       deletedAt: { $exists: false },
@@ -57,14 +63,18 @@ export class StudentUseCases {
       throw new BadRequestError("That team doesn't exist");
     }
 
-    const playerFranchise = await FranchiseModel.findById(franchiseId).select("academyId").lean();
+    const playerFranchise = await FranchiseModel.findById(franchiseId)
+      .select("academyId")
+      .lean();
     if (!playerFranchise) {
       throw new BadRequestError("Franchise not found");
     }
 
     let teamAcademyId = team.academyId?.toString();
     if (!teamAcademyId && team.franchiseId) {
-      const teamFranchise = await FranchiseModel.findById(team.franchiseId).select("academyId").lean();
+      const teamFranchise = await FranchiseModel.findById(team.franchiseId)
+        .select("academyId")
+        .lean();
       if (teamFranchise) {
         teamAcademyId = teamFranchise.academyId.toString();
       }
@@ -75,7 +85,9 @@ export class StudentUseCases {
     }
 
     if (playerFranchise.academyId.toString() !== teamAcademyId) {
-      throw new BadRequestError("That team is not part of this academy's ecosystem");
+      throw new BadRequestError(
+        "That team is not part of this academy's ecosystem",
+      );
     }
   }
 
@@ -86,9 +98,13 @@ export class StudentUseCases {
     // 0. Enforce subscription/capacity before creating anything — fail
     // fast so we never create a guardian/student login account and then
     // have to roll it back because the academy can't add another player.
-    const franchise = await FranchiseModel.findById(dto.franchiseId).select("academyId").lean();
+    const franchise = await FranchiseModel.findById(dto.franchiseId)
+      .select("academyId")
+      .lean();
     if (!franchise) throw new NotFoundError("Franchise");
-    await this.academySubscriptionUseCases.assertCanAddStudent(franchise.academyId.toString());
+    await this.academySubscriptionUseCases.assertCanAddStudent(
+      franchise.academyId.toString(),
+    );
 
     if (dto.teamId) {
       await this.validateTeamAssignment(dto.franchiseId, dto.teamId);
@@ -96,20 +112,58 @@ export class StudentUseCases {
 
     let academyName = "Your Academy";
     try {
-      const academy = await AcademyModel.findById(franchise.academyId).select("name").lean();
+      const academy = await AcademyModel.findById(franchise.academyId)
+        .select("name")
+        .lean();
       if (academy?.name) academyName = academy.name;
     } catch {}
 
     const loginEmail = (dto.guardian?.email || dto.email).trim().toLowerCase();
     const cleanPhone = normalizePhone(dto.guardian?.phone || "");
 
-    // Check if an account already exists with this email OR phone
-    const existingUser = await UserModel.findOne({
-      $or: [
-        { email: loginEmail },
-        ...(cleanPhone ? [{ phone: { $in: getPhoneMatchVariants(cleanPhone) } }] : []),
-      ],
-    });
+    // Check if an account already exists with this guardian email and/or phone
+    const [existingUserByEmail, existingUserByPhone] = await Promise.all([
+      UserModel.findOne({ email: loginEmail }),
+      cleanPhone
+        ? UserModel.findOne({
+            phone: { $in: getPhoneMatchVariants(cleanPhone) },
+          })
+        : null,
+    ]);
+
+    if (
+      existingUserByEmail &&
+      existingUserByPhone &&
+      existingUserByEmail._id.toString() !== existingUserByPhone._id.toString()
+    ) {
+      throw new ConflictError(
+        "This guardian email and phone number belong to two different registered accounts. Please use matching contact details.",
+      );
+    }
+
+    if (existingUserByEmail && existingUserByEmail.role !== "guardian") {
+      throw new ConflictError(
+        `An account with this email already exists with role: ${existingUserByEmail.role}.`,
+      );
+    }
+
+    if (existingUserByPhone && existingUserByPhone.role !== "guardian") {
+      throw new ConflictError(
+        `An account with this phone number already exists with role: ${existingUserByPhone.role}.`,
+      );
+    }
+
+    if (
+      existingUserByPhone &&
+      !existingUserByEmail &&
+      existingUserByPhone.email.toLowerCase() !== loginEmail
+    ) {
+      throw new ConflictError(
+        "An account with this phone number is already registered under a different email address.",
+      );
+    }
+
+    const existingUser = existingUserByEmail || existingUserByPhone;
 
     let guardianUser: any;
     let isNewGuardian = false;
@@ -119,12 +173,6 @@ export class StudentUseCases {
     const guardianLastName = guardianParts.slice(1).join(" ") || "Guardian";
 
     if (existingUser) {
-      if (existingUser.role !== "guardian") {
-        throw new ConflictError(
-          `An account with this ${existingUser.email === loginEmail ? "email" : "phone number"} already exists with role: ${existingUser.role}.`,
-        );
-      }
-
       // Check if this student is already registered under this guardian
       const duplicateStudent = await StudentModel.findOne({
         guardianIds: existingUser._id,
@@ -133,29 +181,35 @@ export class StudentUseCases {
         deletedAt: { $exists: false },
       });
       if (duplicateStudent) {
-        throw new ConflictError(`Player ${dto.firstName} ${dto.lastName} is already registered under this guardian.`);
+        throw new ConflictError(
+          `Player ${dto.firstName} ${dto.lastName} is already registered under this guardian.`,
+        );
+      }
+
+      if (!existingUser.phone && cleanPhone) {
+        existingUser.phone = cleanPhone;
+        await existingUser.save();
       }
 
       guardianUser = existingUser;
       isNewGuardian = false;
     } else {
-      // If neither email nor phone matched an existing user, verify phone isn't used by any other user account
-      if (cleanPhone) {
-        const phoneTaken = await UserModel.findOne({
-          phone: { $in: getPhoneMatchVariants(cleanPhone) },
-        });
-        if (phoneTaken) {
-          throw new ConflictError("An account with this phone number already exists.");
-        }
-      }
-
-      // Check if an active student is already registered with this guardian email
+      // Check if an active student is already registered with this guardian email/phone
       const existingStudent = await StudentModel.findOne({
-        "guardian.email": loginEmail,
+        $or: [
+          { "guardian.email": loginEmail },
+          ...(cleanPhone
+            ? [{ "guardian.phone": { $in: getPhoneMatchVariants(cleanPhone) } }]
+            : []),
+        ],
+        firstName: new RegExp(`^${dto.firstName.trim()}$`, "i"),
+        lastName: new RegExp(`^${dto.lastName.trim()}$`, "i"),
         deletedAt: { $exists: false },
       });
       if (existingStudent) {
-        throw new ConflictError("A player with this email is already registered.");
+        throw new ConflictError(
+          "A player with this name and guardian contact is already registered.",
+        );
       }
 
       tempPassword = Math.random().toString(36).slice(-8) + "!1Aa";
@@ -167,7 +221,7 @@ export class StudentUseCases {
         role: "guardian",
         firstName: guardianFirstName,
         lastName: guardianLastName,
-        phone: cleanPhone || dto.guardian?.phone || "",
+        phone: cleanPhone || undefined,
         isActive: true,
         isEmailVerified: true,
         permissions: defaultPermissions["guardian" as UserRole],
@@ -184,9 +238,13 @@ export class StudentUseCases {
       franchiseId: dto.franchiseId,
       teamId: dto.teamId,
       coachId: dto.coachId,
-      guardianIds: [guardianUser._id ? guardianUser._id.toString() : guardianUser.id],
+      guardianIds: [
+        guardianUser._id ? guardianUser._id.toString() : guardianUser.id,
+      ],
       guardian: {
-        name: dto.guardian?.name || `${guardianUser.firstName} ${guardianUser.lastName}`,
+        name:
+          dto.guardian?.name ||
+          `${guardianUser.firstName} ${guardianUser.lastName}`,
         email: guardianUser.email || loginEmail,
         phone: cleanPhone || guardianUser.phone || dto.guardian?.phone || "",
       },
@@ -226,7 +284,8 @@ export class StudentUseCases {
       try {
         await notificationService.sendAccountCredentialsEmail({
           to: loginEmail,
-          recipientName: dto.guardian?.name || `${guardianFirstName} ${guardianLastName}`,
+          recipientName:
+            dto.guardian?.name || `${guardianFirstName} ${guardianLastName}`,
           role: "guardian",
           password: tempPassword,
           loginUrl: `${config.clientUrl}/login`,
@@ -234,28 +293,42 @@ export class StudentUseCases {
           academyName,
         });
       } catch (mailErr) {
-        console.error("[createStudent] Failed to send credentials email:", mailErr);
+        console.error(
+          "[createStudent] Failed to send credentials email:",
+          mailErr,
+        );
       }
     } else if (!isNewGuardian) {
       try {
         await notificationService.sendStudentLinkedEmail({
           to: loginEmail,
-          guardianName: dto.guardian?.name || `${guardianUser.firstName} ${guardianUser.lastName}`,
+          guardianName:
+            dto.guardian?.name ||
+            `${guardianUser.firstName} ${guardianUser.lastName}`,
           studentName: `${dto.firstName} ${dto.lastName}`,
           academyName,
           loginUrl: `${config.clientUrl}/login`,
         });
       } catch (mailErr) {
-        console.error("[createStudent] Failed to send student linked email:", mailErr);
+        console.error(
+          "[createStudent] Failed to send student linked email:",
+          mailErr,
+        );
       }
     }
 
     // Sync age category to franchise and academy
-    const effectiveAgeGroup = createdStudent.ageGroup || calculateAgeCategory(createdStudent.dateOfBirth);
+    const effectiveAgeGroup =
+      createdStudent.ageGroup ||
+      calculateAgeCategory(createdStudent.dateOfBirth);
     if (effectiveAgeGroup) {
       await Promise.all([
-        FranchiseModel.findByIdAndUpdate(dto.franchiseId, { $addToSet: { ageGroups: effectiveAgeGroup } }),
-        AcademyModel.findByIdAndUpdate(franchise.academyId, { $addToSet: { ageGroups: effectiveAgeGroup } }),
+        FranchiseModel.findByIdAndUpdate(dto.franchiseId, {
+          $addToSet: { ageGroups: effectiveAgeGroup },
+        }),
+        AcademyModel.findByIdAndUpdate(franchise.academyId, {
+          $addToSet: { ageGroups: effectiveAgeGroup },
+        }),
       ]).catch(() => undefined);
     }
 
@@ -293,7 +366,10 @@ export class StudentUseCases {
       }
       filter.teamId = filters.teamId;
     } else if (allowedTeamIds) {
-      filter.$or = [{ teamId: { $in: allowedTeamIds } }, { coachId: restrictToCoachId }];
+      filter.$or = [
+        { teamId: { $in: allowedTeamIds } },
+        { coachId: restrictToCoachId },
+      ];
     }
 
     if (filters.ageGroup) filter.ageGroup = filters.ageGroup;
@@ -342,7 +418,9 @@ export class StudentUseCases {
         const existing = await this.studentRepo.findById(id);
         if (!existing) throw new NotFoundError("Student");
         if (!existing.franchiseId) {
-          throw new BadRequestError("Student must belong to a franchise before being assigned to a team");
+          throw new BadRequestError(
+            "Student must belong to a franchise before being assigned to a team",
+          );
         }
         await this.validateTeamAssignment(existing.franchiseId, teamId);
       }
@@ -357,13 +435,23 @@ export class StudentUseCases {
     const student = await this.studentRepo.update(id, updateData);
     if (!student) throw new NotFoundError("Student");
 
-    const effectiveAgeGroup = student.ageGroup || (student.dateOfBirth ? calculateAgeCategory(student.dateOfBirth) : undefined);
+    const effectiveAgeGroup =
+      student.ageGroup ||
+      (student.dateOfBirth
+        ? calculateAgeCategory(student.dateOfBirth)
+        : undefined);
     if (effectiveAgeGroup && student.franchiseId) {
-      const fr = await FranchiseModel.findById(student.franchiseId).select("academyId").lean();
+      const fr = await FranchiseModel.findById(student.franchiseId)
+        .select("academyId")
+        .lean();
       if (fr) {
         await Promise.all([
-          FranchiseModel.findByIdAndUpdate(student.franchiseId, { $addToSet: { ageGroups: effectiveAgeGroup } }),
-          AcademyModel.findByIdAndUpdate(fr.academyId, { $addToSet: { ageGroups: effectiveAgeGroup } }),
+          FranchiseModel.findByIdAndUpdate(student.franchiseId, {
+            $addToSet: { ageGroups: effectiveAgeGroup },
+          }),
+          AcademyModel.findByIdAndUpdate(fr.academyId, {
+            $addToSet: { ageGroups: effectiveAgeGroup },
+          }),
         ]).catch(() => undefined);
       }
     }
@@ -371,7 +459,10 @@ export class StudentUseCases {
     return student;
   }
 
-  async getDistinctAgeCategories(franchiseId?: string, academyId?: string): Promise<string[]> {
+  async getDistinctAgeCategories(
+    franchiseId?: string,
+    academyId?: string,
+  ): Promise<string[]> {
     const filter: any = {
       isActive: true,
       deletedAt: { $exists: false },
@@ -440,9 +531,13 @@ export class StudentUseCases {
     if (!fromFranchise) throw new NotFoundError("Current franchise");
     if (!toFranchise) throw new NotFoundError("Destination franchise");
     if (!toFranchise.isActive) {
-      throw new BadRequestError("Cannot transfer a player into an inactive franchise");
+      throw new BadRequestError(
+        "Cannot transfer a player into an inactive franchise",
+      );
     }
-    if (fromFranchise.academyId.toString() !== toFranchise.academyId.toString()) {
+    if (
+      fromFranchise.academyId.toString() !== toFranchise.academyId.toString()
+    ) {
       throw new BadRequestError(
         "Players can only be transferred between franchises of the same academy",
       );
@@ -452,7 +547,9 @@ export class StudentUseCases {
       requester.academyId &&
       requester.academyId !== fromFranchise.academyId.toString()
     ) {
-      throw new ForbiddenError("You can only transfer players within your own academy");
+      throw new ForbiddenError(
+        "You can only transfer players within your own academy",
+      );
     }
 
     // Team/coach assignments are franchise-scoped (see
@@ -514,7 +611,10 @@ export class StudentUseCases {
     return logs.map((log: any) => ({
       id: log._id.toString(),
       fromFranchise: log.fromFranchiseId
-        ? { id: log.fromFranchiseId._id.toString(), name: log.fromFranchiseId.name }
+        ? {
+            id: log.fromFranchiseId._id.toString(),
+            name: log.fromFranchiseId.name,
+          }
         : null,
       toFranchise: log.toFranchiseId
         ? { id: log.toFranchiseId._id.toString(), name: log.toFranchiseId.name }
@@ -581,21 +681,39 @@ export class StudentUseCases {
   // canViewReports, or super_admin.
   async getStudentReport(
     studentId: string,
-    requester: { userId: string; role: string; academyId?: string; franchiseId?: string; permissions?: Record<string, boolean> },
+    requester: {
+      userId: string;
+      role: string;
+      academyId?: string;
+      franchiseId?: string;
+      permissions?: Record<string, boolean>;
+    },
   ): Promise<any> {
     const student = await this.getStudentById(studentId);
-    const franchise = await FranchiseModel.findById(student.franchiseId).select("academyId").lean();
+    const franchise = await FranchiseModel.findById(student.franchiseId)
+      .select("academyId")
+      .lean();
     const studentAcademyId = franchise?.academyId?.toString();
 
     const isSuperAdmin = requester.role === "super_admin";
     const isSameAcademyStaff =
       (requester.role === "manager" || requester.role === "coach") &&
-      (requester.academyId === studentAcademyId || requester.franchiseId === student.franchiseId);
-    const isOwnGuardian = requester.role === "guardian" && student.guardianIds.includes(requester.userId);
+      (requester.academyId === studentAcademyId ||
+        requester.franchiseId === student.franchiseId);
+    const isOwnGuardian =
+      requester.role === "guardian" &&
+      student.guardianIds.includes(requester.userId);
     const isPermittedEmployee =
-      requester.role === "employee" && requester.academyId === studentAcademyId && !!requester.permissions?.canViewReports;
+      requester.role === "employee" &&
+      requester.academyId === studentAcademyId &&
+      !!requester.permissions?.canViewReports;
 
-    if (!isSuperAdmin && !isSameAcademyStaff && !isOwnGuardian && !isPermittedEmployee) {
+    if (
+      !isSuperAdmin &&
+      !isSameAcademyStaff &&
+      !isOwnGuardian &&
+      !isPermittedEmployee
+    ) {
       throw new ForbiddenError("You don't have access to this player's report");
     }
 
@@ -607,13 +725,19 @@ export class StudentUseCases {
     ]);
 
     const totalSessions = attendance.length;
-    const presentCount = attendance.filter((a: any) => a.status === "present" || a.status === "late").length;
-    const attendanceRate = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
+    const presentCount = attendance.filter(
+      (a: any) => a.status === "present" || a.status === "late",
+    ).length;
+    const attendanceRate =
+      totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
 
     const feesSummary = fees.reduce(
       (acc, fee: any) => {
         acc.totalBilled += fee.finalAmount;
-        acc.totalPaid += fee.installments.reduce((s: number, i: any) => s + i.paidAmount, 0);
+        acc.totalPaid += fee.installments.reduce(
+          (s: number, i: any) => s + i.paidAmount,
+          0,
+        );
         return acc;
       },
       { totalBilled: 0, totalPaid: 0 },
@@ -646,30 +770,67 @@ export class StudentUseCases {
     const cleanEmail = (dto.email || dto.guardianEmail)!.trim().toLowerCase();
     const rawPhone = (dto.phone || dto.guardianPhone || "").trim();
     const cleanPhone = rawPhone ? normalizePhone(rawPhone) : "";
-    const existing = await this.userRepo.findByEmail(cleanEmail);
-    if (existing) {
-      const existingStudent = await StudentModel.findOne({
-        userId: existing.id || (existing as any)._id,
-      });
-      if (!existingStudent) {
-        // Orphaned user from previous failed registration attempt - delete so user can re-register cleanly
-        await UserModel.deleteOne({ _id: existing.id || (existing as any)._id });
-      } else {
-        throw new ConflictError("An account with this email already exists. Please log in.");
-      }
+
+    const [existingEmailUser, existingPhoneUser] = await Promise.all([
+      UserModel.findOne({ email: cleanEmail }),
+      cleanPhone
+        ? UserModel.findOne({
+            phone: { $in: getPhoneMatchVariants(cleanPhone) },
+          })
+        : null,
+    ]);
+
+    if (
+      existingEmailUser &&
+      existingPhoneUser &&
+      existingEmailUser._id.toString() !== existingPhoneUser._id.toString()
+    ) {
+      throw new ConflictError(
+        "This email and phone number belong to two different registered accounts. Please log in or use your own credentials.",
+      );
     }
-    if (cleanPhone) {
-      const existingPhone = await UserModel.findOne({
-        phone: { $in: getPhoneMatchVariants(cleanPhone) },
-      });
-      if (existingPhone) {
+
+    if (existingEmailUser) {
+      if (existingEmailUser.role === "student") {
         const existingStudent = await StudentModel.findOne({
-          userId: existingPhone.id || (existingPhone as any)._id,
+          userId: existingEmailUser._id,
         });
         if (!existingStudent) {
-          await UserModel.deleteOne({ _id: existingPhone.id || (existingPhone as any)._id });
+          // Incomplete public student registration attempt from earlier - clean up orphaned record
+          await UserModel.deleteOne({ _id: existingEmailUser._id });
         } else {
-          throw new ConflictError("An account with this phone number already exists. Please log in.");
+          throw new ConflictError(
+            "An account with this email already exists. Please log in.",
+          );
+        }
+      } else {
+        throw new ConflictError(
+          `An account with this email already exists with role: ${existingEmailUser.role}. Please log in with your credentials.`,
+        );
+      }
+    }
+
+    if (existingPhoneUser) {
+      // Re-verify in case existingPhoneUser was the same orphaned student user just deleted above
+      if (
+        !existingEmailUser ||
+        existingPhoneUser._id.toString() !== existingEmailUser._id.toString()
+      ) {
+        if (existingPhoneUser.role === "student") {
+          const existingStudent = await StudentModel.findOne({
+            userId: existingPhoneUser._id,
+          });
+          if (!existingStudent) {
+            await UserModel.deleteOne({ _id: existingPhoneUser._id });
+          } else {
+            throw new ConflictError(
+              "An account with this phone number already exists. Please log in.",
+            );
+          }
+        } else {
+          throw new ConflictError(
+            `An account with this phone number already exists with role: ${existingPhoneUser.role}. Please log in with your credentials.`,
+          );
         }
       }
     }
@@ -689,7 +850,9 @@ export class StudentUseCases {
     });
 
     const birthDate = new Date(dto.dateOfBirth);
-    const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    const age = Math.floor(
+      (Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
+    );
     const ageGroup = dto.ageGroup || `U-${Math.max(6, Math.min(25, age + 1))}`;
 
     let student;
@@ -708,7 +871,8 @@ export class StudentUseCases {
         },
         guardianIds: [],
         medicalInfo: {
-          emergencyContactName: dto.guardianName || `${dto.firstName} ${dto.lastName}`,
+          emergencyContactName:
+            dto.guardianName || `${dto.firstName} ${dto.lastName}`,
           emergencyContactPhone: cleanPhone || "",
         },
         enrollmentDate: new Date(),
@@ -730,13 +894,11 @@ export class StudentUseCases {
       accessToken: jwt.sign(
         { sub: user.id, role: user.role, permissions: user.permissions },
         config.jwt.accessSecret,
-        { expiresIn: config.jwt.accessExpiresIn }
+        { expiresIn: config.jwt.accessExpiresIn },
       ),
-      refreshToken: jwt.sign(
-        { sub: user.id },
-        config.jwt.refreshSecret,
-        { expiresIn: config.jwt.refreshExpiresIn }
-      ),
+      refreshToken: jwt.sign({ sub: user.id }, config.jwt.refreshSecret, {
+        expiresIn: config.jwt.refreshExpiresIn,
+      }),
       expiresIn: 15 * 60,
     };
 
@@ -755,7 +917,12 @@ export class StudentUseCases {
   }
 
   // ─── Unattached Public Students List (For Academy Managers) ─────────────────
-  async getUnattachedStudents(query?: string, ageGroup?: string, page = 1, limit = 50) {
+  async getUnattachedStudents(
+    query?: string,
+    ageGroup?: string,
+    page = 1,
+    limit = 50,
+  ) {
     const conditions: any[] = [
       { $or: [{ franchiseId: { $exists: false } }, { franchiseId: null }] },
       { isActive: true },
@@ -778,11 +945,16 @@ export class StudentUseCases {
       conditions.push({ $and: termFilters });
     }
 
-    const filter = conditions.length === 1 ? conditions[0] : { $and: conditions };
+    const filter =
+      conditions.length === 1 ? conditions[0] : { $and: conditions };
 
     const skip = (page - 1) * limit;
     const [items, total] = await Promise.all([
-      StudentModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      StudentModel.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
       StudentModel.countDocuments(filter),
     ]);
 
@@ -821,18 +993,26 @@ export class StudentUseCases {
     if (!student) throw new NotFoundError("Student");
 
     if (student.franchiseId) {
-      throw new BadRequestError("This student is already registered with an academy franchise");
+      throw new BadRequestError(
+        "This student is already registered with an academy franchise",
+      );
     }
 
-    const franchise = await FranchiseModel.findById(dto.franchiseId).select("academyId name").lean();
+    const franchise = await FranchiseModel.findById(dto.franchiseId)
+      .select("academyId name")
+      .lean();
     if (!franchise) throw new NotFoundError("Franchise");
 
     if (franchise.academyId.toString() !== managerAcademyId) {
-      throw new ForbiddenError("You can only add students into franchises belonging to your academy");
+      throw new ForbiddenError(
+        "You can only add students into franchises belonging to your academy",
+      );
     }
 
     // Check subscription quota
-    await this.academySubscriptionUseCases.assertCanAddStudent(managerAcademyId);
+    await this.academySubscriptionUseCases.assertCanAddStudent(
+      managerAcademyId,
+    );
 
     if (dto.teamId) {
       await this.validateTeamAssignment(dto.franchiseId, dto.teamId);
@@ -863,18 +1043,22 @@ export class StudentUseCases {
             academyId: new mongoose.Types.ObjectId(managerAcademyId),
           },
         },
-      ).exec().catch(() => undefined);
+      )
+        .exec()
+        .catch(() => undefined);
     }
 
     // Send internal system alert to student
-    await notificationService.send({
-      userIds: [student.userId.toString()],
-      type: "announcement",
-      title: "Enrolled in Academy",
-      body: `You have been added to ${franchise.name}! You can now see training sessions, attendance, and coach feedback in your portal.`,
-      franchiseId: dto.franchiseId,
-      channels: ["push"],
-    }).catch(() => undefined);
+    await notificationService
+      .send({
+        userIds: [student.userId.toString()],
+        type: "announcement",
+        title: "Enrolled in Academy",
+        body: `You have been added to ${franchise.name}! You can now see training sessions, attendance, and coach feedback in your portal.`,
+        franchiseId: dto.franchiseId,
+        channels: ["push"],
+      })
+      .catch(() => undefined);
 
     const updated = await this.studentRepo.findById(studentId);
     return updated!;

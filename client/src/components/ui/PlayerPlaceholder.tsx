@@ -50,7 +50,7 @@ export const PlayerPlaceholder: React.FC<PlayerPlaceholderProps> = ({
                 font-display
                 font-black
                 tracking-widest
-                text-slate-300
+                text-slate-400 dark:text-slate-300
                 whitespace-nowrap
                 pointer-events-none
                 select-none
@@ -74,7 +74,7 @@ export const PlayerPlaceholder: React.FC<PlayerPlaceholderProps> = ({
                 font-display
                 font-black
                 leading-none
-                text-white/80
+                text-slate-700/80 dark:text-white/80
                 pointer-events-none
                 select-none
               "

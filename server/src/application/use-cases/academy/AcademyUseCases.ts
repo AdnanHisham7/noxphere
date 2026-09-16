@@ -108,6 +108,7 @@ export class AcademyUseCases {
       academyCode,
       managerId: managerUser.id,
       location: dto.location,
+      logo: dto.logo,
       ageGroups: dto.ageGroups,
       maxStudents: 0,
       isActive: true,
@@ -246,6 +247,7 @@ export class AcademyUseCases {
       if (dto.feeQrImageUrl !== undefined) {
         effectiveDto.feeQrImageUrl = dto.feeQrImageUrl ? ensureWhatsAppCompatibleImageUrl(dto.feeQrImageUrl) : dto.feeQrImageUrl;
       }
+      if (dto.logo !== undefined) effectiveDto.logo = dto.logo;
       if (dto.dataProtectionContactEmail !== undefined) effectiveDto.dataProtectionContactEmail = dto.dataProtectionContactEmail;
     } else {
       effectiveDto = { ...dto };

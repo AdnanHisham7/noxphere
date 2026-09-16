@@ -24,6 +24,7 @@ export class UserNotificationUseCases {
         title: n.title,
         body: n.body,
         type: n.type,
+        data: n.data,
         isRead: n.isRead,
         createdAt: n.createdAt,
       })),
@@ -48,6 +49,7 @@ export class UserNotificationUseCases {
       title: notification.title,
       body: notification.body,
       type: notification.type,
+      data: notification.data,
       isRead: notification.isRead,
       createdAt: notification.createdAt,
     };

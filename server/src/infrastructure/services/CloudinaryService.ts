@@ -8,6 +8,7 @@ export type UploadCategory =
   | "player_photo"
   | "team_logo"
   | "team_banner"
+  | "academy_logo"
   | "coach_resource"
   | "fee_qr"
   | "fee_receipt"
@@ -18,6 +19,7 @@ const FOLDER_BY_CATEGORY: Record<UploadCategory, string> = {
   player_photo: "noxphere/players/photos",
   team_logo: "noxphere/teams/logos",
   team_banner: "noxphere/teams/banners",
+  academy_logo: "noxphere/academies/logos",
   coach_resource: "noxphere/resources",
   fee_qr: "noxphere/fees/qr",
   fee_receipt: "noxphere/fees/receipts",
@@ -31,6 +33,7 @@ const RESOURCE_TYPE_BY_CATEGORY: Record<UploadCategory, "image" | "raw"> = {
   player_photo: "image",
   team_logo: "image",
   team_banner: "image",
+  academy_logo: "image",
   coach_resource: "raw",
   fee_qr: "image",
   fee_receipt: "raw",

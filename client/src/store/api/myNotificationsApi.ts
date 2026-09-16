@@ -6,6 +6,11 @@ export interface MyNotification {
   title: string;
   body: string;
   type: string;
+  data?: {
+    imageUrl?: string;
+    attachments?: { name: string; url: string }[] | string;
+    [key: string]: any;
+  };
   isRead: boolean;
   createdAt: string;
 }

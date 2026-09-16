@@ -69,6 +69,10 @@ const authSlice = createSlice({
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
+      localStorage.removeItem('activeFranchiseId');
+      try {
+        sessionStorage.clear();
+      } catch {}
     },
     updateAccessToken: (state, action: PayloadAction<string>) => {
       state.accessToken = action.payload;

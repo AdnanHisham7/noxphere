@@ -28,6 +28,14 @@ export const authApi = baseApi.injectEndpoints({
     changePassword: builder.mutation<void, { currentPassword: string; newPassword: string }>({
       query: (body) => ({ url: '/auth/change-password', method: 'POST', body }),
     }),
+    checkAvailability: builder.query<{ available: boolean; field?: 'email' | 'phone' | 'both'; message?: string }, { email?: string; phone?: string; purpose?: 'student' | 'guardian' }>({
+      query: (params) => ({
+        url: '/auth/check-availability',
+        method: 'GET',
+        params,
+      }),
+      transformResponse: (res: { data: any }) => res.data,
+    }),
   }),
 });
 
@@ -39,6 +47,8 @@ export const {
   useGetMeQuery,
   useUpdateProfileMutation,
   useChangePasswordMutation,
+  useCheckAvailabilityQuery,
+  useLazyCheckAvailabilityQuery,
 } = authApi;
 
 

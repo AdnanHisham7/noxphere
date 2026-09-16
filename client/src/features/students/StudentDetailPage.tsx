@@ -196,34 +196,15 @@ const StudentDetailPage: React.FC = () => {
 
   const tabs = ["overview", "attendance", "performance", "info"] as const;
 
-  if (!id) return <Navigate to="/students" replace />;
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64 rounded-lg" />
-        <Skeleton className="h-96 rounded-lg" />
-      </div>
-    );
-  }
-
-  if (isError || !card) {
-    return (
-      <EmptyState
-        title="Player not found"
-        description="This player may have been removed, or you don't have access."
-        action={<Link to="/students" className="inline-flex items-center gap-1.5 text-volt-400 hover:underline text-sm"><ArrowLeft size={14} /> Back to Squad</Link>}
-      />
-    );
-  }
-
-  const { student, performances, attendance, remarks } = card;
+  const performances = card?.performances ?? [];
+  const attendance = card?.attendance ?? [];
+  const remarks = card?.remarks ?? [];
+  const student = card?.student;
 
   // Aggregate skill scores across recent performances into a radar profile
   const skillTotals = new Map<string, { sum: number; count: number }>();
   for (const p of performances) {
-    for (const s of p.skillScores) {
+    for (const s of p.skillScores || []) {
       const bucket = skillTotals.get(s.parameter) ?? { sum: 0, count: 0 };
       bucket.sum += s.score;
       bucket.count += 1;
@@ -301,6 +282,28 @@ const StudentDetailPage: React.FC = () => {
     }
     return list;
   }, [performances, sessionRatingFilter]);
+
+  if (!id) return <Navigate to="/students" replace />;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 rounded-lg" />
+        <Skeleton className="h-96 rounded-lg" />
+      </div>
+    );
+  }
+
+  if (isError || !card || !student) {
+    return (
+      <EmptyState
+        title="Player not found"
+        description="This player may have been removed, or you don't have access."
+        action={<Link to="/students" className="inline-flex items-center gap-1.5 text-volt-400 hover:underline text-sm"><ArrowLeft size={14} /> Back to Squad</Link>}
+      />
+    );
+  }
 
   const toggleSessionExpand = (sessionId: string) => {
     setExpandedSessionIds((prev) => ({
@@ -663,14 +666,16 @@ const StudentDetailPage: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 bg-pitch-800 p-1 rounded border border-white/5 w-fit">
+      <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-800 p-1 rounded border border-slate-200 dark:border-white/5 w-fit">
         {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={clsx(
               "px-4 py-1.5 rounded text-xs font-display font-bold uppercase tracking-wide transition-all duration-150",
-              activeTab === tab ? "bg-volt-400 text-pitch-900" : "text-slate-500 hover:text-white",
+              activeTab === tab
+                ? "bg-volt-400 text-pitch-900 shadow-sm"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
             )}
           >
             {tab}
@@ -689,16 +694,16 @@ const StudentDetailPage: React.FC = () => {
               <>
                 <ResponsiveContainer width="100%" height={200}>
                   <RadarChart data={skillScores}>
-                    <PolarGrid stroke="rgba(255,255,255,0.06)" />
+                    <PolarGrid stroke="rgba(100,116,139,0.2)" />
                     <PolarAngleAxis dataKey="parameter" tick={{ fill: "#64748b", fontSize: 10 }} />
-                    <Radar dataKey="score" stroke="#ccff00" fill="#ccff00" fillOpacity={0.08} strokeWidth={2} dot={{ fill: "#ccff00", r: 3, strokeWidth: 0 }} />
+                    <Radar dataKey="score" stroke="#ccff00" fill="#ccff00" fillOpacity={0.12} strokeWidth={2} dot={{ fill: "#ccff00", r: 3, strokeWidth: 0 }} />
                   </RadarChart>
                 </ResponsiveContainer>
                 <div className="space-y-2 mt-4">
                   {skillScores.map((s) => (
                     <div key={s.parameter} className="flex items-center gap-2">
                       <span className="text-2xs text-slate-500 w-24">{s.parameter}</span>
-                      <div className="flex-1 h-1.5 bg-pitch-600 rounded-full overflow-hidden">
+                      <div className="flex-1 h-1.5 bg-slate-200 dark:bg-pitch-600 rounded-full overflow-hidden">
                         <div className="h-full bg-volt-400 transition-all duration-500" style={{ width: `${s.score * 10}%` }} />
                       </div>
                       <span className="font-display font-bold text-xs text-volt-400 w-6 text-right">{s.score}</span>
@@ -716,11 +721,11 @@ const StudentDetailPage: React.FC = () => {
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={sessionHistory}>
-                  <CartesianGrid stroke="rgba(255,255,255,0.04)" />
+                  <CartesianGrid stroke="rgba(100,116,139,0.15)" strokeDasharray="3 3" />
                   <XAxis dataKey="session" tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis domain={[0, 10]} tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ background: "#1a1a24", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, fontSize: 12 }} />
-                  <Line type="monotone" dataKey="score" stroke="#ccff00" strokeWidth={2} dot={{ fill: "#ccff00", r: 4, strokeWidth: 0 }} activeDot={{ fill: "#ccff00", r: 6, strokeWidth: 0 }} />
+                  <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, fontSize: 12, color: "#fff" }} />
+                  <Line type="monotone" dataKey="score" stroke="#16a34a" activeDot={{ r: 6 }} strokeWidth={2} dot={{ r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -729,16 +734,16 @@ const StudentDetailPage: React.FC = () => {
               <p className="section-title">Recent Remarks</p>
               {remarks.length === 0 && <p className="text-xs text-slate-500">No coach remarks yet.</p>}
               {remarks.slice(0, 5).map((r) => (
-                <div key={r._id} className="bg-pitch-700 rounded p-3 border-l-2 border-volt-400">
+                <div key={r._id} className="bg-slate-50 dark:bg-pitch-700 border border-slate-200 dark:border-white/5 rounded p-3 border-l-2 border-volt-400">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-2xs text-volt-400 font-semibold">
+                    <span className="text-2xs text-volt-500 dark:text-volt-400 font-semibold">
                       {r.coachId ? `${r.coachId.firstName} ${r.coachId.lastName}` : "Coach"}
                     </span>
-                    <span className="text-2xs text-slate-600">
+                    <span className="text-2xs text-slate-500 dark:text-slate-600">
                       {new Date(r.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 italic">"{r.text}"</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 italic">"{r.text}"</p>
                 </div>
               ))}
             </div>
@@ -792,11 +797,11 @@ const StudentDetailPage: React.FC = () => {
           {/* 1. Executive Performance Analytics Summary */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
             {/* OVR Rating Card */}
-            <div className="card p-4 bg-gradient-to-br from-pitch-800 to-pitch-900/90 border border-white/10 relative overflow-hidden">
+            <div className="card p-4 bg-white dark:bg-gradient-to-br dark:from-pitch-800 dark:to-pitch-900/90 border border-slate-200 dark:border-white/10 relative overflow-hidden">
               <div className="flex items-center justify-between">
-                <span className="text-2xs font-mono uppercase tracking-wider text-slate-400 font-semibold">Average Rating</span>
-                <span className="w-7 h-7 rounded-lg bg-volt-400/10 text-volt-400 flex items-center justify-center">
-                  <Star size={14} className="fill-volt-400/30 text-volt-400" />
+                <span className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Average Rating</span>
+                <span className="w-7 h-7 rounded-lg bg-volt-400/10 text-volt-500 dark:text-volt-400 flex items-center justify-center">
+                  <Star size={14} className="fill-volt-400/30 text-volt-500 dark:text-volt-400" />
                 </span>
               </div>
               <div className="mt-2 flex items-baseline gap-2">
@@ -818,18 +823,18 @@ const StudentDetailPage: React.FC = () => {
             </div>
 
             {/* Key Strength Card */}
-            <div className="card p-4 bg-gradient-to-br from-pitch-800 to-pitch-900/90 border border-white/10">
+            <div className="card p-4 bg-white dark:bg-gradient-to-br dark:from-pitch-800 dark:to-pitch-900/90 border border-slate-200 dark:border-white/10">
               <div className="flex items-center justify-between">
-                <span className="text-2xs font-mono uppercase tracking-wider text-slate-400 font-semibold">Top Strength</span>
-                <span className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <span className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Top Strength</span>
+                <span className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 flex items-center justify-center">
                   <Zap size={14} />
                 </span>
               </div>
               <div className="mt-2">
-                <div className="font-display font-bold text-base text-white truncate">
+                <div className="font-display font-bold text-base text-slate-900 dark:text-white truncate">
                   {performanceStats.highestSkill?.parameter ?? "—"}
                 </div>
-                <div className="text-xs font-mono text-emerald-400 font-bold mt-0.5">
+                <div className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">
                   {performanceStats.highestSkill ? `${performanceStats.highestSkill.score.toFixed(1)} / 10 Avg` : "Awaiting evaluations"}
                 </div>
               </div>
@@ -837,18 +842,18 @@ const StudentDetailPage: React.FC = () => {
             </div>
 
             {/* Development Focus Card */}
-            <div className="card p-4 bg-gradient-to-br from-pitch-800 to-pitch-900/90 border border-white/10">
+            <div className="card p-4 bg-white dark:bg-gradient-to-br dark:from-pitch-800 dark:to-pitch-900/90 border border-slate-200 dark:border-white/10">
               <div className="flex items-center justify-between">
-                <span className="text-2xs font-mono uppercase tracking-wider text-slate-400 font-semibold">Growth Focus</span>
-                <span className="w-7 h-7 rounded-lg bg-amber-400/10 text-amber-400 flex items-center justify-center">
+                <span className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Growth Focus</span>
+                <span className="w-7 h-7 rounded-lg bg-amber-400/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                   <Target size={14} />
                 </span>
               </div>
               <div className="mt-2">
-                <div className="font-display font-bold text-base text-white truncate">
+                <div className="font-display font-bold text-base text-slate-900 dark:text-white truncate">
                   {performanceStats.lowestSkill?.parameter ?? "—"}
                 </div>
-                <div className="text-xs font-mono text-amber-400 font-bold mt-0.5">
+                <div className="text-xs font-mono text-amber-600 dark:text-amber-400 font-bold mt-0.5">
                   {performanceStats.lowestSkill ? `${performanceStats.lowestSkill.score.toFixed(1)} / 10 Avg` : "Awaiting evaluations"}
                 </div>
               </div>
@@ -856,18 +861,18 @@ const StudentDetailPage: React.FC = () => {
             </div>
 
             {/* Total Evaluations Card */}
-            <div className="card p-4 bg-gradient-to-br from-pitch-800 to-pitch-900/90 border border-white/10">
+            <div className="card p-4 bg-white dark:bg-gradient-to-br dark:from-pitch-800 dark:to-pitch-900/90 border border-slate-200 dark:border-white/10">
               <div className="flex items-center justify-between">
-                <span className="text-2xs font-mono uppercase tracking-wider text-slate-400 font-semibold">Track Record</span>
-                <span className="w-7 h-7 rounded-lg bg-ice-400/10 text-ice-400 flex items-center justify-center">
+                <span className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Track Record</span>
+                <span className="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 dark:text-ice-400 flex items-center justify-center">
                   <Award size={14} />
                 </span>
               </div>
               <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="font-display font-bold text-2xl text-white">
+                <span className="font-display font-bold text-2xl text-slate-900 dark:text-white">
                   {performanceStats.totalSessions}
                 </span>
-                <span className="text-xs text-slate-400">Sessions</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">Sessions</span>
               </div>
               <p className="text-2xs text-slate-500 mt-1 font-mono truncate">
                 {performanceStats.latestDate ? `Latest: ${performanceStats.latestDate}` : "No evaluations on file"}

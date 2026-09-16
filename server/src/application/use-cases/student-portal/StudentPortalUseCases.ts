@@ -4,6 +4,7 @@ import { AttendanceModel } from "../../../infrastructure/database/models/Attenda
 import { FeeModel } from "../../../infrastructure/database/models/Fee.model";
 import { PerformanceModel } from "../../../infrastructure/database/models/Performance.model";
 import { CoachRemarkModel } from "../../../infrastructure/database/models/CoachRemark.model";
+import { SessionModel } from "../../../infrastructure/database/models/Session.model";
 import { NotFoundError, ForbiddenError } from "../../../shared/errors/AppError";
 
 export class StudentPortalUseCases {
@@ -264,5 +265,38 @@ export class StudentPortalUseCases {
       CoachRemarkModel.find({ studentId: student._id }).sort({ createdAt: -1 }).limit(20).lean(),
     ]);
     return { performance, remarks };
+  }
+
+  async getMySessions(userId: string) {
+    const student = await this.getOwnStudentRecord(userId);
+    if (!student.franchiseId) return [];
+
+    const conditions: Array<Record<string, unknown>> = [
+      { rosterPlayerIds: student._id },
+    ];
+    if (student.teamId) {
+      const tId = typeof student.teamId === "object" && student.teamId !== null && "_id" in student.teamId
+        ? (student.teamId as any)._id
+        : student.teamId;
+      conditions.push({ targetType: "team", teamId: tId });
+    }
+    if (student.ageGroup) {
+      conditions.push(
+        { targetType: "category", category: student.ageGroup },
+        { targetType: "category", categories: student.ageGroup },
+      );
+    }
+    const filter: Record<string, unknown> = {
+      franchiseId: student.franchiseId,
+      deletedAt: { $exists: false },
+      $or: conditions,
+    };
+    const sessions = await SessionModel.find(filter)
+      .populate("teamId", "name")
+      .populate("coachId", "firstName lastName")
+      .sort({ date: 1, startTime: 1 })
+      .limit(30)
+      .lean();
+    return sessions;
   }
 }

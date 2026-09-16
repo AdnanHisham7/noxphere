@@ -38,6 +38,7 @@ import {
   type Student,
   type SelectionStatus,
 } from "../../store/api/studentsApi";
+import { useLazyCheckAvailabilityQuery } from "@/store/api/authApi";
 import { calculateAgeCategory, categoriesList } from "@/utils/ageCategory";
 
 interface PlayerCardContentProps {
@@ -58,14 +59,18 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
 }) => {
   return (
     <>
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/10 z-10" />
+      {/* Top subtle vignette for header text legibility */}
+      <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-white/90 via-white/50 to-transparent dark:from-black/85 dark:via-black/50 dark:to-transparent z-10 pointer-events-none" />
+
+      {/* Bottom gradient for footer legibility */}
+      <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-white via-white/85 to-transparent dark:from-black dark:via-black/80 dark:to-transparent z-10 pointer-events-none" />
 
       <div className="absolute top-2.5 left-2.5 right-2.5 z-20 flex items-start justify-between">
         <div>
-          <p className="text-[9px] uppercase tracking-[0.5px] text-white/50 font-semibold">
+          <p className="text-[9px] uppercase tracking-[0.5px] text-slate-500 dark:text-white/50 font-bold">
             {student.position ?? "—"}
           </p>
-          <h3 className="font-display font-black uppercase leading-none text-white text-base mt-1">
+          <h3 className="font-display font-black uppercase leading-none text-slate-900 dark:text-white text-base mt-1 drop-shadow-xs">
             {student.firstName}
             <br />
             {student.lastName}
@@ -73,15 +78,15 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
         </div>
 
         <div className="text-right">
-          <p className="text-[9px] text-white/40 uppercase tracking-wider">Rating</p>
-          <div className={clsx("font-display text-3xl font-black leading-none", getRatingColor(student.overallRating))}>
+          <p className="text-[9px] text-slate-400 dark:text-white/40 uppercase tracking-wider font-semibold">Rating</p>
+          <div className={clsx("font-display text-3xl font-black leading-none drop-shadow-xs", getRatingColor(student.overallRating))}>
             {student.overallRating.toFixed(1)}
           </div>
         </div>
       </div>
 
       <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
-        <span className="font-display font-black text-[64px] sm:text-[100px] leading-none text-white/[0.06] select-none">
+        <span className="font-display font-black text-[64px] sm:text-[100px] leading-none text-slate-900/[0.04] dark:text-white/[0.06] select-none">
           {student.jerseyNumber ?? "—"}
         </span>
       </div>
@@ -89,28 +94,29 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
       <div className="absolute bottom-0 left-0 right-0 z-20 p-2.5">
         <div className="mb-2">
           <div className="flex items-center justify-between text-[9px] mb-1">
-            <span className="text-white/45 uppercase tracking-wider">Attendance</span>
+            <span className="text-slate-500 dark:text-white/45 uppercase tracking-wider font-medium">Attendance</span>
             <span
-              className={
+              className={clsx(
+                "font-bold",
                 student.attendancePercentage >= 90
-                  ? "text-field-400"
+                  ? "text-emerald-600 dark:text-field-400"
                   : student.attendancePercentage >= 75
-                    ? "text-volt-400"
-                    : "text-ember-400"
-              }
+                    ? "text-amber-600 dark:text-volt-400"
+                    : "text-rose-600 dark:text-ember-400"
+              )}
             >
               {student.attendancePercentage}%
             </span>
           </div>
-          <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+          <div className="h-1 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
             <div
               className={clsx(
                 "h-full rounded-full",
                 student.attendancePercentage >= 90
-                  ? "bg-field-400"
+                  ? "bg-emerald-500 dark:bg-field-400"
                   : student.attendancePercentage >= 75
-                    ? "bg-volt-400"
-                    : "bg-ember-400",
+                    ? "bg-amber-500 dark:bg-volt-400"
+                    : "bg-rose-500 dark:bg-ember-400",
               )}
               style={{ width: `${student.attendancePercentage}%` }}
             />
@@ -131,15 +137,15 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
           </div>
 
           <div className="text-right">
-            <p className="text-[9px] text-white/40 uppercase">Team</p>
-            <p className="text-xs text-white font-medium">{teamName}</p>
+            <p className="text-[9px] text-slate-400 dark:text-white/40 uppercase font-medium">Team</p>
+            <p className="text-xs text-slate-800 dark:text-white font-semibold truncate max-w-[90px]">{teamName}</p>
           </div>
         </div>
       </div>
 
       {student.transferStatus === "listed" && (
         <div className="absolute top-2.5 right-2.5 z-30">
-          <span className="pill-blue text-2xs">↔ LISTED</span>
+          <span className="pill-blue text-2xs font-bold">↔ LISTED</span>
         </div>
       )}
     </>
@@ -156,7 +162,13 @@ const selectionBadge: Record<SelectionStatus, { label: string; variant: "green" 
 };
 
 const getRatingColor = (r: number) =>
-  r >= 9 ? "text-volt-400" : r >= 8 ? "text-field-400" : r >= 7 ? "text-ice-400" : "text-slate-400";
+  r >= 9
+    ? "text-amber-500 dark:text-volt-400"
+    : r >= 8
+    ? "text-emerald-600 dark:text-field-400"
+    : r >= 7
+    ? "text-sky-600 dark:text-ice-400"
+    : "text-slate-600 dark:text-slate-400";
 
 type ViewMode = "grid" | "list";
 
@@ -442,16 +454,16 @@ const StudentsPage: React.FC = () => {
         <div className="w-full sm:w-auto sm:ml-auto flex items-center justify-between sm:justify-start gap-2 pt-1 sm:pt-0">
           <button
             onClick={() => setShowPhotoCards((prev) => !prev)}
-            className="h-10 w-10 flex items-center justify-center rounded-xl border border-white/10 bg-pitch-700 text-slate-300 hover:text-white hover:border-volt-400/30 hover:bg-pitch-600 transition-all duration-300"
+            className="h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-volt-500 dark:hover:border-volt-400/30 hover:bg-slate-50 dark:hover:bg-pitch-600 transition-all duration-300 shadow-xs"
             title={showPhotoCards ? "Show placeholder cards" : "Show player photos"}
           >
             <Shuffle className="h-4 w-4" />
           </button>
 
-          <div className="flex items-center bg-pitch-700 rounded border border-white/10 overflow-hidden">
+          <div className="flex items-center bg-slate-100 dark:bg-pitch-700 rounded-lg border border-slate-200 dark:border-white/10 overflow-hidden shadow-xs">
             <button
               onClick={() => setViewMode("grid")}
-              className={clsx("px-2.5 py-2 text-xs transition-colors flex items-center justify-center", viewMode === "grid" ? "bg-volt-400 text-pitch-900 font-bold" : "text-slate-400 hover:text-white")}
+              className={clsx("px-2.5 py-2 text-xs transition-colors flex items-center justify-center", viewMode === "grid" ? "bg-volt-400 text-pitch-900 font-bold" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white")}
               title="Grid view"
               aria-label="Grid view"
             >
@@ -459,7 +471,7 @@ const StudentsPage: React.FC = () => {
             </button>
             <button
               onClick={() => setViewMode("list")}
-              className={clsx("px-2.5 py-2 text-xs transition-colors flex items-center justify-center", viewMode === "list" ? "bg-volt-400 text-pitch-900 font-bold" : "text-slate-400 hover:text-white")}
+              className={clsx("px-2.5 py-2 text-xs transition-colors flex items-center justify-center", viewMode === "list" ? "bg-volt-400 text-pitch-900 font-bold" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white")}
               title="List view"
               aria-label="List view"
             >
@@ -477,7 +489,7 @@ const StudentsPage: React.FC = () => {
         {(search || filterTeam || filterAge || filterStatus) && (
           <button
             onClick={() => { setSearch(""); setFilterTeam(""); setFilterAge(""); setFilterStatus(""); }}
-            className="text-xs text-volt-400 hover:underline"
+            className="text-xs text-volt-600 dark:text-volt-400 font-medium hover:underline"
           >
             Clear filters
           </button>
@@ -518,13 +530,13 @@ const StudentsPage: React.FC = () => {
             <Link
               key={student.id}
               to={`/students/${student.id}`}
-              className="relative aspect-[2/3] [perspective:2000px] overflow-hidden rounded-3xl border border-white/5 bg-black group transition-all duration-300 hover:border-volt-400/30 hover:-translate-y-1 hover:shadow-2xl hover:shadow-volt-400/10"
+              className="relative aspect-[2/3] [perspective:2000px] overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-pitch-950 group transition-all duration-300 hover:border-volt-500 dark:hover:border-volt-400/30 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-2xl dark:hover:shadow-volt-400/10"
             >
               <div
                 className="relative h-full w-full [transform-style:preserve-3d] transition-transform duration-700"
                 style={{ transform: showPhotoCards ? "rotateY(0deg)" : "rotateY(180deg)" }}
               >
-                <div className="absolute inset-0 rounded-3xl overflow-hidden [backface-visibility:hidden]">
+                <div className="absolute inset-0 rounded-3xl overflow-hidden [backface-visibility:hidden] bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-pitch-900 dark:via-pitch-950 dark:to-black">
                   <div className="absolute inset-0">
                     {student.photo ? (
                       <img
@@ -555,7 +567,7 @@ const StudentsPage: React.FC = () => {
                   />
                 </div>
 
-                <div className="absolute inset-0 rounded-3xl overflow-hidden [transform:rotateY(180deg)] [backface-visibility:hidden]">
+                <div className="absolute inset-0 rounded-3xl overflow-hidden [transform:rotateY(180deg)] [backface-visibility:hidden] bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-pitch-900 dark:via-pitch-950 dark:to-black">
                   <div className="absolute inset-0">
                     <PlayerPlaceholder
                       image={mannequinPng}
@@ -585,40 +597,40 @@ const StudentsPage: React.FC = () => {
 
       {/* List view */}
       {!isLoading && viewMode === "list" && students.length > 0 && (
-        <div className="card overflow-hidden overflow-x-auto">
+        <div className="card overflow-hidden overflow-x-auto border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 shadow-sm">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/5">
-                <th className="text-left px-4 py-3 section-title">Player</th>
-                <th className="text-left px-4 py-3 section-title hidden sm:table-cell">Position</th>
-                <th className="text-left px-4 py-3 section-title hidden md:table-cell">Team</th>
-                <th className="text-center px-4 py-3 section-title">Rating</th>
-                <th className="text-center px-4 py-3 section-title hidden lg:table-cell">Attendance</th>
-                <th className="text-left px-4 py-3 section-title hidden xl:table-cell">Status</th>
+              <tr className="border-b border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
+                <th className="text-left px-4 py-3 section-title text-slate-600 dark:text-slate-400">Player</th>
+                <th className="text-left px-4 py-3 section-title text-slate-600 dark:text-slate-400 hidden sm:table-cell">Position</th>
+                <th className="text-left px-4 py-3 section-title text-slate-600 dark:text-slate-400 hidden md:table-cell">Team</th>
+                <th className="text-center px-4 py-3 section-title text-slate-600 dark:text-slate-400">Rating</th>
+                <th className="text-center px-4 py-3 section-title text-slate-600 dark:text-slate-400 hidden lg:table-cell">Attendance</th>
+                <th className="text-left px-4 py-3 section-title text-slate-600 dark:text-slate-400 hidden xl:table-cell">Status</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
               {students.map((student, i) => (
-                <tr key={student.id} className={clsx("border-b border-white/4 hover:bg-white/2 transition-colors", i % 2 === 0 && "bg-white/1")}>
+                <tr key={student.id} className={clsx("border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors", i % 2 === 0 && "bg-slate-50/30 dark:bg-white/[0.01]")}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <Avatar name={`${student.firstName} ${student.lastName}`} src={student.photo} size="sm" />
                       <div>
-                        <p className="text-sm font-semibold text-white">{student.firstName} {student.lastName}</p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">{student.firstName} {student.lastName}</p>
                         <p className="text-2xs text-slate-500">#{student.jerseyNumber ?? "—"} · {student.ageGroup}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-400 hidden sm:table-cell">{student.position ?? "—"}</td>
-                  <td className="px-4 py-3 text-sm text-slate-400 hidden md:table-cell">{teamNameOf(student.teamId)}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 hidden sm:table-cell">{student.position ?? "—"}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 hidden md:table-cell">{teamNameOf(student.teamId)}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={clsx("font-display font-extrabold text-lg", getRatingColor(student.overallRating))}>
                       {student.overallRating.toFixed(1)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center hidden lg:table-cell">
-                    <span className={student.attendancePercentage >= 90 ? "text-field-400 text-sm font-semibold" : student.attendancePercentage >= 75 ? "text-volt-400 text-sm font-semibold" : "text-ember-400 text-sm font-semibold"}>
+                    <span className={clsx("text-sm font-semibold", student.attendancePercentage >= 90 ? "text-emerald-600 dark:text-field-400" : student.attendancePercentage >= 75 ? "text-amber-600 dark:text-volt-400" : "text-rose-600 dark:text-ember-400")}>
                       {student.attendancePercentage}%
                     </span>
                   </td>
@@ -637,13 +649,13 @@ const StudentsPage: React.FC = () => {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-3">
-                      <Link to={`/students/${student.id}`} className="text-xs text-volt-400 hover:underline">
+                      <Link to={`/students/${student.id}`} className="text-xs font-semibold text-volt-600 dark:text-volt-400 hover:underline">
                         View →
                       </Link>
                       {canManageSquad && (
                         <button
                           onClick={() => handleDelete(student.id, `${student.firstName} ${student.lastName}`)}
-                          className="text-slate-500 hover:text-ember-400 transition-colors"
+                          className="text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-ember-400 transition-colors"
                           aria-label="Remove player"
                         >
                           <Trash2 size={14} />
@@ -768,10 +780,86 @@ const AddPlayerModal: React.FC<{
   const [photo, setPhoto] = useState<string | undefined>(undefined);
   const [guardian, setGuardian] = useState(emptyGuardian);
   const [medical, setMedical] = useState(emptyMedical);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [checkAvailability, { isFetching: checkingAvailability }] =
+    useLazyCheckAvailabilityQuery();
 
   const reset = () => {
     setFirstName(""); setLastName(""); setDob(""); setAgeGroup("U-13"); setPositions([]);
     setJerseyNumber(""); setTeamId(""); setPhoto(undefined); setGuardian(emptyGuardian); setMedical(emptyMedical);
+    setStep(1);
+  };
+
+  const validateStep1 = () => {
+    if (!firstName.trim() || !lastName.trim()) {
+      toast.error("Please enter player first and last name");
+      return false;
+    }
+    if (!dob) {
+      toast.error("Please enter player date of birth");
+      return false;
+    }
+    const dobDate = new Date(dob);
+    if (isNaN(dobDate.getTime()) || dobDate >= new Date()) {
+      toast.error("Please select a valid past date of birth");
+      return false;
+    }
+    return true;
+  };
+
+  const validateStep2 = async () => {
+    if (jerseyNumber) {
+      const jNum = Number(jerseyNumber);
+      if (isNaN(jNum) || jNum < 1 || jNum > 99) {
+        toast.error("Jersey number must be between 1 and 99");
+        return false;
+      }
+    }
+    if (!guardian.name.trim()) {
+      toast.error("Please enter guardian full name");
+      return false;
+    }
+    if (!guardian.phone.trim()) {
+      toast.error("Please enter guardian phone number");
+      return false;
+    }
+    const cleanPhone = guardian.phone.replace(/\D/g, "");
+    if (cleanPhone.length < 10) {
+      toast.error("Guardian phone number must have at least 10 digits");
+      return false;
+    }
+    if (!guardian.email.trim()) {
+      toast.error("Please enter guardian email address");
+      return false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(guardian.email.trim())) {
+      toast.error("Please enter a valid guardian email address");
+      return false;
+    }
+
+    try {
+      const checkRes = await checkAvailability({
+        email: guardian.email.trim().toLowerCase(),
+        phone: guardian.phone.trim(),
+        purpose: "guardian",
+      }).unwrap();
+
+      if (checkRes && !checkRes.available) {
+        toast.error(
+          checkRes.message ||
+            "Guardian email or phone number is already registered under another account.",
+        );
+        return false;
+      }
+    } catch (err: any) {
+      const msg = err?.data?.message || err?.message;
+      if (msg) {
+        toast.error(msg);
+        return false;
+      }
+    }
+    return true;
   };
 
   const handleDobChange = (value: string) => {
@@ -785,6 +873,11 @@ const AddPlayerModal: React.FC<{
     e.preventDefault();
     if (!firstName || !lastName || !dob || !guardian.name || !guardian.phone || !guardian.email || !medical.emergencyContactName || !medical.emergencyContactPhone) {
       toast.error("Fill in all required fields");
+      return;
+    }
+    const cleanEmergency = medical.emergencyContactPhone.replace(/\D/g, "");
+    if (cleanEmergency.length < 10) {
+      toast.error("Emergency contact phone number must have at least 10 digits");
       return;
     }
     const success = await onCreate({
@@ -818,30 +911,58 @@ const AddPlayerModal: React.FC<{
     }
   };
 
-
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Enroll New Player" size="xl">
-      <form onSubmit={handleSubmit} className="flex flex-col h-full space-y-6">
-        
-        {/* Responsive Content Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-start">
-          
-          {/* COLUMN 1: Player info & Guardians */}
-          <div className="space-y-4">
-            <div>
-              <p className="section-title mb-3 text-volt-400">Player Info</p>
-              <ImageUploadField
-                label="Player photo (optional)"
-                category="player_photo"
-                value={photo}
-                onChange={setPhoto}
-                shape="circle"
-                helperText="Shown on the player's card throughout the app. Can be added later too."
-              />
-              <div className="grid grid-cols-2 gap-3 mt-4">
-                <Input label="First Name" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Arjun" required />
-                <Input label="Last Name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Mehta" required />
+    <Modal isOpen={isOpen} onClose={onClose} title="Enroll New Player" size="lg">
+      <div className="flex flex-col h-full space-y-5">
+        {/* Step Progress Bar */}
+        <div className="grid grid-cols-3 gap-2 pb-3 border-b border-white/5">
+          {[
+            { s: 1, label: "Player Profile" },
+            { s: 2, label: "Squad & Guardian" },
+            { s: 3, label: "Emergency & Medical" },
+          ].map((item) => (
+            <div
+              key={item.s}
+              className={clsx(
+                "flex items-center gap-2 p-2 rounded-lg border text-xs transition-colors",
+                step === item.s
+                  ? "border-volt-400 bg-volt-400/10 text-white font-bold"
+                  : step > item.s
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                  : "border-white/5 text-slate-500"
+              )}
+            >
+              <div
+                className={clsx(
+                  "w-5 h-5 rounded-full flex items-center justify-center text-2xs font-bold",
+                  step === item.s
+                    ? "bg-volt-400 text-pitch-900"
+                    : step > item.s
+                    ? "bg-emerald-500 text-white"
+                    : "bg-pitch-800 text-slate-500"
+                )}
+              >
+                {step > item.s ? "✓" : item.s}
               </div>
+              <span className="truncate hidden sm:inline">{item.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* STEP 1: Player Profile */}
+        {step === 1 && (
+          <div className="space-y-4 animate-fade-in">
+            <ImageUploadField
+              label="Player photo (optional)"
+              category="player_photo"
+              value={photo}
+              onChange={setPhoto}
+              shape="circle"
+              helperText="Shown on the player's card throughout the app. Can be added later too."
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="First Name" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Arjun" required />
+              <Input label="Last Name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Mehta" required />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -884,80 +1005,116 @@ const AddPlayerModal: React.FC<{
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-3">
-                <Input label="Jersey Number" type="number" min={1} max={99} value={jerseyNumber} onChange={(e) => setJerseyNumber(e.target.value)} placeholder="9" />
+            <div className="flex justify-between items-center pt-4 border-t border-white/5">
+              <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (validateStep1()) setStep(2);
+                }}
+                className="bg-volt-400 text-pitch-900 font-bold hover:bg-volt-300"
+              >
+                Next: Squad & Guardian &rarr;
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2: Squad & Guardian */}
+        {step === 2 && (
+          <div className="space-y-4 animate-fade-in">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">Team / Squad (optional)</label>
+                <select className="input w-full" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+                  <option value="">Assign later</option>
+                  {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
               </div>
+              <Input label="Jersey Number (optional)" type="number" min={1} max={99} value={jerseyNumber} onChange={(e) => setJerseyNumber(e.target.value)} placeholder="9" />
             </div>
 
-            <div>
-              <label className="label">Team (optional)</label>
-              <select className="input w-full" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-                <option value="">Assign later</option>
-                {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-            </div>
-
-            <div className="border-t border-white/5 pt-4 mt-2">
-              <p className="section-title mb-3 text-volt-400">Guardian Details</p>
+            <div className="border-t border-white/5 pt-3">
+              <p className="section-title mb-3 text-volt-400">Parent / Guardian Contact</p>
               <div className="space-y-3">
                 <Input label="Guardian Name" value={guardian.name} onChange={(e) => setGuardian({ ...guardian, name: e.target.value })} placeholder="Parent full name" required />
-                <Input label="Guardian Phone" type="tel" value={guardian.phone} onChange={(e) => setGuardian({ ...guardian, phone: e.target.value })} placeholder="+91 9876543210" required />
-                <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input label="Guardian Phone" type="tel" value={guardian.phone} onChange={(e) => setGuardian({ ...guardian, phone: e.target.value })} placeholder="+91 9876543210" required />
                   <Input label="Guardian Email" type="email" value={guardian.email} onChange={(e) => setGuardian({ ...guardian, email: e.target.value })} placeholder="parent@email.com" required />
-                  <p className="text-[10px] text-slate-500 mt-1">A guardian portal login will be automatically generated.</p>
                 </div>
+                <p className="text-[10px] text-slate-500">A guardian portal login will be automatically generated upon enrollment.</p>
               </div>
             </div>
-          </div>
 
-          {/* COLUMN 2: Emergency & Medical details */}
-          <div className="space-y-4 md:border-l md:border-white/5 md:pl-6 h-full">
+            <div className="flex justify-between items-center pt-4 border-t border-white/5">
+              <Button type="button" variant="secondary" onClick={() => setStep(1)}>&larr; Back</Button>
+              <Button
+                type="button"
+                disabled={checkingAvailability}
+                onClick={async () => {
+                  if (await validateStep2()) setStep(3);
+                }}
+                className="bg-volt-400 text-pitch-900 font-bold hover:bg-volt-300 disabled:opacity-50"
+              >
+                {checkingAvailability ? "Checking..." : "Next: Emergency & Medical \u2192"}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: Emergency & Medical Details */}
+        {step === 3 && (
+          <form onSubmit={handleSubmit} className="space-y-4 animate-fade-in">
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Emergency Contact Name" value={medical.emergencyContactName} onChange={(e) => setMedical({ ...medical, emergencyContactName: e.target.value })} required />
+              <Input label="Emergency Contact Phone" type="tel" value={medical.emergencyContactPhone} onChange={(e) => setMedical({ ...medical, emergencyContactPhone: e.target.value })} required />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Blood Group (optional)" value={medical.bloodGroup} onChange={(e) => setMedical({ ...medical, bloodGroup: e.target.value })} placeholder="O+" />
+              <Input label="Allergies (comma separated)" value={medical.allergies} onChange={(e) => setMedical({ ...medical, allergies: e.target.value })} placeholder="Peanuts, Dust" />
+            </div>
+
+            <Input label="Medical Conditions (comma separated)" value={medical.medicalConditions} onChange={(e) => setMedical({ ...medical, medicalConditions: e.target.value })} placeholder="Asthma" />
+
             <div>
-              <p className="section-title mb-3 text-volt-400">Emergency & Medical</p>
-              <div className="space-y-3">
-                <Input label="Emergency Contact Name" value={medical.emergencyContactName} onChange={(e) => setMedical({ ...medical, emergencyContactName: e.target.value })} required />
-                <Input label="Emergency Contact Phone" type="tel" value={medical.emergencyContactPhone} onChange={(e) => setMedical({ ...medical, emergencyContactPhone: e.target.value })} required />
-                <Input label="Blood Group (optional)" value={medical.bloodGroup} onChange={(e) => setMedical({ ...medical, bloodGroup: e.target.value })} placeholder="O+" />
-                <Input label="Allergies (comma separated)" value={medical.allergies} onChange={(e) => setMedical({ ...medical, allergies: e.target.value })} placeholder="Peanuts, Dust" />
-                <Input label="Medical Conditions (comma separated)" value={medical.medicalConditions} onChange={(e) => setMedical({ ...medical, medicalConditions: e.target.value })} placeholder="Asthma" />
-                <Input label="Medical Condition Detail" value={medical.medicalCondition} onChange={(e) => setMedical({ ...medical, medicalCondition: e.target.value })} placeholder="Describe any current conditions" />
-                <div>
-                  <label className="label">Medical Notes</label>
-                  <textarea className="input w-full min-h-[60px] text-xs py-2" value={medical.medicalNotes} onChange={(e) => setMedical({ ...medical, medicalNotes: e.target.value })} placeholder="Any notes for coaches..." />
-                </div>
-                <div className="space-y-3 pt-2">
-                  <DocumentUploadField
-                    label="Medical Report (PDF/Word)"
-                    category="notification_document"
-                    value={medical.medicalReportUrl ? { url: medical.medicalReportUrl, filename: "medical-report.pdf" } : undefined}
-                    onChange={(file) => setMedical({ ...medical, medicalReportUrl: file?.url })}
-                  />
-                  <DocumentUploadField
-                    label="Medical Certificate (PDF/Word)"
-                    category="notification_document"
-                    value={medical.medicalCertificateUrl ? { url: medical.medicalCertificateUrl, filename: "medical-certificate.pdf" } : undefined}
-                    onChange={(file) => setMedical({ ...medical, medicalCertificateUrl: file?.url })}
-                  />
-                  <DocumentUploadField
-                    label="Scan Report (PDF/Word)"
-                    category="notification_document"
-                    value={medical.scanReportUrl ? { url: medical.scanReportUrl, filename: "scan-report.pdf" } : undefined}
-                    onChange={(file) => setMedical({ ...medical, scanReportUrl: file?.url })}
-                  />
-                </div>
+              <label className="label">Medical Notes</label>
+              <textarea className="input w-full min-h-[50px] text-xs py-2" value={medical.medicalNotes} onChange={(e) => setMedical({ ...medical, medicalNotes: e.target.value })} placeholder="Any health notes for coaches..." />
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <p className="text-2xs font-mono uppercase text-slate-400 font-semibold">Supporting Health Documents (Optional)</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <DocumentUploadField
+                  label="Medical Report"
+                  category="notification_document"
+                  value={medical.medicalReportUrl ? { url: medical.medicalReportUrl, filename: "medical-report.pdf" } : undefined}
+                  onChange={(file) => setMedical({ ...medical, medicalReportUrl: file?.url })}
+                />
+                <DocumentUploadField
+                  label="Medical Certificate"
+                  category="notification_document"
+                  value={medical.medicalCertificateUrl ? { url: medical.medicalCertificateUrl, filename: "medical-certificate.pdf" } : undefined}
+                  onChange={(file) => setMedical({ ...medical, medicalCertificateUrl: file?.url })}
+                />
+                <DocumentUploadField
+                  label="Scan Report"
+                  category="notification_document"
+                  value={medical.scanReportUrl ? { url: medical.scanReportUrl, filename: "scan-report.pdf" } : undefined}
+                  onChange={(file) => setMedical({ ...medical, scanReportUrl: file?.url })}
+                />
               </div>
             </div>
-          </div>
 
-        </div>
-
-        {/* Fixed Footer Buttons Container */}
-        <div className="flex flex-row gap-3 pt-4 border-t border-white/5 flex-shrink-0 justify-end">
-          <Button type="button" variant="secondary" onClick={onClose} className="px-5">Cancel</Button>
-          <Button type="submit" loading={creating} className="px-8 bg-volt-400 text-pitch-900 font-bold hover:bg-volt-300">Enroll Player</Button>
-        </div>
-      </form>
+            <div className="flex justify-between items-center pt-4 border-t border-white/5">
+              <Button type="button" variant="secondary" onClick={() => setStep(2)}>&larr; Back</Button>
+              <Button type="submit" loading={creating} className="px-8 bg-volt-400 text-pitch-900 font-bold hover:bg-volt-300">
+                Enroll Player Now
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
     </Modal>
   );
 };

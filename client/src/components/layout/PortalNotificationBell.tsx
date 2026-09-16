@@ -1,7 +1,7 @@
 // src/components/layout/PortalNotificationBell.tsx
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Bell } from "lucide-react";
+import { Bell, FileText, Download } from "lucide-react";
 import { RootState } from "../../store";
 import {
   setNotifications,
@@ -101,6 +101,52 @@ export const PortalNotificationBell: React.FC = () => {
                     <p className="text-xs text-slate-600 dark:text-nox-low mt-0.5 line-clamp-2">
                       {n.body}
                     </p>
+                    {n.data?.imageUrl && (
+                      <img
+                        src={n.data.imageUrl}
+                        alt=""
+                        className="mt-1.5 max-h-24 w-full rounded object-cover border border-slate-200 dark:border-white/10"
+                      />
+                    )}
+                    {/* Attachments */}
+                    {(() => {
+                      let atts: { name: string; url: string }[] = [];
+                      if (Array.isArray(n.data?.attachments)) {
+                        atts = [...n.data.attachments];
+                      } else if (typeof n.data?.attachments === "string") {
+                        try {
+                          const p = JSON.parse(n.data.attachments);
+                          if (Array.isArray(p)) atts = [...p];
+                        } catch {}
+                      }
+                      if (atts.length === 0 && n.data?.documentUrl) {
+                        atts.push({
+                          name: (n.data.documentFilename as string) || "Attached Document",
+                          url: n.data.documentUrl as string,
+                        });
+                      }
+                      if (atts.length === 0) return null;
+                      return (
+                        <div
+                          className="mt-1.5 flex flex-wrap gap-1.5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {atts.map((at, idx) => (
+                            <a
+                              key={idx}
+                              href={at.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              download
+                              className="inline-flex items-center gap-1 text-[11px] text-core-500 dark:text-core-400 bg-core-400/10 border border-core-400/20 px-2 py-0.5 rounded font-medium hover:underline"
+                            >
+                              <Download size={11} />
+                              <span className="truncate max-w-[140px]">{at.name}</span>
+                            </a>
+                          ))}
+                        </div>
+                      );
+                    })()}
                     <p className="text-[10px] text-slate-400 dark:text-nox-low/70 font-mono mt-1">
                       {new Date(n.createdAt).toLocaleString()}
                     </p>

@@ -35,6 +35,9 @@ import { baseApi } from '../../store/api/baseApi';
 import { Avatar, Modal } from '../ui';
 import { useLogoutMutation } from '../../store/api/authApi';
 import { useGetFranchisesQuery } from '../../store/api/franchiseApi';
+import { useListAcademyComplaintsQuery } from '../../store/api/complaintApi';
+import { useGetRegistrationRequestsQuery } from '../../store/api/studentsApi';
+import { useGetAcademyByIdQuery } from '../../store/api/academyApi';
 import { useCurrentAcademyId } from '../../hooks/useCurrentAcademyId';
 import { isFranchiseRequiredPage } from '../../hooks/useCurrentFranchiseId';
 import { useTransferWallEnabled } from '../../hooks/useTransferWallEnabled';
@@ -67,11 +70,11 @@ const EMPLOYEE_NAV: NavItem[] = [
   { path: '/franchises', label: 'Franchise', icon: Building2, requiredPermission: 'canManageFranchises' },
   { path: '/students', label: 'Squad', icon: Shirt, requiredPermission: 'canManageAttendance' },
   { path: '/teams', label: 'Team', icon: Shield, requiredPermission: 'canManagePerformance' },
-  { path: '/coaches', label: 'Coaches', icon: UserCog, requiredPermission: 'canManageUsers' },
   { path: '/schedule', label: 'Sessions', icon: CalendarClock, requiredPermission: 'canManageSessions' },
-  { path: '/resources', label: 'Resources', icon: FolderOpen },
+  { path: '/coaches', label: 'Coaches', icon: UserCog, requiredPermission: 'canManageUsers' },
   { path: '/fees', label: 'Fees', icon: CreditCard, requiredPermission: 'canManageFinance' },
   { path: '/notifications', label: 'Alerts', icon: Bell, requiredPermission: 'canSendNotifications' },
+  { path: '/resources', label: 'Resources', icon: FolderOpen },
 ];
 
 const navConfig: Record<string, NavItem[]> = {
@@ -88,16 +91,16 @@ const navConfig: Record<string, NavItem[]> = {
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/franchises', label: 'Franchise', icon: Building2 },
     { path: '/students', label: 'Squad', icon: Shirt },
-    { path: '/nfc-cards', label: 'NFC Cards', icon: CreditCard },
     { path: '/teams', label: 'Team', icon: Shield },
+    { path: '/schedule', label: 'Sessions', icon: CalendarClock },
     { path: '/coaches', label: 'Coaches', icon: UserCog },
     { path: '/employees', label: 'Employees', icon: Users },
-    { path: '/complaints', label: 'Complaints', icon: MessageSquareWarning },
-    { path: '/schedule', label: 'Sessions', icon: CalendarClock },
-    { path: '/resources', label: 'Resources', icon: FolderOpen },
     { path: '/fees', label: 'Fees', icon: CreditCard },
-    { path: '/subscription', label: 'Subscription', icon: Wallet },
+    { path: '/nfc-cards', label: 'NFC Cards', icon: CreditCard },
     { path: '/notifications', label: 'Alerts', icon: Bell },
+    { path: '/complaints', label: 'Complaints', icon: MessageSquareWarning },
+    { path: '/resources', label: 'Resources', icon: FolderOpen },
+    { path: '/subscription', label: 'Subscription', icon: Wallet },
     { path: '/settings', label: 'Settings', icon: Settings },
   ],
   coach: [
@@ -128,6 +131,22 @@ export const Sidebar: React.FC = () => {
     activeAcademyId ? { academyId: activeAcademyId, isActive: true } : undefined,
     { skip: !activeAcademyId || !isHeadOfficeUser }
   );
+
+  const { data: currentAcademy } = useGetAcademyByIdQuery(activeAcademyId!, {
+    skip: !activeAcademyId,
+  });
+
+  const { data: openComplaints } = useListAcademyComplaintsQuery(
+    { academyId: activeAcademyId!, status: 'open' },
+    { skip: !activeAcademyId || user?.role !== 'manager' }
+  );
+  const openComplaintsCount = openComplaints?.length || 0;
+
+  const { data: pendingRequestsData } = useGetRegistrationRequestsQuery(
+    { academyId: activeAcademyId || undefined, franchiseId: activeFranchiseId || undefined, status: 'pending' },
+    { skip: !activeAcademyId || !['manager', 'coach', 'employee'].includes(user?.role || '') }
+  );
+  const pendingRequestsCount = pendingRequestsData?.total ?? pendingRequestsData?.requests?.length ?? 0;
 
   const navItems = (navConfig[user?.role || 'manager'] || [])
     .filter((item) => item.path !== '/transfer-wall' || transferWallEnabled)
@@ -176,11 +195,15 @@ export const Sidebar: React.FC = () => {
         <div className={clsx('flex items-center h-16 border-b border-slate-200 dark:border-white/5 px-4 gap-3 justify-between md:justify-start', sidebarCollapsed && 'md:justify-center')}>
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-pitch-950/5 dark:bg-white/5 p-1 flex items-center justify-center flex-shrink-0">
-              <img src={logoSrc} alt="Noxphere" className="w-full h-full object-contain drop-shadow" />
+              <img src={currentAcademy?.logo || logoSrc} alt={currentAcademy?.name || 'Noxphere'} className="w-full h-full object-contain drop-shadow rounded" />
             </div>
             <div className={clsx('min-w-0', sidebarCollapsed ? 'block md:hidden' : 'block')}>
-              <p className="font-display font-black text-slate-900 dark:text-white uppercase tracking-wider text-base leading-tight">Noxphere</p>
-              <p className="text-[10px] font-semibold text-volt-600 dark:text-volt-400 uppercase tracking-widest">Academy OS</p>
+              <p className="font-display font-black text-slate-900 dark:text-white uppercase tracking-wider text-base leading-tight truncate">
+                {currentAcademy?.name || 'Noxphere'}
+              </p>
+              <p className="text-[10px] font-semibold text-volt-600 dark:text-volt-400 uppercase tracking-widest">
+                {currentAcademy ? 'Academy OS' : 'Platform OS'}
+              </p>
             </div>
           </div>
           {/* Mobile Close Button */}
@@ -247,6 +270,28 @@ export const Sidebar: React.FC = () => {
                       data-keep-white
                     >
                       {unreadCount}
+                    </span>
+                  )}
+                  {item.label === 'Complaints' && openComplaintsCount > 0 && (
+                    <span
+                      className={clsx(
+                        'ml-auto bg-rose-600 text-white text-2xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center shadow-xs',
+                        sidebarCollapsed ? 'inline-block md:hidden' : 'inline-block'
+                      )}
+                      data-keep-white
+                    >
+                      {openComplaintsCount}
+                    </span>
+                  )}
+                  {item.label === 'Squad' && pendingRequestsCount > 0 && (
+                    <span
+                      className={clsx(
+                        'ml-auto bg-rose-600 text-white text-2xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center shadow-xs',
+                        sidebarCollapsed ? 'inline-block md:hidden' : 'inline-block'
+                      )}
+                      data-keep-white
+                    >
+                      {pendingRequestsCount}
                     </span>
                   )}
                 </NavLink>

@@ -93,49 +93,49 @@ export const PlatformTicketsAdminPage: React.FC = () => {
       {/* Header */}
       <div>
         <p className="section-title mb-1">Super Administration</p>
-        <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight flex items-center gap-2.5">
+        <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight flex items-center gap-2.5">
           <LifeBuoy className="text-volt-400" size={26} />
           Platform Issues & Support Tickets
         </h1>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
           Review issues, questions, and bug reports submitted by Academy Owners, and reply directly back.
         </p>
       </div>
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
-        <div className="card p-3.5 bg-pitch-900/60 border-white/10 space-y-1">
-          <p className="text-3xs uppercase font-bold text-slate-400 tracking-wider">Total Filed</p>
-          <p className="text-xl sm:text-2xl font-black text-white">{stats.total}</p>
+        <div className="card p-3.5 bg-white dark:bg-pitch-900/60 border-slate-200 dark:border-white/10 space-y-1 shadow-sm">
+          <p className="text-3xs uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">Total Filed</p>
+          <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">{stats.total}</p>
         </div>
-        <div className="card p-3.5 bg-amber-500/5 border-amber-500/20 space-y-1">
-          <p className="text-3xs uppercase font-bold text-amber-400 tracking-wider flex items-center gap-1">
+        <div className="card p-3.5 bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/20 space-y-1 shadow-sm">
+          <p className="text-3xs uppercase font-bold text-amber-600 dark:text-amber-400 tracking-wider flex items-center gap-1">
             <Clock size={11} /> Open
           </p>
-          <p className="text-xl sm:text-2xl font-black text-amber-300">{stats.open}</p>
+          <p className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-300">{stats.open}</p>
         </div>
-        <div className="card p-3.5 bg-blue-500/5 border-blue-500/20 space-y-1">
-          <p className="text-3xs uppercase font-bold text-blue-400 tracking-wider flex items-center gap-1">
+        <div className="card p-3.5 bg-blue-500/5 dark:bg-blue-500/10 border-blue-500/20 space-y-1 shadow-sm">
+          <p className="text-3xs uppercase font-bold text-blue-600 dark:text-blue-400 tracking-wider flex items-center gap-1">
             <Clock size={11} /> In Progress
           </p>
-          <p className="text-xl sm:text-2xl font-black text-blue-300">{stats.inProgress}</p>
+          <p className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-300">{stats.inProgress}</p>
         </div>
-        <div className="card p-3.5 bg-emerald-500/5 border-emerald-500/20 space-y-1">
-          <p className="text-3xs uppercase font-bold text-emerald-400 tracking-wider flex items-center gap-1">
+        <div className="card p-3.5 bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/20 space-y-1 shadow-sm">
+          <p className="text-3xs uppercase font-bold text-emerald-600 dark:text-emerald-400 tracking-wider flex items-center gap-1">
             <CheckCircle2 size={11} /> Resolved
           </p>
-          <p className="text-xl sm:text-2xl font-black text-emerald-300">{stats.resolved}</p>
+          <p className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-300">{stats.resolved}</p>
         </div>
-        <div className="card p-3.5 bg-red-500/5 border-red-500/20 space-y-1 col-span-2 sm:col-span-1">
-          <p className="text-3xs uppercase font-bold text-red-400 tracking-wider flex items-center gap-1">
+        <div className="card p-3.5 bg-red-500/5 dark:bg-red-500/10 border-red-500/20 space-y-1 col-span-2 sm:col-span-1 shadow-sm">
+          <p className="text-3xs uppercase font-bold text-red-600 dark:text-red-400 tracking-wider flex items-center gap-1">
             <Flame size={11} /> Urgent / High
           </p>
-          <p className="text-xl sm:text-2xl font-black text-red-300">{stats.urgent}</p>
+          <p className="text-xl sm:text-2xl font-black text-red-600 dark:text-red-300">{stats.urgent}</p>
         </div>
       </div>
 
       {/* Filter / Search Bar */}
-      <div className="card p-4 bg-pitch-900/80 border-white/10 flex flex-col md:flex-row md:items-center gap-3">
+      <div className="card p-4 bg-white dark:bg-pitch-900/80 border-slate-200 dark:border-white/10 flex flex-col md:flex-row md:items-center gap-3 shadow-sm">
         <div className="relative flex-1">
           <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -194,10 +194,10 @@ export const PlatformTicketsAdminPage: React.FC = () => {
           {isLoading ? (
             Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)
           ) : !tickets?.length ? (
-            <div className="card p-8 text-center space-y-2">
-              <CheckCircle2 className="mx-auto text-emerald-400" size={32} />
-              <p className="text-sm font-semibold text-white">All Clear</p>
-              <p className="text-xs text-slate-400">No support tickets match the selected filters.</p>
+            <div className="card p-8 text-center space-y-2 bg-white dark:bg-pitch-900 border-slate-200 dark:border-white/10">
+              <CheckCircle2 className="mx-auto text-emerald-500" size={32} />
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">All Clear</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">No support tickets match the selected filters.</p>
             </div>
           ) : (
             tickets.map((ticket) => {
@@ -213,12 +213,12 @@ export const PlatformTicketsAdminPage: React.FC = () => {
                   className={clsx(
                     "w-full text-left card p-4 space-y-2.5 transition-all relative overflow-hidden",
                     isSelected
-                      ? "border-volt-400 bg-pitch-900/95 shadow-lg shadow-volt-400/5 ring-1 ring-volt-400/30"
-                      : "hover:border-white/20 bg-pitch-900/50"
+                      ? "border-volt-500 dark:border-volt-400 bg-volt-500/5 dark:bg-pitch-900/95 shadow-md ring-1 ring-volt-400/30"
+                      : "border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 bg-white dark:bg-pitch-900/50 shadow-xs"
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-2xs px-2 py-0.5 rounded bg-white/5 border border-white/10 text-volt-400 font-bold">
+                    <span className="font-mono text-2xs px-2 py-0.5 rounded bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-volt-700 dark:text-volt-400 font-bold">
                       {ticket.ticketNumber}
                     </span>
                     <div className="flex items-center gap-1.5">
@@ -237,14 +237,14 @@ export const PlatformTicketsAdminPage: React.FC = () => {
                   </div>
 
                   <div className="space-y-0.5">
-                    <p className="text-xs font-bold text-volt-400/90 flex items-center gap-1">
+                    <p className="text-xs font-bold text-volt-600 dark:text-volt-400/90 flex items-center gap-1">
                       <Building2 size={12} />
                       {ticket.academyName}
                     </p>
-                    <p className="text-sm font-semibold text-white line-clamp-1">{ticket.subject}</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white line-clamp-1">{ticket.subject}</p>
                   </div>
 
-                  <div className="flex items-center justify-between text-2xs text-slate-400 pt-1 border-t border-white/5">
+                  <div className="flex items-center justify-between text-2xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-white/5">
                     <span className="truncate max-w-[170px]">
                       By {ticket.raisedByName}
                     </span>
@@ -325,7 +325,7 @@ const AdminTicketWorkspace: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) 
   const CategoryIcon = CATEGORY_META[ticket.category]?.icon || HelpCircle;
 
   return (
-    <div className="card p-5 sm:p-6 space-y-5 bg-pitch-900/80 border-white/10">
+    <div className="card p-5 sm:p-6 space-y-5 bg-white dark:bg-pitch-900/80 border-slate-200 dark:border-white/10 shadow-sm">
       {/* Header Info */}
       <div className="border-b border-white/10 pb-5 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -345,12 +345,12 @@ const AdminTicketWorkspace: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) 
 
           {/* Direct Status Selector */}
           <div className="flex items-center gap-2">
-            <span className="text-2xs text-slate-400 font-medium">Status:</span>
+            <span className="text-2xs text-slate-500 dark:text-slate-400 font-medium">Status:</span>
             <select
               value={ticket.status}
               disabled={isUpdatingStatus}
               onChange={(e) => handleStatusChangeOnly(e.target.value as TicketStatus)}
-              className="input text-xs py-1 px-2.5 font-semibold bg-pitch-800"
+              className="input text-xs py-1 px-2.5 font-semibold bg-slate-50 dark:bg-pitch-800 text-slate-900 dark:text-white border-slate-300 dark:border-white/10"
             >
               <option value="open">Open</option>
               <option value="in_progress">In Progress</option>
@@ -361,13 +361,13 @@ const AdminTicketWorkspace: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) 
         </div>
 
         <div>
-          <h2 className="text-lg font-bold text-white">{ticket.subject}</h2>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-300 mt-1">
-            <span className="flex items-center gap-1.5 font-semibold text-volt-400">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">{ticket.subject}</h2>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-300 mt-1">
+            <span className="flex items-center gap-1.5 font-semibold text-volt-600 dark:text-volt-400">
               <Building2 size={13} />
               {ticket.academyName}
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
               <User size={13} className="text-slate-400" />
               {ticket.raisedByName}
             </span>
@@ -398,15 +398,15 @@ const AdminTicketWorkspace: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) 
               className={clsx(
                 "p-4 rounded-xl space-y-2 border transition-colors",
                 isSuperAdmin
-                  ? "bg-purple-950/40 border-purple-500/30 ml-2 sm:ml-6"
-                  : "bg-pitch-800/90 border-white/10 mr-2 sm:mr-6"
+                  ? "bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-500/30 ml-2 sm:ml-6"
+                  : "bg-slate-50 dark:bg-pitch-800/90 border-slate-200 dark:border-white/10 mr-2 sm:mr-6"
               )}
             >
               <div className="flex items-center justify-between gap-2">
                 <span
                   className={clsx(
                     "text-xs font-semibold flex items-center gap-1.5",
-                    isSuperAdmin ? "text-purple-400" : "text-volt-400"
+                    isSuperAdmin ? "text-purple-600 dark:text-purple-400" : "text-volt-600 dark:text-volt-400"
                   )}
                 >
                   {isSuperAdmin ? (
@@ -421,7 +421,7 @@ const AdminTicketWorkspace: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) 
                     </>
                   )}
                 </span>
-                <span className="text-3xs text-slate-400">
+                <span className="text-3xs text-slate-500 dark:text-slate-400">
                   {new Date(msg.createdAt).toLocaleString("en-IN", {
                     month: "short",
                     day: "numeric",
@@ -430,7 +430,7 @@ const AdminTicketWorkspace: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) 
                   })}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-slate-200 whitespace-pre-line leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed">
                 {msg.message}
               </p>
             </div>
@@ -439,9 +439,9 @@ const AdminTicketWorkspace: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) 
       </div>
 
       {/* Response Box to Owner */}
-      <div className="pt-3 border-t border-white/10 space-y-3">
-        <label className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
-          <Send size={13} className="text-volt-400" />
+      <div className="pt-3 border-t border-slate-200 dark:border-white/10 space-y-3">
+        <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+          <Send size={13} className="text-volt-500 dark:text-volt-400" />
           Respond to {ticket.raisedByName} ({ticket.academyName})
         </label>
         <textarea
@@ -449,16 +449,16 @@ const AdminTicketWorkspace: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) 
           onChange={(e) => setReplyText(e.target.value)}
           placeholder="Write your official response or solution here. This will be sent directly to the Academy Manager…"
           rows={4}
-          className="input w-full text-xs sm:text-sm p-3 resize-none bg-pitch-900"
+          className="input w-full text-xs sm:text-sm p-3 resize-none bg-slate-50 dark:bg-pitch-900 text-slate-900 dark:text-white border-slate-300 dark:border-white/10"
         />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-2xs text-slate-400">Update status on reply:</span>
+            <span className="text-2xs text-slate-500 dark:text-slate-400 font-medium">Update status on reply:</span>
             <select
               value={targetStatus}
               onChange={(e) => setTargetStatus(e.target.value as TicketStatus)}
-              className="input text-xs py-1 px-2.5 font-semibold bg-pitch-800"
+              className="input text-xs py-1 px-2.5 font-semibold bg-slate-50 dark:bg-pitch-800 text-slate-900 dark:text-white border-slate-300 dark:border-white/10"
             >
               <option value="in_progress">In Progress</option>
               <option value="resolved">Mark as Resolved</option>

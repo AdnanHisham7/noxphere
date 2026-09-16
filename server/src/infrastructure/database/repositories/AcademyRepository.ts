@@ -47,6 +47,7 @@ export class MongoAcademyRepository implements IAcademyRepository {
       absentAlertDays: doc.absentAlertDays,
       dueDateAlertDays: doc.dueDateAlertDays,
       feeQrImageUrl: doc.feeQrImageUrl,
+      logo: (doc as any).logo,
       skillParameters: doc.skillParameters,
       deletedAt: doc.deletedAt,
       createdAt: doc.createdAt,
@@ -114,6 +115,10 @@ export class MongoAcademyRepository implements IAcademyRepository {
     if (updateObj.feeQrImageUrl === null) {
       delete updateObj.feeQrImageUrl;
       updateObj.$unset = { ...(updateObj.$unset || {}), feeQrImageUrl: 1 };
+    }
+    if (updateObj.logo === null) {
+      delete updateObj.logo;
+      updateObj.$unset = { ...(updateObj.$unset || {}), logo: 1 };
     }
     const doc = await AcademyModel.findByIdAndUpdate(id, updateObj, {
       new: true,

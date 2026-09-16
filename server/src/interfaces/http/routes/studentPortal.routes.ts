@@ -35,3 +35,7 @@ studentPortalRouter.get("/fees", (req, res, next) => {
 studentPortalRouter.get("/performance", (req, res, next) => {
   req.app.locals.controllers.studentPortal.getMyPerformance(req, res, next);
 });
+
+studentPortalRouter.get("/sessions", (req, res, next) => {
+  req.app.locals.controllers.studentPortal.getMySessions(req, res, next);
+});

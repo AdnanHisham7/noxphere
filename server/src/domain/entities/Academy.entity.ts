@@ -52,6 +52,7 @@ export interface AcademyEntity {
   absentAlertDays: number;
   dueDateAlertDays: number;
   feeQrImageUrl?: string;
+  logo?: string;
   skillParameters: string[];
   pitches?: AcademyPitch[];
   deletedAt?: Date;
@@ -72,5 +73,7 @@ export interface CreateAcademyEntity {
   notificationAlertAfterMinutes: number;
   absentAlertDays: number;
   dueDateAlertDays: number;
+  feeQrImageUrl?: string;
+  logo?: string;
   skillParameters: string[];
 }

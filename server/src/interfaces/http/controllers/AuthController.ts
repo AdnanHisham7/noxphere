@@ -80,4 +80,18 @@ export class AuthController {
       next(err);
     }
   };
+
+  checkAvailability = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { email, phone, purpose } = req.query as {
+        email?: string;
+        phone?: string;
+        purpose?: 'student' | 'guardian';
+      };
+      const result = await this.authUseCases.checkAvailability({ email, phone, purpose });
+      ResponseHandler.success(res, result, 'Availability checked successfully');
+    } catch (err) {
+      next(err);
+    }
+  };
 }

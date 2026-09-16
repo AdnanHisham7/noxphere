@@ -1,5 +1,6 @@
 import { baseApi } from "./baseApi";
 import type { PublicProfileSettings } from "./consentApi";
+import type { Session } from "./scheduleApi";
 
 export interface MyDashboard {
   profile: {
@@ -97,6 +98,12 @@ export const studentPortalApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: PerformanceBundle }) => res.data,
       providesTags: ["Performance"],
     }),
+    getMySessions: builder.query<Session[], void>({
+      query: () => "/me/sessions",
+      transformResponse: (res: { data: Session[] } | Session[]) =>
+        Array.isArray(res) ? res : (res as any)?.data ?? [],
+      providesTags: ["Schedule"],
+    }),
     updateMyProfile: builder.mutation<
       MyDashboard,
       {
@@ -140,6 +147,7 @@ export const {
   useGetMyAttendanceQuery,
   useGetMyFeesQuery,
   useGetMyPerformanceQuery,
+  useGetMySessionsQuery,
   useUpdateMyProfileMutation,
   useUpdateMyPublicProfileSettingsMutation,
 } = studentPortalApi;

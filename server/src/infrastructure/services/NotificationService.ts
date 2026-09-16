@@ -95,11 +95,23 @@ const initFirebase = () => {
 
 // ─── Email transporter ────────────────────────────────────────────────────────
 const createMailTransporter = () => {
+  const isGmail = (config.email.host || '').toLowerCase().includes('gmail');
+  const cleanPass = (config.email.pass || '').replace(/\s+/g, '');
+  const service = process.env.EMAIL_SERVICE || (isGmail ? 'gmail' : undefined);
+
+  if (service) {
+    return nodemailer.createTransport({
+      service,
+      auth: { user: config.email.user, pass: cleanPass },
+      tls: { rejectUnauthorized: false },
+    });
+  }
+
   return nodemailer.createTransport({
     host: config.email.host,
     port: config.email.port,
     secure: config.email.port === 465,
-    auth: { user: config.email.user, pass: config.email.pass },
+    auth: { user: config.email.user, pass: cleanPass },
     tls: { rejectUnauthorized: false },
   });
 };
@@ -179,16 +191,31 @@ export class NotificationService {
     for (let i = 0; i < allTokens.length; i += BATCH_SIZE) {
       const batch = allTokens.slice(i, i + BATCH_SIZE);
       try {
+        const pushData: Record<string, string> = { ...(opts.data ?? {}) };
+        if (opts.imageUrl) pushData.imageUrl = opts.imageUrl;
+        if (opts.attachments && opts.attachments.length > 0) {
+          pushData.attachments = JSON.stringify(opts.attachments);
+        }
+
         const response = await admin.messaging().sendEachForMulticast({
           tokens: batch,
-          notification: { title: opts.title, body: opts.body },
-          data: opts.data ?? {},
+          notification: {
+            title: opts.title,
+            body: opts.body,
+            ...(opts.imageUrl ? { imageUrl: opts.imageUrl } : {}),
+          },
+          data: pushData,
           android: {
             priority: 'high',
-            notification: { channelId: 'football_franchise', sound: 'default' },
+            notification: {
+              channelId: 'football_franchise',
+              sound: 'default',
+              ...(opts.imageUrl ? { imageUrl: opts.imageUrl } : {}),
+            },
           },
           apns: {
             payload: { aps: { sound: 'default', badge: 1 } },
+            fcmOptions: opts.imageUrl ? { imageUrl: opts.imageUrl } : undefined,
           },
         });
 
@@ -344,12 +371,15 @@ export class NotificationService {
 
     const transporter = createMailTransporter();
     try {
-      await transporter.sendMail({
-        from: `"${config.email.fromName}" <${config.email.user || config.email.from}>`,
-        bcc: emails.join(','),
+      const fromAddress = `"${config.email.fromName}" <${config.email.user || config.email.from}>`;
+      const mailOptions: nodemailer.SendMailOptions = {
+        from: fromAddress,
+        to: emails.length === 1 ? emails[0] : fromAddress,
+        bcc: emails.length > 1 ? emails : undefined,
         subject,
         html,
-      });
+      };
+      await transporter.sendMail(mailOptions);
       logger.info(`[NotificationService] Email sent successfully to ${emails.length} recipients: [${subject}]`);
     } catch (err: any) {
       logger.error('[NotificationService] Email error:', err?.message || err);
@@ -388,13 +418,32 @@ export class NotificationService {
   private async persistNotifications(userIds: string[], opts: SendNotificationOptions): Promise<void> {
     try {
       const uniqueUserIds = Array.from(new Set(userIds));
+      const attachmentsList = [
+        ...(opts.attachments || []),
+        ...(!opts.attachments?.length && opts.whatsappDocumentUrl
+          ? [{ name: opts.whatsappDocumentFilename || "Attached Document", url: opts.whatsappDocumentUrl }]
+          : []),
+      ];
+
+      const enrichedData: Record<string, any> = {
+        ...(opts.data || {}),
+        ...(opts.imageUrl ? { imageUrl: opts.imageUrl } : {}),
+        ...(attachmentsList.length > 0 ? { attachments: attachmentsList } : {}),
+        ...(opts.whatsappDocumentUrl
+          ? {
+              documentUrl: opts.whatsappDocumentUrl,
+              documentFilename: opts.whatsappDocumentFilename || "Attached Document",
+            }
+          : {}),
+      };
+
       const docs = uniqueUserIds.map((userId) => ({
         userId,
         franchiseId: opts.franchiseId,
         type: opts.type,
         title: opts.title,
         body: opts.body,
-        data: opts.data,
+        data: enrichedData,
         isRead: false,
         sentVia: opts.channels ?? ['push'],
       }));
@@ -411,6 +460,7 @@ export class NotificationService {
             title: doc.title,
             body: doc.body,
             type: doc.type,
+            data: doc.data,
             isRead: false,
             createdAt: (doc as any).createdAt ?? new Date().toISOString(),
           });

@@ -9,6 +9,8 @@ import { config } from '../../../config/app.config';
 import { FranchiseModel } from '../../../infrastructure/database/models/Franchise.model';
 import { StudentModel } from '../../../infrastructure/database/models/Student.model';
 import { AcademyModel } from '../../../infrastructure/database/models/Academy.model';
+import { UserModel } from '../../../infrastructure/database/models/User.model';
+import { normalizePhone, getPhoneMatchVariants } from '../../../shared/utils/phone';
 
 export interface AuthTokens {
   accessToken: string;
@@ -285,5 +287,108 @@ export class AuthUseCases {
       refreshToken,
       expiresIn: 15 * 60, // 15 minutes in seconds
     };
+  }
+
+  async checkAvailability(query: {
+    email?: string;
+    phone?: string;
+    purpose?: 'student' | 'guardian';
+  }): Promise<{ available: boolean; field?: 'email' | 'phone' | 'both'; message?: string }> {
+    const rawEmail = (query.email || '').trim().toLowerCase();
+    const rawPhone = (query.phone || '').trim();
+    const cleanPhone = rawPhone ? normalizePhone(rawPhone) : '';
+    const purpose = query.purpose || 'guardian';
+
+    const [userByEmail, userByPhone] = await Promise.all([
+      rawEmail ? UserModel.findOne({ email: rawEmail }) : null,
+      cleanPhone
+        ? UserModel.findOne({ phone: { $in: getPhoneMatchVariants(cleanPhone) } })
+        : null,
+    ]);
+
+    if (purpose === 'student') {
+      if (userByEmail && userByPhone && userByEmail._id.toString() !== userByPhone._id.toString()) {
+        return {
+          available: false,
+          field: 'both',
+          message: 'This email and phone number belong to two different registered accounts.',
+        };
+      }
+
+      if (userByEmail) {
+        if (userByEmail.role === 'student') {
+          const hasStudentProfile = await StudentModel.findOne({ userId: userByEmail._id });
+          if (hasStudentProfile) {
+            return {
+              available: false,
+              field: 'email',
+              message: 'An account with this email already exists. Please log in.',
+            };
+          }
+        } else {
+          return {
+            available: false,
+            field: 'email',
+            message: `An account with this email already exists with role: ${userByEmail.role}. Please log in.`,
+          };
+        }
+      }
+
+      if (userByPhone) {
+        if (userByPhone.role === 'student') {
+          const hasStudentProfile = await StudentModel.findOne({ userId: userByPhone._id });
+          if (hasStudentProfile) {
+            return {
+              available: false,
+              field: 'phone',
+              message: 'An account with this phone number already exists. Please log in.',
+            };
+          }
+        } else {
+          return {
+            available: false,
+            field: 'phone',
+            message: `An account with this phone number already exists with role: ${userByPhone.role}. Please log in.`,
+          };
+        }
+      }
+
+      return { available: true };
+    }
+
+    // Default: guardian purpose
+    if (userByEmail && userByPhone && userByEmail._id.toString() !== userByPhone._id.toString()) {
+      return {
+        available: false,
+        field: 'both',
+        message: 'This guardian email and phone number belong to two different registered accounts.',
+      };
+    }
+
+    if (userByEmail && userByEmail.role !== 'guardian') {
+      return {
+        available: false,
+        field: 'email',
+        message: `An account with this email already exists with role: ${userByEmail.role}. Please use a different email.`,
+      };
+    }
+
+    if (userByPhone && userByPhone.role !== 'guardian') {
+      return {
+        available: false,
+        field: 'phone',
+        message: `An account with this phone number already exists with role: ${userByPhone.role}. Please use a different phone number.`,
+      };
+    }
+
+    if (userByPhone && !userByEmail && rawEmail && userByPhone.email.toLowerCase() !== rawEmail) {
+      return {
+        available: false,
+        field: 'phone',
+        message: 'An account with this phone number is already registered under a different email address.',
+      };
+    }
+
+    return { available: true };
   }
 }

@@ -6,6 +6,9 @@ export const authRouter = Router();
 
 // These will be bound to controller instances in the DI container
 // Kept as placeholders here
+authRouter.get('/check-availability', (req, res, next) => {
+  (req.app.locals.controllers.auth as any).checkAvailability(req, res, next);
+});
 authRouter.post('/register', (req, res, next) => {
   (req.app.locals.controllers.auth as any).register(req, res, next);
 });

@@ -9,7 +9,7 @@ import {
 import { clsx } from 'clsx';
 import { formatDistanceToNowStrict } from 'date-fns';
 import {
-  ArrowLeft, Shirt, CheckCircle2, CreditCard, Star, Building2,
+  ArrowLeft, Shirt, CheckCircle2, CreditCard, Star, Building2, TrendingUp, Activity,
 } from 'lucide-react';
 import { StatCard, Skeleton, Avatar, EmptyState, Badge } from '../../components/ui';
 import { setActiveFranchise } from '../../store/slices/uiSlice';
@@ -26,11 +26,24 @@ import {
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-pitch-800 border border-white/10 rounded px-3 py-2 text-xs">
+    <div className="bg-slate-900 dark:bg-pitch-800 border border-slate-700 dark:border-white/10 rounded px-3 py-2 text-xs">
       <p className="text-slate-400">{label}</p>
       <p className="text-volt-400 font-bold">{payload[0].value}%</p>
     </div>
   );
+};
+
+const renderActivityIcon = (type: string) => {
+  switch (type) {
+    case 'attendance':
+      return <CheckCircle2 size={14} className="text-volt-500 dark:text-volt-400" />;
+    case 'performance':
+      return <TrendingUp size={14} className="text-sky-500 dark:text-ice-400" />;
+    case 'fee':
+      return <CreditCard size={14} className="text-emerald-500 dark:text-field-400" />;
+    default:
+      return <Activity size={14} className="text-slate-400" />;
+  }
 };
 
 const formatCurrency = (n: number) =>
@@ -220,7 +233,7 @@ const FranchiseDashboardPage: React.FC = () => {
           ) : (
             <div className="space-y-3">
               {teamHealth.map((team) => (
-                <div key={team.name} className="flex items-center gap-3 p-3 bg-pitch-700 rounded">
+                <div key={team.name} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-pitch-700 border border-slate-200 dark:border-white/5 rounded">
                   <div
                     className="w-8 h-8 rounded flex items-center justify-center text-xs font-display font-extrabold text-pitch-900 flex-shrink-0"
                     style={{ backgroundColor: team.attendance > 90 ? '#00e676' : team.attendance > 80 ? '#ccff00' : '#ff6b35' }}
@@ -229,12 +242,12 @@ const FranchiseDashboardPage: React.FC = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-white">{team.name}</p>
+                      <p className="text-xs font-semibold text-slate-900 dark:text-white">{team.name}</p>
                       <span className="text-2xs text-slate-500">{team.students} players</span>
                     </div>
                     <div className="flex items-center gap-3 mt-1">
-                      <span className="text-2xs text-slate-500">Att: <span className="text-volt-400 font-semibold">{team.attendance}%</span></span>
-                      <span className="text-2xs text-slate-500">Perf: <span className="text-ice-400 font-semibold">{team.performance}</span></span>
+                      <span className="text-2xs text-slate-500">Att: <span className="text-volt-600 dark:text-volt-400 font-semibold">{team.attendance}%</span></span>
+                      <span className="text-2xs text-slate-500">Perf: <span className="text-sky-600 dark:text-ice-400 font-semibold">{team.performance}</span></span>
                     </div>
                   </div>
                 </div>
@@ -246,7 +259,7 @@ const FranchiseDashboardPage: React.FC = () => {
         <div className="card p-5 space-y-4">
           <div className="flex items-center justify-between">
             <p className="section-title">Top Performers</p>
-            <Link to="/students" className="text-xs text-volt-400 hover:underline">Full rankings →</Link>
+            <Link to="/students" className="text-xs text-volt-500 dark:text-volt-400 hover:underline">Full rankings →</Link>
           </div>
           {performersLoading ? (
             <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 rounded" />)}</div>
@@ -258,16 +271,16 @@ const FranchiseDashboardPage: React.FC = () => {
                 <div key={player.id} className="flex items-center gap-3">
                   <span className={clsx(
                     'font-display font-900 text-sm w-5 text-center',
-                    i === 0 ? 'text-volt-400' : i === 1 ? 'text-slate-300' : 'text-slate-500'
+                    i === 0 ? 'text-volt-500 dark:text-volt-400' : i === 1 ? 'text-slate-500 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'
                   )}>
                     {i + 1}
                   </span>
                   <Avatar name={player.name} src={player.avatar} size="sm" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-white truncate">{player.name}</p>
+                    <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{player.name}</p>
                     <p className="text-2xs text-slate-500">{player.team} · {player.position}</p>
                   </div>
-                  <span className="font-display font-extrabold text-volt-400 text-sm">{player.rating}</span>
+                  <span className="font-display font-extrabold text-volt-500 dark:text-volt-400 text-sm">{player.rating}</span>
                 </div>
               ))}
             </div>
@@ -283,13 +296,13 @@ const FranchiseDashboardPage: React.FC = () => {
           ) : (
             <div className="space-y-0">
               {recentActivity.map((item, i) => (
-                <div key={item.id} className={clsx('flex gap-3 py-3', i < recentActivity.length - 1 && 'border-b border-white/4')}>
-                  <div className="w-7 h-7 rounded bg-pitch-700 flex items-center justify-center text-sm flex-shrink-0">
-                    {item.icon}
+                <div key={item.id} className={clsx('flex gap-3 py-3', i < recentActivity.length - 1 && 'border-b border-slate-100 dark:border-white/4')}>
+                  <div className="w-7 h-7 rounded bg-slate-100 dark:bg-pitch-700 flex items-center justify-center flex-shrink-0">
+                    {renderActivityIcon(item.type)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-slate-300 leading-tight">{item.message}</p>
-                    <p className="text-2xs text-slate-600 mt-1">
+                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-tight">{item.message}</p>
+                    <p className="text-2xs text-slate-500 dark:text-slate-600 mt-1">
                       {formatDistanceToNowStrict(new Date(item.time), { addSuffix: true })}
                     </p>
                   </div>

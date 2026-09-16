@@ -42,6 +42,7 @@ export interface Academy {
   absentAlertDays: number;
   dueDateAlertDays: number;
   feeQrImageUrl?: string;
+  logo?: string;
   skillParameters: string[];
   createdAt: string;
   updatedAt: string;
@@ -51,6 +52,7 @@ export interface CreateAcademyPayload {
   name: string;
   academyCode?: string;
   location: Location;
+  logo?: string;
   ageGroups: string[];
   alertBeforeMinutes: number;
   notificationAlertAfterMinutes: number;
@@ -80,5 +82,6 @@ export interface AcademyConfigPayload {
   absentAlertDays?: number;
   dueDateAlertDays?: number;
   feeQrImageUrl?: string;
+  logo?: string;
   isActive?: boolean;
 }

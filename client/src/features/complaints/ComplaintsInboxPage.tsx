@@ -31,22 +31,22 @@ const ComplaintsInboxPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Tab Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-4">
         <div>
           <p className="section-title mb-1">Support & Helpdesk</p>
-          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">
+          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
             {activeTab === "academy_inquiries" ? "Academy Complaints" : "Platform Support"}
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 bg-pitch-900/80 p-1 rounded-xl border border-white/10 self-start sm:self-auto">
+        <div className="flex items-center gap-2 bg-slate-100 dark:bg-pitch-900/80 p-1 rounded-xl border border-slate-200 dark:border-white/10 self-start sm:self-auto">
           <button
             onClick={() => setActiveTab("academy_inquiries")}
             className={clsx(
               "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2",
               activeTab === "academy_inquiries"
                 ? "bg-volt-400 text-pitch-900 shadow-sm"
-                : "text-slate-400 hover:text-white"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             )}
           >
             <MessageSquareWarning size={14} />
@@ -58,7 +58,7 @@ const ComplaintsInboxPage: React.FC = () => {
               "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2",
               activeTab === "platform_support"
                 ? "bg-volt-400 text-pitch-900 shadow-sm"
-                : "text-slate-400 hover:text-white"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             )}
           >
             <LifeBuoy size={14} />
@@ -102,18 +102,20 @@ const ComplaintsInboxPage: React.FC = () => {
                 key={c.id}
                 onClick={() => setSelected(c)}
                 className={clsx(
-                  "w-full text-left card p-4 space-y-1.5 transition-colors",
-                  selected?.id === c.id ? "border-volt-400/40" : "hover:border-white/20"
+                  "w-full text-left card p-4 space-y-1.5 transition-colors border",
+                  selected?.id === c.id
+                    ? "border-volt-500 dark:border-volt-400/40 bg-volt-500/5 dark:bg-pitch-900/90 shadow-sm"
+                    : "border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/50 hover:border-slate-300 dark:hover:border-white/20"
                 )}
               >
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-white truncate">{c.subject}</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{c.subject}</p>
                   <Badge variant={STATUS_VARIANT[c.status || "open"]}>{(c.status || "open").replace("_", " ")}</Badge>
                 </div>
-                <p className="text-2xs text-slate-500">
+                <p className="text-2xs text-slate-500 dark:text-slate-400">
                   {c.raisedByName} · {c.raisedByRole} · {new Date(c.createdAt).toLocaleDateString("en-IN")}
                 </p>
-                <p className="text-xs text-slate-400 line-clamp-1">{c.message}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-1">{c.message}</p>
               </button>
             ))
           )}
@@ -137,7 +139,7 @@ const ComplaintDetail: React.FC<{
   academyId: string;
   complaint: Complaint;
   onResponded: (c: Complaint) => void;
-}> = ({ academyId, complaint, onResponded }) => {
+  }> = ({ academyId, complaint, onResponded }) => {
   const [respond, { isLoading }] = useRespondToComplaintMutation();
   const [response, setResponse] = useState(complaint.response ?? "");
   const [status, setStatus] = useState<"in_progress" | "resolved">(
@@ -157,17 +159,17 @@ const ComplaintDetail: React.FC<{
   };
 
   return (
-    <div className="card p-5 space-y-4">
+    <div className="card p-5 space-y-4 bg-white dark:bg-pitch-900 border-slate-200 dark:border-white/10 shadow-sm">
       <div>
         <div className="flex items-center justify-between mb-1">
-          <p className="text-sm font-semibold text-white">{complaint.subject}</p>
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">{complaint.subject}</p>
           <Badge variant={STATUS_VARIANT[complaint.status || "open"]}>{(complaint.status || "open").replace("_", " ")}</Badge>
         </div>
-        <p className="text-2xs text-slate-500">
+        <p className="text-2xs text-slate-500 dark:text-slate-400">
           {complaint.raisedByName} · {complaint.raisedByRole} · {new Date(complaint.createdAt).toLocaleString("en-IN")}
         </p>
       </div>
-      <p className="text-sm text-slate-300 bg-pitch-800 border border-white/10 rounded p-3">{complaint.message}</p>
+      <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded p-3 leading-relaxed">{complaint.message}</p>
 
       <div>
         <label className="label">Your response</label>
@@ -187,7 +189,9 @@ const ComplaintDetail: React.FC<{
               onClick={() => setStatus(s)}
               className={clsx(
                 "flex-1 rounded px-3 py-2 text-sm font-semibold border transition-colors",
-                status === s ? "bg-volt-400 border-volt-400 text-pitch-900" : "bg-pitch-800 border-white/10 text-slate-400"
+                status === s
+                  ? "bg-volt-400 border-volt-400 text-pitch-900"
+                  : "bg-slate-50 dark:bg-pitch-800 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               )}
             >
               {s === "in_progress" ? "In Progress" : "Resolved"}
