@@ -143,7 +143,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId,
               <span>Staff ({staffCapacity} × {formatCurrency(staffRate)}/mo × {staffMonths}mo)</span>
               <span>{formatCurrency(staffTotal)}</span>
             </div>
-            <div className="flex justify-between text-sm font-bold text-white pt-1 border-t border-white/10 mt-1">
+            <div className="flex justify-between text-sm font-bold text-slate-900 dark:text-white pt-1 border-t border-slate-200 dark:border-white/10 mt-1">
               <span>{isUpgrade ? "New total (prorated this cycle)" : "Total due now"}</span>
               <span className="text-volt-400">{formatCurrency(total)}</span>
             </div>

@@ -292,42 +292,44 @@ export const ProfilePage: React.FC = () => {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center border-t border-slate-200 dark:border-white/10 px-6 sm:px-8 bg-slate-50/50 dark:bg-white/[0.02]">
-          <button
-            onClick={() => setActiveTab("details")}
-            className={`flex items-center gap-2 py-3.5 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
-              activeTab === "details"
-                ? "border-volt-500 text-slate-900 dark:text-white"
-                : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
-            }`}
-          >
-            <User size={15} />
-            <span>Basic Data</span>
-          </button>
+        <div className="overflow-x-auto no-scrollbar border-t border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02]">
+          <div className="flex items-center px-4 sm:px-8 w-max min-w-full">
+            <button
+              onClick={() => setActiveTab("details")}
+              className={`flex items-center gap-2 py-3.5 px-4 text-xs font-bold uppercase tracking-wider border-b-2 whitespace-nowrap transition-all ${
+                activeTab === "details"
+                  ? "border-volt-500 text-slate-900 dark:text-white"
+                  : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+              }`}
+            >
+              <User size={15} />
+              <span>Basic Data</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab("security")}
-            className={`flex items-center gap-2 py-3.5 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
-              activeTab === "security"
-                ? "border-volt-500 text-slate-900 dark:text-white"
-                : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
-            }`}
-          >
-            <Key size={15} />
-            <span>Security & Password</span>
-          </button>
+            <button
+              onClick={() => setActiveTab("security")}
+              className={`flex items-center gap-2 py-3.5 px-4 text-xs font-bold uppercase tracking-wider border-b-2 whitespace-nowrap transition-all ${
+                activeTab === "security"
+                  ? "border-volt-500 text-slate-900 dark:text-white"
+                  : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+              }`}
+            >
+              <Key size={15} />
+              <span>Security & Password</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab("preferences")}
-            className={`flex items-center gap-2 py-3.5 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
-              activeTab === "preferences"
-                ? "border-volt-500 text-slate-900 dark:text-white"
-                : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
-            }`}
-          >
-            <Shield size={15} />
-            <span>Permissions & Preferences</span>
-          </button>
+            <button
+              onClick={() => setActiveTab("preferences")}
+              className={`flex items-center gap-2 py-3.5 px-4 text-xs font-bold uppercase tracking-wider border-b-2 whitespace-nowrap transition-all ${
+                activeTab === "preferences"
+                  ? "border-volt-500 text-slate-900 dark:text-white"
+                  : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+              }`}
+            >
+              <Shield size={15} />
+              <span>Permissions & Preferences</span>
+            </button>
+          </div>
         </div>
       </div>
 

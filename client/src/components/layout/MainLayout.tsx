@@ -42,7 +42,7 @@ export const MainLayout: React.FC = () => {
           )}
         >
           <TopBar />
-          <main className="flex-1 overflow-y-auto min-h-0 p-3.5 sm:p-5 md:p-6">
+          <main className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-5 md:p-6">
             <Outlet />
           </main>
         </div>

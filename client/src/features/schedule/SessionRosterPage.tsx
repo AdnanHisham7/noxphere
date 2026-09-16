@@ -566,8 +566,8 @@ const SessionRosterPage: React.FC = () => {
 
           {/* Unified Operational Grid - Spreadsheet Matrix */}
           <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-800/50 shadow-sm dark:shadow-none overflow-hidden">
-            <div className="overflow-x-auto max-w-full">
-              <table className="w-full text-left text-xs border-collapse">
+            <div className="table-responsive max-w-full">
+              <table className="w-full min-w-[720px] text-left text-xs border-collapse">
                 <thead className="bg-slate-50 dark:bg-pitch-900/80 border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 font-mono uppercase text-2xs tracking-wider">
                   <tr>
                     <th className="py-2.5 px-3 sticky left-0 z-20 bg-slate-50 dark:bg-pitch-900 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)] min-w-[170px]">

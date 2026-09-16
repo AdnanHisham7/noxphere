@@ -23,6 +23,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { extractErrorMessage } from "../../utils/errorUtils";
 import { RootState } from "../../store";
 import {
   useGetNfcPricingQuery,
@@ -36,7 +37,15 @@ import { useGetStudentsQuery, Student } from "../../store/api/studentsApi";
 import { useGetFranchisesQuery } from "../../store/api/franchiseApi";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useUploadImageMutation } from "../../store/api/uploadApi";
-import { Button, Input, Modal, Badge, StatCard, EmptyState, Skeleton } from "../../components/ui";
+import {
+  Button,
+  Input,
+  Modal,
+  Badge,
+  StatCard,
+  EmptyState,
+  Skeleton,
+} from "../../components/ui";
 
 export const AcademyNfcManagementPage: React.FC = () => {
   const user = useSelector((s: RootState) => s.auth.user);
@@ -44,14 +53,20 @@ export const AcademyNfcManagementPage: React.FC = () => {
   const currentFranchiseId = useCurrentFranchiseId();
 
   const { data: pricing } = useGetNfcPricingQuery();
-  const { data: requestsData, isLoading: requestsLoading, refetch } = useListNfcRequestsQuery();
+  const {
+    data: requestsData,
+    isLoading: requestsLoading,
+    refetch,
+  } = useListNfcRequestsQuery();
   const { data: franchises } = useGetFranchisesQuery(
     { academyId: academyId || undefined },
     { skip: !academyId },
   );
 
-  const [createAcademyRequest, { isLoading: isCreating }] = useCreateAcademyNfcRequestMutation();
-  const [createCheckoutSession, { isLoading: isCheckingOut }] = useCreateNfcCheckoutSessionMutation();
+  const [createAcademyRequest, { isLoading: isCreating }] =
+    useCreateAcademyNfcRequestMutation();
+  const [createCheckoutSession, { isLoading: isCheckingOut }] =
+    useCreateNfcCheckoutSessionMutation();
   const [uploadImage, { isLoading: isUploading }] = useUploadImageMutation();
 
   // Modal states
@@ -69,10 +84,11 @@ export const AcademyNfcManagementPage: React.FC = () => {
       ? selectedFranchiseId
       : currentFranchiseId || (franchises && franchises[0]?.id) || "";
 
-  const { data: studentsData, isLoading: studentsLoading } = useGetStudentsQuery(
-    { franchiseId: effectiveFranchiseId, limit: 200 },
-    { skip: !effectiveFranchiseId },
-  );
+  const { data: studentsData, isLoading: studentsLoading } =
+    useGetStudentsQuery(
+      { franchiseId: effectiveFranchiseId, limit: 200 },
+      { skip: !effectiveFranchiseId },
+    );
 
   // Design state
   const [cardType, setCardType] = useState<"official" | "custom">("official");
@@ -115,7 +131,9 @@ export const AcademyNfcManagementPage: React.FC = () => {
 
   const handleSelectAllFiltered = () => {
     const filteredIds = filteredStudents.map((s) => s.id);
-    const newSelected = Array.from(new Set([...selectedStudentIds, ...filteredIds]));
+    const newSelected = Array.from(
+      new Set([...selectedStudentIds, ...filteredIds]),
+    );
     setSelectedStudentIds(newSelected);
   };
 
@@ -136,15 +154,37 @@ export const AcademyNfcManagementPage: React.FC = () => {
       setCustomDesignFileName(file.name);
       toast.success("Custom design artwork uploaded!");
     } catch (err: any) {
-      toast.error(err?.data?.message || "Failed to upload design artwork");
+      toast.error(extractErrorMessage(err, "Failed to upload design artwork"));
     }
   };
 
   const unitPrice =
     cardType === "custom"
-      ? pricing?.customCardPrice ?? 399
-      : pricing?.cardPrice ?? 299;
+      ? (pricing?.customCardPrice ?? 399)
+      : (pricing?.cardPrice ?? 299);
   const totalAmount = selectedStudentIds.length * unitPrice;
+
+  const validateShippingAddress = (): string | null => {
+    if (!shippingAddress.recipientName.trim() || shippingAddress.recipientName.trim().length < 2) {
+      return "Recipient name must be at least 2 characters";
+    }
+    if (!shippingAddress.phone.trim() || shippingAddress.phone.trim().length < 7) {
+      return "Valid contact phone is required (at least 7 digits)";
+    }
+    if (!shippingAddress.addressLine1.trim() || shippingAddress.addressLine1.trim().length < 5) {
+      return "Address line 1 must be at least 5 characters";
+    }
+    if (!shippingAddress.city.trim() || shippingAddress.city.trim().length < 2) {
+      return "City must be at least 2 characters";
+    }
+    if (!shippingAddress.state.trim() || shippingAddress.state.trim().length < 2) {
+      return "State must be at least 2 characters";
+    }
+    if (!shippingAddress.postalCode.trim() || shippingAddress.postalCode.trim().length < 4) {
+      return "PIN / Postal code must be at least 4 digits";
+    }
+    return null;
+  };
 
   const handleSubmitBulkOrder = async () => {
     if (selectedStudentIds.length === 0) {
@@ -155,15 +195,10 @@ export const AcademyNfcManagementPage: React.FC = () => {
       toast.error("Please upload your custom card design artwork");
       return;
     }
-    if (
-      !shippingAddress.recipientName.trim() ||
-      !shippingAddress.phone.trim() ||
-      !shippingAddress.addressLine1.trim() ||
-      !shippingAddress.city.trim() ||
-      !shippingAddress.state.trim() ||
-      !shippingAddress.postalCode.trim()
-    ) {
-      toast.error("Please fill in complete delivery address details");
+
+    const addressError = validateShippingAddress();
+    if (addressError) {
+      toast.error(addressError);
       return;
     }
 
@@ -177,7 +212,9 @@ export const AcademyNfcManagementPage: React.FC = () => {
         shippingAddress,
       }).unwrap();
 
-      toast.success("Bulk NFC card request submitted! Awaiting Super Admin review.");
+      toast.success(
+        "Bulk NFC card request submitted! Awaiting Super Admin review.",
+      );
       setIsWizardOpen(false);
       // Reset wizard
       setStep(1);
@@ -187,7 +224,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
       setCustomDesignFileName("");
       refetch();
     } catch (err: any) {
-      toast.error(err?.data?.message || "Failed to submit request");
+      toast.error(extractErrorMessage(err, "Failed to submit request"));
     }
   };
 
@@ -198,7 +235,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
         window.location.href = res.url;
       }
     } catch (err: any) {
-      toast.error(err?.data?.message || "Failed to open Stripe checkout");
+      toast.error(extractErrorMessage(err, "Failed to open Stripe checkout"));
     }
   };
 
@@ -206,12 +243,19 @@ export const AcademyNfcManagementPage: React.FC = () => {
 
   // Summary counts
   const totalCardsOrdered = requests.reduce(
-    (acc, r) => (["paid", "dispatched", "delivered"].includes(r.status) ? acc + r.quantity : acc),
+    (acc, r) =>
+      ["paid", "dispatched", "delivered"].includes(r.status)
+        ? acc + r.quantity
+        : acc,
     0,
   );
   const pendingRequests = requests.filter((r) => r.status === "pending").length;
-  const approvedAwaitingPayment = requests.filter((r) => r.status === "approved").length;
-  const dispatchedOrders = requests.filter((r) => r.status === "dispatched").length;
+  const approvedAwaitingPayment = requests.filter(
+    (r) => r.status === "approved",
+  ).length;
+  const dispatchedOrders = requests.filter(
+    (r) => r.status === "dispatched",
+  ).length;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -219,7 +263,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="section-title mb-1">Squad Gear &amp; Tech</p>
-          <h1 className="font-display font-black text-white text-xl sm:text-2xl uppercase tracking-tight">
+          <h1 className="font-display font-black text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
             NFC Smart Cards
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
@@ -269,8 +313,12 @@ export const AcademyNfcManagementPage: React.FC = () => {
       {/* Orders Table */}
       <div className="card overflow-hidden">
         <div className="p-4 border-b border-white/5 flex items-center justify-between">
-          <h2 className="font-display font-bold text-white text-base">NFC Card Order Batches</h2>
-          <span className="text-xs font-mono text-slate-400">{requests.length} total orders</span>
+          <h2 className="font-display font-bold text-slate-900 dark:text-white text-base">
+            NFC Card Order Batches
+          </h2>
+          <span className="text-xs font-mono text-slate-400">
+            {requests.length} total orders
+          </span>
         </div>
 
         {requestsLoading ? (
@@ -297,8 +345,8 @@ export const AcademyNfcManagementPage: React.FC = () => {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
+          <div className="table-responsive">
+            <table className="w-full min-w-[640px] text-left text-sm text-slate-300">
               <thead className="bg-white/[0.02] text-2xs font-mono uppercase tracking-wider text-slate-400 border-b border-white/5">
                 <tr>
                   <th className="py-3 px-4">Batch ID</th>
@@ -314,7 +362,10 @@ export const AcademyNfcManagementPage: React.FC = () => {
                 {requests.map((req) => {
                   const reqId = String(req.id || (req as any)._id || "");
                   return (
-                    <tr key={reqId || Math.random()} className="hover:bg-white/[0.02] transition-colors">
+                    <tr
+                      key={reqId || Math.random()}
+                      className="hover:bg-white/[0.02] transition-colors"
+                    >
                       <td className="py-3 px-4 font-mono text-xs text-volt-400 font-semibold">
                         #{reqId ? reqId.slice(-6).toUpperCase() : "NFC"}
                       </td>
@@ -322,7 +373,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
                         {new Date(req.createdAt).toLocaleDateString()}
                       </td>
                       <td className="py-3 px-4">
-                        <span className="inline-flex items-center gap-1 font-semibold text-white">
+                        <span className="inline-flex items-center gap-1 font-semibold text-slate-900 dark:text-white">
                           <Users size={14} className="text-slate-400" />
                           {req.quantity} player{req.quantity > 1 ? "s" : ""}
                         </span>
@@ -338,38 +389,50 @@ export const AcademyNfcManagementPage: React.FC = () => {
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4 font-mono font-bold text-white">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-900 dark:text-white">
                         ₹{req.totalAmount.toLocaleString("en-IN")}
                       </td>
                       <td className="py-3 px-4">
                         {req.status === "pending" && (
                           <Badge variant="yellow">
-                            <Clock size={11} className="mr-1 inline" /> Pending Review
+                            <Clock size={11} className="mr-1 inline" /> Pending
+                            Review
                           </Badge>
                         )}
                         {req.status === "approved" && (
-                          <Badge variant="green" className="bg-field-400/20 text-field-400 border-field-400/30">
-                            <CheckCircle2 size={11} className="mr-1 inline" /> Approved
+                          <Badge
+                            variant="green"
+                            className="bg-field-400/20 text-field-400 border-field-400/30"
+                          >
+                            <CheckCircle2 size={11} className="mr-1 inline" />{" "}
+                            Approved
                           </Badge>
                         )}
                         {req.status === "paid" && (
-                          <Badge variant="blue" className="bg-volt-400/20 text-volt-400 border-volt-400/30">
-                            <Package size={11} className="mr-1 inline" /> In Production
+                          <Badge
+                            variant="blue"
+                            className="bg-volt-400/20 text-volt-400 border-volt-400/30"
+                          >
+                            <Package size={11} className="mr-1 inline" /> In
+                            Production
                           </Badge>
                         )}
                         {req.status === "dispatched" && (
                           <Badge variant="blue">
-                            <Truck size={11} className="mr-1 inline" /> Dispatched
+                            <Truck size={11} className="mr-1 inline" />{" "}
+                            Dispatched
                           </Badge>
                         )}
                         {req.status === "delivered" && (
                           <Badge variant="green">
-                            <CheckCircle2 size={11} className="mr-1 inline" /> Delivered
+                            <CheckCircle2 size={11} className="mr-1 inline" />{" "}
+                            Delivered
                           </Badge>
                         )}
                         {req.status === "rejected" && (
                           <Badge variant="red">
-                            <AlertCircle size={11} className="mr-1 inline" /> Rejected
+                            <AlertCircle size={11} className="mr-1 inline" />{" "}
+                            Rejected
                           </Badge>
                         )}
                       </td>
@@ -408,55 +471,73 @@ export const AcademyNfcManagementPage: React.FC = () => {
         <Modal
           isOpen={!!viewRequest}
           onClose={() => setViewRequest(null)}
-          title={`Order Batch #${String(viewRequest.id || (viewRequest as any)._id || "").slice(-6).toUpperCase()}`}
+          title={`Order Batch #${String(
+            viewRequest.id || (viewRequest as any)._id || "",
+          )
+            .slice(-6)
+            .toUpperCase()}`}
           size="lg"
         >
           <div className="space-y-5 text-sm">
             {/* Status Alert */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-pitch-900 border border-white/10">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10">
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400 font-medium">Current Status:</span>
-                <span className="font-bold text-white uppercase text-xs">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  Current Status:
+                </span>
+                <span className="font-bold text-slate-900 dark:text-white uppercase text-xs">
                   {viewRequest.status.replace("_", " ")}
                 </span>
               </div>
-              <span className="font-mono text-xs font-bold text-volt-400">
-                ₹{viewRequest.totalAmount.toLocaleString("en-IN")} ({viewRequest.quantity} cards)
+              <span className="font-mono text-xs font-bold text-volt-700 dark:text-volt-400">
+                ₹{viewRequest.totalAmount.toLocaleString("en-IN")} (
+                {viewRequest.quantity} cards)
               </span>
             </div>
 
             {/* Custom Artwork preview if available */}
-            {viewRequest.cardType === "custom" && viewRequest.customDesignUrl && (
-              <div className="p-3.5 rounded-xl bg-purple-500/5 border border-purple-500/20 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
-                    <Palette size={14} /> Custom Design File
-                  </span>
-                  <a
-                    href={viewRequest.customDesignUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs text-volt-400 hover:underline flex items-center gap-1 font-mono"
-                  >
-                    View / Download <ExternalLink size={12} />
-                  </a>
+            {viewRequest.cardType === "custom" &&
+              viewRequest.customDesignUrl && (
+                <div className="p-3.5 rounded-xl bg-purple-50/70 dark:bg-purple-500/5 border border-purple-200 dark:border-purple-500/20 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
+                      <Palette size={14} /> Custom Design File
+                    </span>
+                    <a
+                      href={viewRequest.customDesignUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-volt-700 dark:text-volt-400 hover:underline flex items-center gap-1 font-mono font-medium"
+                    >
+                      View / Download <ExternalLink size={12} />
+                    </a>
+                  </div>
+                  <p className="text-2xs text-slate-500 dark:text-slate-400">
+                    Attached file:{" "}
+                    {viewRequest.customDesignFileName || "custom-card-design"}
+                  </p>
                 </div>
-                <p className="text-2xs text-slate-400">
-                  Attached file: {viewRequest.customDesignFileName || "custom-card-design"}
-                </p>
-              </div>
-            )}
+              )}
 
             {/* Dispatch Tracking if available */}
             {viewRequest.dispatchDetails?.dispatchedAt && (
-              <div className="p-3.5 rounded-xl bg-ice-500/10 border border-ice-500/20 text-xs space-y-1">
-                <p className="font-bold text-white flex items-center gap-1.5">
-                  <Truck size={15} className="text-ice-400" /> Shipping &amp; Courier Details
+              <div className="p-3.5 rounded-xl bg-ice-50 dark:bg-ice-500/10 border border-ice-200 dark:border-ice-500/20 text-xs space-y-1">
+                <p className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Truck size={15} className="text-ice-600 dark:text-ice-400" /> Shipping &amp;
+                  Courier Details
                 </p>
-                <p className="text-slate-300">
-                  Courier: <strong>{viewRequest.dispatchDetails.courierName || "Standard"}</strong>{" "}
+                <p className="text-slate-700 dark:text-slate-300">
+                  Courier:{" "}
+                  <strong>
+                    {viewRequest.dispatchDetails.courierName || "Standard"}
+                  </strong>{" "}
                   {viewRequest.dispatchDetails.trackingNumber && (
-                    <>• Tracking Number: <strong>{viewRequest.dispatchDetails.trackingNumber}</strong></>
+                    <>
+                      • Tracking Number:{" "}
+                      <strong>
+                        {viewRequest.dispatchDetails.trackingNumber}
+                      </strong>
+                    </>
                   )}
                 </p>
                 {viewRequest.dispatchDetails.trackingUrl && (
@@ -464,7 +545,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
                     href={viewRequest.dispatchDetails.trackingUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-volt-400 hover:underline text-2xs inline-block mt-1"
+                    className="text-volt-700 dark:text-volt-400 hover:underline text-2xs inline-block mt-1 font-medium"
                   >
                     Track Package Directly &rarr;
                   </a>
@@ -473,40 +554,51 @@ export const AcademyNfcManagementPage: React.FC = () => {
             )}
 
             {/* Shipping Address */}
-            <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 text-xs space-y-1">
-              <p className="font-bold text-white uppercase font-mono text-2xs tracking-wider text-slate-400">
+            <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 text-xs space-y-1">
+              <p className="font-bold uppercase font-mono text-2xs tracking-wider text-slate-500 dark:text-slate-400">
                 Delivery Address
               </p>
-              <p className="font-semibold text-white">{viewRequest.shippingAddress.recipientName}</p>
-              <p className="text-slate-400">Phone: {viewRequest.shippingAddress.phone}</p>
-              <p className="text-slate-400">
-                {viewRequest.shippingAddress.addressLine1}
-                {viewRequest.shippingAddress.addressLine2 ? `, ${viewRequest.shippingAddress.addressLine2}` : ""}
+              <p className="font-semibold text-slate-900 dark:text-white">
+                {viewRequest.shippingAddress.recipientName}
               </p>
-              <p className="text-slate-400">
-                {viewRequest.shippingAddress.city}, {viewRequest.shippingAddress.state} -{" "}
+              <p className="text-slate-600 dark:text-slate-400">
+                Phone: {viewRequest.shippingAddress.phone}
+              </p>
+              <p className="text-slate-600 dark:text-slate-400">
+                {viewRequest.shippingAddress.addressLine1}
+                {viewRequest.shippingAddress.addressLine2
+                  ? `, ${viewRequest.shippingAddress.addressLine2}`
+                  : ""}
+              </p>
+              <p className="text-slate-600 dark:text-slate-400">
+                {viewRequest.shippingAddress.city},{" "}
+                {viewRequest.shippingAddress.state} -{" "}
                 {viewRequest.shippingAddress.postalCode}
               </p>
             </div>
 
             {/* Students list */}
             <div>
-              <p className="text-2xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2">
+              <p className="text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold mb-2">
                 Included Players ({viewRequest.students.length})
               </p>
               <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
                 {viewRequest.students.map((st, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between p-2 rounded-lg bg-pitch-900 border border-white/5 text-xs"
+                    className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/5 text-xs"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-volt-400/20 text-volt-400 font-mono text-2xs flex items-center justify-center font-bold">
+                      <span className="w-5 h-5 rounded-full bg-volt-400/20 text-volt-800 dark:text-volt-400 font-mono text-2xs flex items-center justify-center font-bold">
                         {st.jerseyNumber ?? idx + 1}
                       </span>
-                      <span className="font-semibold text-white">{st.studentName}</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">
+                        {st.studentName}
+                      </span>
                       {st.franchiseName && (
-                        <span className="text-2xs text-slate-400">({st.franchiseName})</span>
+                        <span className="text-2xs text-slate-500 dark:text-slate-400">
+                          ({st.franchiseName})
+                        </span>
                       )}
                     </div>
                     {st.publicProfileToken && (
@@ -514,7 +606,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
                         href={`/players/${st.publicProfileToken}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-2xs font-mono text-volt-400 hover:underline flex items-center gap-1"
+                        className="text-2xs font-mono text-volt-700 dark:text-volt-400 hover:underline flex items-center gap-1 font-medium"
                       >
                         Preview Card <ExternalLink size={11} />
                       </a>
@@ -526,18 +618,21 @@ export const AcademyNfcManagementPage: React.FC = () => {
 
             {/* Rejection notice if any */}
             {viewRequest.status === "rejected" && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
-                <strong>Rejection Reason:</strong> {viewRequest.rejectionReason || "Requirements not met."}
+              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-xs text-red-700 dark:text-red-300">
+                <strong>Rejection Reason:</strong>{" "}
+                {viewRequest.rejectionReason || "Requirements not met."}
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-white/10">
               <Button variant="secondary" onClick={() => setViewRequest(null)}>
                 Close
               </Button>
               {viewRequest.status === "approved" && (
                 <Button
-                  onClick={() => handlePay(viewRequest.id || (viewRequest as any)._id)}
+                  onClick={() =>
+                    handlePay(viewRequest.id || (viewRequest as any)._id)
+                  }
                   loading={isCheckingOut}
                   className="!bg-field-400 hover:!bg-field-300 !text-pitch-950 font-bold"
                 >
@@ -558,20 +653,21 @@ export const AcademyNfcManagementPage: React.FC = () => {
       >
         <div className="space-y-5">
           {/* Stepper Indicator */}
-          <div className="flex items-center justify-between border-b border-white/10 pb-3 text-xs overflow-x-auto no-scrollbar gap-2">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3 text-xs overflow-x-auto no-scrollbar gap-2">
             <span
               className={`font-semibold flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
-                step === 1 ? "text-volt-400" : "text-slate-400"
+                step === 1 ? "text-volt-700 dark:text-volt-400" : "text-slate-500 dark:text-slate-400"
               }`}
             >
               <span className="w-5 h-5 rounded-full border border-current flex items-center justify-center font-mono text-2xs">
                 1
               </span>
-              <span className="hidden sm:inline">Select Players</span> ({selectedStudentIds.length})
+              <span className="hidden sm:inline">Select Players</span> (
+              {selectedStudentIds.length})
             </span>
             <span
               className={`font-semibold flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
-                step === 2 ? "text-volt-400" : "text-slate-400"
+                step === 2 ? "text-volt-700 dark:text-volt-400" : "text-slate-500 dark:text-slate-400"
               }`}
             >
               <span className="w-5 h-5 rounded-full border border-current flex items-center justify-center font-mono text-2xs">
@@ -581,7 +677,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
             </span>
             <span
               className={`font-semibold flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
-                step === 3 ? "text-volt-400" : "text-slate-400"
+                step === 3 ? "text-volt-700 dark:text-volt-400" : "text-slate-500 dark:text-slate-400"
               }`}
             >
               <span className="w-5 h-5 rounded-full border border-current flex items-center justify-center font-mono text-2xs">
@@ -591,7 +687,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
             </span>
             <span
               className={`font-semibold flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
-                step === 4 ? "text-volt-400" : "text-slate-400"
+                step === 4 ? "text-volt-700 dark:text-volt-400" : "text-slate-500 dark:text-slate-400"
               }`}
             >
               <span className="w-5 h-5 rounded-full border border-current flex items-center justify-center font-mono text-2xs">
@@ -607,7 +703,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
               {/* Franchise and search filters */}
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-2xs font-mono uppercase tracking-wider text-slate-400 mb-1">
+                  <label className="block text-2xs font-mono uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1 font-semibold">
                     Filter by Franchise / Branch
                   </label>
                   <select
@@ -625,7 +721,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-2xs font-mono uppercase tracking-wider text-slate-400 mb-1">
+                  <label className="block text-2xs font-mono uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1 font-semibold">
                     Search Player
                   </label>
                   <div className="relative">
@@ -646,16 +742,28 @@ export const AcademyNfcManagementPage: React.FC = () => {
 
               {/* Selection actions & counter */}
               <div className="flex items-center justify-between text-xs pt-1">
-                <span className="font-mono text-slate-400">
-                  Showing <strong>{filteredStudents.length}</strong> players &bull;{" "}
-                  <strong className="text-volt-400">{selectedStudentIds.length}</strong> selected
+                <span className="font-mono text-slate-600 dark:text-slate-400">
+                  Showing <strong>{filteredStudents.length}</strong> players
+                  &bull;{" "}
+                  <strong className="text-volt-700 dark:text-volt-400 font-bold">
+                    {selectedStudentIds.length}
+                  </strong>{" "}
+                  selected
                 </span>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="secondary" onClick={handleSelectAllFiltered}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={handleSelectAllFiltered}
+                  >
                     Select Filtered ({filteredStudents.length})
                   </Button>
                   {selectedStudentIds.length > 0 && (
-                    <Button size="sm" variant="secondary" onClick={handleClearSelection}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={handleClearSelection}
+                    >
                       Clear
                     </Button>
                   )}
@@ -663,11 +771,15 @@ export const AcademyNfcManagementPage: React.FC = () => {
               </div>
 
               {/* Student list */}
-              <div className="max-h-64 overflow-y-auto space-y-2 border border-white/5 rounded-xl p-2 bg-pitch-950/60">
+              <div className="max-h-64 overflow-y-auto space-y-2 border border-slate-200 dark:border-white/5 rounded-xl p-2 bg-slate-50/70 dark:bg-pitch-950/60">
                 {studentsLoading ? (
-                  <p className="text-center text-xs text-slate-500 py-6">Loading players...</p>
+                  <p className="text-center text-xs text-slate-500 py-6">
+                    Loading players...
+                  </p>
                 ) : filteredStudents.length === 0 ? (
-                  <p className="text-center text-xs text-slate-500 py-6">No players match the criteria.</p>
+                  <p className="text-center text-xs text-slate-500 py-6">
+                    No players match the criteria.
+                  </p>
                 ) : (
                   filteredStudents.map((st) => {
                     const isSelected = selectedStudentIds.includes(st.id);
@@ -677,8 +789,8 @@ export const AcademyNfcManagementPage: React.FC = () => {
                         onClick={() => toggleSelectStudent(st.id)}
                         className={`flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-all ${
                           isSelected
-                            ? "bg-volt-400/10 border-volt-400/40 text-white"
-                            : "bg-pitch-900 border-white/5 text-slate-300 hover:border-white/20"
+                            ? "bg-volt-500/10 dark:bg-volt-400/10 border-volt-500/50 dark:border-volt-400/40 text-slate-900 dark:text-white shadow-2xs"
+                            : "bg-white dark:bg-pitch-900 border-slate-200 dark:border-white/5 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-100/60 dark:hover:bg-pitch-800"
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -686,21 +798,23 @@ export const AcademyNfcManagementPage: React.FC = () => {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => {}} // Handled by div click
-                            className="rounded border-slate-700 text-volt-400 focus:ring-volt-400 cursor-pointer"
+                            className="rounded border-slate-300 dark:border-slate-700 text-volt-500 dark:text-volt-400 focus:ring-volt-400 cursor-pointer"
                           />
                           <div>
-                            <p className="font-semibold text-xs">
+                            <p className="font-semibold text-xs text-slate-900 dark:text-white">
                               {st.firstName} {st.lastName}
                             </p>
-                            <p className="text-2xs text-slate-500 font-mono">
-                              #{st.jerseyNumber ?? "—"} &bull; {st.position || "Player"} &bull; {st.ageGroup}
+                            <p className="text-2xs text-slate-500 dark:text-slate-400 font-mono">
+                              #{st.jerseyNumber ?? "—"} &bull;{" "}
+                              {st.position || "Player"} &bull; {st.ageGroup}
                             </p>
                           </div>
                         </div>
 
                         {st.franchiseId && (
-                          <span className="text-2xs text-slate-500 font-mono">
-                            {franchises?.find((f) => f.id === st.franchiseId)?.name || "Branch"}
+                          <span className="text-2xs text-slate-500 dark:text-slate-400 font-mono">
+                            {franchises?.find((f) => f.id === st.franchiseId)
+                              ?.name || "Branch"}
                           </span>
                         )}
                       </div>
@@ -714,9 +828,10 @@ export const AcademyNfcManagementPage: React.FC = () => {
           {/* Step 2: Card Customization */}
           {step === 2 && (
             <div className="space-y-4">
-              <p className="text-xs text-slate-400">
-                Choose whether you want the official tournament-ready Noxphere design or customized
-                cards featuring your academy's logo, colors, and branding.
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Choose whether you want the official tournament-ready Noxphere
+                design or customized cards featuring your academy's logo,
+                colors, and branding.
               </p>
 
               <div className="grid sm:grid-cols-2 gap-4">
@@ -725,13 +840,14 @@ export const AcademyNfcManagementPage: React.FC = () => {
                   onClick={() => setCardType("official")}
                   className={`p-4 rounded-xl border cursor-pointer transition-all space-y-2 ${
                     cardType === "official"
-                      ? "bg-volt-400/10 border-volt-400 text-white shadow-lg"
-                      : "bg-pitch-900 border-white/10 text-slate-400 hover:border-white/20"
+                      ? "bg-volt-500/10 dark:bg-volt-400/10 border-volt-500 dark:border-volt-400 text-slate-900 dark:text-white shadow-sm"
+                      : "bg-white dark:bg-pitch-900 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50/60 dark:hover:bg-pitch-900/80"
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-white flex items-center gap-1.5">
-                      <Sparkles size={16} className="text-volt-400" /> Official Noxphere Card
+                    <span className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <Sparkles size={16} className="text-volt-600 dark:text-volt-400" /> Official
+                      Noxphere Card
                     </span>
                     <input
                       type="radio"
@@ -740,10 +856,11 @@ export const AcademyNfcManagementPage: React.FC = () => {
                       onChange={() => setCardType("official")}
                     />
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Sleek dark cyberpunk design with high-contrast volt accents, NFC chip, and verified Noxphere ID branding.
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Sleek dark cyberpunk design with high-contrast volt accents,
+                    NFC chip, and verified Noxphere ID branding.
                   </p>
-                  <span className="font-mono text-xs text-volt-400 font-bold block pt-1">
+                  <span className="font-mono text-xs text-volt-700 dark:text-volt-400 font-bold block pt-1">
                     ₹{pricing?.cardPrice ?? 299} / card
                   </span>
                 </div>
@@ -753,13 +870,14 @@ export const AcademyNfcManagementPage: React.FC = () => {
                   onClick={() => setCardType("custom")}
                   className={`p-4 rounded-xl border cursor-pointer transition-all space-y-2 ${
                     cardType === "custom"
-                      ? "bg-purple-500/10 border-purple-500 text-white shadow-lg"
-                      : "bg-pitch-900 border-white/10 text-slate-400 hover:border-white/20"
+                      ? "bg-purple-50 dark:bg-purple-500/10 border-purple-500 text-slate-900 dark:text-white shadow-sm"
+                      : "bg-white dark:bg-pitch-900 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50/60 dark:hover:bg-pitch-900/80"
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-white flex items-center gap-1.5">
-                      <Palette size={16} className="text-purple-400" /> Custom Academy Card
+                    <span className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <Palette size={16} className="text-purple-600 dark:text-purple-400" /> Custom
+                      Academy Card
                     </span>
                     <input
                       type="radio"
@@ -768,10 +886,11 @@ export const AcademyNfcManagementPage: React.FC = () => {
                       onChange={() => setCardType("custom")}
                     />
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Personalized with your academy badge, custom color scheme, and background artwork. Upload your design file below.
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Personalized with your academy badge, custom color scheme,
+                    and background artwork. Upload your design file below.
                   </p>
-                  <span className="font-mono text-xs text-purple-400 font-bold block pt-1">
+                  <span className="font-mono text-xs text-purple-700 dark:text-purple-400 font-bold block pt-1">
                     ₹{pricing?.customCardPrice ?? 399} / card
                   </span>
                 </div>
@@ -779,22 +898,31 @@ export const AcademyNfcManagementPage: React.FC = () => {
 
               {/* Upload field if custom card selected */}
               {cardType === "custom" && (
-                <div className="p-4 rounded-xl bg-pitch-950 border border-purple-500/30 space-y-3">
+                <div className="p-4 rounded-xl bg-purple-50/60 dark:bg-pitch-950 border border-purple-200 dark:border-purple-500/30 space-y-3">
                   <div className="flex items-start gap-2">
-                    <UploadCloud size={20} className="text-purple-400 shrink-0 mt-0.5" />
+                    <UploadCloud
+                      size={20}
+                      className="text-purple-600 dark:text-purple-400 shrink-0 mt-0.5"
+                    />
                     <div>
-                      <p className="text-xs font-bold text-white">Upload Custom Card Artwork / Design</p>
-                      <p className="text-2xs text-slate-400">
-                        Upload your print-ready front/back design (PDF, PNG, or JPG up to 10MB).
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">
+                        Upload Custom Card Artwork / Design
+                      </p>
+                      <p className="text-2xs text-slate-600 dark:text-slate-400">
+                        Upload your print-ready front/back design (PDF, PNG, or
+                        JPG up to 10MB).
                       </p>
                     </div>
                   </div>
 
                   {customDesignUrl ? (
-                    <div className="p-3 rounded-lg bg-pitch-900 border border-purple-500/40 flex items-center justify-between">
+                    <div className="p-3 rounded-lg bg-white dark:bg-pitch-900 border border-purple-200 dark:border-purple-500/40 flex items-center justify-between shadow-2xs">
                       <div className="flex items-center gap-2 overflow-hidden">
-                        <FileText size={18} className="text-purple-400 shrink-0" />
-                        <span className="text-xs text-white truncate max-w-xs font-mono">
+                        <FileText
+                          size={18}
+                          className="text-purple-600 dark:text-purple-400 shrink-0"
+                        />
+                        <span className="text-xs text-slate-900 dark:text-white truncate max-w-xs font-mono">
                           {customDesignFileName || "custom-card-design"}
                         </span>
                       </div>
@@ -804,24 +932,28 @@ export const AcademyNfcManagementPage: React.FC = () => {
                           setCustomDesignUrl("");
                           setCustomDesignFileName("");
                         }}
-                        className="text-slate-400 hover:text-white p-1"
+                        className="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1"
                       >
                         <X size={15} />
                       </button>
                     </div>
                   ) : (
-                    <label className="border-2 border-dashed border-white/15 hover:border-purple-400/50 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all bg-pitch-900/40">
+                    <label className="border-2 border-dashed border-purple-200 dark:border-white/15 hover:border-purple-500 dark:hover:border-purple-400/50 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all bg-white dark:bg-pitch-900/40 hover:bg-purple-50/40 dark:hover:bg-pitch-900/60">
                       <input
                         type="file"
                         accept="image/*,application/pdf"
                         onChange={handleFileUpload}
                         className="hidden"
                       />
-                      <UploadCloud size={24} className="text-purple-400 mb-2" />
-                      <span className="text-xs font-semibold text-white">
-                        {isUploading ? "Uploading artwork…" : "Click or drag file to upload design"}
+                      <UploadCloud size={24} className="text-purple-600 dark:text-purple-400 mb-2" />
+                      <span className="text-xs font-semibold text-slate-900 dark:text-white">
+                        {isUploading
+                          ? "Uploading artwork…"
+                          : "Click or drag file to upload design"}
                       </span>
-                      <span className="text-2xs text-slate-500 mt-1">PNG, JPG, or PDF</span>
+                      <span className="text-2xs text-slate-500 dark:text-slate-400 mt-1">
+                        PNG, JPG, or PDF
+                      </span>
                     </label>
                   )}
                 </div>
@@ -832,8 +964,9 @@ export const AcademyNfcManagementPage: React.FC = () => {
           {/* Step 3: Shipping Address */}
           {step === 3 && (
             <div className="space-y-3">
-              <p className="text-xs text-slate-400">
-                Enter the primary shipment address where the bulk card batch will be couriered.
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Enter the primary shipment address where the bulk card batch
+                will be couriered.
               </p>
 
               <div className="grid grid-cols-2 gap-3">
@@ -841,7 +974,10 @@ export const AcademyNfcManagementPage: React.FC = () => {
                   label="Recipient Full Name / Manager"
                   value={shippingAddress.recipientName}
                   onChange={(e) =>
-                    setShippingAddress({ ...shippingAddress, recipientName: e.target.value })
+                    setShippingAddress({
+                      ...shippingAddress,
+                      recipientName: e.target.value,
+                    })
                   }
                   required
                 />
@@ -849,7 +985,10 @@ export const AcademyNfcManagementPage: React.FC = () => {
                   label="Contact Phone"
                   value={shippingAddress.phone}
                   onChange={(e) =>
-                    setShippingAddress({ ...shippingAddress, phone: e.target.value })
+                    setShippingAddress({
+                      ...shippingAddress,
+                      phone: e.target.value,
+                    })
                   }
                   required
                 />
@@ -860,7 +999,10 @@ export const AcademyNfcManagementPage: React.FC = () => {
                 placeholder="Academy facility / Branch building, Street"
                 value={shippingAddress.addressLine1}
                 onChange={(e) =>
-                  setShippingAddress({ ...shippingAddress, addressLine1: e.target.value })
+                  setShippingAddress({
+                    ...shippingAddress,
+                    addressLine1: e.target.value,
+                  })
                 }
                 required
               />
@@ -870,7 +1012,10 @@ export const AcademyNfcManagementPage: React.FC = () => {
                 placeholder="Suite, Landmark, Area"
                 value={shippingAddress.addressLine2 || ""}
                 onChange={(e) =>
-                  setShippingAddress({ ...shippingAddress, addressLine2: e.target.value })
+                  setShippingAddress({
+                    ...shippingAddress,
+                    addressLine2: e.target.value,
+                  })
                 }
               />
 
@@ -879,7 +1024,10 @@ export const AcademyNfcManagementPage: React.FC = () => {
                   label="City"
                   value={shippingAddress.city}
                   onChange={(e) =>
-                    setShippingAddress({ ...shippingAddress, city: e.target.value })
+                    setShippingAddress({
+                      ...shippingAddress,
+                      city: e.target.value,
+                    })
                   }
                   required
                 />
@@ -887,7 +1035,10 @@ export const AcademyNfcManagementPage: React.FC = () => {
                   label="State"
                   value={shippingAddress.state}
                   onChange={(e) =>
-                    setShippingAddress({ ...shippingAddress, state: e.target.value })
+                    setShippingAddress({
+                      ...shippingAddress,
+                      state: e.target.value,
+                    })
                   }
                   required
                 />
@@ -895,7 +1046,10 @@ export const AcademyNfcManagementPage: React.FC = () => {
                   label="PIN Code"
                   value={shippingAddress.postalCode}
                   onChange={(e) =>
-                    setShippingAddress({ ...shippingAddress, postalCode: e.target.value })
+                    setShippingAddress({
+                      ...shippingAddress,
+                      postalCode: e.target.value,
+                    })
                   }
                   required
                 />
@@ -906,46 +1060,59 @@ export const AcademyNfcManagementPage: React.FC = () => {
           {/* Step 4: Summary & Review */}
           {step === 4 && (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-pitch-950 border border-white/10 space-y-3">
-                <div className="flex justify-between text-xs pb-2 border-b border-white/5">
-                  <span className="text-slate-400">Selected Players:</span>
-                  <span className="font-bold text-white">{selectedStudentIds.length} players</span>
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-pitch-950 border border-slate-200 dark:border-white/10 space-y-3">
+                <div className="flex justify-between text-xs pb-2 border-b border-slate-200 dark:border-white/5">
+                  <span className="text-slate-600 dark:text-slate-400">Selected Players:</span>
+                  <span className="font-bold text-slate-900 dark:text-white">
+                    {selectedStudentIds.length} players
+                  </span>
                 </div>
-                <div className="flex justify-between text-xs pb-2 border-b border-white/5">
-                  <span className="text-slate-400">Card Design:</span>
-                  <span className="font-bold text-white capitalize">{cardType} Card</span>
+                <div className="flex justify-between text-xs pb-2 border-b border-slate-200 dark:border-white/5">
+                  <span className="text-slate-600 dark:text-slate-400">Card Design:</span>
+                  <span className="font-bold text-slate-900 dark:text-white capitalize">
+                    {cardType} Card
+                  </span>
                 </div>
-                <div className="flex justify-between text-xs pb-2 border-b border-white/5">
-                  <span className="text-slate-400">Price Per Card:</span>
-                  <span className="font-mono text-white">₹{unitPrice}</span>
+                <div className="flex justify-between text-xs pb-2 border-b border-slate-200 dark:border-white/5">
+                  <span className="text-slate-600 dark:text-slate-400">Price Per Card:</span>
+                  <span className="font-mono text-slate-900 dark:text-white">₹{unitPrice}</span>
                 </div>
                 <div className="flex justify-between text-sm pt-1">
-                  <span className="font-bold text-white">Total Order Value:</span>
-                  <span className="font-mono font-black text-volt-400 text-base">
+                  <span className="font-bold text-slate-900 dark:text-white">
+                    Total Order Value:
+                  </span>
+                  <span className="font-mono font-black text-volt-700 dark:text-volt-400 text-base">
                     ₹{totalAmount.toLocaleString("en-IN")}
                   </span>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-volt-400/10 border border-volt-400/20 text-volt-300 text-xs flex items-start gap-2">
-                <Sparkles size={16} className="shrink-0 mt-0.5 text-volt-400" />
+              <div className="p-3.5 rounded-xl bg-volt-500/10 dark:bg-volt-400/10 border border-volt-500/20 dark:border-volt-400/20 text-slate-800 dark:text-volt-300 text-xs flex items-start gap-2">
+                <Sparkles size={16} className="shrink-0 mt-0.5 text-volt-600 dark:text-volt-400" />
                 <span>
-                  <strong>Approval Workflow:</strong> Your order request will be submitted to the
-                  Super Admin for verification. Once approved, you can complete payment via Stripe
-                  right from this page to commence production and shipping!
+                  <strong>Approval Workflow:</strong> Your order request will be
+                  submitted to the Super Admin for verification. Once approved,
+                  you can complete payment via Stripe right from this page to
+                  commence production and shipping!
                 </span>
               </div>
             </div>
           )}
 
           {/* Navigation Controls */}
-          <div className="flex items-center justify-between pt-4 border-t border-white/10">
+          <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-white/10">
             {step > 1 ? (
-              <Button variant="secondary" onClick={() => setStep((s) => (s - 1) as any)}>
+              <Button
+                variant="secondary"
+                onClick={() => setStep((s) => (s - 1) as any)}
+              >
                 Back
               </Button>
             ) : (
-              <Button variant="secondary" onClick={() => setIsWizardOpen(false)}>
+              <Button
+                variant="secondary"
+                onClick={() => setIsWizardOpen(false)}
+              >
                 Cancel
               </Button>
             )}
@@ -961,17 +1128,12 @@ export const AcademyNfcManagementPage: React.FC = () => {
                     toast.error("Please upload your custom card design file");
                     return;
                   }
-                  if (
-                    step === 3 &&
-                    (!shippingAddress.recipientName ||
-                      !shippingAddress.phone ||
-                      !shippingAddress.addressLine1 ||
-                      !shippingAddress.city ||
-                      !shippingAddress.state ||
-                      !shippingAddress.postalCode)
-                  ) {
-                    toast.error("Please fill in required shipping details");
-                    return;
+                  if (step === 3) {
+                    const addressError = validateShippingAddress();
+                    if (addressError) {
+                      toast.error(addressError);
+                      return;
+                    }
                   }
                   setStep((s) => (s + 1) as any);
                 }}

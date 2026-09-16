@@ -280,7 +280,7 @@ const AcademySettingsPage: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-lg sm:text-xl font-bold text-white uppercase tracking-wide">Academy settings</h1>
+          <h1 className="font-display text-lg sm:text-xl font-bold text-slate-900 dark:text-white uppercase tracking-wide">Academy settings</h1>
           <p className="text-xs text-slate-400 mt-1">
             These apply academy-wide, across every franchise of {academy.name}.
           </p>
@@ -293,7 +293,7 @@ const AcademySettingsPage: React.FC = () => {
       <Card>
         <div className="flex items-center gap-2 mb-4">
           <Building2 size={16} className="text-volt-400" />
-          <h2 className="font-display text-sm font-bold text-white uppercase tracking-wide">Academy details</h2>
+          <h2 className="font-display text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide">Academy details</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
@@ -345,7 +345,7 @@ const AcademySettingsPage: React.FC = () => {
             <MapPin size={16} className="text-volt-400" />
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="font-display text-sm font-bold text-white uppercase tracking-wide">
+                <h2 className="font-display text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide">
                   Pitches & Venues
                 </h2>
                 <Badge variant="gray" size="sm">
@@ -477,7 +477,7 @@ const AcademySettingsPage: React.FC = () => {
       </Card>
 
       <Card>
-        <h2 className="font-display text-sm font-bold text-white uppercase tracking-wide mb-1">Guardian alert thresholds</h2>
+        <h2 className="font-display text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide mb-1">Guardian alert thresholds</h2>
         <p className="text-xs text-slate-400 mb-4">
           Controls when the automated absence and installment-due WhatsApp/system alerts fire.
         </p>
@@ -502,7 +502,7 @@ const AcademySettingsPage: React.FC = () => {
       </Card>
 
       <Card>
-        <h2 className="font-display text-sm font-bold text-white uppercase tracking-wide mb-1">Data protection contact</h2>
+        <h2 className="font-display text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide mb-1">Data protection contact</h2>
         <p className="text-xs text-slate-400 mb-4">
           Shown to guardians on the consent notice as the contact for reviewing, correcting, or withdrawing consent
           for their child's data, per the DPDP Act. Leave blank to use your own manager account's email.

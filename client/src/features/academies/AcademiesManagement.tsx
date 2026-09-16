@@ -355,8 +355,8 @@ const AcademiesManagement: React.FC = () => {
 
       {/* Table Mode */}
       {viewMode === "table" && (
-        <div className="card overflow-hidden overflow-x-auto">
-          <table className="w-full">
+        <div className="card overflow-hidden table-responsive">
+          <table className="w-full min-w-[580px]">
             <thead>
               <tr className="border-b border-white/5 bg-pitch-700/50">
                 <th className="text-left px-5 py-3 section-title">Academy</th>

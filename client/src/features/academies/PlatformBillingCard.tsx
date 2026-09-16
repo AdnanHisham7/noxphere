@@ -63,7 +63,7 @@ export const PlatformBillingCard: React.FC = () => {
             <CircleDollarSign size={16} className="text-volt-400" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-white">Platform Default Rate — Students</p>
+            <p className="text-xs font-semibold text-slate-900 dark:text-white">Platform Default Rate — Students</p>
             <p className="text-2xs text-slate-500">
               Applied to every academy's subscription unless they have a rate override
             </p>
@@ -90,7 +90,7 @@ export const PlatformBillingCard: React.FC = () => {
             <Users2 size={16} className="text-ice-400" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-white">Platform Default Rate — Staff Seats</p>
+            <p className="text-xs font-semibold text-slate-900 dark:text-white">Platform Default Rate — Staff Seats</p>
             <p className="text-2xs text-slate-500">
               Billed for every software-managing employee an academy adds
             </p>

@@ -34,7 +34,7 @@ const AttendancePage: React.FC = () => {
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white uppercase tracking-wide">Attendance</h1>
+          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white uppercase tracking-wide">Attendance</h1>
           <p className="text-sm text-slate-400 mt-1">
             Attendance can only be marked against a scheduled session — pick one below
           </p>
@@ -72,7 +72,7 @@ const AttendancePage: React.FC = () => {
             >
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-display font-bold text-white uppercase tracking-wide text-sm">{s.teamName ?? "Team"}</p>
+                  <p className="font-display font-bold text-slate-900 dark:text-white uppercase tracking-wide text-sm">{s.teamName ?? "Team"}</p>
                   <Badge variant="gray" size="sm">{s.type}</Badge>
                   <Badge variant={s.status === "completed" ? "green" : "blue"} size="sm">
                     {s.status === "completed" ? "Marked" : "Not marked"}

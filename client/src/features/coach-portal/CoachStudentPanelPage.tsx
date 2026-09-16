@@ -58,8 +58,16 @@ const CoachStudentPanelPage: React.FC = () => {
             </div>
           </div>
           <div className="flex gap-4">
-            <NoxStatCard label="Attendance" value={`${student.attendancePercentage}%`} accent="ion" />
-            <NoxStatCard label="Rating" value={student.overallRating?.toFixed(1) ?? "—"} accent="plasma" />
+            <NoxStatCard
+              label="Attendance"
+              value={`${student.attendancePercentage}%`}
+              accent="ion"
+            />
+            <NoxStatCard
+              label="Rating"
+              value={student.overallRating?.toFixed(1) ?? "—"}
+              accent="plasma"
+            />
           </div>
         </div>
       )}
@@ -71,11 +79,14 @@ const CoachStudentPanelPage: React.FC = () => {
         <div className="nox-card p-6 flex flex-col items-start">
           <div className="flex items-center gap-2 mb-3">
             <CalendarCheck size={18} className="text-core-400" />
-            <h2 className="font-orbital text-base font-medium text-nox-high">Mark attendance & performance</h2>
+            <h2 className="font-orbital text-base font-medium text-nox-high">
+              Mark attendance & performance
+            </h2>
           </div>
           <p className="text-sm text-nox-mid mb-5">
-            Attendance and performance scores are recorded against a scheduled session, not from a
-            player's profile — this keeps every record tied to a session that actually happened.
+            Attendance and performance scores are recorded against a scheduled
+            session, not from a player's profile — this keeps every record tied
+            to a session that actually happened.
           </p>
           <Link to="/schedule" className="nox-btn-primary">
             Go to Schedule →
@@ -83,9 +94,12 @@ const CoachStudentPanelPage: React.FC = () => {
         </div>
 
         <form onSubmit={submitNote} className="nox-card p-6">
-          <h2 className="font-orbital text-base font-medium text-nox-high mb-5">Add a note</h2>
+          <h2 className="font-orbital text-base font-medium text-nox-high mb-5">
+            Add a note
+          </h2>
           <p className="text-sm text-nox-mid mb-4">
-            Visible to the guardian and student — for progress notes, behaviour or anything worth flagging.
+            Visible to the guardian and student — for progress notes, behaviour
+            or anything worth flagging.
           </p>
           <textarea
             value={note}

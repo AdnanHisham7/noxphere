@@ -78,7 +78,7 @@ const CoachesManagementPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
           <p className="section-title mb-1">Staff</p>
-          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">Coaches</h1>
+          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">Coaches</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             {isLoading ? "Loading…" : `${coachesResult?.total ?? 0} coaches in this academy`}
           </p>
@@ -122,7 +122,7 @@ const CoachesManagementPage: React.FC = () => {
                   <div className="flex items-center gap-3 min-w-0">
                     <Avatar name={`${c.firstName} ${c.lastName}`} size="md" />
                     <div className="min-w-0">
-                      <p className="font-display font-bold text-white truncate">{c.firstName} {c.lastName}</p>
+                      <p className="font-display font-bold text-slate-900 dark:text-white truncate">{c.firstName} {c.lastName}</p>
                       <p className="text-2xs text-slate-500 truncate">{c.email}</p>
                     </div>
                   </div>
@@ -161,7 +161,7 @@ const CoachesManagementPage: React.FC = () => {
                     <span>Monthly Salary:</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-white">
+                    <span className="font-semibold text-slate-900 dark:text-white">
                       {c.salaryAmount !== undefined && c.salaryAmount > 0
                         ? `₹${c.salaryAmount.toLocaleString("en-IN")}/mo`
                         : "₹0 / Unset"}
@@ -172,10 +172,10 @@ const CoachesManagementPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 pt-2 border-t border-white/5">
+                <div className="flex items-center flex-wrap gap-2.5 sm:gap-3 pt-2 border-t border-white/5">
                   <button
                     onClick={() => setEditingCoach(c)}
-                    className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
+                    className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
                   >
                     <Pencil size={13} /> Edit
                   </button>
@@ -513,7 +513,7 @@ const AvailabilityModal: React.FC<{ coach: ManagedUser; onClose: () => void }> =
                       onChange={(e) => setWeeklyActive({ ...weeklyActive, [idx]: e.target.checked })}
                       className="rounded border-white/10 text-volt-400 focus:ring-volt-400 bg-pitch-900 h-4 w-4"
                     />
-                    <span className="font-semibold text-white w-20 text-[11px]">{dayName}</span>
+                    <span className="font-semibold text-slate-900 dark:text-white w-20 text-[11px]">{dayName}</span>
                   </div>
                   {isActive && (
                     <div className="flex items-center gap-2">
@@ -526,7 +526,7 @@ const AvailabilityModal: React.FC<{ coach: ManagedUser; onClose: () => void }> =
                             [idx]: { ...weeklyTimes[idx], startTime: e.target.value },
                           })
                         }
-                        className="bg-pitch-900 border border-white/10 rounded px-2 py-1 text-white focus:outline-none text-[11px]"
+                        className="bg-slate-100 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 rounded px-2 py-1 text-slate-900 dark:text-white focus:outline-none text-[11px]"
                       />
                       <span className="text-slate-500">—</span>
                       <input
@@ -538,7 +538,7 @@ const AvailabilityModal: React.FC<{ coach: ManagedUser; onClose: () => void }> =
                             [idx]: { ...weeklyTimes[idx], endTime: e.target.value },
                           })
                         }
-                        className="bg-pitch-900 border border-white/10 rounded px-2 py-1 text-white focus:outline-none text-[11px]"
+                        className="bg-slate-100 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 rounded px-2 py-1 text-slate-900 dark:text-white focus:outline-none text-[11px]"
                       />
                     </div>
                   )}

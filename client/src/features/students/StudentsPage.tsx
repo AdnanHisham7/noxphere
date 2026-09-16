@@ -2,7 +2,19 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { clsx } from "clsx";
-import { Shuffle, Users, Trash2, Search, SearchX, Link2, UserPlus, Inbox, CreditCard, LayoutGrid, List } from "lucide-react";
+import {
+  Shuffle,
+  Users,
+  Trash2,
+  Search,
+  SearchX,
+  Link2,
+  UserPlus,
+  Inbox,
+  CreditCard,
+  LayoutGrid,
+  List,
+} from "lucide-react";
 import {
   Button,
   Input,
@@ -60,7 +72,7 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
   return (
     <>
       {/* Top subtle vignette for header text legibility */}
-      <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-white/90 via-white/50 to-transparent dark:from-black/85 dark:via-black/50 dark:to-transparent z-10 pointer-events-none" />
+      <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-white/40 via-white/10 to-transparent dark:from-black/65 dark:via-black/40 dark:to-transparent z-10 pointer-events-none" />
 
       {/* Bottom gradient for footer legibility */}
       <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-white via-white/85 to-transparent dark:from-black dark:via-black/80 dark:to-transparent z-10 pointer-events-none" />
@@ -78,23 +90,32 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
         </div>
 
         <div className="text-right">
-          <p className="text-[9px] text-slate-400 dark:text-white/40 uppercase tracking-wider font-semibold">Rating</p>
-          <div className={clsx("font-display text-3xl font-black leading-none drop-shadow-xs", getRatingColor(student.overallRating))}>
+          <p className="text-[9px] text-slate-400 dark:text-white/40 uppercase tracking-wider font-semibold">
+            Rating
+          </p>
+          <div
+            className={clsx(
+              "font-display text-3xl font-black leading-none drop-shadow-xs",
+              getRatingColor(student.overallRating),
+            )}
+          >
             {student.overallRating.toFixed(1)}
           </div>
         </div>
       </div>
 
-      <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
+      {/* <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
         <span className="font-display font-black text-[64px] sm:text-[100px] leading-none text-slate-900/[0.04] dark:text-white/[0.06] select-none">
           {student.jerseyNumber ?? "—"}
         </span>
-      </div>
+      </div> */}
 
       <div className="absolute bottom-0 left-0 right-0 z-20 p-2.5">
         <div className="mb-2">
           <div className="flex items-center justify-between text-[9px] mb-1">
-            <span className="text-slate-500 dark:text-white/45 uppercase tracking-wider font-medium">Attendance</span>
+            <span className="text-slate-500 dark:text-white/45 uppercase tracking-wider font-medium">
+              Attendance
+            </span>
             <span
               className={clsx(
                 "font-bold",
@@ -102,7 +123,7 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
                   ? "text-emerald-600 dark:text-field-400"
                   : student.attendancePercentage >= 75
                     ? "text-amber-600 dark:text-volt-400"
-                    : "text-rose-600 dark:text-ember-400"
+                    : "text-rose-600 dark:text-ember-400",
               )}
             >
               {student.attendancePercentage}%
@@ -125,20 +146,31 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <Badge variant={selectionBadge[student.selectionStatus]?.variant} size="sm">
+            <Badge
+              variant={selectionBadge[student.selectionStatus]?.variant}
+              size="sm"
+            >
               {selectionBadge[student.selectionStatus]?.label}
             </Badge>
             {student.status !== "active" && (
-              <Badge variant="gray" size="sm">{student.status.replace("_", " ")}</Badge>
+              <Badge variant="gray" size="sm">
+                {student.status.replace("_", " ")}
+              </Badge>
             )}
             {hasConsent === false && (
-              <Badge variant="yellow" size="sm">Consent pending</Badge>
+              <Badge variant="yellow" size="sm">
+                Consent pending
+              </Badge>
             )}
           </div>
 
           <div className="text-right">
-            <p className="text-[9px] text-slate-400 dark:text-white/40 uppercase font-medium">Team</p>
-            <p className="text-xs text-slate-800 dark:text-white font-semibold truncate max-w-[90px]">{teamName}</p>
+            <p className="text-[9px] text-slate-400 dark:text-white/40 uppercase font-medium">
+              Team
+            </p>
+            <p className="text-xs text-slate-800 dark:text-white font-semibold truncate max-w-[90px]">
+              {teamName}
+            </p>
           </div>
         </div>
       </div>
@@ -152,7 +184,10 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
   );
 };
 
-const selectionBadge: Record<SelectionStatus, { label: string; variant: "green" | "blue" | "yellow" | "gray" | "red" }> = {
+const selectionBadge: Record<
+  SelectionStatus,
+  { label: string; variant: "green" | "blue" | "yellow" | "gray" | "red" }
+> = {
   selected: { label: "Selected", variant: "green" },
   shortlisted: { label: "Shortlisted", variant: "blue" },
   pending: { label: "Pending", variant: "gray" },
@@ -165,10 +200,10 @@ const getRatingColor = (r: number) =>
   r >= 9
     ? "text-amber-500 dark:text-volt-400"
     : r >= 8
-    ? "text-emerald-600 dark:text-field-400"
-    : r >= 7
-    ? "text-sky-600 dark:text-ice-400"
-    : "text-slate-600 dark:text-slate-400";
+      ? "text-emerald-600 dark:text-field-400"
+      : r >= 7
+        ? "text-sky-600 dark:text-ice-400"
+        : "text-slate-600 dark:text-slate-400";
 
 type ViewMode = "grid" | "list";
 
@@ -197,8 +232,12 @@ const StudentsPage: React.FC = () => {
   const [showPhotoCards, setShowPhotoCards] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const { data: teams } = useListTeamsQuery({ franchiseId: franchiseId ?? "" }, { skip: !franchiseId });
-  const teamNameOf = (teamId?: string) => teams?.find((t) => t.id === teamId)?.name ?? "Unassigned";
+  const { data: teams } = useListTeamsQuery(
+    { franchiseId: franchiseId ?? "" },
+    { skip: !franchiseId },
+  );
+  const teamNameOf = (teamId?: string) =>
+    teams?.find((t) => t.id === teamId)?.name ?? "Unassigned";
 
   const { data, isLoading, isError } = useGetStudentsQuery(
     {
@@ -212,7 +251,10 @@ const StudentsPage: React.FC = () => {
     { skip: !franchiseId },
   );
   const students = data?.items ?? [];
-  const { data: consentStatus } = useGetFranchiseConsentStatusQuery(franchiseId ?? "", { skip: !franchiseId });
+  const { data: consentStatus } = useGetFranchiseConsentStatusQuery(
+    franchiseId ?? "",
+    { skip: !franchiseId },
+  );
 
   const [createStudent, { isLoading: creating }] = useCreateStudentMutation();
   const [deleteStudent] = useDeleteStudentMutation();
@@ -224,17 +266,23 @@ const StudentsPage: React.FC = () => {
   );
   const { user } = useSelector((s: RootState) => s.auth);
   const isCoach = user?.role === "coach";
-  const canManageSquad = user?.role === "manager" || user?.role === "super_admin" || !!user?.permissions?.canManageFranchises;
-  const [subscriptionModalMode, setSubscriptionModalMode] = useState<"subscribe" | "upgrade" | null>(null);
+  const canManageSquad =
+    user?.role === "manager" ||
+    user?.role === "super_admin" ||
+    !!user?.permissions?.canManageFranchises;
+  const [subscriptionModalMode, setSubscriptionModalMode] = useState<
+    "subscribe" | "upgrade" | null
+  >(null);
 
   const [activeTab, setActiveTab] = useState<"squad" | "requests">("squad");
   const [showShareLinkModal, setShowShareLinkModal] = useState(false);
   const [showClaimModal, setShowClaimModal] = useState(false);
 
-  const { data: pendingRequestsData, refetch: refetchRequests } = useGetRegistrationRequestsQuery(
-    { academyId: academyId ?? undefined, status: "pending" },
-    { skip: !academyId || isCoach || !canManageSquad }
-  );
+  const { data: pendingRequestsData, refetch: refetchRequests } =
+    useGetRegistrationRequestsQuery(
+      { academyId: academyId ?? undefined, status: "pending" },
+      { skip: !academyId || isCoach || !canManageSquad },
+    );
   const pendingRequestsCount = pendingRequestsData?.requests?.length ?? 0;
 
   useEffect(() => {
@@ -254,17 +302,25 @@ const StudentsPage: React.FC = () => {
         createStudent(pending)
           .unwrap()
           .then(() => {
-            toast.success(`Subscription active: Player ${pending.firstName} ${pending.lastName} enrolled successfully!`, {
-              duration: 5000,
-            });
+            toast.success(
+              `Subscription active: Player ${pending.firstName} ${pending.lastName} enrolled successfully!`,
+              {
+                duration: 5000,
+              },
+            );
           })
           .catch((err: any) => {
             console.warn("Auto-enroll error on Squad page:", err);
             const code = err?.data?.code;
-            if (code === "SUBSCRIPTION_REQUIRED" || code === "SUBSCRIPTION_CAPACITY_EXCEEDED") {
+            if (
+              code === "SUBSCRIPTION_REQUIRED" ||
+              code === "SUBSCRIPTION_CAPACITY_EXCEEDED"
+            ) {
               sessionStorage.setItem("noxphere_pending_student_creation", raw);
             } else {
-              toast.error(err?.data?.message || "Failed to auto-enroll pending player.");
+              toast.error(
+                err?.data?.message || "Failed to auto-enroll pending player.",
+              );
             }
           });
       }
@@ -360,7 +416,12 @@ const StudentsPage: React.FC = () => {
             >
               Free Agents
             </Button>
-            <Button size="sm" icon={<span>+</span>} onClick={() => setShowAddModal(true)} className="text-xs flex-1 sm:flex-none justify-center">
+            <Button
+              size="sm"
+              icon={<span>+</span>}
+              onClick={() => setShowAddModal(true)}
+              className="text-xs flex-1 sm:flex-none justify-center"
+            >
               Add Player
             </Button>
           </div>
@@ -377,7 +438,7 @@ const StudentsPage: React.FC = () => {
               "px-3.5 sm:px-4 py-2 text-xs font-display uppercase tracking-wider font-bold rounded-t-lg transition-colors whitespace-nowrap shrink-0",
               activeTab === "squad"
                 ? "bg-slate-200 dark:bg-pitch-800 text-slate-900 dark:text-volt-400 border-b-2 border-volt-400"
-                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                : "text-slate-500 hover:text-slate-900 dark:hover:text-white",
             )}
           >
             All Players ({data?.total ?? 0})
@@ -389,7 +450,7 @@ const StudentsPage: React.FC = () => {
               "px-3.5 sm:px-4 py-2 text-xs font-display uppercase tracking-wider font-bold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap shrink-0",
               activeTab === "requests"
                 ? "bg-slate-200 dark:bg-pitch-800 text-slate-900 dark:text-volt-400 border-b-2 border-volt-400"
-                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                : "text-slate-500 hover:text-slate-900 dark:hover:text-white",
             )}
           >
             <span>Registration Requests</span>
@@ -415,260 +476,362 @@ const StudentsPage: React.FC = () => {
         <>
           {/* Filters + view toggle */}
           <div className="card p-3.5 sm:p-4 flex flex-col sm:flex-row flex-wrap gap-2.5 sm:gap-3 sm:items-end">
-
-        <div className="w-full sm:flex-1 sm:min-w-48">
-          <Input
-            placeholder="Search players..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            icon={<Search className="h-4 w-4 text-muted-foreground" />}
-          />
-        </div>
-        <div className="w-full sm:w-auto sm:min-w-32">
-          <select className="input w-full" value={filterTeam} onChange={(e) => setFilterTeam(e.target.value)}>
-            <option value="">All Teams</option>
-            {(teams ?? []).map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="w-full sm:w-auto sm:min-w-32">
-          <select className="input w-full" value={filterAge} onChange={(e) => setFilterAge(e.target.value)}>
-            <option value="">All Ages</option>
-            {categoriesList.map((a) => (
-              <option key={a}>{a}</option>
-            ))}
-          </select>
-        </div>
-        <div className="w-full sm:w-auto sm:min-w-40">
-          <select className="input w-full" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-            <option value="">All Statuses</option>
-            <option value="selected">Selected</option>
-            <option value="shortlisted">Shortlisted</option>
-            <option value="pending">Pending</option>
-            <option value="on_hold">On Hold</option>
-            <option value="not_selected">Not Selected</option>
-          </select>
-        </div>
-
-        <div className="w-full sm:w-auto sm:ml-auto flex items-center justify-between sm:justify-start gap-2 pt-1 sm:pt-0">
-          <button
-            onClick={() => setShowPhotoCards((prev) => !prev)}
-            className="h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-volt-500 dark:hover:border-volt-400/30 hover:bg-slate-50 dark:hover:bg-pitch-600 transition-all duration-300 shadow-xs"
-            title={showPhotoCards ? "Show placeholder cards" : "Show player photos"}
-          >
-            <Shuffle className="h-4 w-4" />
-          </button>
-
-          <div className="flex items-center bg-slate-100 dark:bg-pitch-700 rounded-lg border border-slate-200 dark:border-white/10 overflow-hidden shadow-xs">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={clsx("px-2.5 py-2 text-xs transition-colors flex items-center justify-center", viewMode === "grid" ? "bg-volt-400 text-pitch-900 font-bold" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white")}
-              title="Grid view"
-              aria-label="Grid view"
-            >
-              <LayoutGrid size={15} />
-            </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className={clsx("px-2.5 py-2 text-xs transition-colors flex items-center justify-center", viewMode === "list" ? "bg-volt-400 text-pitch-900 font-bold" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white")}
-              title="List view"
-              aria-label="List view"
-            >
-              <List size={15} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Results count */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-500">
-          {students.length} player{students.length !== 1 ? "s" : ""} found
-        </p>
-        {(search || filterTeam || filterAge || filterStatus) && (
-          <button
-            onClick={() => { setSearch(""); setFilterTeam(""); setFilterAge(""); setFilterStatus(""); }}
-            className="text-xs text-volt-600 dark:text-volt-400 font-medium hover:underline"
-          >
-            Clear filters
-          </button>
-        )}
-      </div>
-
-      {isLoading && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="aspect-[2/3] rounded-3xl" />)}
-        </div>
-      )}
-
-      {isError && <EmptyState title="Couldn't load the squad" description="Please try again shortly." />}
-
-      {!isLoading && students.length === 0 && (
-        <EmptyState
-          icon={<SearchX className="h-10 w-10 text-slate-600" />}
-          title="No players found"
-          description={
-            search || filterTeam || filterAge || filterStatus
-              ? "Try adjusting your filters"
-              : "Add your first player to get started"
-          }
-          action={
-            !search && !filterTeam && !filterAge && !filterStatus ? (
-              <Button onClick={() => setShowAddModal(true)}>
-                Add Player
-              </Button>
-            ) : undefined
-          }
-        />
-      )}
-
-      {/* Grid view */}
-      {!isLoading && viewMode === "grid" && students.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
-          {students.map((student) => (
-            <Link
-              key={student.id}
-              to={`/students/${student.id}`}
-              className="relative aspect-[2/3] [perspective:2000px] overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-pitch-950 group transition-all duration-300 hover:border-volt-500 dark:hover:border-volt-400/30 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-2xl dark:hover:shadow-volt-400/10"
-            >
-              <div
-                className="relative h-full w-full [transform-style:preserve-3d] transition-transform duration-700"
-                style={{ transform: showPhotoCards ? "rotateY(0deg)" : "rotateY(180deg)" }}
+            <div className="w-full sm:flex-1 sm:min-w-48">
+              <Input
+                placeholder="Search players..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                icon={<Search className="h-4 w-4 text-muted-foreground" />}
+              />
+            </div>
+            <div className="w-full sm:w-auto sm:min-w-32">
+              <select
+                className="input w-full"
+                value={filterTeam}
+                onChange={(e) => setFilterTeam(e.target.value)}
               >
-                <div className="absolute inset-0 rounded-3xl overflow-hidden [backface-visibility:hidden] bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-pitch-900 dark:via-pitch-950 dark:to-black">
-                  <div className="absolute inset-0">
-                    {student.photo ? (
-                      <img
-                        src={student.photo}
-                        alt={`${student.firstName} ${student.lastName}`}
-                        className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <PlayerPlaceholder
-                        image={mannequinPng}
-                        name={`${student.firstName} ${student.lastName}`}
-                        number={student.jerseyNumber ?? 0}
-                        className="h-full w-full px-6 pb-14"
-                        nameTop="28%"
-                        numberTop="32%"
-                        nameSize="11px"
-                        numberSize="65px"
-                        nameWidth="75%"
-                      />
-                    )}
-                  </div>
-                  <PlayerCardContent
-                    student={student}
-                    teamName={teamNameOf(student.teamId)}
-                    getRatingColor={getRatingColor}
-                    selectionBadge={selectionBadge}
-                    hasConsent={consentStatus?.[student.id]}
-                  />
-                </div>
+                <option value="">All Teams</option>
+                {(teams ?? []).map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="w-full sm:w-auto sm:min-w-32">
+              <select
+                className="input w-full"
+                value={filterAge}
+                onChange={(e) => setFilterAge(e.target.value)}
+              >
+                <option value="">All Ages</option>
+                {categoriesList.map((a) => (
+                  <option key={a}>{a}</option>
+                ))}
+              </select>
+            </div>
+            <div className="w-full sm:w-auto sm:min-w-40">
+              <select
+                className="input w-full"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <option value="">All Statuses</option>
+                <option value="selected">Selected</option>
+                <option value="shortlisted">Shortlisted</option>
+                <option value="pending">Pending</option>
+                <option value="on_hold">On Hold</option>
+                <option value="not_selected">Not Selected</option>
+              </select>
+            </div>
 
-                <div className="absolute inset-0 rounded-3xl overflow-hidden [transform:rotateY(180deg)] [backface-visibility:hidden] bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-pitch-900 dark:via-pitch-950 dark:to-black">
-                  <div className="absolute inset-0">
-                    <PlayerPlaceholder
-                      image={mannequinPng}
-                      name={`${student.firstName} ${student.lastName}`}
-                      number={student.jerseyNumber ?? 0}
-                      className="h-full w-full px-6 pb-14"
-                      nameTop="30%"
-                      numberTop="36%"
-                      nameSize="11px"
-                      numberSize="65px"
-                      nameWidth="75%"
-                    />
-                  </div>
-                  <PlayerCardContent
-                    student={student}
-                    teamName={teamNameOf(student.teamId)}
-                    getRatingColor={getRatingColor}
-                    selectionBadge={selectionBadge}
-                    hasConsent={consentStatus?.[student.id]}
-                  />
-                </div>
+            <div className="w-full sm:w-auto sm:ml-auto flex items-center justify-between sm:justify-start gap-2 pt-1 sm:pt-0">
+              <button
+                onClick={() => setShowPhotoCards((prev) => !prev)}
+                className="h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-volt-500 dark:hover:border-volt-400/30 hover:bg-slate-50 dark:hover:bg-pitch-600 transition-all duration-300 shadow-xs"
+                title={
+                  showPhotoCards
+                    ? "Show placeholder cards"
+                    : "Show player photos"
+                }
+              >
+                <Shuffle className="h-4 w-4" />
+              </button>
+
+              <div className="flex items-center bg-slate-100 dark:bg-pitch-700 rounded-lg border border-slate-200 dark:border-white/10 overflow-hidden shadow-xs">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={clsx(
+                    "px-2.5 py-2 text-xs transition-colors flex items-center justify-center",
+                    viewMode === "grid"
+                      ? "bg-volt-400 text-pitch-900 font-bold"
+                      : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white",
+                  )}
+                  title="Grid view"
+                  aria-label="Grid view"
+                >
+                  <LayoutGrid size={15} />
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={clsx(
+                    "px-2.5 py-2 text-xs transition-colors flex items-center justify-center",
+                    viewMode === "list"
+                      ? "bg-volt-400 text-pitch-900 font-bold"
+                      : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white",
+                  )}
+                  title="List view"
+                  aria-label="List view"
+                >
+                  <List size={15} />
+                </button>
               </div>
-            </Link>
-          ))}
-        </div>
-      )}
+            </div>
+          </div>
 
-      {/* List view */}
-      {!isLoading && viewMode === "list" && students.length > 0 && (
-        <div className="card overflow-hidden overflow-x-auto border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 shadow-sm">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
-                <th className="text-left px-4 py-3 section-title text-slate-600 dark:text-slate-400">Player</th>
-                <th className="text-left px-4 py-3 section-title text-slate-600 dark:text-slate-400 hidden sm:table-cell">Position</th>
-                <th className="text-left px-4 py-3 section-title text-slate-600 dark:text-slate-400 hidden md:table-cell">Team</th>
-                <th className="text-center px-4 py-3 section-title text-slate-600 dark:text-slate-400">Rating</th>
-                <th className="text-center px-4 py-3 section-title text-slate-600 dark:text-slate-400 hidden lg:table-cell">Attendance</th>
-                <th className="text-left px-4 py-3 section-title text-slate-600 dark:text-slate-400 hidden xl:table-cell">Status</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((student, i) => (
-                <tr key={student.id} className={clsx("border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors", i % 2 === 0 && "bg-slate-50/30 dark:bg-white/[0.01]")}>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={`${student.firstName} ${student.lastName}`} src={student.photo} size="sm" />
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white">{student.firstName} {student.lastName}</p>
-                        <p className="text-2xs text-slate-500">#{student.jerseyNumber ?? "—"} · {student.ageGroup}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 hidden sm:table-cell">{student.position ?? "—"}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 hidden md:table-cell">{teamNameOf(student.teamId)}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={clsx("font-display font-extrabold text-lg", getRatingColor(student.overallRating))}>
-                      {student.overallRating.toFixed(1)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center hidden lg:table-cell">
-                    <span className={clsx("text-sm font-semibold", student.attendancePercentage >= 90 ? "text-emerald-600 dark:text-field-400" : student.attendancePercentage >= 75 ? "text-amber-600 dark:text-volt-400" : "text-rose-600 dark:text-ember-400")}>
-                      {student.attendancePercentage}%
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 hidden xl:table-cell">
-                    <div className="flex flex-col gap-1 items-start">
-                      <Badge variant={selectionBadge[student.selectionStatus]?.variant}>
-                        {selectionBadge[student.selectionStatus]?.label}
-                      </Badge>
-                      {student.status !== "active" && (
-                        <Badge variant="gray">{student.status.replace("_", " ")}</Badge>
-                      )}
-                      {consentStatus?.[student.id] === false && (
-                        <Badge variant="yellow">Consent pending</Badge>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-3">
-                      <Link to={`/students/${student.id}`} className="text-xs font-semibold text-volt-600 dark:text-volt-400 hover:underline">
-                        View →
-                      </Link>
-                      {canManageSquad && (
-                        <button
-                          onClick={() => handleDelete(student.id, `${student.firstName} ${student.lastName}`)}
-                          className="text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-ember-400 transition-colors"
-                          aria-label="Remove player"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
+          {/* Results count */}
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-slate-500">
+              {students.length} player{students.length !== 1 ? "s" : ""} found
+            </p>
+            {(search || filterTeam || filterAge || filterStatus) && (
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setFilterTeam("");
+                  setFilterAge("");
+                  setFilterStatus("");
+                }}
+                className="text-xs text-volt-600 dark:text-volt-400 font-medium hover:underline"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+
+          {isLoading && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <Skeleton key={i} className="aspect-[2/3] rounded-3xl" />
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </div>
+          )}
+
+          {isError && (
+            <EmptyState
+              title="Couldn't load the squad"
+              description="Please try again shortly."
+            />
+          )}
+
+          {!isLoading && students.length === 0 && (
+            <EmptyState
+              icon={<SearchX className="h-10 w-10 text-slate-600" />}
+              title="No players found"
+              description={
+                search || filterTeam || filterAge || filterStatus
+                  ? "Try adjusting your filters"
+                  : "Add your first player to get started"
+              }
+              action={
+                !search && !filterTeam && !filterAge && !filterStatus ? (
+                  <Button onClick={() => setShowAddModal(true)}>
+                    Add Player
+                  </Button>
+                ) : undefined
+              }
+            />
+          )}
+
+          {/* Grid view */}
+          {!isLoading && viewMode === "grid" && students.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
+              {students.map((student) => (
+                <Link
+                  key={student.id}
+                  to={`/students/${student.id}`}
+                  className="relative aspect-[2/3] [perspective:2000px] overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-pitch-950 group transition-all duration-300 hover:border-volt-500 dark:hover:border-volt-400/30 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-2xl dark:hover:shadow-volt-400/10"
+                >
+                  <div
+                    className="relative h-full w-full [transform-style:preserve-3d] transition-transform duration-700"
+                    style={{
+                      transform: showPhotoCards
+                        ? "rotateY(0deg)"
+                        : "rotateY(180deg)",
+                    }}
+                  >
+                    <div className="absolute inset-0 rounded-3xl overflow-hidden [backface-visibility:hidden] bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-pitch-900 dark:via-pitch-950 dark:to-black">
+                      <div className="absolute inset-0">
+                        {student.photo ? (
+                          <img
+                            src={student.photo}
+                            alt={`${student.firstName} ${student.lastName}`}
+                            className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                          />
+                        ) : (
+                          <PlayerPlaceholder
+                            image={mannequinPng}
+                            name={`${student.firstName} ${student.lastName}`}
+                            number={student.jerseyNumber ?? 0}
+                            className="h-full w-full px-6 pb-14"
+                            nameTop="28%"
+                            numberTop="34%"
+                            nameSize="11px"
+                            numberSize="55px"
+                            nameWidth="75%"
+                          />
+                        )}
+                      </div>
+                      <PlayerCardContent
+                        student={student}
+                        teamName={teamNameOf(student.teamId)}
+                        getRatingColor={getRatingColor}
+                        selectionBadge={selectionBadge}
+                        hasConsent={consentStatus?.[student.id]}
+                      />
+                    </div>
+
+                    <div className="absolute inset-0 rounded-3xl overflow-hidden [transform:rotateY(180deg)] [backface-visibility:hidden] bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-pitch-900 dark:via-pitch-950 dark:to-black">
+                      <div className="absolute inset-0">
+                        <PlayerPlaceholder
+                          image={mannequinPng}
+                          name={`${student.firstName} ${student.lastName}`}
+                          number={student.jerseyNumber ?? 0}
+                          className="h-full w-full px-6 pb-14"
+                          nameTop="28%"
+                          numberTop="34%"
+                          nameSize="11px"
+                          numberSize="55px"
+                          nameWidth="75%"
+                        />
+                      </div>
+                      <PlayerCardContent
+                        student={student}
+                        teamName={teamNameOf(student.teamId)}
+                        getRatingColor={getRatingColor}
+                        selectionBadge={selectionBadge}
+                        hasConsent={consentStatus?.[student.id]}
+                      />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* List view */}
+          {!isLoading && viewMode === "list" && students.length > 0 && (
+            <div className="card overflow-hidden table-responsive border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 shadow-sm">
+              <table className="w-full min-w-[540px]">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
+                    <th className="text-left px-4 py-3 section-title text-slate-600 dark:text-slate-400">
+                      Player
+                    </th>
+                    <th className="text-left px-4 py-3 section-title text-slate-600 dark:text-slate-400 hidden sm:table-cell">
+                      Position
+                    </th>
+                    <th className="text-left px-4 py-3 section-title text-slate-600 dark:text-slate-400 hidden md:table-cell">
+                      Team
+                    </th>
+                    <th className="text-center px-4 py-3 section-title text-slate-600 dark:text-slate-400">
+                      Rating
+                    </th>
+                    <th className="text-center px-4 py-3 section-title text-slate-600 dark:text-slate-400 hidden lg:table-cell">
+                      Attendance
+                    </th>
+                    <th className="text-left px-4 py-3 section-title text-slate-600 dark:text-slate-400 hidden xl:table-cell">
+                      Status
+                    </th>
+                    <th className="px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((student, i) => (
+                    <tr
+                      key={student.id}
+                      className={clsx(
+                        "border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors",
+                        i % 2 === 0 && "bg-slate-50/30 dark:bg-white/[0.01]",
+                      )}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar
+                            name={`${student.firstName} ${student.lastName}`}
+                            src={student.photo}
+                            size="sm"
+                          />
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                              {student.firstName} {student.lastName}
+                            </p>
+                            <p className="text-2xs text-slate-500">
+                              #{student.jerseyNumber ?? "—"} ·{" "}
+                              {student.ageGroup}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 hidden sm:table-cell">
+                        {student.position ?? "—"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 hidden md:table-cell">
+                        {teamNameOf(student.teamId)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span
+                          className={clsx(
+                            "font-display font-extrabold text-lg",
+                            getRatingColor(student.overallRating),
+                          )}
+                        >
+                          {student.overallRating.toFixed(1)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center hidden lg:table-cell">
+                        <span
+                          className={clsx(
+                            "text-sm font-semibold",
+                            student.attendancePercentage >= 90
+                              ? "text-emerald-600 dark:text-field-400"
+                              : student.attendancePercentage >= 75
+                                ? "text-amber-600 dark:text-volt-400"
+                                : "text-rose-600 dark:text-ember-400",
+                          )}
+                        >
+                          {student.attendancePercentage}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 hidden xl:table-cell">
+                        <div className="flex flex-col gap-1 items-start">
+                          <Badge
+                            variant={
+                              selectionBadge[student.selectionStatus]?.variant
+                            }
+                          >
+                            {selectionBadge[student.selectionStatus]?.label}
+                          </Badge>
+                          {student.status !== "active" && (
+                            <Badge variant="gray">
+                              {student.status.replace("_", " ")}
+                            </Badge>
+                          )}
+                          {consentStatus?.[student.id] === false && (
+                            <Badge variant="yellow">Consent pending</Badge>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-3">
+                          <Link
+                            to={`/students/${student.id}`}
+                            className="text-xs font-semibold text-volt-600 dark:text-volt-400 hover:underline"
+                          >
+                            View →
+                          </Link>
+                          {canManageSquad && (
+                            <button
+                              onClick={() =>
+                                handleDelete(
+                                  student.id,
+                                  `${student.firstName} ${student.lastName}`,
+                                )
+                              }
+                              className="text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-ember-400 transition-colors"
+                              aria-label="Remove player"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </>
       )}
 
@@ -687,17 +850,27 @@ const StudentsPage: React.FC = () => {
               return true;
             } catch (err: any) {
               const code = err?.data?.code;
-              if (code === "SUBSCRIPTION_REQUIRED" || code === "SUBSCRIPTION_CAPACITY_EXCEEDED") {
-                sessionStorage.setItem("noxphere_pending_student_creation", JSON.stringify(body));
+              if (
+                code === "SUBSCRIPTION_REQUIRED" ||
+                code === "SUBSCRIPTION_CAPACITY_EXCEEDED"
+              ) {
+                sessionStorage.setItem(
+                  "noxphere_pending_student_creation",
+                  JSON.stringify(body),
+                );
                 setShowAddModal(false);
-                setSubscriptionModalMode(code === "SUBSCRIPTION_REQUIRED" ? "subscribe" : "upgrade");
+                setSubscriptionModalMode(
+                  code === "SUBSCRIPTION_REQUIRED" ? "subscribe" : "upgrade",
+                );
                 toast.success(
                   `Player details for ${body.firstName} ${body.lastName} saved! They will be automatically enrolled once payment is complete.`,
-                  { duration: 6000 }
+                  { duration: 6000 },
                 );
                 return true;
               } else {
-                toast.error(err?.data?.message || "Couldn't enroll player — try again");
+                toast.error(
+                  err?.data?.message || "Couldn't enroll player — try again",
+                );
                 return false;
               }
             }
@@ -710,16 +883,23 @@ const StudentsPage: React.FC = () => {
           academyId={academyId}
           mode={subscriptionModalMode}
           onSuccess={async () => {
-            const raw = sessionStorage.getItem("noxphere_pending_student_creation");
+            const raw = sessionStorage.getItem(
+              "noxphere_pending_student_creation",
+            );
             if (raw) {
               try {
                 const pending = JSON.parse(raw);
                 sessionStorage.removeItem("noxphere_pending_student_creation");
                 await createStudent(pending).unwrap();
-                toast.success(`Subscription active: Player ${pending.firstName} ${pending.lastName} enrolled successfully!`);
+                toast.success(
+                  `Subscription active: Player ${pending.firstName} ${pending.lastName} enrolled successfully!`,
+                );
               } catch (e: any) {
                 console.error("Auto-enroll error on upgrade:", e);
-                toast.error(e?.data?.message || "Failed to auto-enroll player after upgrade. Please try adding them again.");
+                toast.error(
+                  e?.data?.message ||
+                    "Failed to auto-enroll player after upgrade. Please try adding them again.",
+                );
               }
             }
           }}
@@ -751,15 +931,27 @@ const StudentsPage: React.FC = () => {
 
       {ConfirmDialog}
     </div>
-
   );
 };
 
 const defaultPositions = [
-  "Goalkeeper", "Sweeper Keeper", "Center Back", "Left Back", "Right Back",
-  "Wing Back", "Defensive Midfielder", "Central Midfielder", "Attacking Midfielder",
-  "Left Midfielder", "Right Midfielder", "Left Winger", "Right Winger",
-  "Center Forward", "Striker", "Second Striker", "False 9"
+  "Goalkeeper",
+  "Sweeper Keeper",
+  "Center Back",
+  "Left Back",
+  "Right Back",
+  "Wing Back",
+  "Defensive Midfielder",
+  "Central Midfielder",
+  "Attacking Midfielder",
+  "Left Midfielder",
+  "Right Midfielder",
+  "Left Winger",
+  "Right Winger",
+  "Center Forward",
+  "Striker",
+  "Second Striker",
+  "False 9",
 ];
 
 const AddPlayerModal: React.FC<{
@@ -785,8 +977,16 @@ const AddPlayerModal: React.FC<{
     useLazyCheckAvailabilityQuery();
 
   const reset = () => {
-    setFirstName(""); setLastName(""); setDob(""); setAgeGroup("U-13"); setPositions([]);
-    setJerseyNumber(""); setTeamId(""); setPhoto(undefined); setGuardian(emptyGuardian); setMedical(emptyMedical);
+    setFirstName("");
+    setLastName("");
+    setDob("");
+    setAgeGroup("U-13");
+    setPositions([]);
+    setJerseyNumber("");
+    setTeamId("");
+    setPhoto(undefined);
+    setGuardian(emptyGuardian);
+    setMedical(emptyMedical);
     setStep(1);
   };
 
@@ -871,13 +1071,24 @@ const AddPlayerModal: React.FC<{
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName || !lastName || !dob || !guardian.name || !guardian.phone || !guardian.email || !medical.emergencyContactName || !medical.emergencyContactPhone) {
+    if (
+      !firstName ||
+      !lastName ||
+      !dob ||
+      !guardian.name ||
+      !guardian.phone ||
+      !guardian.email ||
+      !medical.emergencyContactName ||
+      !medical.emergencyContactPhone
+    ) {
       toast.error("Fill in all required fields");
       return;
     }
     const cleanEmergency = medical.emergencyContactPhone.replace(/\D/g, "");
     if (cleanEmergency.length < 10) {
-      toast.error("Emergency contact phone number must have at least 10 digits");
+      toast.error(
+        "Emergency contact phone number must have at least 10 digits",
+      );
       return;
     }
     const success = await onCreate({
@@ -895,8 +1106,18 @@ const AddPlayerModal: React.FC<{
       guardian,
       medicalInfo: {
         bloodGroup: medical.bloodGroup || undefined,
-        allergies: medical.allergies ? medical.allergies.split(",").map((s) => s.trim()).filter(Boolean) : [],
-        medicalConditions: medical.medicalConditions ? medical.medicalConditions.split(",").map((s) => s.trim()).filter(Boolean) : [],
+        allergies: medical.allergies
+          ? medical.allergies
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [],
+        medicalConditions: medical.medicalConditions
+          ? medical.medicalConditions
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [],
         emergencyContactName: medical.emergencyContactName,
         emergencyContactPhone: medical.emergencyContactPhone,
         medicalCondition: medical.medicalCondition || undefined,
@@ -912,7 +1133,12 @@ const AddPlayerModal: React.FC<{
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Enroll New Player" size="lg">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Enroll New Player"
+      size="lg"
+    >
       <div className="flex flex-col h-full space-y-5">
         {/* Step Progress Bar */}
         <div className="grid grid-cols-3 gap-2 pb-3 border-b border-white/5">
@@ -926,10 +1152,10 @@ const AddPlayerModal: React.FC<{
               className={clsx(
                 "flex items-center gap-2 p-2 rounded-lg border text-xs transition-colors",
                 step === item.s
-                  ? "border-volt-400 bg-volt-400/10 text-white font-bold"
+                  ? "border-volt-400 bg-volt-400/10 text-slate-900 dark:text-white font-bold"
                   : step > item.s
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-                  : "border-white/5 text-slate-500"
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                    : "border-white/5 text-slate-500",
               )}
             >
               <div
@@ -938,8 +1164,8 @@ const AddPlayerModal: React.FC<{
                   step === item.s
                     ? "bg-volt-400 text-pitch-900"
                     : step > item.s
-                    ? "bg-emerald-500 text-white"
-                    : "bg-pitch-800 text-slate-500"
+                      ? "bg-emerald-500 text-white"
+                      : "bg-pitch-800 text-slate-500",
                 )}
               >
                 {step > item.s ? "✓" : item.s}
@@ -961,22 +1187,48 @@ const AddPlayerModal: React.FC<{
               helperText="Shown on the player's card throughout the app. Can be added later too."
             />
             <div className="grid grid-cols-2 gap-3">
-              <Input label="First Name" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Arjun" required />
-              <Input label="Last Name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Mehta" required />
+              <Input
+                label="First Name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Arjun"
+                required
+              />
+              <Input
+                label="Last Name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Mehta"
+                required
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Date of Birth" type="date" value={dob} onChange={(e) => handleDobChange(e.target.value)} required />
+              <Input
+                label="Date of Birth"
+                type="date"
+                value={dob}
+                onChange={(e) => handleDobChange(e.target.value)}
+                required
+              />
               <div>
                 <label className="label">Age Group</label>
-                <select className="input w-full" value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
-                  {categoriesList.map((a) => <option key={a}>{a}</option>)}
+                <select
+                  className="input w-full"
+                  value={ageGroup}
+                  onChange={(e) => setAgeGroup(e.target.value)}
+                >
+                  {categoriesList.map((a) => (
+                    <option key={a}>{a}</option>
+                  ))}
                 </select>
               </div>
             </div>
 
             <div>
-              <label className="label">Playing Positions (Select all that apply)</label>
+              <label className="label">
+                Playing Positions (Select all that apply)
+              </label>
               <div className="flex flex-wrap gap-1.5 mt-1 border border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-pitch-900">
                 {defaultPositions.map((pos) => {
                   const isSelected = positions.includes(pos);
@@ -995,7 +1247,7 @@ const AddPlayerModal: React.FC<{
                         "px-2 py-0.5 rounded text-[10px] font-semibold uppercase border transition-all duration-150",
                         isSelected
                           ? "bg-volt-400 border-volt-400 text-pitch-900 font-extrabold"
-                          : "bg-pitch-800 border-white/5 text-slate-400 hover:border-white/10 hover:text-white"
+                          : "bg-slate-100 dark:bg-pitch-800 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
                       )}
                     >
                       {pos}
@@ -1006,7 +1258,9 @@ const AddPlayerModal: React.FC<{
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t border-white/5">
-              <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+              <Button type="button" variant="secondary" onClick={onClose}>
+                Cancel
+              </Button>
               <Button
                 type="button"
                 onClick={() => {
@@ -1026,28 +1280,81 @@ const AddPlayerModal: React.FC<{
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">Team / Squad (optional)</label>
-                <select className="input w-full" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+                <select
+                  className="input w-full"
+                  value={teamId}
+                  onChange={(e) => setTeamId(e.target.value)}
+                >
                   <option value="">Assign later</option>
-                  {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {teams.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
                 </select>
               </div>
-              <Input label="Jersey Number (optional)" type="number" min={1} max={99} value={jerseyNumber} onChange={(e) => setJerseyNumber(e.target.value)} placeholder="9" />
+              <Input
+                label="Jersey Number (optional)"
+                type="number"
+                min={1}
+                max={99}
+                value={jerseyNumber}
+                onChange={(e) => setJerseyNumber(e.target.value)}
+                placeholder="9"
+              />
             </div>
 
             <div className="border-t border-white/5 pt-3">
-              <p className="section-title mb-3 text-volt-400">Parent / Guardian Contact</p>
+              <p className="section-title mb-3 text-volt-400">
+                Parent / Guardian Contact
+              </p>
               <div className="space-y-3">
-                <Input label="Guardian Name" value={guardian.name} onChange={(e) => setGuardian({ ...guardian, name: e.target.value })} placeholder="Parent full name" required />
+                <Input
+                  label="Guardian Name"
+                  value={guardian.name}
+                  onChange={(e) =>
+                    setGuardian({ ...guardian, name: e.target.value })
+                  }
+                  placeholder="Parent full name"
+                  required
+                />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Input label="Guardian Phone" type="tel" value={guardian.phone} onChange={(e) => setGuardian({ ...guardian, phone: e.target.value })} placeholder="+91 9876543210" required />
-                  <Input label="Guardian Email" type="email" value={guardian.email} onChange={(e) => setGuardian({ ...guardian, email: e.target.value })} placeholder="parent@email.com" required />
+                  <Input
+                    label="Guardian Phone"
+                    type="tel"
+                    value={guardian.phone}
+                    onChange={(e) =>
+                      setGuardian({ ...guardian, phone: e.target.value })
+                    }
+                    placeholder="+91 9876543210"
+                    required
+                  />
+                  <Input
+                    label="Guardian Email"
+                    type="email"
+                    value={guardian.email}
+                    onChange={(e) =>
+                      setGuardian({ ...guardian, email: e.target.value })
+                    }
+                    placeholder="parent@email.com"
+                    required
+                  />
                 </div>
-                <p className="text-[10px] text-slate-500">A guardian portal login will be automatically generated upon enrollment.</p>
+                <p className="text-[10px] text-slate-500">
+                  A guardian portal login will be automatically generated upon
+                  enrollment.
+                </p>
               </div>
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t border-white/5">
-              <Button type="button" variant="secondary" onClick={() => setStep(1)}>&larr; Back</Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setStep(1)}
+              >
+                &larr; Back
+              </Button>
               <Button
                 type="button"
                 disabled={checkingAvailability}
@@ -1056,7 +1363,9 @@ const AddPlayerModal: React.FC<{
                 }}
                 className="bg-volt-400 text-pitch-900 font-bold hover:bg-volt-300 disabled:opacity-50"
               >
-                {checkingAvailability ? "Checking..." : "Next: Emergency & Medical \u2192"}
+                {checkingAvailability
+                  ? "Checking..."
+                  : "Next: Emergency & Medical \u2192"}
               </Button>
             </div>
           </div>
@@ -1066,49 +1375,137 @@ const AddPlayerModal: React.FC<{
         {step === 3 && (
           <form onSubmit={handleSubmit} className="space-y-4 animate-fade-in">
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Emergency Contact Name" value={medical.emergencyContactName} onChange={(e) => setMedical({ ...medical, emergencyContactName: e.target.value })} required />
-              <Input label="Emergency Contact Phone" type="tel" value={medical.emergencyContactPhone} onChange={(e) => setMedical({ ...medical, emergencyContactPhone: e.target.value })} required />
+              <Input
+                label="Emergency Contact Name"
+                value={medical.emergencyContactName}
+                onChange={(e) =>
+                  setMedical({
+                    ...medical,
+                    emergencyContactName: e.target.value,
+                  })
+                }
+                required
+              />
+              <Input
+                label="Emergency Contact Phone"
+                type="tel"
+                value={medical.emergencyContactPhone}
+                onChange={(e) =>
+                  setMedical({
+                    ...medical,
+                    emergencyContactPhone: e.target.value,
+                  })
+                }
+                required
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Blood Group (optional)" value={medical.bloodGroup} onChange={(e) => setMedical({ ...medical, bloodGroup: e.target.value })} placeholder="O+" />
-              <Input label="Allergies (comma separated)" value={medical.allergies} onChange={(e) => setMedical({ ...medical, allergies: e.target.value })} placeholder="Peanuts, Dust" />
+              <Input
+                label="Blood Group (optional)"
+                value={medical.bloodGroup}
+                onChange={(e) =>
+                  setMedical({ ...medical, bloodGroup: e.target.value })
+                }
+                placeholder="O+"
+              />
+              <Input
+                label="Allergies (comma separated)"
+                value={medical.allergies}
+                onChange={(e) =>
+                  setMedical({ ...medical, allergies: e.target.value })
+                }
+                placeholder="Peanuts, Dust"
+              />
             </div>
 
-            <Input label="Medical Conditions (comma separated)" value={medical.medicalConditions} onChange={(e) => setMedical({ ...medical, medicalConditions: e.target.value })} placeholder="Asthma" />
+            <Input
+              label="Medical Conditions (comma separated)"
+              value={medical.medicalConditions}
+              onChange={(e) =>
+                setMedical({ ...medical, medicalConditions: e.target.value })
+              }
+              placeholder="Asthma"
+            />
 
             <div>
               <label className="label">Medical Notes</label>
-              <textarea className="input w-full min-h-[50px] text-xs py-2" value={medical.medicalNotes} onChange={(e) => setMedical({ ...medical, medicalNotes: e.target.value })} placeholder="Any health notes for coaches..." />
+              <textarea
+                className="input w-full min-h-[50px] text-xs py-2"
+                value={medical.medicalNotes}
+                onChange={(e) =>
+                  setMedical({ ...medical, medicalNotes: e.target.value })
+                }
+                placeholder="Any health notes for coaches..."
+              />
             </div>
 
             <div className="space-y-2 pt-1">
-              <p className="text-2xs font-mono uppercase text-slate-400 font-semibold">Supporting Health Documents (Optional)</p>
+              <p className="text-2xs font-mono uppercase text-slate-400 font-semibold">
+                Supporting Health Documents (Optional)
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <DocumentUploadField
                   label="Medical Report"
                   category="notification_document"
-                  value={medical.medicalReportUrl ? { url: medical.medicalReportUrl, filename: "medical-report.pdf" } : undefined}
-                  onChange={(file) => setMedical({ ...medical, medicalReportUrl: file?.url })}
+                  value={
+                    medical.medicalReportUrl
+                      ? {
+                          url: medical.medicalReportUrl,
+                          filename: "medical-report.pdf",
+                        }
+                      : undefined
+                  }
+                  onChange={(file) =>
+                    setMedical({ ...medical, medicalReportUrl: file?.url })
+                  }
                 />
                 <DocumentUploadField
                   label="Medical Certificate"
                   category="notification_document"
-                  value={medical.medicalCertificateUrl ? { url: medical.medicalCertificateUrl, filename: "medical-certificate.pdf" } : undefined}
-                  onChange={(file) => setMedical({ ...medical, medicalCertificateUrl: file?.url })}
+                  value={
+                    medical.medicalCertificateUrl
+                      ? {
+                          url: medical.medicalCertificateUrl,
+                          filename: "medical-certificate.pdf",
+                        }
+                      : undefined
+                  }
+                  onChange={(file) =>
+                    setMedical({ ...medical, medicalCertificateUrl: file?.url })
+                  }
                 />
                 <DocumentUploadField
                   label="Scan Report"
                   category="notification_document"
-                  value={medical.scanReportUrl ? { url: medical.scanReportUrl, filename: "scan-report.pdf" } : undefined}
-                  onChange={(file) => setMedical({ ...medical, scanReportUrl: file?.url })}
+                  value={
+                    medical.scanReportUrl
+                      ? {
+                          url: medical.scanReportUrl,
+                          filename: "scan-report.pdf",
+                        }
+                      : undefined
+                  }
+                  onChange={(file) =>
+                    setMedical({ ...medical, scanReportUrl: file?.url })
+                  }
                 />
               </div>
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t border-white/5">
-              <Button type="button" variant="secondary" onClick={() => setStep(2)}>&larr; Back</Button>
-              <Button type="submit" loading={creating} className="px-8 bg-volt-400 text-pitch-900 font-bold hover:bg-volt-300">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setStep(2)}
+              >
+                &larr; Back
+              </Button>
+              <Button
+                type="submit"
+                loading={creating}
+                className="px-8 bg-volt-400 text-pitch-900 font-bold hover:bg-volt-300"
+              >
                 Enroll Player Now
               </Button>
             </div>

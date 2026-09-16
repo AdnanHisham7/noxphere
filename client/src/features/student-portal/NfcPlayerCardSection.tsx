@@ -20,6 +20,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { extractErrorMessage } from "../../utils/errorUtils";
 import { clsx } from "clsx";
 import {
   useGetNfcPricingQuery,
@@ -69,24 +70,42 @@ export const NfcPlayerCardSection: React.FC<NfcPlayerCardSectionProps> = ({
   const requests = requestsData?.requests ?? [];
   const activeRequest = requests[0];
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     setShippingAddress((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
     }));
   };
 
+  const validateShippingAddress = (): string | null => {
+    if (!shippingAddress.recipientName.trim() || shippingAddress.recipientName.trim().length < 2) {
+      return "Recipient name must be at least 2 characters";
+    }
+    if (!shippingAddress.phone.trim() || shippingAddress.phone.trim().length < 7) {
+      return "Valid contact phone is required (at least 7 digits)";
+    }
+    if (!shippingAddress.addressLine1.trim() || shippingAddress.addressLine1.trim().length < 5) {
+      return "Address line 1 must be at least 5 characters";
+    }
+    if (!shippingAddress.city.trim() || shippingAddress.city.trim().length < 2) {
+      return "City must be at least 2 characters";
+    }
+    if (!shippingAddress.state.trim() || shippingAddress.state.trim().length < 2) {
+      return "State must be at least 2 characters";
+    }
+    if (!shippingAddress.postalCode.trim() || shippingAddress.postalCode.trim().length < 4) {
+      return "PIN / Postal code must be at least 4 digits";
+    }
+    return null;
+  };
+
   const handleSubmitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      !shippingAddress.recipientName.trim() ||
-      !shippingAddress.phone.trim() ||
-      !shippingAddress.addressLine1.trim() ||
-      !shippingAddress.city.trim() ||
-      !shippingAddress.state.trim() ||
-      !shippingAddress.postalCode.trim()
-    ) {
-      toast.error("Please fill in all required shipping address fields");
+    const addressError = validateShippingAddress();
+    if (addressError) {
+      toast.error(addressError);
       return;
     }
 
@@ -95,7 +114,7 @@ export const NfcPlayerCardSection: React.FC<NfcPlayerCardSectionProps> = ({
       toast.success("NFC Card request submitted! Admin will review shortly.");
       setIsModalOpen(false);
     } catch (err: any) {
-      toast.error(err?.data?.message || "Failed to submit NFC card request");
+      toast.error(extractErrorMessage(err, "Failed to submit NFC card request"));
     }
   };
 
@@ -107,7 +126,7 @@ export const NfcPlayerCardSection: React.FC<NfcPlayerCardSectionProps> = ({
         window.location.href = res.url;
       }
     } catch (err: any) {
-      toast.error(err?.data?.message || "Could not initiate Stripe checkout");
+      toast.error(extractErrorMessage(err, "Could not initiate Stripe checkout"));
     }
   };
 

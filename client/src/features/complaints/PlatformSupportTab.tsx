@@ -31,7 +31,10 @@ import {
   type TicketStatus,
 } from "../../store/api/platformTicketApi";
 
-const CATEGORY_LABELS: Record<TicketCategory, { label: string; icon: LucideIcon }> = {
+const CATEGORY_LABELS: Record<
+  TicketCategory,
+  { label: string; icon: LucideIcon }
+> = {
   bug_technical: { label: "Technical Issue / Bug", icon: Bug },
   billing_subscription: { label: "Billing & Subscription", icon: CreditCard },
   feature_request: { label: "Feature Request", icon: Sparkles },
@@ -39,14 +42,32 @@ const CATEGORY_LABELS: Record<TicketCategory, { label: string; icon: LucideIcon 
   other: { label: "General Platform Query", icon: HelpCircle },
 };
 
-const PRIORITY_BADGES: Record<TicketPriority, { label: string; color: string }> = {
-  low: { label: "Low", color: "bg-slate-500/15 text-slate-400 border-slate-500/30" },
-  medium: { label: "Medium", color: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
-  high: { label: "High", color: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
-  urgent: { label: "Urgent", color: "bg-red-500/15 text-red-400 border-red-500/30" },
+const PRIORITY_BADGES: Record<
+  TicketPriority,
+  { label: string; color: string }
+> = {
+  low: {
+    label: "Low",
+    color: "bg-slate-100 dark:bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-300 dark:border-slate-500/30",
+  },
+  medium: {
+    label: "Medium",
+    color: "bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/30",
+  },
+  high: {
+    label: "High",
+    color: "bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/30",
+  },
+  urgent: {
+    label: "Urgent",
+    color: "bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/30",
+  },
 };
 
-const STATUS_VARIANTS: Record<TicketStatus, { label: string; variant: "yellow" | "blue" | "green" | "gray" }> = {
+const STATUS_VARIANTS: Record<
+  TicketStatus,
+  { label: string; variant: "yellow" | "blue" | "green" | "gray" }
+> = {
   open: { label: "Open", variant: "yellow" },
   in_progress: { label: "In Progress", variant: "blue" },
   resolved: { label: "Resolved", variant: "green" },
@@ -59,22 +80,25 @@ export const PlatformSupportTab: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const { data: tickets, isLoading } = useListMyPlatformTicketsQuery(
-    statusFilter ? { status: statusFilter } : undefined
+    statusFilter ? { status: statusFilter } : undefined,
   );
 
-  const selectedTicket = tickets?.find((t) => t.id === selectedTicketId) || (tickets && tickets.length > 0 ? tickets[0] : null);
+  const selectedTicket =
+    tickets?.find((t) => t.id === selectedTicketId) ||
+    (tickets && tickets.length > 0 ? tickets[0] : null);
 
   return (
     <div className="space-y-6">
       {/* Control bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-pitch-900/60 p-4 rounded-xl border border-white/5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-pitch-900/60 p-4 rounded-xl border border-slate-200 dark:border-white/5 shadow-xs transition-colors">
         <div>
-          <h2 className="text-base font-semibold text-white flex items-center gap-2">
-            <LifeBuoy className="text-volt-400" size={18} />
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+            <LifeBuoy className="text-volt-600 dark:text-volt-400" size={18} />
             Platform Support Tickets
           </h2>
-          <p className="text-xs text-slate-400">
-            Submit inquiries, bug reports, and assistance requests directly to the Platform Super Admin.
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Submit inquiries, bug reports, and assistance requests directly to
+            the Platform Super Admin.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -105,44 +129,56 @@ export const PlatformSupportTab: React.FC = () => {
         {/* Tickets List */}
         <div className="lg:col-span-5 space-y-2">
           {isLoading ? (
-            Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)
+            Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 rounded-xl" />
+            ))
           ) : !tickets?.length ? (
             <div className="card p-8 text-center space-y-3">
-              <LifeBuoy className="mx-auto text-slate-600" size={36} />
-              <p className="text-sm font-medium text-white">No platform tickets filed yet</p>
-              <p className="text-xs text-slate-400">
-                Have an issue with the platform or need help from the Super Admin? Click below to submit a ticket.
+              <LifeBuoy className="mx-auto text-slate-400 dark:text-slate-600" size={36} />
+              <p className="text-sm font-medium text-slate-900 dark:text-white">
+                No platform tickets filed yet
               </p>
-              <Button size="sm" icon={<Plus size={14} />} onClick={() => setShowCreateModal(true)}>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Have an issue with the platform or need help from the Super
+                Admin? Click below to submit a ticket.
+              </p>
+              <Button
+                size="sm"
+                icon={<Plus size={14} />}
+                onClick={() => setShowCreateModal(true)}
+              >
                 Submit New Ticket
               </Button>
             </div>
           ) : (
             tickets.map((ticket) => {
-              const CategoryIcon = CATEGORY_LABELS[ticket.category]?.icon || HelpCircle;
+              const CategoryIcon =
+                CATEGORY_LABELS[ticket.category]?.icon || HelpCircle;
               const isSelected = selectedTicket?.id === ticket.id;
-              const hasSuperAdminReply = ticket.messages?.some((m) => m.senderRole === "super_admin");
+              const hasSuperAdminReply = ticket.messages?.some(
+                (m) => m.senderRole === "super_admin",
+              );
 
               return (
                 <button
                   key={ticket.id}
                   onClick={() => setSelectedTicketId(ticket.id)}
                   className={clsx(
-                    "w-full text-left card p-4 space-y-2.5 transition-all relative overflow-hidden",
+                    "w-full text-left card p-4 space-y-2.5 transition-all relative overflow-hidden border",
                     isSelected
-                      ? "border-volt-400 bg-pitch-900/90 shadow-md shadow-volt-400/5"
-                      : "hover:border-white/20 bg-pitch-900/40"
+                      ? "border-volt-500 dark:border-volt-400 bg-volt-500/5 dark:bg-pitch-900/90 shadow-sm"
+                      : "border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/40 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50/70 dark:hover:bg-pitch-900/60",
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-2xs px-2 py-0.5 rounded bg-white/5 border border-white/10 text-volt-400 font-medium">
+                    <span className="font-mono text-2xs px-2 py-0.5 rounded bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-volt-700 dark:text-volt-400 font-semibold">
                       {ticket.ticketNumber}
                     </span>
                     <div className="flex items-center gap-1.5">
                       <span
                         className={clsx(
                           "text-3xs uppercase font-bold px-1.5 py-0.5 rounded border",
-                          PRIORITY_BADGES[ticket.priority]?.color
+                          PRIORITY_BADGES[ticket.priority]?.color,
                         )}
                       >
                         {PRIORITY_BADGES[ticket.priority]?.label}
@@ -153,18 +189,23 @@ export const PlatformSupportTab: React.FC = () => {
                     </div>
                   </div>
 
-                  <p className="text-sm font-semibold text-white line-clamp-1">{ticket.subject}</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white line-clamp-1">
+                    {ticket.subject}
+                  </p>
 
-                  <div className="flex items-center justify-between text-2xs text-slate-400">
-                    <span className="flex items-center gap-1 text-slate-300">
-                      <CategoryIcon size={12} className="text-slate-400" />
-                      {CATEGORY_LABELS[ticket.category]?.label || ticket.category}
+                  <div className="flex items-center justify-between text-2xs text-slate-500 dark:text-slate-400">
+                    <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
+                      <CategoryIcon size={12} className="text-slate-400 dark:text-slate-500" />
+                      {CATEGORY_LABELS[ticket.category]?.label ||
+                        ticket.category}
                     </span>
-                    <span>{new Date(ticket.createdAt).toLocaleDateString("en-IN")}</span>
+                    <span>
+                      {new Date(ticket.createdAt).toLocaleDateString("en-IN")}
+                    </span>
                   </div>
 
                   {hasSuperAdminReply && (
-                    <div className="flex items-center gap-1.5 text-2xs text-emerald-400 font-medium pt-1 border-t border-white/5">
+                    <div className="flex items-center gap-1.5 text-2xs text-emerald-600 dark:text-emerald-400 font-medium pt-1.5 border-t border-slate-100 dark:border-white/5">
                       <CheckCircle2 size={12} />
                       Super Admin has responded
                     </div>
@@ -190,7 +231,9 @@ export const PlatformSupportTab: React.FC = () => {
       </div>
 
       {/* Create Ticket Modal */}
-      {showCreateModal && <CreateTicketModal onClose={() => setShowCreateModal(false)} />}
+      {showCreateModal && (
+        <CreateTicketModal onClose={() => setShowCreateModal(false)} />
+      )}
     </div>
   );
 };
@@ -198,8 +241,10 @@ export const PlatformSupportTab: React.FC = () => {
 // ─── Ticket Detail & Conversation View ──────────────────────────────────────────
 const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
   const [replyText, setReplyText] = useState("");
-  const [replyMutation, { isLoading: isReplying }] = useReplyPlatformTicketMutation();
-  const [updateStatusMutation, { isLoading: isUpdatingStatus }] = useUpdatePlatformTicketStatusMutation();
+  const [replyMutation, { isLoading: isReplying }] =
+    useReplyPlatformTicketMutation();
+  const [updateStatusMutation, { isLoading: isUpdatingStatus }] =
+    useUpdatePlatformTicketStatusMutation();
 
   const handleSendReply = async () => {
     if (!replyText.trim()) return toast.error("Please enter a reply message");
@@ -230,12 +275,12 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
   const CategoryIcon = CATEGORY_LABELS[ticket.category]?.icon || HelpCircle;
 
   return (
-    <div className="card p-5 space-y-5 bg-pitch-900/70">
+    <div className="card p-5 space-y-5 bg-white dark:bg-pitch-900/70 border border-slate-200 dark:border-white/10 shadow-xs">
       {/* Header */}
-      <div className="border-b border-white/10 pb-4 space-y-2">
+      <div className="border-b border-slate-200 dark:border-white/10 pb-4 space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs px-2.5 py-1 rounded bg-volt-400/10 border border-volt-400/20 text-volt-400 font-bold">
+            <span className="font-mono text-xs px-2.5 py-1 rounded bg-volt-500/10 dark:bg-volt-400/10 border border-volt-500/20 dark:border-volt-400/20 text-volt-700 dark:text-volt-400 font-bold">
               {ticket.ticketNumber}
             </span>
             <Badge variant={STATUS_VARIANTS[ticket.status].variant}>
@@ -244,7 +289,7 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
             <span
               className={clsx(
                 "text-2xs uppercase font-bold px-2 py-0.5 rounded border",
-                PRIORITY_BADGES[ticket.priority]?.color
+                PRIORITY_BADGES[ticket.priority]?.color,
               )}
             >
               {PRIORITY_BADGES[ticket.priority]?.label} Priority
@@ -255,21 +300,25 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
             <button
               onClick={handleCloseTicket}
               disabled={isUpdatingStatus}
-              className="text-2xs text-slate-400 hover:text-white px-2.5 py-1 rounded border border-white/10 hover:border-white/20 transition-colors"
+              className="text-2xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white px-2.5 py-1 rounded border border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
             >
               Close Ticket
             </button>
           )}
         </div>
 
-        <h3 className="text-base sm:text-lg font-bold text-white">{ticket.subject}</h3>
+        <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+          {ticket.subject}
+        </h3>
 
-        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1.5">
-            <CategoryIcon size={14} className="text-slate-400" />
+            <CategoryIcon size={14} className="text-slate-400 dark:text-slate-500" />
             {CATEGORY_LABELS[ticket.category]?.label || ticket.category}
           </span>
-          <span>Submitted: {new Date(ticket.createdAt).toLocaleString("en-IN")}</span>
+          <span>
+            Submitted: {new Date(ticket.createdAt).toLocaleString("en-IN")}
+          </span>
         </div>
       </div>
 
@@ -284,8 +333,8 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
               className={clsx(
                 "p-4 rounded-xl space-y-2 border transition-colors",
                 isSuperAdmin
-                  ? "bg-purple-950/30 border-purple-500/30 ml-2 sm:ml-6"
-                  : "bg-pitch-800/80 border-white/10 mr-2 sm:mr-6"
+                  ? "bg-purple-50/80 dark:bg-purple-950/30 border-purple-200 dark:border-purple-500/30 ml-2 sm:ml-6"
+                  : "bg-slate-50 dark:bg-pitch-800/80 border-slate-200 dark:border-white/10 mr-2 sm:mr-6",
               )}
             >
               <div className="flex items-center justify-between gap-2">
@@ -293,7 +342,9 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
                   <span
                     className={clsx(
                       "text-xs font-semibold flex items-center gap-1.5",
-                      isSuperAdmin ? "text-purple-400" : "text-volt-400"
+                      isSuperAdmin
+                        ? "text-purple-700 dark:text-purple-400"
+                        : "text-volt-700 dark:text-volt-400",
                     )}
                   >
                     {isSuperAdmin ? (
@@ -309,7 +360,7 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
                     )}
                   </span>
                 </div>
-                <span className="text-3xs text-slate-400">
+                <span className="text-3xs text-slate-500 dark:text-slate-400">
                   {new Date(msg.createdAt).toLocaleString("en-IN", {
                     month: "short",
                     day: "numeric",
@@ -318,7 +369,7 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
                   })}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-slate-200 whitespace-pre-line leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed">
                 {msg.message}
               </p>
             </div>
@@ -328,12 +379,13 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
 
       {/* Reply Section */}
       {ticket.status === "closed" ? (
-        <div className="p-3.5 bg-slate-900/60 border border-white/5 rounded-xl text-center text-xs text-slate-400">
-          This ticket is closed. If you have another query, please submit a new ticket.
+        <div className="p-3.5 bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-white/5 rounded-xl text-center text-xs text-slate-600 dark:text-slate-400">
+          This ticket is closed. If you have another query, please submit a new
+          ticket.
         </div>
       ) : (
-        <div className="pt-2 border-t border-white/10 space-y-3">
-          <label className="text-xs font-medium text-slate-300 block">
+        <div className="pt-2 border-t border-slate-200 dark:border-white/10 space-y-3">
+          <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block">
             Add a reply or clarification to Super Admin
           </label>
           <textarea
@@ -369,7 +421,8 @@ const CreateTicketModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject.trim()) return toast.error("Please enter a subject");
-    if (description.trim().length < 10) return toast.error("Description must be at least 10 characters");
+    if (description.trim().length < 10)
+      return toast.error("Description must be at least 10 characters");
 
     try {
       await createTicket({
@@ -386,22 +439,23 @@ const CreateTicketModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="card w-full max-w-lg p-6 bg-pitch-900 border-white/10 space-y-5 shadow-2xl relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-fade-in">
+      <div className="card w-full max-w-lg p-6 bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 space-y-5 shadow-2xl relative">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
         >
           <X size={18} />
         </button>
 
         <div>
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <LifeBuoy className="text-volt-400" size={20} />
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <LifeBuoy className="text-volt-600 dark:text-volt-400" size={20} />
             Submit Query / Issue to Super Admin
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Our platform support team and Super Admin will review your query and reply back directly.
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Our platform support team and Super Admin will review your query and
+            reply back directly.
           </p>
         </div>
 
@@ -415,7 +469,9 @@ const CreateTicketModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 className="input w-full text-xs"
               >
                 <option value="bug_technical">Technical Issue / Bug</option>
-                <option value="billing_subscription">Billing & Subscriptions</option>
+                <option value="billing_subscription">
+                  Billing & Subscriptions
+                </option>
                 <option value="feature_request">Feature Request</option>
                 <option value="account_access">Account & Access</option>
                 <option value="other">General Platform Query</option>
@@ -466,7 +522,12 @@ const CreateTicketModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             <Button variant="ghost" size="sm" type="button" onClick={onClose}>
               Cancel
             </Button>
-            <Button size="sm" loading={isLoading} type="submit" icon={<Send size={14} />}>
+            <Button
+              size="sm"
+              loading={isLoading}
+              type="submit"
+              icon={<Send size={14} />}
+            >
               Submit to Super Admin
             </Button>
           </div>

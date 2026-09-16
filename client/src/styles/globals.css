@@ -73,10 +73,7 @@
     color: #e2e8f0;
   }
 
-  /* In light mode, map light-text classes to dark slate unless explicitly kept */
-  html:not(.dark) .text-white {
-    color: #0f172a;
-  }
+  /* In light mode, map slate tints if needed */
   html:not(.dark) .text-slate-100 {
     color: #0f172a;
   }
@@ -280,6 +277,12 @@
 
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* ══════════════════════════════════════════════

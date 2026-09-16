@@ -1,7 +1,16 @@
 // src/features/finance/FinancePage.tsx
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  Legend,
+} from "recharts";
 import { clsx } from "clsx";
 import {
   CreditCard,
@@ -17,7 +26,13 @@ import {
   CheckCircle2,
   Wallet,
 } from "lucide-react";
-import { StatCard, Skeleton, EmptyState, Badge, Button } from "../../components/ui";
+import {
+  StatCard,
+  Skeleton,
+  EmptyState,
+  Badge,
+  Button,
+} from "../../components/ui";
 import { academyApi } from "../../store/api/academyApi";
 import {
   useGetFinanceOverviewQuery,
@@ -32,7 +47,11 @@ import {
 } from "../../store/api/financeApi";
 
 const formatCurrency = (n: number) =>
-  n >= 10000000 ? `₹${(n / 10000000).toFixed(2)}Cr` : n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : `₹${n.toLocaleString("en-IN")}`;
+  n >= 10000000
+    ? `₹${(n / 10000000).toFixed(2)}Cr`
+    : n >= 100000
+      ? `₹${(n / 100000).toFixed(1)}L`
+      : `₹${n.toLocaleString("en-IN")}`;
 
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -40,7 +59,11 @@ const ChartTooltip = ({ active, payload, label }: any) => {
     <div className="bg-slate-900 dark:bg-pitch-800 border border-slate-700 dark:border-white/10 rounded px-3 py-2 text-xs shadow-lg">
       <p className="text-slate-400 font-medium mb-1">{label}</p>
       {payload.map((p: any) => (
-        <p key={p.dataKey} style={{ color: p.fill }} className="font-bold flex items-center justify-between gap-4">
+        <p
+          key={p.dataKey}
+          style={{ color: p.fill }}
+          className="font-bold flex items-center justify-between gap-4"
+        >
           <span>{p.name}:</span>
           <span>{formatCurrency(p.value)}</span>
         </p>
@@ -51,27 +74,39 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 
 const FinancePage: React.FC = () => {
   const [academyId, setAcademyId] = useState("");
-  const [txFilter, setTxFilter] = useState<"platform_all" | "subscriptions" | "nfc" | "academy_fees">("platform_all");
+  const [txFilter, setTxFilter] = useState<
+    "platform_all" | "subscriptions" | "nfc" | "academy_fees"
+  >("platform_all");
   const [showInternalFeeAudit, setShowInternalFeeAudit] = useState(false);
 
-  const { data: academiesResult } = academyApi.useGetAcademiesQuery({ isActive: true, limit: 100 });
+  const { data: academiesResult } = academyApi.useGetAcademiesQuery({
+    isActive: true,
+    limit: 100,
+  });
   const academies = academiesResult?.data ?? [];
 
   const params = academyId ? { academyId } : undefined;
-  const { data: overview, isLoading: overviewLoading } = useGetFinanceOverviewQuery(params);
-  const { data: monthly, isLoading: monthlyLoading } = useGetRevenueByMonthQuery(params);
-  const { data: byAcademy, isLoading: byAcademyLoading } = useGetRevenueByAcademyQuery();
-  const { data: overdue, isLoading: overdueLoading } = useGetOverdueInvoicesQuery(params);
-  const { data: transactions, isLoading: txLoading } = useGetRecentTransactionsQuery(params);
+  const { data: overview, isLoading: overviewLoading } =
+    useGetFinanceOverviewQuery(params);
+  const { data: monthly, isLoading: monthlyLoading } =
+    useGetRevenueByMonthQuery(params);
+  const { data: byAcademy, isLoading: byAcademyLoading } =
+    useGetRevenueByAcademyQuery();
+  const { data: overdue, isLoading: overdueLoading } =
+    useGetOverdueInvoicesQuery(params);
+  const { data: transactions, isLoading: txLoading } =
+    useGetRecentTransactionsQuery(params);
 
   const rawTxList: Transaction[] = Array.isArray(transactions)
     ? transactions
     : Array.isArray((transactions as any)?.data)
-    ? (transactions as any).data
-    : [];
+      ? (transactions as any).data
+      : [];
 
   const filteredTransactions = rawTxList.filter((tx) => {
-    const isSub = tx.type === "academy_subscription" || tx.method === "Stripe" && !tx.quantity;
+    const isSub =
+      tx.type === "academy_subscription" ||
+      (tx.method === "Stripe" && !tx.quantity);
     const isNfc = tx.type === "nfc_card_order" || !!tx.quantity;
     const isFee = tx.type === "student_fee" || (!isSub && !isNfc);
 
@@ -85,22 +120,23 @@ const FinancePage: React.FC = () => {
   const monthlyList: MonthlyRevenue[] = Array.isArray(monthly)
     ? monthly
     : Array.isArray((monthly as any)?.data)
-    ? (monthly as any).data
-    : [];
+      ? (monthly as any).data
+      : [];
 
   const byAcademyList: AcademyRevenue[] = Array.isArray(byAcademy)
     ? byAcademy
     : Array.isArray((byAcademy as any)?.data)
-    ? (byAcademy as any).data
-    : [];
+      ? (byAcademy as any).data
+      : [];
 
   const overdueList: OverdueInvoice[] = Array.isArray(overdue?.data)
     ? overdue.data
     : Array.isArray(overdue)
-    ? (overdue as any)
-    : [];
+      ? (overdue as any)
+      : [];
 
-  const totalPlatformRev = overview?.totalPlatformRevenue ?? overview?.totalRevenue ?? 0;
+  const totalPlatformRev =
+    overview?.totalPlatformRevenue ?? overview?.totalRevenue ?? 0;
   const subRev = overview?.subscriptionRevenue ?? 0;
   const nfcRev = overview?.nfcRevenue ?? 0;
 
@@ -110,14 +146,19 @@ const FinancePage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="pill pill-green font-mono text-2xs uppercase">Platform Operator</span>
-            <span className="text-2xs text-slate-500">Super Admin Finances</span>
+            <span className="pill pill-green font-mono text-2xs uppercase">
+              Platform Operator
+            </span>
+            <span className="text-2xs text-slate-500">
+              Super Admin Finances
+            </span>
           </div>
           <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
             Platform Financial Ledger
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5 max-w-2xl">
-            Super Admin revenue derived strictly from Academy SaaS Subscriptions and Smart NFC Card sales.
+            Super Admin revenue derived strictly from Academy SaaS Subscriptions
+            and Smart NFC Card sales.
           </p>
         </div>
 
@@ -138,13 +179,23 @@ const FinancePage: React.FC = () => {
       {/* Domain Separation Notice */}
       <div className="card p-3.5 bg-slate-100/70 dark:bg-pitch-800/40 border border-slate-200/80 dark:border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2.5 text-slate-600 dark:text-slate-300">
-          <Info size={16} className="text-volt-500 dark:text-volt-400 shrink-0" />
+          <Info
+            size={16}
+            className="text-volt-500 dark:text-volt-400 shrink-0"
+          />
           <span>
-            <strong>Revenue Model:</strong> Platform earnings come directly from <strong>SaaS Subscriptions</strong> and <strong>Smart NFC Card sales</strong>. Student coaching and tuition fees belong exclusively to each respective academy.
+            <strong>Revenue Model:</strong> Platform earnings come directly from{" "}
+            <strong>SaaS Subscriptions</strong> and{" "}
+            <strong>Smart NFC Card sales</strong>. Student coaching and tuition
+            fees belong exclusively to each respective academy.
           </span>
         </div>
         <Link to="/nfc-cards" className="shrink-0 w-full sm:w-auto">
-          <Button size="sm" variant="secondary" className="text-xs !py-1 !px-2.5 w-full justify-center">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="text-xs !py-1 !px-2.5 w-full justify-center"
+          >
             <CreditCard size={13} className="mr-1" /> NFC Cards Center
           </Button>
         </Link>
@@ -200,7 +251,8 @@ const FinancePage: React.FC = () => {
                 Academy Internal Student Collections (For Platform Audit)
               </h4>
               <p className="text-2xs text-slate-500">
-                Tuition and installment payments collected directly by academies from their students. (Not platform income)
+                Tuition and installment payments collected directly by academies
+                from their students. (Not platform income)
               </p>
             </div>
           </div>
@@ -214,29 +266,54 @@ const FinancePage: React.FC = () => {
         </div>
 
         {showInternalFeeAudit && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-200 dark:border-white/5 animate-fade-in">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-200 dark:border-white/5 animate-fade-in">
             <div className="p-2.5 rounded-lg bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/5">
-              <span className="text-2xs uppercase text-slate-400 font-mono">Total Billed by Academies</span>
+              <span className="text-2xs uppercase text-slate-400 font-mono">
+                Total Billed by Academies
+              </span>
               <p className="font-display font-bold text-sm text-slate-900 dark:text-white mt-0.5">
-                {formatCurrency(overview?.academyFeesTotal ?? overview?.studentFeeRevenue ?? 0)}
+                {formatCurrency(
+                  overview?.academyFeesTotal ??
+                    overview?.studentFeeRevenue ??
+                    0,
+                )}
               </p>
             </div>
             <div className="p-2.5 rounded-lg bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/5">
-              <span className="text-2xs uppercase text-slate-400 font-mono">Collected by Academies</span>
+              <span className="text-2xs uppercase text-slate-400 font-mono">
+                Collected by Academies
+              </span>
               <p className="font-display font-bold text-sm text-field-500 dark:text-field-400 mt-0.5">
                 {formatCurrency(overview?.academyFeesCollected ?? 0)}
               </p>
             </div>
             <div className="p-2.5 rounded-lg bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/5">
-              <span className="text-2xs uppercase text-slate-400 font-mono">Outstanding to Academies</span>
+              <span className="text-2xs uppercase text-slate-400 font-mono">
+                Outstanding to Academies
+              </span>
               <p className="font-display font-bold text-sm text-amber-500 mt-0.5">
-                {formatCurrency(overview?.academyFeesOutstanding ?? overview?.totalOutstanding ?? 0)}
+                {formatCurrency(
+                  overview?.academyFeesOutstanding ??
+                    overview?.totalOutstanding ??
+                    0,
+                )}
               </p>
             </div>
             <div className="p-2.5 rounded-lg bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/5">
-              <span className="text-2xs uppercase text-slate-400 font-mono">Overdue Academy Invoices</span>
+              <span className="text-2xs uppercase text-slate-400 font-mono">
+                Overdue Academy Invoices
+              </span>
               <p className="font-display font-bold text-sm text-rose-500 mt-0.5">
-                {overview?.academyFeesOverdueCount ?? overview?.overdueCount ?? 0} ({formatCurrency(overview?.academyFeesOverdueAmount ?? overview?.overdueAmount ?? 0)})
+                {overview?.academyFeesOverdueCount ??
+                  overview?.overdueCount ??
+                  0}{" "}
+                (
+                {formatCurrency(
+                  overview?.academyFeesOverdueAmount ??
+                    overview?.overdueAmount ??
+                    0,
+                )}
+                )
               </p>
             </div>
           </div>
@@ -249,15 +326,22 @@ const FinancePage: React.FC = () => {
         <div className="lg:col-span-2 card p-5 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="section-title">Platform Revenue Streams — Last 6 Months</p>
-              <p className="text-2xs text-slate-500">Breakdown of SaaS Subscriptions vs Smart NFC Card Sales</p>
+              <p className="section-title">
+                Platform Revenue Streams — Last 6 Months
+              </p>
+              <p className="text-2xs text-slate-500">
+                Breakdown of SaaS Subscriptions vs Smart NFC Card Sales
+              </p>
             </div>
-            <span className="pill pill-green text-2xs font-mono">Super Admin Income</span>
+            <span className="pill pill-green text-2xs font-mono">
+              Super Admin Income
+            </span>
           </div>
 
           {monthlyLoading ? (
             <Skeleton className="h-56 rounded" />
-          ) : !monthlyList.length || monthlyList.every((m) => (m.platformRevenue ?? m.revenue) === 0) ? (
+          ) : !monthlyList.length ||
+            monthlyList.every((m) => (m.platformRevenue ?? m.revenue) === 0) ? (
             <EmptyState
               title="No platform income records yet"
               description="Platform revenue will appear once academies subscribe or purchase Smart NFC cards."
@@ -265,8 +349,16 @@ const FinancePage: React.FC = () => {
           ) : (
             <ResponsiveContainer width="100%" height={230}>
               <BarChart data={monthlyList}>
-                <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis dataKey="month" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <CartesianGrid
+                  stroke="rgba(255,255,255,0.04)"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fill: "#64748b", fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <YAxis
                   tick={{ fill: "#64748b", fontSize: 11 }}
                   axisLine={false}
@@ -274,8 +366,18 @@ const FinancePage: React.FC = () => {
                   tickFormatter={(v) => formatCurrency(v)}
                 />
                 <Tooltip content={<ChartTooltip />} />
-                <Bar dataKey="subscriptionRevenue" name="SaaS Subscriptions" fill="#3b82f6" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="nfcRevenue" name="NFC Cards" fill="#16a34a" radius={[3, 3, 0, 0]} />
+                <Bar
+                  dataKey="subscriptionRevenue"
+                  name="SaaS Subscriptions"
+                  fill="#3b82f6"
+                  radius={[3, 3, 0, 0]}
+                />
+                <Bar
+                  dataKey="nfcRevenue"
+                  name="NFC Cards"
+                  fill="#16a34a"
+                  radius={[3, 3, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -301,13 +403,17 @@ const FinancePage: React.FC = () => {
               {byAcademyList.map((a) => {
                 const totalPaid = a.platformRevenue ?? a.revenue;
                 return (
-                  <div key={a.academyId} className="flex items-center justify-between">
+                  <div
+                    key={a.academyId}
+                    className="flex items-center justify-between"
+                  >
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
                         {a.academyName}
                       </p>
                       <p className="text-2xs text-slate-500">
-                        SaaS: {formatCurrency(a.subscriptionRevenue ?? 0)} · NFC: {formatCurrency(a.nfcRevenue ?? 0)}
+                        SaaS: {formatCurrency(a.subscriptionRevenue ?? 0)} ·
+                        NFC: {formatCurrency(a.nfcRevenue ?? 0)}
                       </p>
                     </div>
                     <span className="font-display font-bold text-field-500 dark:text-volt-400 text-sm flex-shrink-0">
@@ -327,12 +433,13 @@ const FinancePage: React.FC = () => {
           <div>
             <p className="section-title">Platform Financial Transactions</p>
             <p className="text-2xs text-slate-500">
-              Audit log of all Stripe subscriptions, hardware NFC payments, and academy student tuition
+              Audit log of all Stripe subscriptions, hardware NFC payments, and
+              academy student tuition
             </p>
           </div>
 
           {/* Filter Tabs */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-800/60 p-0.5 rounded-lg border border-slate-200/60 dark:border-white/[0.04] overflow-x-auto max-w-full">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-800/60 p-0.5 rounded-lg border border-slate-200/60 dark:border-white/[0.04] overflow-x-auto no-scrollbar max-w-full w-full sm:w-auto">
             <button
               type="button"
               onClick={() => setTxFilter("platform_all")}
@@ -394,13 +501,15 @@ const FinancePage: React.FC = () => {
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
             {filteredTransactions.map((tx, i) => {
-              const isSub = tx.type === "academy_subscription" || (tx.method === "Stripe" && !tx.quantity);
+              const isSub =
+                tx.type === "academy_subscription" ||
+                (tx.method === "Stripe" && !tx.quantity);
               const isNfc = tx.type === "nfc_card_order" || !!tx.quantity;
 
               return (
                 <div
                   key={`${tx.feeId}-${i}`}
-                  className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-pitch-900/60 border border-slate-200/80 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg bg-white dark:bg-pitch-900/60 border border-slate-200/80 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 transition-colors"
                 >
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -422,14 +531,22 @@ const FinancePage: React.FC = () => {
                       )}
                     </div>
 
-                    <p className="text-2xs text-slate-500 flex items-center gap-2">
-                      <span>{new Date(tx.paidAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                    <p className="text-2xs text-slate-500 flex items-center gap-2 flex-wrap">
+                      <span>
+                        {new Date(tx.paidAt).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </span>
                       <span>·</span>
                       <span>Method: {tx.method || "Stripe"}</span>
                       {tx.billingInterval && (
                         <>
                           <span>·</span>
-                          <span className="capitalize">{tx.billingInterval} Plan</span>
+                          <span className="capitalize">
+                            {tx.billingInterval} Plan
+                          </span>
                         </>
                       )}
                       {tx.quantity && (
@@ -441,20 +558,22 @@ const FinancePage: React.FC = () => {
                       {tx.transactionId && (
                         <>
                           <span>·</span>
-                          <span className="font-mono text-slate-400">ID: {tx.transactionId.slice(-8)}</span>
+                          <span className="font-mono text-slate-400">
+                            ID: {tx.transactionId.slice(-8)}
+                          </span>
                         </>
                       )}
                     </p>
                   </div>
 
-                  <div className="text-right shrink-0">
+                  <div className="text-left sm:text-right shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100 dark:border-white/5 flex sm:block items-center justify-between">
                     <span
                       className={`font-display font-bold text-sm ${
                         isSub
                           ? "text-indigo-500 dark:text-volt-400"
                           : isNfc
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-slate-600 dark:text-slate-300"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-slate-600 dark:text-slate-300"
                       }`}
                     >
                       {formatCurrency(tx.amount)}

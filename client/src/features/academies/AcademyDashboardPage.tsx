@@ -193,11 +193,11 @@ export const AcademyDashboardPage: React.FC = () => {
                 <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5 text-center">
                   <div>
                     <p className="text-2xs text-slate-500 uppercase">Players</p>
-                    <p className="text-sm font-bold text-white mt-0.5">{fp.totalPlayers}</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">{fp.totalPlayers}</p>
                   </div>
                   <div>
                     <p className="text-2xs text-slate-500 uppercase">Squads</p>
-                    <p className="text-sm font-bold text-white mt-0.5">{fp.totalTeams}</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">{fp.totalTeams}</p>
                   </div>
                   <div>
                     <p className="text-2xs text-slate-500 uppercase">Collected</p>
@@ -296,7 +296,7 @@ export const AcademyDashboardPage: React.FC = () => {
               {teamHealth.map((team, i) => (
                 <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">{team.name}</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{team.name}</p>
                     <p className="text-2xs text-slate-500 mt-0.5">
                       {team.students} players · Coach: {team.coach || "Unassigned"}
                     </p>
@@ -333,7 +333,7 @@ export const AcademyDashboardPage: React.FC = () => {
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Avatar name={player.name} src={player.avatar} size="sm" />
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-white truncate">{player.name}</p>
+                      <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{player.name}</p>
                       <p className="text-[10px] text-slate-500">{player.position || "Player"} · {player.team || "Squad"}</p>
                     </div>
                   </div>

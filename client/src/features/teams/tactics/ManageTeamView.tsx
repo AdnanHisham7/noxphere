@@ -2,7 +2,14 @@
 import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import { ArrowLeft, ArrowLeftRight, Sparkles, X, Palette } from "lucide-react";
-import { Player, FormationType, FORMATION_PRESETS, SavedFormation, autopickSquad, getAptitudeMultiplier } from "./types";
+import {
+  Player,
+  FormationType,
+  FORMATION_PRESETS,
+  SavedFormation,
+  autopickSquad,
+  getAptitudeMultiplier,
+} from "./types";
 import { TacticalCard } from "./TacticalCard";
 import { Avatar } from "../../../components/ui";
 import { PlayerPlaceholder } from "../../../components/ui/PlayerPlaceholder";
@@ -28,7 +35,9 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
   onEditColors,
 }) => {
   const [formation, setFormation] = useState<FormationType>("4-2-3-1");
-  const [squad, setSquad] = useState<Record<string, string>>(() => autopickSquad("4-2-3-1", players));
+  const [squad, setSquad] = useState<Record<string, string>>(() =>
+    autopickSquad("4-2-3-1", players),
+  );
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [savedFormations, setSavedFormations] = useState<SavedFormation[]>([]);
   const [labelInput, setLabelInput] = useState("Friendly Match");
@@ -43,14 +52,20 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
       const player = players.find((p) => p.id === playerId);
       const slot = FORMATION_PRESETS[formation].find((s) => s.id === slotId);
       if (!player || !slot) return sum;
-      return sum + player.rating * getAptitudeMultiplier(player.position, slot.role);
+      return (
+        sum + player.rating * getAptitudeMultiplier(player.position, slot.role)
+      );
     }, 0),
   );
 
   const activePitchIds = Object.values(squad);
   const reservePlayers = players.filter((p) => !activePitchIds.includes(p.id));
 
-  const handleDragStart = (e: React.DragEvent, idOrSlot: string, source: "pitch" | "drawer") => {
+  const handleDragStart = (
+    e: React.DragEvent,
+    idOrSlot: string,
+    source: "pitch" | "drawer",
+  ) => {
     e.dataTransfer.setData("sourceType", source);
     e.dataTransfer.setData("payloadValue", idOrSlot);
   };
@@ -99,14 +114,17 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
     const layoutSlots = FORMATION_PRESETS[type];
     const updatedSquad: Record<string, string> = {};
     layoutSlots.forEach((slot, index) => {
-      updatedSquad[slot.id] = activePitchIds[index] || reservePlayers[index]?.id || players[0]?.id;
+      updatedSquad[slot.id] =
+        activePitchIds[index] || reservePlayers[index]?.id || players[0]?.id;
     });
     setSquad(updatedSquad);
   };
 
   const handleAutopick = () => {
     setSquad(autopickSquad(formation, players));
-    toast.success("Squad optimized for peak strength", { icon: <Sparkles size={16} className="text-volt-400" /> });
+    toast.success("Squad optimized for peak strength", {
+      icon: <Sparkles size={16} className="text-volt-400" />,
+    });
   };
 
   return (
@@ -119,7 +137,9 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
           >
             <ArrowLeft size={13} /> Back
           </button>
-          <h2 className="text-base font-black uppercase text-white tracking-wide">{teamName} Management Console</h2>
+          <h2 className="text-base font-black uppercase text-slate-900 dark:text-white tracking-wide">
+            {teamName} Management Console
+          </h2>
         </div>
         <button
           onClick={() => setIsDrawerOpen(true)}
@@ -133,7 +153,9 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
         <div className="lg:col-span-3 bg-slate-900/60 border border-slate-800/80 rounded p-4 flex flex-col gap-4">
           <div>
             <div className="flex justify-between items-end mb-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Formation</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                Formation
+              </label>
               <button
                 onClick={handleAutopick}
                 className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20"
@@ -143,17 +165,23 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
             </div>
             <select
               value={formation}
-              onChange={(e) => applyFormationReset(e.target.value as FormationType)}
+              onChange={(e) =>
+                applyFormationReset(e.target.value as FormationType)
+              }
               className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white focus:ring-1 focus:ring-cyan-500 outline-none"
             >
               {Object.keys(FORMATION_PRESETS).map((f) => (
-                <option key={f} value={f}>{f}</option>
+                <option key={f} value={f}>
+                  {f}
+                </option>
               ))}
             </select>
           </div>
 
           <div className="border-t border-slate-800/60 pt-3">
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Save formation as</label>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+              Save formation as
+            </label>
             <div className="flex gap-1.5 mb-3">
               <select
                 value={labelInput}
@@ -175,13 +203,22 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
 
             <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
               {savedFormations.length === 0 && (
-                <p className="text-2xs text-slate-500">No saved formations yet — these stay for this session only.</p>
+                <p className="text-2xs text-slate-500">
+                  No saved formations yet — these stay for this session only.
+                </p>
               )}
               {savedFormations.map((sf) => (
-                <div key={sf.id} className="flex justify-between items-center bg-slate-950/80 p-2 rounded border border-slate-800 text-2xs">
+                <div
+                  key={sf.id}
+                  className="flex justify-between items-center bg-slate-950/80 p-2 rounded border border-slate-800 text-2xs"
+                >
                   <div>
-                    <p className="font-bold text-white leading-tight">{sf.label}</p>
-                    <p className="text-[10px] text-slate-500">{sf.formationType}</p>
+                    <p className="font-bold text-slate-900 dark:text-white leading-tight">
+                      {sf.label}
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      {sf.formationType}
+                    </p>
                   </div>
                   <button
                     onClick={() => applyPreset(sf)}
@@ -195,10 +232,15 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
           </div>
 
           <div className="mt-auto bg-slate-950/70 p-4 rounded-xl border border-slate-700 flex items-center gap-4">
-            <Avatar name={coach ? `${coach.firstName} ${coach.lastName}` : "?"} size="md" />
+            <Avatar
+              name={coach ? `${coach.firstName} ${coach.lastName}` : "?"}
+              size="md"
+            />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-white truncate">
-                {coach ? `${coach.firstName} ${coach.lastName}` : "No coach assigned"}
+              <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                {coach
+                  ? `${coach.firstName} ${coach.lastName}`
+                  : "No coach assigned"}
               </p>
               <p className="text-xs text-slate-400">Head Coach</p>
             </div>
@@ -232,7 +274,9 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                   left={slot.left}
                   player={playerObj}
                   cardBackground={cardBackground}
-                  onDragStart={(e, _, source) => handleDragStart(e, slot.id, source)}
+                  onDragStart={(e, _, source) =>
+                    handleDragStart(e, slot.id, source)
+                  }
                   onDrop={handleDropOnPitchSlot}
                   onViewDetails={(p) => setSelectedPlayer(p)}
                 />
@@ -243,18 +287,31 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
 
         <div className="lg:col-span-3 flex flex-col gap-4">
           <div className="bg-slate-900/60 border border-slate-800/80 rounded p-4 text-center shadow-lg">
-            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Collective Strength</h4>
-            <p className="text-3xl font-mono font-black text-lime-400 tracking-tight">{collectiveStrength}</p>
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+              Collective Strength
+            </h4>
+            <p className="text-3xl font-mono font-black text-lime-400 tracking-tight">
+              {collectiveStrength}
+            </p>
           </div>
 
           <div className="bg-slate-900/60 border border-slate-800/80 rounded p-4 flex-1 flex flex-col shadow-lg">
-            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Player Inspector</h4>
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
+              Player Inspector
+            </h4>
             {selectedPlayer ? (
               <div className="space-y-6 flex-1">
-                <div className="relative aspect-[2/3] w-full max-w-[180px] mx-auto rounded-2xl overflow-hidden border border-white/10 bg-black shadow-2xl" style={cardBackground}>
+                <div
+                  className="relative aspect-[2/3] w-full max-w-[180px] mx-auto rounded-2xl overflow-hidden border border-white/10 bg-black shadow-2xl"
+                  style={cardBackground}
+                >
                   <div className="absolute inset-0">
                     {selectedPlayer.photo ? (
-                      <img src={selectedPlayer.photo} className="h-full w-full object-cover object-top" alt="" />
+                      <img
+                        src={selectedPlayer.photo}
+                        className="h-full w-full object-cover object-top"
+                        alt=""
+                      />
                     ) : (
                       <PlayerPlaceholder
                         image={mannequinPng}
@@ -269,7 +326,9 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
                   <div className="absolute top-3 left-3 z-20">
-                    <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest">{selectedPlayer.position}</p>
+                    <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest">
+                      {selectedPlayer.position}
+                    </p>
                     <h3 className="text-lg font-black text-white leading-none mt-1 uppercase">
                       {selectedPlayer.name.split(" ")[0]}
                       <br />
@@ -277,7 +336,9 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                     </h3>
                   </div>
                   <div className="absolute top-3 right-3 text-right z-20">
-                    <span className="text-3xl font-display font-black text-volt-400">{selectedPlayer.rating}</span>
+                    <span className="text-3xl font-display font-black text-volt-400">
+                      {selectedPlayer.rating}
+                    </span>
                   </div>
                 </div>
                 <div className="bg-slate-950/50 p-4 rounded-xl border border-white/5">
@@ -289,7 +350,9 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
               </div>
             ) : (
               <div className="h-full flex items-center justify-center border-2 border-dashed border-white/5 rounded-2xl p-8 text-center">
-                <p className="text-xs text-slate-500 font-medium">Select a player from the pitch to inspect them</p>
+                <p className="text-xs text-slate-500 font-medium">
+                  Select a player from the pitch to inspect them
+                </p>
               </div>
             )}
           </div>
@@ -301,8 +364,12 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
       >
         <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
           <div>
-            <h3 className="text-sm font-black uppercase text-white tracking-wide">Substitutes & Reserves</h3>
-            <p className="text-[10px] text-slate-400">Drag a player onto a pitch slot</p>
+            <h3 className="text-sm font-black uppercase text-white tracking-wide">
+              Substitutes & Reserves
+            </h3>
+            <p className="text-[10px] text-slate-400">
+              Drag a player onto a pitch slot
+            </p>
           </div>
           <button
             onClick={() => setIsDrawerOpen(false)}
@@ -314,10 +381,17 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
 
         <div className="flex-1 overflow-y-auto grid grid-cols-3 gap-3 content-start pr-1">
           {reservePlayers.length === 0 && (
-            <p className="col-span-3 text-2xs text-slate-500 text-center pt-6">Every player is on the pitch.</p>
+            <p className="col-span-3 text-2xs text-slate-500 text-center pt-6">
+              Every player is on the pitch.
+            </p>
           )}
           {reservePlayers.map((player) => {
-            const getRatingColor = (r: number) => (r >= 85 ? "text-volt-400" : r >= 70 ? "text-field-400" : "text-ice-400");
+            const getRatingColor = (r: number) =>
+              r >= 85
+                ? "text-volt-400"
+                : r >= 70
+                  ? "text-field-400"
+                  : "text-ice-400";
             return (
               <div
                 key={player.id}
@@ -329,7 +403,11 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
               >
                 <div className="absolute inset-0">
                   {player.photo ? (
-                    <img src={player.photo} alt={player.name} className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-110" />
+                    <img
+                      src={player.photo}
+                      alt={player.name}
+                      className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-110"
+                    />
                   ) : (
                     <PlayerPlaceholder
                       image={mannequinPng}
@@ -347,7 +425,9 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                   <div className="bg-slate-900/80 backdrop-blur-sm text-[6px] px-1 py-0.5 rounded border border-white/10 text-white font-bold uppercase tracking-tighter">
                     {player.position}
                   </div>
-                  <div className={`font-display font-black text-[11px] leading-none drop-shadow-md ${getRatingColor(player.rating)}`}>
+                  <div
+                    className={`font-display font-black text-[11px] leading-none drop-shadow-md ${getRatingColor(player.rating)}`}
+                  >
                     {player.rating}
                   </div>
                 </div>

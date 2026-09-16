@@ -1,19 +1,40 @@
 // src/features/franchises/FranchiseDashboardPage.tsx
-import React, { useEffect } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import React, { useEffect } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart,
-  Radar, PolarGrid, PolarAngleAxis,
-} from 'recharts';
-import { clsx } from 'clsx';
-import { formatDistanceToNowStrict } from 'date-fns';
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+} from "recharts";
+import { clsx } from "clsx";
+import { formatDistanceToNowStrict } from "date-fns";
 import {
-  ArrowLeft, Shirt, CheckCircle2, CreditCard, Star, Building2, TrendingUp, Activity,
-} from 'lucide-react';
-import { StatCard, Skeleton, Avatar, EmptyState, Badge } from '../../components/ui';
-import { setActiveFranchise } from '../../store/slices/uiSlice';
-import { useGetFranchiseByIdQuery } from '../../store/api/franchiseApi';
+  ArrowLeft,
+  Shirt,
+  CheckCircle2,
+  CreditCard,
+  Star,
+  Building2,
+  TrendingUp,
+  Activity,
+} from "lucide-react";
+import {
+  StatCard,
+  Skeleton,
+  Avatar,
+  EmptyState,
+  Badge,
+} from "../../components/ui";
+import { setActiveFranchise } from "../../store/slices/uiSlice";
+import { useGetFranchiseByIdQuery } from "../../store/api/franchiseApi";
 import {
   useGetDashboardStatsQuery,
   useGetAttendanceTrendQuery,
@@ -21,7 +42,7 @@ import {
   useGetTeamHealthQuery,
   useGetTopPerformersQuery,
   useGetRecentActivityQuery,
-} from '../../store/api/dashboardApi';
+} from "../../store/api/dashboardApi";
 
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -35,19 +56,30 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 
 const renderActivityIcon = (type: string) => {
   switch (type) {
-    case 'attendance':
-      return <CheckCircle2 size={14} className="text-volt-500 dark:text-volt-400" />;
-    case 'performance':
-      return <TrendingUp size={14} className="text-sky-500 dark:text-ice-400" />;
-    case 'fee':
-      return <CreditCard size={14} className="text-emerald-500 dark:text-field-400" />;
+    case "attendance":
+      return (
+        <CheckCircle2 size={14} className="text-volt-500 dark:text-volt-400" />
+      );
+    case "performance":
+      return (
+        <TrendingUp size={14} className="text-sky-500 dark:text-ice-400" />
+      );
+    case "fee":
+      return (
+        <CreditCard
+          size={14}
+          className="text-emerald-500 dark:text-field-400"
+        />
+      );
     default:
       return <Activity size={14} className="text-slate-400" />;
   }
 };
 
 const formatCurrency = (n: number) =>
-  n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : `₹${n.toLocaleString('en-IN')}`;
+  n >= 100000
+    ? `₹${(n / 100000).toFixed(1)}L`
+    : `₹${n.toLocaleString("en-IN")}`;
 
 // Franchise-specific dashboard — reached by clicking a franchise card on
 // the Franchises tab. The academy-wide /dashboard route no longer offers
@@ -61,25 +93,30 @@ const FranchiseDashboardPage: React.FC = () => {
     if (franchiseId) dispatch(setActiveFranchise(franchiseId));
   }, [franchiseId, dispatch]);
 
-  const { data: franchise, isLoading: franchiseLoading } = useGetFranchiseByIdQuery(
-    franchiseId ?? '', { skip: !franchiseId },
-  );
+  const { data: franchise, isLoading: franchiseLoading } =
+    useGetFranchiseByIdQuery(franchiseId ?? "", { skip: !franchiseId });
 
   const queryParams = { franchiseId: franchiseId ?? undefined };
   const skip = !franchiseId;
 
-  const { data: stats, isLoading: statsLoading } = useGetDashboardStatsQuery(queryParams, { skip });
-  const { data: attendanceTrend, isLoading: trendLoading } = useGetAttendanceTrendQuery(
-    { ...queryParams, days: 7 }, { skip },
+  const { data: stats, isLoading: statsLoading } = useGetDashboardStatsQuery(
+    queryParams,
+    { skip },
   );
-  const { data: radarData, isLoading: radarLoading } = useGetSkillRadarQuery(queryParams, { skip });
-  const { data: teamHealth, isLoading: teamsLoading } = useGetTeamHealthQuery(queryParams, { skip });
-  const { data: topPerformers, isLoading: performersLoading } = useGetTopPerformersQuery(
-    { ...queryParams, limit: 5 }, { skip },
+  const { data: attendanceTrend, isLoading: trendLoading } =
+    useGetAttendanceTrendQuery({ ...queryParams, days: 7 }, { skip });
+  const { data: radarData, isLoading: radarLoading } = useGetSkillRadarQuery(
+    queryParams,
+    { skip },
   );
-  const { data: recentActivity, isLoading: activityLoading } = useGetRecentActivityQuery(
-    { ...queryParams, limit: 8 }, { skip },
+  const { data: teamHealth, isLoading: teamsLoading } = useGetTeamHealthQuery(
+    queryParams,
+    { skip },
   );
+  const { data: topPerformers, isLoading: performersLoading } =
+    useGetTopPerformersQuery({ ...queryParams, limit: 5 }, { skip });
+  const { data: recentActivity, isLoading: activityLoading } =
+    useGetRecentActivityQuery({ ...queryParams, limit: 8 }, { skip });
 
   if (!franchiseId) {
     return (
@@ -97,24 +134,29 @@ const FranchiseDashboardPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <button
-            onClick={() => navigate('/franchises')}
+            onClick={() => navigate("/franchises")}
             className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-volt-400 transition-colors mb-2"
           >
             <ArrowLeft size={13} />
             All franchises
           </button>
           <p className="section-title mb-1">Franchise Dashboard</p>
-          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">
-            {franchiseLoading ? 'Loading…' : (franchise?.name ?? 'Franchise')}
+          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
+            {franchiseLoading ? "Loading…" : (franchise?.name ?? "Franchise")}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {new Date().toLocaleDateString("en-IN", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
           </p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
           {franchise && (
-            <Badge variant={franchise.isActive ? 'green' : 'gray'}>
-              {franchise.isActive ? 'Active' : 'Inactive'}
+            <Badge variant={franchise.isActive ? "green" : "gray"}>
+              {franchise.isActive ? "Active" : "Inactive"}
             </Badge>
           )}
         </div>
@@ -123,7 +165,9 @@ const FranchiseDashboardPage: React.FC = () => {
       {/* KPI Stats Row */}
       {statsLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-lg" />)}
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-lg" />
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -164,7 +208,9 @@ const FranchiseDashboardPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="section-title">Attendance Trend</p>
-              <p className="text-xs text-slate-500 mt-0.5">Last 7 days — this franchise</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Last 7 days — this franchise
+              </p>
             </div>
             <span className="text-volt-400 font-display font-extrabold text-xl">
               {stats?.avgAttendance ?? 0}%
@@ -172,26 +218,48 @@ const FranchiseDashboardPage: React.FC = () => {
           </div>
           {trendLoading ? (
             <Skeleton className="h-40 rounded" />
-          ) : !attendanceTrend?.length || attendanceTrend.every((d) => d.rate === 0) ? (
-            <EmptyState title="No attendance recorded yet" description="Mark attendance to see the trend here." />
+          ) : !attendanceTrend?.length ||
+            attendanceTrend.every((d) => d.rate === 0) ? (
+            <EmptyState
+              title="No attendance recorded yet"
+              description="Mark attendance to see the trend here."
+            />
           ) : (
             <ResponsiveContainer width="100%" height={160}>
               <AreaChart data={attendanceTrend}>
                 <defs>
-                  <linearGradient id="voltGradFranchise" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient
+                    id="voltGradFranchise"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
                     <stop offset="5%" stopColor="#ccff00" stopOpacity={0.15} />
                     <stop offset="95%" stopColor="#ccff00" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <XAxis
+                  dataKey="day"
+                  tick={{ fill: "#64748b", fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  tick={{ fill: "#64748b", fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <Tooltip content={<ChartTooltip />} />
                 <Area
-                  type="monotone" dataKey="rate"
-                  stroke="#ccff00" strokeWidth={2}
+                  type="monotone"
+                  dataKey="rate"
+                  stroke="#ccff00"
+                  strokeWidth={2}
                   fill="url(#voltGradFranchise)"
-                  dot={{ fill: '#ccff00', strokeWidth: 0, r: 3 }}
-                  activeDot={{ fill: '#ccff00', r: 5, strokeWidth: 0 }}
+                  dot={{ fill: "#ccff00", strokeWidth: 0, r: 3 }}
+                  activeDot={{ fill: "#ccff00", r: 5, strokeWidth: 0 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -201,18 +269,32 @@ const FranchiseDashboardPage: React.FC = () => {
         <div className="card p-5 space-y-4">
           <div>
             <p className="section-title">Franchise Avg Skills</p>
-            <p className="text-xs text-slate-500 mt-0.5">All players aggregate</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              All players aggregate
+            </p>
           </div>
           {radarLoading ? (
             <Skeleton className="h-44 rounded" />
           ) : !radarData?.length ? (
-            <EmptyState title="No performance data yet" description="Log a session to populate skill averages." />
+            <EmptyState
+              title="No performance data yet"
+              description="Log a session to populate skill averages."
+            />
           ) : (
             <ResponsiveContainer width="100%" height={180}>
               <RadarChart data={radarData}>
                 <PolarGrid stroke="rgba(255,255,255,0.06)" />
-                <PolarAngleAxis dataKey="skill" tick={{ fill: '#64748b', fontSize: 10 }} />
-                <Radar dataKey="avg" stroke="#ccff00" fill="#ccff00" fillOpacity={0.08} strokeWidth={1.5} />
+                <PolarAngleAxis
+                  dataKey="skill"
+                  tick={{ fill: "#64748b", fontSize: 10 }}
+                />
+                <Radar
+                  dataKey="avg"
+                  stroke="#ccff00"
+                  fill="#ccff00"
+                  fillOpacity={0.08}
+                  strokeWidth={1.5}
+                />
               </RadarChart>
             </ResponsiveContainer>
           )}
@@ -224,30 +306,63 @@ const FranchiseDashboardPage: React.FC = () => {
         <div className="card p-5 space-y-4">
           <div className="flex items-center justify-between">
             <p className="section-title">Team Health</p>
-            <Link to="/teams" className="text-xs text-volt-400 hover:underline">View all →</Link>
+            <Link to="/teams" className="text-xs text-volt-400 hover:underline">
+              View all →
+            </Link>
           </div>
           {teamsLoading ? (
-            <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 rounded" />)}</div>
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-14 rounded" />
+              ))}
+            </div>
           ) : !teamHealth?.length ? (
-            <EmptyState title="No teams yet" description="Create a team to track its health here." />
+            <EmptyState
+              title="No teams yet"
+              description="Create a team to track its health here."
+            />
           ) : (
             <div className="space-y-3">
               {teamHealth.map((team) => (
-                <div key={team.name} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-pitch-700 border border-slate-200 dark:border-white/5 rounded">
+                <div
+                  key={team.name}
+                  className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-pitch-700 border border-slate-200 dark:border-white/5 rounded"
+                >
                   <div
                     className="w-8 h-8 rounded flex items-center justify-center text-xs font-display font-extrabold text-pitch-900 flex-shrink-0"
-                    style={{ backgroundColor: team.attendance > 90 ? '#00e676' : team.attendance > 80 ? '#ccff00' : '#ff6b35' }}
+                    style={{
+                      backgroundColor:
+                        team.attendance > 90
+                          ? "#00e676"
+                          : team.attendance > 80
+                            ? "#ccff00"
+                            : "#ff6b35",
+                    }}
                   >
-                    {team.name.replace('Team ', '').slice(0, 2)}
+                    {team.name.replace("Team ", "").slice(0, 2)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-slate-900 dark:text-white">{team.name}</p>
-                      <span className="text-2xs text-slate-500">{team.students} players</span>
+                      <p className="text-xs font-semibold text-slate-900 dark:text-white">
+                        {team.name}
+                      </p>
+                      <span className="text-2xs text-slate-500">
+                        {team.students} players
+                      </span>
                     </div>
                     <div className="flex items-center gap-3 mt-1">
-                      <span className="text-2xs text-slate-500">Att: <span className="text-volt-600 dark:text-volt-400 font-semibold">{team.attendance}%</span></span>
-                      <span className="text-2xs text-slate-500">Perf: <span className="text-sky-600 dark:text-ice-400 font-semibold">{team.performance}</span></span>
+                      <span className="text-2xs text-slate-500">
+                        Att:{" "}
+                        <span className="text-volt-600 dark:text-volt-400 font-semibold">
+                          {team.attendance}%
+                        </span>
+                      </span>
+                      <span className="text-2xs text-slate-500">
+                        Perf:{" "}
+                        <span className="text-sky-600 dark:text-ice-400 font-semibold">
+                          {team.performance}
+                        </span>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -259,28 +374,52 @@ const FranchiseDashboardPage: React.FC = () => {
         <div className="card p-5 space-y-4">
           <div className="flex items-center justify-between">
             <p className="section-title">Top Performers</p>
-            <Link to="/students" className="text-xs text-volt-500 dark:text-volt-400 hover:underline">Full rankings →</Link>
+            <Link
+              to="/students"
+              className="text-xs text-volt-500 dark:text-volt-400 hover:underline"
+            >
+              Full rankings →
+            </Link>
           </div>
           {performersLoading ? (
-            <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 rounded" />)}</div>
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 rounded" />
+              ))}
+            </div>
           ) : !topPerformers?.length ? (
-            <EmptyState title="No ratings yet" description="Log performance scores to rank players." />
+            <EmptyState
+              title="No ratings yet"
+              description="Log performance scores to rank players."
+            />
           ) : (
             <div className="space-y-3">
               {topPerformers.map((player, i) => (
                 <div key={player.id} className="flex items-center gap-3">
-                  <span className={clsx(
-                    'font-display font-900 text-sm w-5 text-center',
-                    i === 0 ? 'text-volt-500 dark:text-volt-400' : i === 1 ? 'text-slate-500 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'
-                  )}>
+                  <span
+                    className={clsx(
+                      "font-display font-900 text-sm w-5 text-center",
+                      i === 0
+                        ? "text-volt-500 dark:text-volt-400"
+                        : i === 1
+                          ? "text-slate-500 dark:text-slate-300"
+                          : "text-slate-400 dark:text-slate-500",
+                    )}
+                  >
                     {i + 1}
                   </span>
                   <Avatar name={player.name} src={player.avatar} size="sm" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{player.name}</p>
-                    <p className="text-2xs text-slate-500">{player.team} · {player.position}</p>
+                    <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                      {player.name}
+                    </p>
+                    <p className="text-2xs text-slate-500">
+                      {player.team} · {player.position}
+                    </p>
                   </div>
-                  <span className="font-display font-extrabold text-volt-500 dark:text-volt-400 text-sm">{player.rating}</span>
+                  <span className="font-display font-extrabold text-volt-500 dark:text-volt-400 text-sm">
+                    {player.rating}
+                  </span>
                 </div>
               ))}
             </div>
@@ -290,20 +429,38 @@ const FranchiseDashboardPage: React.FC = () => {
         <div className="card p-5 space-y-4">
           <p className="section-title">Live Activity</p>
           {activityLoading ? (
-            <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 rounded" />)}</div>
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 rounded" />
+              ))}
+            </div>
           ) : !recentActivity?.length ? (
-            <EmptyState title="No recent activity" description="Actions across the franchise will show up here." />
+            <EmptyState
+              title="No recent activity"
+              description="Actions across the franchise will show up here."
+            />
           ) : (
             <div className="space-y-0">
               {recentActivity.map((item, i) => (
-                <div key={item.id} className={clsx('flex gap-3 py-3', i < recentActivity.length - 1 && 'border-b border-slate-100 dark:border-white/4')}>
+                <div
+                  key={item.id}
+                  className={clsx(
+                    "flex gap-3 py-3",
+                    i < recentActivity.length - 1 &&
+                      "border-b border-slate-100 dark:border-white/4",
+                  )}
+                >
                   <div className="w-7 h-7 rounded bg-slate-100 dark:bg-pitch-700 flex items-center justify-center flex-shrink-0">
                     {renderActivityIcon(item.type)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-tight">{item.message}</p>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-tight">
+                      {item.message}
+                    </p>
                     <p className="text-2xs text-slate-500 dark:text-slate-600 mt-1">
-                      {formatDistanceToNowStrict(new Date(item.time), { addSuffix: true })}
+                      {formatDistanceToNowStrict(new Date(item.time), {
+                        addSuffix: true,
+                      })}
                     </p>
                   </div>
                 </div>
