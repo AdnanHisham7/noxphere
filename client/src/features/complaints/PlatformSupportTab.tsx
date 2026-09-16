@@ -48,19 +48,19 @@ const PRIORITY_BADGES: Record<
 > = {
   low: {
     label: "Low",
-    color: "bg-slate-500/15 text-slate-400 border-slate-500/30",
+    color: "bg-slate-100 dark:bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-300 dark:border-slate-500/30",
   },
   medium: {
     label: "Medium",
-    color: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+    color: "bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/30",
   },
   high: {
     label: "High",
-    color: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+    color: "bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/30",
   },
   urgent: {
     label: "Urgent",
-    color: "bg-red-500/15 text-red-400 border-red-500/30",
+    color: "bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/30",
   },
 };
 
@@ -90,13 +90,13 @@ export const PlatformSupportTab: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Control bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-pitch-900/60 p-4 rounded-xl border border-white/5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-pitch-900/60 p-4 rounded-xl border border-slate-200 dark:border-white/5 shadow-xs transition-colors">
         <div>
           <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-            <LifeBuoy className="text-volt-400" size={18} />
+            <LifeBuoy className="text-volt-600 dark:text-volt-400" size={18} />
             Platform Support Tickets
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Submit inquiries, bug reports, and assistance requests directly to
             the Platform Super Admin.
           </p>
@@ -134,11 +134,11 @@ export const PlatformSupportTab: React.FC = () => {
             ))
           ) : !tickets?.length ? (
             <div className="card p-8 text-center space-y-3">
-              <LifeBuoy className="mx-auto text-slate-600" size={36} />
+              <LifeBuoy className="mx-auto text-slate-400 dark:text-slate-600" size={36} />
               <p className="text-sm font-medium text-slate-900 dark:text-white">
                 No platform tickets filed yet
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Have an issue with the platform or need help from the Super
                 Admin? Click below to submit a ticket.
               </p>
@@ -164,14 +164,14 @@ export const PlatformSupportTab: React.FC = () => {
                   key={ticket.id}
                   onClick={() => setSelectedTicketId(ticket.id)}
                   className={clsx(
-                    "w-full text-left card p-4 space-y-2.5 transition-all relative overflow-hidden",
+                    "w-full text-left card p-4 space-y-2.5 transition-all relative overflow-hidden border",
                     isSelected
-                      ? "border-volt-400 bg-pitch-900/90 shadow-md shadow-volt-400/5"
-                      : "hover:border-white/20 bg-pitch-900/40",
+                      ? "border-volt-500 dark:border-volt-400 bg-volt-500/5 dark:bg-pitch-900/90 shadow-sm"
+                      : "border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/40 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50/70 dark:hover:bg-pitch-900/60",
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-2xs px-2 py-0.5 rounded bg-white/5 border border-white/10 text-volt-400 font-medium">
+                    <span className="font-mono text-2xs px-2 py-0.5 rounded bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-volt-700 dark:text-volt-400 font-semibold">
                       {ticket.ticketNumber}
                     </span>
                     <div className="flex items-center gap-1.5">
@@ -193,9 +193,9 @@ export const PlatformSupportTab: React.FC = () => {
                     {ticket.subject}
                   </p>
 
-                  <div className="flex items-center justify-between text-2xs text-slate-400">
-                    <span className="flex items-center gap-1 text-slate-300">
-                      <CategoryIcon size={12} className="text-slate-400" />
+                  <div className="flex items-center justify-between text-2xs text-slate-500 dark:text-slate-400">
+                    <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
+                      <CategoryIcon size={12} className="text-slate-400 dark:text-slate-500" />
                       {CATEGORY_LABELS[ticket.category]?.label ||
                         ticket.category}
                     </span>
@@ -205,7 +205,7 @@ export const PlatformSupportTab: React.FC = () => {
                   </div>
 
                   {hasSuperAdminReply && (
-                    <div className="flex items-center gap-1.5 text-2xs text-emerald-400 font-medium pt-1 border-t border-white/5">
+                    <div className="flex items-center gap-1.5 text-2xs text-emerald-600 dark:text-emerald-400 font-medium pt-1.5 border-t border-slate-100 dark:border-white/5">
                       <CheckCircle2 size={12} />
                       Super Admin has responded
                     </div>
@@ -275,12 +275,12 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
   const CategoryIcon = CATEGORY_LABELS[ticket.category]?.icon || HelpCircle;
 
   return (
-    <div className="card p-5 space-y-5 bg-pitch-900/70">
+    <div className="card p-5 space-y-5 bg-white dark:bg-pitch-900/70 border border-slate-200 dark:border-white/10 shadow-xs">
       {/* Header */}
-      <div className="border-b border-white/10 pb-4 space-y-2">
+      <div className="border-b border-slate-200 dark:border-white/10 pb-4 space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs px-2.5 py-1 rounded bg-volt-400/10 border border-volt-400/20 text-volt-400 font-bold">
+            <span className="font-mono text-xs px-2.5 py-1 rounded bg-volt-500/10 dark:bg-volt-400/10 border border-volt-500/20 dark:border-volt-400/20 text-volt-700 dark:text-volt-400 font-bold">
               {ticket.ticketNumber}
             </span>
             <Badge variant={STATUS_VARIANTS[ticket.status].variant}>
@@ -300,7 +300,7 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
             <button
               onClick={handleCloseTicket}
               disabled={isUpdatingStatus}
-              className="text-2xs text-slate-400 hover:text-slate-900 dark:hover:text-white px-2.5 py-1 rounded border border-white/10 hover:border-white/20 transition-colors"
+              className="text-2xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white px-2.5 py-1 rounded border border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
             >
               Close Ticket
             </button>
@@ -311,9 +311,9 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
           {ticket.subject}
         </h3>
 
-        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1.5">
-            <CategoryIcon size={14} className="text-slate-400" />
+            <CategoryIcon size={14} className="text-slate-400 dark:text-slate-500" />
             {CATEGORY_LABELS[ticket.category]?.label || ticket.category}
           </span>
           <span>
@@ -333,8 +333,8 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
               className={clsx(
                 "p-4 rounded-xl space-y-2 border transition-colors",
                 isSuperAdmin
-                  ? "bg-purple-950/30 border-purple-500/30 ml-2 sm:ml-6"
-                  : "bg-pitch-800/80 border-white/10 mr-2 sm:mr-6",
+                  ? "bg-purple-50/80 dark:bg-purple-950/30 border-purple-200 dark:border-purple-500/30 ml-2 sm:ml-6"
+                  : "bg-slate-50 dark:bg-pitch-800/80 border-slate-200 dark:border-white/10 mr-2 sm:mr-6",
               )}
             >
               <div className="flex items-center justify-between gap-2">
@@ -342,7 +342,9 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
                   <span
                     className={clsx(
                       "text-xs font-semibold flex items-center gap-1.5",
-                      isSuperAdmin ? "text-purple-400" : "text-volt-400",
+                      isSuperAdmin
+                        ? "text-purple-700 dark:text-purple-400"
+                        : "text-volt-700 dark:text-volt-400",
                     )}
                   >
                     {isSuperAdmin ? (
@@ -358,7 +360,7 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
                     )}
                   </span>
                 </div>
-                <span className="text-3xs text-slate-400">
+                <span className="text-3xs text-slate-500 dark:text-slate-400">
                   {new Date(msg.createdAt).toLocaleString("en-IN", {
                     month: "short",
                     day: "numeric",
@@ -367,7 +369,7 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
                   })}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-slate-200 whitespace-pre-line leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed">
                 {msg.message}
               </p>
             </div>
@@ -377,13 +379,13 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
 
       {/* Reply Section */}
       {ticket.status === "closed" ? (
-        <div className="p-3.5 bg-slate-900/60 border border-white/5 rounded-xl text-center text-xs text-slate-400">
+        <div className="p-3.5 bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-white/5 rounded-xl text-center text-xs text-slate-600 dark:text-slate-400">
           This ticket is closed. If you have another query, please submit a new
           ticket.
         </div>
       ) : (
-        <div className="pt-2 border-t border-white/10 space-y-3">
-          <label className="text-xs font-medium text-slate-300 block">
+        <div className="pt-2 border-t border-slate-200 dark:border-white/10 space-y-3">
+          <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block">
             Add a reply or clarification to Super Admin
           </label>
           <textarea
@@ -437,21 +439,21 @@ const CreateTicketModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="card w-full max-w-lg p-6 bg-pitch-900 border-white/10 space-y-5 shadow-2xl relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-fade-in">
+      <div className="card w-full max-w-lg p-6 bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 space-y-5 shadow-2xl relative">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-900 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
         >
           <X size={18} />
         </button>
 
         <div>
           <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <LifeBuoy className="text-volt-400" size={20} />
+            <LifeBuoy className="text-volt-600 dark:text-volt-400" size={20} />
             Submit Query / Issue to Super Admin
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Our platform support team and Super Admin will review your query and
             reply back directly.
           </p>

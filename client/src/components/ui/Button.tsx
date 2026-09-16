@@ -27,10 +27,11 @@ export const Button: React.FC<ButtonProps> = ({
     primary:
       "bg-volt-400 text-pitch-900 font-display font-bold uppercase tracking-wide hover:bg-volt-500",
     secondary:
-      "bg-transparent border border-white/15 text-slate-300 hover:border-white/30 hover:text-white hover:bg-white/5",
+      "bg-white dark:bg-transparent border border-slate-200 dark:border-white/15 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/30 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5",
     danger:
       "bg-ember-500 text-white font-display font-semibold uppercase tracking-wide hover:bg-ember-600",
-    ghost: "text-slate-400 hover:text-white hover:bg-white/5",
+    ghost:
+      "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5",
   };
 
   const sizes = {
