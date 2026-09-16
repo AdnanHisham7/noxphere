@@ -28,9 +28,9 @@ import {
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-pitch-800 border border-white/10 rounded px-3 py-2 text-xs">
-      <p className="text-slate-400">{label}</p>
-      <p className="text-volt-400 font-bold">{payload[0].value}%</p>
+    <div className="bg-white dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded px-3 py-2 text-xs shadow-md">
+      <p className="text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="text-volt-600 dark:text-volt-400 font-bold">{payload[0].value}%</p>
     </div>
   );
 };
@@ -41,13 +41,13 @@ const formatCurrency = (n: number) =>
 const renderActivityIcon = (type: string) => {
   switch (type) {
     case 'attendance':
-      return <CheckCircle2 size={14} className="text-volt-400" />;
+      return <CheckCircle2 size={14} className="text-emerald-600 dark:text-volt-400" />;
     case 'performance':
-      return <TrendingUp size={14} className="text-ice-400" />;
+      return <TrendingUp size={14} className="text-sky-600 dark:text-ice-400" />;
     case 'fee':
-      return <CreditCard size={14} className="text-field-400" />;
+      return <CreditCard size={14} className="text-emerald-600 dark:text-field-400" />;
     default:
-      return <Activity size={14} className="text-slate-400" />;
+      return <Activity size={14} className="text-slate-500 dark:text-slate-400" />;
   }
 };
 
@@ -327,10 +327,10 @@ const DashboardPage: React.FC = () => {
       {/* Super Admin Welcome & Control Panel */}
       {isSuperAdmin && (
         <div className="card p-6 space-y-4 max-w-4xl animate-fade-in">
-          <h2 className="font-display font-extrabold text-white text-lg uppercase tracking-wide">
+          <h2 className="font-display font-extrabold text-slate-900 dark:text-white text-lg uppercase tracking-wide">
             Welcome to the System Control Panel
           </h2>
-          <p className="text-sm text-slate-400 leading-relaxed max-w-2xl">
+          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-2xl">
             As a Super Admin, you have system-wide administration rights. You can onboard new football academies, manage billing/finance transactions, register platform managers, and inspect high-level statistics across all branches.
           </p>
           <div className="flex flex-wrap gap-3 pt-2">
@@ -357,31 +357,31 @@ const DashboardPage: React.FC = () => {
           <div className="table-responsive">
             <table className="w-full min-w-[680px] text-left border-collapse">
               <thead>
-                <tr className="border-b border-white/5 pb-2">
-                  <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider">Franchise</th>
-                  <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-center">Players</th>
-                  <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-center">Teams</th>
-                  <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-center">Sessions</th>
-                  <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-right">Collected</th>
-                  <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-right">Outstanding</th>
-                  <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-center">Status</th>
-                  <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-center">Action</th>
+                <tr className="border-b border-slate-200/80 dark:border-white/5 pb-2">
+                  <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Franchise</th>
+                  <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Players</th>
+                  <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Teams</th>
+                  <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Sessions</th>
+                  <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Collected</th>
+                  <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Outstanding</th>
+                  <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Status</th>
+                  <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {stats.franchisePerformance.map((fp) => (
-                  <tr key={fp.id} className="border-b border-white/5 hover:bg-white/2 transition-colors">
+                  <tr key={fp.id} className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50/80 dark:hover:bg-white/2 transition-colors">
                     <td className="py-3">
-                      <p className="font-semibold text-white text-sm">{fp.name}</p>
+                      <p className="font-semibold text-slate-900 dark:text-white text-sm">{fp.name}</p>
                       <p className="text-2xs text-slate-500 font-mono mt-0.5">{fp.code} · {fp.location ?? "No location"}</p>
                     </td>
-                    <td className="py-3 text-center text-slate-300 text-sm">{fp.totalPlayers}</td>
-                    <td className="py-3 text-center text-slate-300 text-sm">{fp.totalTeams}</td>
-                    <td className="py-3 text-center text-slate-300 text-sm">{fp.totalSessions}</td>
-                    <td className="py-3 text-right text-field-400 font-mono text-sm">₹{fp.feesCollected.toLocaleString('en-IN')}</td>
-                    <td className="py-3 text-right text-ember-400 font-mono text-sm">₹{fp.feesOutstanding.toLocaleString('en-IN')}</td>
+                    <td className="py-3 text-center text-slate-700 dark:text-slate-300 text-sm">{fp.totalPlayers}</td>
+                    <td className="py-3 text-center text-slate-700 dark:text-slate-300 text-sm">{fp.totalTeams}</td>
+                    <td className="py-3 text-center text-slate-700 dark:text-slate-300 text-sm">{fp.totalSessions}</td>
+                    <td className="py-3 text-right text-emerald-600 dark:text-field-400 font-mono text-sm">₹{fp.feesCollected.toLocaleString('en-IN')}</td>
+                    <td className="py-3 text-right text-orange-600 dark:text-ember-400 font-mono text-sm">₹{fp.feesOutstanding.toLocaleString('en-IN')}</td>
                     <td className="py-3 text-center">
-                      <span className={clsx("px-2 py-0.5 rounded text-[10px] font-bold uppercase", fp.isActive ? "bg-field-400/10 text-field-400" : "bg-slate-800 text-slate-400")}>
+                      <span className={clsx("px-2 py-0.5 rounded text-[10px] font-bold uppercase", fp.isActive ? "bg-emerald-500/10 text-emerald-600 dark:text-field-400 border border-emerald-500/20" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400")}>
                         {fp.isActive ? "Active" : "Inactive"}
                       </span>
                     </td>
@@ -420,7 +420,7 @@ const DashboardPage: React.FC = () => {
             ) : (
               <div className="space-y-3">
                 {teamHealth.map((team) => (
-                  <div key={team.name} className="flex items-center gap-3 p-3 bg-pitch-700 rounded">
+                  <div key={team.name} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-pitch-700 rounded border border-slate-200/80 dark:border-transparent">
                     <div
                       className="w-8 h-8 rounded flex items-center justify-center text-xs font-display font-extrabold text-pitch-900 flex-shrink-0"
                       style={{ backgroundColor: team.attendance > 90 ? '#00e676' : team.attendance > 80 ? '#ccff00' : '#ff6b35' }}
@@ -429,12 +429,12 @@ const DashboardPage: React.FC = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-white">{team.name}</p>
+                        <p className="text-xs font-semibold text-slate-900 dark:text-white">{team.name}</p>
                         <span className="text-2xs text-slate-500">{team.students} players</span>
                       </div>
                       <div className="flex items-center gap-3 mt-1">
-                        <span className="text-2xs text-slate-500">Att: <span className="text-volt-400 font-semibold">{team.attendance}%</span></span>
-                        <span className="text-2xs text-slate-500">Perf: <span className="text-ice-400 font-semibold">{team.performance}</span></span>
+                        <span className="text-2xs text-slate-500">Att: <span className="text-volt-600 dark:text-volt-400 font-semibold">{team.attendance}%</span></span>
+                        <span className="text-2xs text-slate-500">Perf: <span className="text-sky-600 dark:text-ice-400 font-semibold">{team.performance}</span></span>
                       </div>
                     </div>
                   </div>
@@ -447,7 +447,7 @@ const DashboardPage: React.FC = () => {
           <div className="card p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="section-title">Top Performers</p>
-              <Link to="/students" className="text-xs text-volt-400 hover:underline">Full rankings →</Link>
+              <Link to="/students" className="text-xs text-volt-600 dark:text-volt-400 hover:underline">Full rankings →</Link>
             </div>
             {performersLoading ? (
               <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 rounded" />)}</div>
@@ -459,16 +459,16 @@ const DashboardPage: React.FC = () => {
                   <div key={player.id} className="flex items-center gap-3">
                     <span className={clsx(
                       'font-display font-900 text-sm w-5 text-center',
-                      i === 0 ? 'text-volt-400' : i === 1 ? 'text-slate-300' : 'text-slate-500'
+                      i === 0 ? 'text-volt-600 dark:text-volt-400' : i === 1 ? 'text-slate-400 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'
                     )}>
                       {i + 1}
                     </span>
                     <Avatar name={player.name} src={player.avatar} size="sm" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-white truncate">{player.name}</p>
+                      <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{player.name}</p>
                       <p className="text-2xs text-slate-500">{player.team} · {player.position}</p>
                     </div>
-                    <span className="font-display font-extrabold text-volt-400 text-sm">{player.rating}</span>
+                    <span className="font-display font-extrabold text-volt-600 dark:text-volt-400 text-sm">{player.rating}</span>
                   </div>
                 ))}
               </div>
@@ -485,13 +485,13 @@ const DashboardPage: React.FC = () => {
             ) : (
               <div className="space-y-0">
                 {recentActivity.map((item, i) => (
-                  <div key={item.id} className={clsx('flex gap-3 py-3', i < recentActivity.length - 1 && 'border-b border-white/4')}>
-                    <div className="w-7 h-7 rounded bg-pitch-700 flex items-center justify-center flex-shrink-0">
+                  <div key={item.id} className={clsx('flex gap-3 py-3', i < recentActivity.length - 1 && 'border-b border-slate-100 dark:border-white/4')}>
+                    <div className="w-7 h-7 rounded bg-slate-100 dark:bg-pitch-700 flex items-center justify-center flex-shrink-0">
                       {renderActivityIcon(item.type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-slate-300 leading-tight">{item.message}</p>
-                      <p className="text-2xs text-slate-600 mt-1">
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-tight">{item.message}</p>
+                      <p className="text-2xs text-slate-400 dark:text-slate-600 mt-1">
                         {formatDistanceToNowStrict(new Date(item.time), { addSuffix: true })}
                       </p>
                     </div>

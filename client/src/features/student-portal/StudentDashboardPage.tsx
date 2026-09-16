@@ -409,7 +409,7 @@ const StudentDashboardPage: React.FC = () => {
                   <span className="text-2xs font-mono uppercase tracking-wider text-core-400 font-semibold flex items-center gap-1">
                     <Globe size={12} /> Verified Player ID
                   </span>
-                  <button onClick={() => setShowQrModal(false)} className="text-slate-400 hover:text-white">
+                  <button onClick={() => setShowQrModal(false)} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">
                     <X size={16} />
                   </button>
                 </div>
@@ -468,7 +468,7 @@ const StudentDashboardPage: React.FC = () => {
                     onClick={handleTogglePublicEnabled}
                     disabled={isUpdatingSettings}
                     className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                      data.profile.publicProfileEnabled ? "bg-core-400" : "bg-white/10"
+                      data.profile.publicProfileEnabled ? "bg-core-400" : "bg-slate-300 dark:bg-white/10"
                     }`}
                   >
                     <span
@@ -484,7 +484,7 @@ const StudentDashboardPage: React.FC = () => {
               <div className="grid lg:grid-cols-2 gap-6">
                 {/* 1. Public Profile Viewing Controls */}
                 <div className="nox-card p-6 space-y-5">
-                  <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.06] pb-3">
                     <div className="flex items-center gap-2">
                       <SlidersHorizontal size={17} className="text-core-400" />
                       <h3 className="font-orbital font-semibold text-nox-high text-sm">
@@ -518,7 +518,7 @@ const StudentDashboardPage: React.FC = () => {
                             className={`flex items-center justify-between p-3 rounded-xl border text-left text-xs transition-all ${
                               active
                                 ? "bg-core-400/10 border-core-400/40 text-nox-high font-semibold"
-                                : "bg-white/[0.02] border-white/[0.06] text-nox-low hover:text-nox-mid"
+                                : "bg-slate-50 dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.06] text-nox-low hover:text-nox-mid"
                             }`}
                           >
                             <span>{label}</span>
@@ -526,7 +526,7 @@ const StudentDashboardPage: React.FC = () => {
                               className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] shrink-0 ml-2 ${
                                 active
                                   ? "bg-core-400 border-core-400 text-pitch-950 font-bold"
-                                  : "border-white/20 bg-transparent"
+                                  : "border-slate-300 dark:border-white/20 bg-transparent"
                               }`}
                             >
                               {active && <Check size={11} strokeWidth={3} />}
@@ -586,7 +586,7 @@ const StudentDashboardPage: React.FC = () => {
 
                 {/* 2. Edit My Player Information (Editable for unattached player) */}
                 <div className="nox-card p-6 space-y-5">
-                  <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.06] pb-3">
                     <div className="flex items-center gap-2">
                       <UserCheck size={17} className="text-field-400" />
                       <h3 className="font-orbital font-semibold text-nox-high text-sm">
@@ -787,7 +787,7 @@ const StudentDashboardPage: React.FC = () => {
                   {[...data.overdueFees, ...data.upcomingFees].length === 0 ? (
                     <NoxEmptyState title="You're all caught up" body="No pending fee installments right now." />
                   ) : (
-                    <div className="nox-card divide-y divide-white/[0.06]">
+                    <div className="nox-card divide-y divide-slate-200 dark:divide-white/[0.06]">
                       {[...data.overdueFees, ...data.upcomingFees].map((f, i) => {
                         const isOverdue = data.overdueFees.includes(f);
                         return (
@@ -819,7 +819,7 @@ const StudentDashboardPage: React.FC = () => {
                   {data.recentRemarks.length === 0 ? (
                     <NoxEmptyState title="No notes yet" body="Coach feedback will appear here as it's added." />
                   ) : (
-                    <div className="nox-card divide-y divide-white/[0.06]">
+                    <div className="nox-card divide-y divide-slate-200 dark:divide-white/[0.06]">
                       {data.recentRemarks.map((r) => (
                         <div key={r._id} className="px-5 py-4">
                           <div className="text-xs text-nox-low font-mono">

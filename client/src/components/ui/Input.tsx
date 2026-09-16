@@ -32,7 +32,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           />
         </div>
 
-        {error && <p className="text-xs text-ember-400">{error}</p>}
+        {error && <p className="text-xs text-rose-600 dark:text-ember-400 font-medium">{error}</p>}
       </div>
     );
   },

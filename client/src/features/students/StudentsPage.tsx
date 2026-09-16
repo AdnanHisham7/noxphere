@@ -928,18 +928,18 @@ const AddPlayerModal: React.FC<{
                 step === item.s
                   ? "border-volt-400 bg-volt-400/10 text-white font-bold"
                   : step > item.s
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-                  : "border-white/5 text-slate-500"
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "border-slate-200 dark:border-white/5 text-slate-400 dark:text-slate-500"
               )}
             >
               <div
                 className={clsx(
                   "w-5 h-5 rounded-full flex items-center justify-center text-2xs font-bold",
                   step === item.s
-                    ? "bg-volt-400 text-pitch-900"
+                    ? "bg-volt-400 text-pitch-900 font-bold"
                     : step > item.s
-                    ? "bg-emerald-500 text-white"
-                    : "bg-pitch-800 text-slate-500"
+                    ? "bg-emerald-500 text-white font-bold"
+                    : "bg-slate-100 dark:bg-pitch-800 text-slate-500"
                 )}
               >
                 {step > item.s ? "✓" : item.s}
@@ -977,7 +977,7 @@ const AddPlayerModal: React.FC<{
 
             <div>
               <label className="label">Playing Positions (Select all that apply)</label>
-              <div className="flex flex-wrap gap-1.5 mt-1 border border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-pitch-900">
+              <div className="flex flex-wrap gap-1.5 mt-1 border border-slate-200 dark:border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-slate-50 dark:bg-pitch-900">
                 {defaultPositions.map((pos) => {
                   const isSelected = positions.includes(pos);
                   return (
@@ -995,7 +995,7 @@ const AddPlayerModal: React.FC<{
                         "px-2 py-0.5 rounded text-[10px] font-semibold uppercase border transition-all duration-150",
                         isSelected
                           ? "bg-volt-400 border-volt-400 text-pitch-900 font-extrabold"
-                          : "bg-pitch-800 border-white/5 text-slate-400 hover:border-white/10 hover:text-white"
+                          : "bg-slate-100 dark:bg-pitch-800 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/10 hover:text-slate-900 dark:hover:text-white"
                       )}
                     >
                       {pos}
@@ -1005,7 +1005,7 @@ const AddPlayerModal: React.FC<{
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-white/5">
+            <div className="flex justify-between items-center pt-4 border-t border-slate-100 dark:border-white/5">
               <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
               <Button
                 type="button"
@@ -1034,8 +1034,8 @@ const AddPlayerModal: React.FC<{
               <Input label="Jersey Number (optional)" type="number" min={1} max={99} value={jerseyNumber} onChange={(e) => setJerseyNumber(e.target.value)} placeholder="9" />
             </div>
 
-            <div className="border-t border-white/5 pt-3">
-              <p className="section-title mb-3 text-volt-400">Parent / Guardian Contact</p>
+            <div className="border-t border-slate-100 dark:border-white/5 pt-3">
+              <p className="section-title mb-3 text-volt-600 dark:text-volt-400">Parent / Guardian Contact</p>
               <div className="space-y-3">
                 <Input label="Guardian Name" value={guardian.name} onChange={(e) => setGuardian({ ...guardian, name: e.target.value })} placeholder="Parent full name" required />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1046,7 +1046,7 @@ const AddPlayerModal: React.FC<{
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-white/5">
+            <div className="flex justify-between items-center pt-4 border-t border-slate-100 dark:border-white/5">
               <Button type="button" variant="secondary" onClick={() => setStep(1)}>&larr; Back</Button>
               <Button
                 type="button"
@@ -1083,7 +1083,7 @@ const AddPlayerModal: React.FC<{
             </div>
 
             <div className="space-y-2 pt-1">
-              <p className="text-2xs font-mono uppercase text-slate-400 font-semibold">Supporting Health Documents (Optional)</p>
+              <p className="text-2xs font-mono uppercase text-slate-500 dark:text-slate-400 font-semibold">Supporting Health Documents (Optional)</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <DocumentUploadField
                   label="Medical Report"
@@ -1106,7 +1106,7 @@ const AddPlayerModal: React.FC<{
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-white/5">
+            <div className="flex justify-between items-center pt-4 border-t border-slate-100 dark:border-white/5">
               <Button type="button" variant="secondary" onClick={() => setStep(2)}>&larr; Back</Button>
               <Button type="submit" loading={creating} className="px-8 bg-volt-400 text-pitch-900 font-bold hover:bg-volt-300">
                 Enroll Player Now

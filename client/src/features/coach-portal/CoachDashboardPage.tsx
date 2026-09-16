@@ -55,7 +55,7 @@ const CoachDashboardPage: React.FC = () => {
           {data.todaySessions.length > 0 && (
             <div className="mb-10">
               <h2 className="font-orbital text-lg font-medium text-nox-high mb-4">Today's sessions</h2>
-              <div className="nox-card divide-y divide-white/[0.06]">
+              <div className="nox-card divide-y divide-slate-200 dark:divide-white/[0.06]">
                 {data.todaySessions.map((s) => (
                   <div key={s.id} className="flex items-center justify-between gap-4 px-5 py-4 flex-wrap">
                     <div>
@@ -95,10 +95,10 @@ const CoachDashboardPage: React.FC = () => {
                       <div
                         key={label}
                         className={`rounded-lg border px-2 py-3 text-center ${
-                          slot ? "border-core-400/30 bg-core-400/[0.08]" : "border-white/[0.06] bg-white/[0.02]"
+                          slot ? "border-core-400/30 bg-core-400/[0.08]" : "border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-white/[0.02]"
                         }`}
                       >
-                        <p className={`text-2xs uppercase tracking-wide font-semibold ${slot ? "text-core-300" : "text-nox-low"}`}>
+                        <p className={`text-2xs uppercase tracking-wide font-semibold ${slot ? "text-core-600 dark:text-core-300" : "text-nox-low"}`}>
                           {label}
                         </p>
                         <p className="text-[10px] font-mono mt-1 text-nox-mid">
@@ -113,7 +113,7 @@ const CoachDashboardPage: React.FC = () => {
                     <p className="text-2xs uppercase tracking-wide text-nox-low mb-2">Marked unavailable on</p>
                     <div className="flex flex-wrap gap-2">
                       {availability.customUnavailableDates.map((d) => (
-                        <span key={d} className="text-2xs font-mono px-2 py-1 rounded bg-white/[0.04] text-nox-mid">
+                        <span key={d} className="text-2xs font-mono px-2 py-1 rounded bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-transparent text-nox-mid">
                           {new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                         </span>
                       ))}
@@ -167,7 +167,7 @@ const CoachDashboardPage: React.FC = () => {
                     className="nox-card p-5 block hover:border-core-400/30 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="flex items-center justify-center w-10 h-10 rounded-full bg-ion-400/[0.12] text-ion-300 font-orbital text-xs font-semibold">
+                      <span className="flex items-center justify-center w-10 h-10 rounded-full bg-ion-400/[0.12] text-ion-600 dark:text-ion-300 font-orbital text-xs font-semibold">
                         {s.firstName.charAt(0)}
                         {s.lastName.charAt(0)}
                       </span>

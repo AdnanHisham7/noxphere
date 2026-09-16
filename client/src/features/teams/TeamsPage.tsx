@@ -131,10 +131,10 @@ const TeamsPage: React.FC = () => {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="font-display text-xl sm:text-2xl font-bold text-white uppercase tracking-wide">
+          <h1 className="font-display text-xl sm:text-2xl font-bold text-slate-900 dark:text-white uppercase tracking-wide">
             {isHeadOffice ? "Academy Teams" : "Teams"}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             {isHeadOffice
               ? "All squads across all franchises of the academy"
               : "Batches and squads for this franchise"}
@@ -187,11 +187,11 @@ const TeamsPage: React.FC = () => {
                       <img
                         src={team.logoUrl}
                         alt={`${team.name} logo`}
-                        className="w-12 h-12 rounded-lg object-cover border-2 border-pitch-900 bg-pitch-900 shrink-0"
+                        className="w-12 h-12 rounded-lg object-cover border-2 border-white dark:border-pitch-900 bg-slate-100 dark:bg-pitch-900 shadow-xs shrink-0"
                       />
                     ) : (
                       <div
-                        className="w-12 h-12 rounded-lg border-2 border-pitch-900 shrink-0 flex items-center justify-center"
+                        className="w-12 h-12 rounded-lg border-2 border-white dark:border-pitch-900 shrink-0 flex items-center justify-center shadow-xs"
                         style={{ backgroundImage: `linear-gradient(135deg, ${team.primaryColor ?? "#1f2937"}, ${team.secondaryColor ?? "#334155"})` }}
                       >
                         <Users size={18} className="text-white/70" />
@@ -199,7 +199,7 @@ const TeamsPage: React.FC = () => {
                     )}
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <h3 className="font-display font-bold text-white uppercase tracking-wide leading-tight">{team.name}</h3>
+                        <h3 className="font-display font-bold text-slate-900 dark:text-white uppercase tracking-wide leading-tight">{team.name}</h3>
                         {!team.franchiseId && (
                           <Badge variant="green" size="sm">GLOBAL</Badge>
                         )}
@@ -224,7 +224,7 @@ const TeamsPage: React.FC = () => {
                     </button>
                   )}
                 </div>
-                <p className="text-sm text-slate-400 mt-3">
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-3">
                   Coach: {team.coach ? `${team.coach.firstName} ${team.coach.lastName}` : "No coach assigned"}
                 </p>
                 {!isHeadOffice && (
@@ -247,21 +247,21 @@ const TeamsPage: React.FC = () => {
                     {!isHeadOffice && (
                       <button
                         onClick={() => setBrandingTeamId(team.id)}
-                        className="text-xs text-slate-400 hover:text-white transition-colors"
+                        className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
                       >
                         Edit
                       </button>
                     )}
                     <button
                       onClick={() => setSelectedTeamId(team.id)}
-                      className="text-xs text-volt-400 hover:text-volt-300 transition-colors"
+                      className="text-xs text-volt-600 dark:text-volt-400 hover:text-volt-500 dark:hover:text-volt-300 transition-colors font-medium"
                     >
                       View roster →
                     </button>
                     {!isHeadOffice && (
                       <button
                         onClick={() => navigate(`/teams/${team.id}/manage`)}
-                        className="text-xs flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors"
+                        className="text-xs flex items-center gap-1 text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 transition-colors font-medium"
                       >
                         <Swords size={12} /> Manage team
                       </button>
@@ -278,7 +278,7 @@ const TeamsPage: React.FC = () => {
         <form onSubmit={handleCreate} className="space-y-4">
           <Input label="Team name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. U-15 Eagles" required />
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1.5">
               Age group
             </label>
             <select value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)} className="input !w-full" required>
@@ -296,7 +296,7 @@ const TeamsPage: React.FC = () => {
             )}
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1.5">
               Coach (optional)
             </label>
             <select value={coachId} onChange={(e) => setCoachId(e.target.value)} className="input !w-full">
@@ -315,18 +315,18 @@ const TeamsPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Team colors</label>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1.5">Team colors</label>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-9 h-9 bg-transparent border border-white/10 rounded cursor-pointer" />
-                <span className="text-2xs font-mono text-slate-400">{primaryColor}</span>
+                <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-9 h-9 bg-transparent border border-slate-300 dark:border-white/10 rounded cursor-pointer" />
+                <span className="text-2xs font-mono text-slate-600 dark:text-slate-400">{primaryColor}</span>
               </div>
               <div className="flex items-center gap-2">
-                <input type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="w-9 h-9 bg-transparent border border-white/10 rounded cursor-pointer" />
-                <span className="text-2xs font-mono text-slate-400">{secondaryColor}</span>
+                <input type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="w-9 h-9 bg-transparent border border-slate-300 dark:border-white/10 rounded cursor-pointer" />
+                <span className="text-2xs font-mono text-slate-600 dark:text-slate-400">{secondaryColor}</span>
               </div>
               <div
-                className="flex-1 h-9 rounded border border-white/10"
+                className="flex-1 h-9 rounded border border-slate-300 dark:border-white/10"
                 style={{ backgroundImage: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }}
               />
             </div>
@@ -429,19 +429,19 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({ te
           /* Academy Overview: Read-only View */
           <div className="flex flex-col h-[50vh] min-h-[350px]">
             <div className="mb-3">
-              <h4 className="text-xs font-bold text-volt-400 uppercase tracking-wide">Current Players</h4>
+              <h4 className="text-xs font-bold text-volt-600 dark:text-volt-400 uppercase tracking-wide">Current Players</h4>
               <p className="text-2xs text-slate-500 mt-0.5">{team.students.length} players assigned</p>
             </div>
             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
               {team.students.length === 0 ? (
-                <div className="h-full flex items-center justify-center border border-dashed border-white/5 rounded-lg p-5">
+                <div className="h-full flex items-center justify-center border border-dashed border-slate-200 dark:border-white/5 rounded-lg p-5">
                   <p className="text-xs text-slate-500 text-center italic">No players assigned to this team.</p>
                 </div>
               ) : (
                 team.students.map((s) => (
-                  <div key={s._id} className="flex items-center justify-between px-3 py-2 bg-white/[0.03] border border-white/5 rounded-lg">
+                  <div key={s._id} className="flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-lg">
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-white truncate">{s.firstName} {s.lastName}</p>
+                      <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{s.firstName} {s.lastName}</p>
                       <p className="text-[10px] text-slate-500 font-mono mt-0.5">
                         {s.position || "No position set"} · {s.attendancePercentage}% attendance
                       </p>
@@ -456,21 +456,21 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({ te
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6 h-[55vh] min-h-[400px]">
             
             {/* LEFT: Current Team Roster (2/5 width) */}
-            <div className="md:col-span-2 flex flex-col h-full border-r border-white/5 pr-4">
+            <div className="md:col-span-2 flex flex-col h-full border-r border-slate-200 dark:border-white/5 pr-4">
               <div className="mb-3">
-                <h4 className="text-xs font-bold text-volt-400 uppercase tracking-wide">Current Roster</h4>
+                <h4 className="text-xs font-bold text-volt-600 dark:text-volt-400 uppercase tracking-wide">Current Roster</h4>
                 <p className="text-2xs text-slate-500 mt-0.5">{team.students.length} players assigned</p>
               </div>
               <div className="flex-1 overflow-y-auto space-y-2 pr-1">
                 {team.students.length === 0 ? (
-                  <div className="h-full flex items-center justify-center border border-dashed border-white/5 rounded-lg p-5">
+                  <div className="h-full flex items-center justify-center border border-dashed border-slate-200 dark:border-white/5 rounded-lg p-5">
                     <p className="text-xs text-slate-500 text-center italic">No players assigned. Use the panel on the right to add players.</p>
                   </div>
                 ) : (
                   team.students.map((s) => (
-                    <div key={s._id} className="flex items-center justify-between px-3 py-2 bg-white/[0.03] border border-white/5 rounded-lg hover:border-white/10 transition-colors">
+                    <div key={s._id} className="flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-lg hover:border-slate-300 dark:hover:border-white/10 transition-colors">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-white truncate">{s.firstName} {s.lastName}</p>
+                        <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{s.firstName} {s.lastName}</p>
                         <p className="text-[10px] text-slate-500 font-mono mt-0.5">{s.attendancePercentage}% attendance</p>
                       </div>
                       <button
@@ -489,7 +489,7 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({ te
             {/* RIGHT: Add/Transfer Players (3/5 width) */}
             <div className="md:col-span-3 flex flex-col h-full pl-2">
               <div className="mb-3 space-y-2">
-                <h4 className="text-xs font-bold text-volt-400 uppercase tracking-wide">Available Players</h4>
+                <h4 className="text-xs font-bold text-volt-600 dark:text-volt-400 uppercase tracking-wide">Available Players</h4>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="col-span-1">
                     <select
@@ -533,14 +533,14 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({ te
                     {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 rounded-lg" />)}
                   </div>
                 ) : filteredAvailable.length === 0 ? (
-                  <div className="h-full flex items-center justify-center border border-dashed border-white/5 rounded-lg p-5">
+                  <div className="h-full flex items-center justify-center border border-dashed border-slate-200 dark:border-white/5 rounded-lg p-5">
                     <p className="text-xs text-slate-500 text-center italic">No available players match filters.</p>
                   </div>
                 ) : (
                   filteredAvailable.map((s) => (
-                    <div key={s.id} className="flex items-center justify-between px-3 py-2.5 bg-white/[0.01] border border-white/5 rounded-lg hover:border-white/10 transition-colors">
+                    <div key={s.id} className="flex items-center justify-between px-3 py-2.5 bg-slate-50 dark:bg-white/[0.01] border border-slate-200 dark:border-white/5 rounded-lg hover:border-slate-300 dark:hover:border-white/10 transition-colors">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-white truncate">{s.firstName} {s.lastName}</p>
+                        <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{s.firstName} {s.lastName}</p>
                         <p className="text-[10px] text-slate-500 mt-0.5">
                           {s.ageGroup} · {s.teamId ? "Already on a team" : "Unassigned"}
                         </p>
@@ -608,7 +608,7 @@ const TeamBrandingModal: React.FC<{ team: Team | null; categories: string[]; onC
       <div className="space-y-4">
         <Input label="Team name" value={name} onChange={(e) => setName(e.target.value)} required />
         <div>
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1.5">
             Age group
           </label>
           <select value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)} className="input !w-full">
@@ -630,18 +630,18 @@ const TeamBrandingModal: React.FC<{ team: Team | null; categories: string[]; onC
           <ImageUploadField label="Team banner" category="team_banner" value={bannerUrl} onChange={setBannerUrl} shape="wide" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Team colors</label>
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1.5">Team colors</label>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-9 h-9 bg-transparent border border-white/10 rounded cursor-pointer" />
-              <span className="text-2xs font-mono text-slate-400">{primaryColor}</span>
+              <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-9 h-9 bg-transparent border border-slate-300 dark:border-white/10 rounded cursor-pointer" />
+              <span className="text-2xs font-mono text-slate-600 dark:text-slate-400">{primaryColor}</span>
             </div>
             <div className="flex items-center gap-2">
-              <input type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="w-9 h-9 bg-transparent border border-white/10 rounded cursor-pointer" />
-              <span className="text-2xs font-mono text-slate-400">{secondaryColor}</span>
+              <input type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="w-9 h-9 bg-transparent border border-slate-300 dark:border-white/10 rounded cursor-pointer" />
+              <span className="text-2xs font-mono text-slate-600 dark:text-slate-400">{secondaryColor}</span>
             </div>
             <div
-              className="flex-1 h-9 rounded border border-white/10"
+              className="flex-1 h-9 rounded border border-slate-300 dark:border-white/10"
               style={{ backgroundImage: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }}
             />
           </div>

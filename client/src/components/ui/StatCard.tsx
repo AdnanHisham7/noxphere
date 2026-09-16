@@ -20,10 +20,10 @@ export const StatCard: React.FC<StatCardProps> = ({
   accent = "volt",
 }) => {
   const accents = {
-    volt: "text-volt-400",
-    ice: "text-ice-400",
-    ember: "text-ember-400",
-    field: "text-field-400",
+    volt: "text-emerald-700 dark:text-volt-400",
+    ice: "text-sky-600 dark:text-ice-400",
+    ember: "text-orange-600 dark:text-ember-400",
+    field: "text-emerald-600 dark:text-field-400",
   };
 
   return (
@@ -52,7 +52,7 @@ export const StatCard: React.FC<StatCardProps> = ({
         <div
           className={clsx(
             "flex items-center gap-1 text-xs",
-            trend.positive ? "text-field-400" : "text-ember-400",
+            trend.positive ? "text-emerald-600 dark:text-field-400" : "text-rose-600 dark:text-ember-400",
           )}
         >
           {trend.positive ? <TrendingUp size={12} className="shrink-0" /> : <TrendingDown size={12} className="shrink-0" />}

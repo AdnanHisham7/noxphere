@@ -42,8 +42,8 @@ const PerformancePage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white uppercase tracking-wide">Performance</h1>
-          <p className="text-sm text-slate-400 mt-1">Performance is logged against a scheduled session</p>
+          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white uppercase tracking-wide">Performance</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Performance is logged against a scheduled session</p>
         </div>
         <select className="input !w-auto" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
           <option value="">All teams</option>
@@ -65,7 +65,7 @@ const PerformancePage: React.FC = () => {
             icon={<CalendarCheck size={28} />}
             title="No sessions scheduled"
             description="Schedule a session first — performance is logged against it."
-            action={<Link to="/schedule" className="text-volt-400 hover:underline text-sm">Go to Schedule →</Link>}
+            action={<Link to="/schedule" className="text-volt-600 dark:text-volt-400 hover:underline text-sm">Go to Schedule →</Link>}
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -73,10 +73,10 @@ const PerformancePage: React.FC = () => {
               <Link
                 key={s.id}
                 to={`/schedule/${s.id}/roster`}
-                className="card p-4 hover:border-volt-400/30 transition-colors"
+                className="card p-4 hover:border-volt-400/40 transition-colors shadow-xs"
               >
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-display font-bold text-white uppercase tracking-wide text-sm">{s.teamName ?? "Team"}</p>
+                  <p className="font-display font-bold text-slate-900 dark:text-white uppercase tracking-wide text-sm">{s.teamName ?? "Team"}</p>
                   <Badge variant={s.status === "completed" ? "green" : "blue"} size="sm">{s.status}</Badge>
                 </div>
                 <p className="text-xs text-slate-500 font-mono mt-1">
@@ -101,7 +101,7 @@ const PerformancePage: React.FC = () => {
           <Card className="overflow-hidden table-responsive">
             <table className="w-full min-w-[460px]">
               <thead>
-                <tr className="border-b border-white/5 bg-pitch-700/30">
+                <tr className="border-b border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-pitch-700/30">
                   <th className="text-left px-4 py-3 section-title">Player</th>
                   <th className="text-left px-4 py-3 section-title hidden sm:table-cell">Date</th>
                   <th className="text-center px-4 py-3 section-title">Score</th>
@@ -110,18 +110,18 @@ const PerformancePage: React.FC = () => {
               </thead>
               <tbody>
                 {records.map((r, i) => (
-                  <tr key={r._id} className={i % 2 === 0 ? "" : "bg-white/1"}>
-                    <td className="px-4 py-3 text-sm text-white">
-                      <div>{r.studentId.firstName} {r.studentId.lastName}</div>
-                      <div className="sm:hidden text-2xs text-slate-400">
+                  <tr key={r._id} className={`border-b border-slate-100 dark:border-white/4 hover:bg-slate-50/80 dark:hover:bg-white/2 transition-colors ${i % 2 === 0 ? "" : "bg-slate-50/40 dark:bg-white/1"}`}>
+                    <td className="px-4 py-3 text-sm text-slate-900 dark:text-white">
+                      <div className="font-semibold">{r.studentId.firstName} {r.studentId.lastName}</div>
+                      <div className="sm:hidden text-2xs text-slate-500">
                         {new Date(r.sessionDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-xs text-slate-400 hidden sm:table-cell">
+                    <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-400 hidden sm:table-cell">
                       {new Date(r.sessionDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                     </td>
-                    <td className="px-4 py-3 text-center font-display font-bold text-volt-400">{r.overallScore.toFixed(1)}</td>
-                    <td className="px-4 py-3 text-xs text-slate-400 hidden md:table-cell">
+                    <td className="px-4 py-3 text-center font-display font-bold text-volt-600 dark:text-volt-400">{r.overallScore.toFixed(1)}</td>
+                    <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-400 hidden md:table-cell">
                       {r.coachId ? `${r.coachId.firstName} ${r.coachId.lastName}` : "—"}
                     </td>
                   </tr>

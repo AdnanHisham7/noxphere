@@ -92,7 +92,7 @@ const CoachStudentPanelPage: React.FC = () => {
             onChange={(e) => setNote(e.target.value)}
             placeholder="e.g. Great improvement on first touch this week"
             rows={5}
-            className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/10 text-sm text-nox-high placeholder:text-nox-low focus:outline-none focus:border-core-400/50 resize-none"
+            className="w-full px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-white/[0.04] border border-slate-300 dark:border-white/10 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-nox-low focus:outline-none focus:border-core-400/50 resize-none"
           />
           <button
             type="submit"

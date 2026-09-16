@@ -112,6 +112,8 @@ const config: Config = {
         'orbit-cta': 'linear-gradient(135deg, #e0ff66 0%, #ccff00 60%, #b3e600 100%)',
       },
       boxShadow: {
+        'xs': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        '2xs': '0 1px 1px 0 rgba(0, 0, 0, 0.03)',
         'volt': '0 0 20px rgba(204,255,0,0.2), 0 0 40px rgba(204,255,0,0.05)',
         'ice': '0 0 20px rgba(0,212,255,0.2), 0 0 40px rgba(0,212,255,0.05)',
         'card': '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
@@ -120,6 +122,9 @@ const config: Config = {
         'core-glow': '0 0 1px rgba(204,255,0,0.4), 0 0 32px rgba(204,255,0,0.22)',
         'ion-glow': '0 0 24px rgba(110,139,255,0.18)',
         'orbit-card': '0 1px 0 rgba(255,255,255,0.06) inset, 0 20px 40px -20px rgba(0,0,0,0.6)',
+      },
+      dropShadow: {
+        'xs': '0 1px 1px rgba(0, 0, 0, 0.05)',
       },
       borderColor: {
         DEFAULT: 'rgba(255,255,255,0.06)',

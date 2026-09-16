@@ -86,7 +86,7 @@ const GuardianDashboardPage: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                      <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
+                      <div className="mt-4 pt-3 border-t border-slate-200 dark:border-white/[0.06] flex items-center justify-between">
                         <div className="flex items-center gap-1.5 text-xs text-nox-mid">
                           <span>Today:</span>
                           {todayStatus ? (
@@ -112,7 +112,7 @@ const GuardianDashboardPage: React.FC = () => {
                 <CheckCircle2 size={18} className="text-core-400" />
                 Fee reminders
               </h2>
-              <div className="nox-card divide-y divide-white/[0.06]">
+              <div className="nox-card divide-y divide-slate-200 dark:divide-white/[0.06]">
                 {[...data.overdueFees, ...data.upcomingFees].map((f, i) => {
                   const child = data.children.find((c) => c.id === f.studentId);
                   const isOverdue = data.overdueFees.includes(f);

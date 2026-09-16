@@ -413,14 +413,14 @@ export const AcademyNfcManagementPage: React.FC = () => {
         >
           <div className="space-y-5 text-sm">
             {/* Status Alert */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-pitch-900 border border-white/10">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10">
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400 font-medium">Current Status:</span>
-                <span className="font-bold text-white uppercase text-xs">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Current Status:</span>
+                <span className="font-bold text-slate-900 dark:text-white uppercase text-xs">
                   {viewRequest.status.replace("_", " ")}
                 </span>
               </div>
-              <span className="font-mono text-xs font-bold text-volt-400">
+              <span className="font-mono text-xs font-bold text-volt-600 dark:text-volt-400">
                 ₹{viewRequest.totalAmount.toLocaleString("en-IN")} ({viewRequest.quantity} cards)
               </span>
             </div>
@@ -663,7 +663,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
               </div>
 
               {/* Student list */}
-              <div className="max-h-64 overflow-y-auto space-y-2 border border-white/5 rounded-xl p-2 bg-pitch-950/60">
+              <div className="max-h-64 overflow-y-auto space-y-2 border border-slate-200 dark:border-white/5 rounded-xl p-2 bg-slate-50 dark:bg-pitch-950/60">
                 {studentsLoading ? (
                   <p className="text-center text-xs text-slate-500 py-6">Loading players...</p>
                 ) : filteredStudents.length === 0 ? (
@@ -677,8 +677,8 @@ export const AcademyNfcManagementPage: React.FC = () => {
                         onClick={() => toggleSelectStudent(st.id)}
                         className={`flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-all ${
                           isSelected
-                            ? "bg-volt-400/10 border-volt-400/40 text-white"
-                            : "bg-pitch-900 border-white/5 text-slate-300 hover:border-white/20"
+                            ? "bg-volt-400/10 border-volt-400/40 text-slate-900 dark:text-white"
+                            : "bg-white dark:bg-pitch-900 border-slate-200 dark:border-white/5 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/20"
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -779,22 +779,22 @@ export const AcademyNfcManagementPage: React.FC = () => {
 
               {/* Upload field if custom card selected */}
               {cardType === "custom" && (
-                <div className="p-4 rounded-xl bg-pitch-950 border border-purple-500/30 space-y-3">
+                <div className="p-4 rounded-xl bg-purple-500/5 dark:bg-pitch-950 border border-purple-500/30 space-y-3">
                   <div className="flex items-start gap-2">
                     <UploadCloud size={20} className="text-purple-400 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs font-bold text-white">Upload Custom Card Artwork / Design</p>
-                      <p className="text-2xs text-slate-400">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">Upload Custom Card Artwork / Design</p>
+                      <p className="text-2xs text-slate-500 dark:text-slate-400">
                         Upload your print-ready front/back design (PDF, PNG, or JPG up to 10MB).
                       </p>
                     </div>
                   </div>
 
                   {customDesignUrl ? (
-                    <div className="p-3 rounded-lg bg-pitch-900 border border-purple-500/40 flex items-center justify-between">
+                    <div className="p-3 rounded-lg bg-white dark:bg-pitch-900 border border-purple-500/40 flex items-center justify-between">
                       <div className="flex items-center gap-2 overflow-hidden">
                         <FileText size={18} className="text-purple-400 shrink-0" />
-                        <span className="text-xs text-white truncate max-w-xs font-mono">
+                        <span className="text-xs text-slate-800 dark:text-white truncate max-w-xs font-mono">
                           {customDesignFileName || "custom-card-design"}
                         </span>
                       </div>
@@ -804,13 +804,13 @@ export const AcademyNfcManagementPage: React.FC = () => {
                           setCustomDesignUrl("");
                           setCustomDesignFileName("");
                         }}
-                        className="text-slate-400 hover:text-white p-1"
+                        className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1"
                       >
                         <X size={15} />
                       </button>
                     </div>
                   ) : (
-                    <label className="border-2 border-dashed border-white/15 hover:border-purple-400/50 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all bg-pitch-900/40">
+                    <label className="border-2 border-dashed border-slate-300 dark:border-white/15 hover:border-purple-400/50 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all bg-white dark:bg-pitch-900/40">
                       <input
                         type="file"
                         accept="image/*,application/pdf"
@@ -818,7 +818,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
                         className="hidden"
                       />
                       <UploadCloud size={24} className="text-purple-400 mb-2" />
-                      <span className="text-xs font-semibold text-white">
+                      <span className="text-xs font-semibold text-slate-800 dark:text-white">
                         {isUploading ? "Uploading artwork…" : "Click or drag file to upload design"}
                       </span>
                       <span className="text-2xs text-slate-500 mt-1">PNG, JPG, or PDF</span>

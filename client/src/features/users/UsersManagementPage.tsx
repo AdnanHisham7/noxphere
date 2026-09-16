@@ -80,7 +80,7 @@ const UsersManagementPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
           <p className="section-title mb-1">Platform</p>
-          <h1 className="font-display font-extrabold text-white text-xl sm:text-2xl uppercase tracking-tight">User Management</h1>
+          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">User Management</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{isLoading ? "Loading…" : `${data?.total ?? 0} accounts across all academies`}</p>
         </div>
         <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)} className="w-full sm:w-auto justify-center">New user</Button>
@@ -115,7 +115,7 @@ const UsersManagementPage: React.FC = () => {
         <div className="card overflow-hidden table-responsive">
           <table className="w-full min-w-[540px]">
             <thead>
-              <tr className="border-b border-white/5 bg-pitch-700/30">
+              <tr className="border-b border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-pitch-700/30">
                 <th className="text-left px-5 py-3 section-title">User</th>
                 <th className="text-left px-5 py-3 section-title hidden sm:table-cell">Role</th>
                 <th className="text-left px-5 py-3 section-title hidden md:table-cell">Phone</th>
@@ -125,12 +125,12 @@ const UsersManagementPage: React.FC = () => {
             </thead>
             <tbody>
               {users.map((u, i) => (
-                <tr key={u.id} className={clsx("border-b border-white/4 hover:bg-white/2 transition-colors", i % 2 === 0 ? "" : "bg-white/1")}>
+                <tr key={u.id} className={clsx("border-b border-slate-100 dark:border-white/4 hover:bg-slate-50/80 dark:hover:bg-white/2 transition-colors", i % 2 === 0 ? "" : "bg-slate-50/40 dark:bg-white/1")}>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <Avatar name={`${u.firstName} ${u.lastName}`} size="sm" />
                       <div>
-                        <p className="text-sm font-semibold text-white">{u.firstName} {u.lastName}</p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">{u.firstName} {u.lastName}</p>
                         <p className="text-2xs text-slate-500">{u.email}</p>
                         <div className="sm:hidden mt-1">
                           <Badge variant={ROLE_BADGE[u.role]}>{ROLE_LABEL[u.role]}</Badge>
@@ -141,9 +141,9 @@ const UsersManagementPage: React.FC = () => {
                   <td className="px-5 py-4 hidden sm:table-cell">
                     <Badge variant={ROLE_BADGE[u.role]}>{ROLE_LABEL[u.role]}</Badge>
                   </td>
-                  <td className="px-5 py-4 text-sm text-slate-400 hidden md:table-cell">{u.phone || "—"}</td>
+                  <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-400 hidden md:table-cell">{u.phone || "—"}</td>
                   <td className="px-5 py-4 text-center">
-                    <span className={clsx("text-xs font-semibold", u.isActive ? "text-field-400" : "text-ember-400")}>
+                    <span className={clsx("text-xs font-semibold", u.isActive ? "text-emerald-600 dark:text-field-400" : "text-rose-600 dark:text-ember-400")}>
                       {u.isActive ? "Active" : "Inactive"}
                     </span>
                   </td>
@@ -151,7 +151,7 @@ const UsersManagementPage: React.FC = () => {
                     <div className="flex items-center justify-end gap-3">
                       <button
                         onClick={() => setPasswordModalUser({ id: u.id, name: `${u.firstName} ${u.lastName}` })}
-                        className="text-slate-500 hover:text-ice-400 transition-colors"
+                        className="text-slate-400 hover:text-sky-600 dark:hover:text-ice-400 transition-colors"
                         aria-label="Reset password"
                         title="Reset password"
                       >
@@ -159,7 +159,7 @@ const UsersManagementPage: React.FC = () => {
                       </button>
                       <button
                         onClick={() => handleToggle(u.id, u.isActive)}
-                        className={clsx("transition-colors", u.isActive ? "text-slate-500 hover:text-volt-400" : "text-field-400 hover:text-field-300")}
+                        className={clsx("transition-colors", u.isActive ? "text-slate-400 hover:text-volt-600 dark:hover:text-volt-400" : "text-emerald-600 dark:text-field-400 hover:text-emerald-500")}
                         aria-label={u.isActive ? "Deactivate" : "Activate"}
                         title={u.isActive ? "Deactivate" : "Activate"}
                       >
@@ -167,7 +167,7 @@ const UsersManagementPage: React.FC = () => {
                       </button>
                       <button
                         onClick={() => handleDelete(u.id, `${u.firstName} ${u.lastName}`)}
-                        className="text-slate-500 hover:text-ember-400 transition-colors"
+                        className="text-slate-400 hover:text-rose-600 dark:hover:text-ember-400 transition-colors"
                         aria-label="Remove user"
                         title="Remove user"
                       >

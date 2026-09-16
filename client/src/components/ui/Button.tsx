@@ -25,12 +25,13 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variants = {
     primary:
-      "bg-volt-400 text-pitch-900 font-display font-bold uppercase tracking-wide hover:bg-volt-500",
+      "bg-volt-400 text-white dark:text-pitch-900 font-display font-bold uppercase tracking-wide hover:bg-volt-500 shadow-sm",
     secondary:
-      "bg-transparent border border-white/15 text-slate-300 hover:border-white/30 hover:text-white hover:bg-white/5",
+      "bg-white border border-slate-300 text-slate-700 hover:border-slate-400 hover:text-slate-900 hover:bg-slate-50 dark:bg-transparent dark:border-white/15 dark:text-slate-300 dark:hover:border-white/30 dark:hover:text-white dark:hover:bg-white/5 shadow-2xs",
     danger:
-      "bg-ember-500 text-white font-display font-semibold uppercase tracking-wide hover:bg-ember-600",
-    ghost: "text-slate-400 hover:text-white hover:bg-white/5",
+      "bg-ember-500 text-white font-display font-semibold uppercase tracking-wide hover:bg-ember-600 shadow-sm",
+    ghost:
+      "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/5",
   };
 
   const sizes = {

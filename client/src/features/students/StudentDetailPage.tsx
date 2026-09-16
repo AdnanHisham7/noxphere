@@ -911,12 +911,12 @@ const StudentDetailPage: React.FC = () => {
                             <span className={clsx("text-2xs font-bold px-1.5 py-0.5 rounded border", ratingTier.color)}>
                               {ratingTier.label}
                             </span>
-                            <span className="font-mono font-bold text-volt-400 w-12 text-right">
+                            <span className="font-mono font-bold text-volt-600 dark:text-volt-400 w-12 text-right">
                               {s.score.toFixed(1)} <span className="text-slate-500 text-2xs font-normal">/10</span>
                             </span>
                           </div>
                         </div>
-                        <div className="h-2 w-full bg-pitch-900 rounded-full overflow-hidden border border-white/5">
+                        <div className="h-2 w-full bg-slate-100 dark:bg-pitch-900 rounded-full overflow-hidden border border-slate-200 dark:border-white/5">
                           <div
                             className={clsx(
                               "h-full transition-all duration-500 rounded-full",
@@ -934,21 +934,21 @@ const StudentDetailPage: React.FC = () => {
 
             {/* Visual Chart Card with Interactive Toggle */}
             <div className="card p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
                 <div>
-                  <h3 className="section-title text-white flex items-center gap-2">
-                    <TrendingUp size={15} className="text-volt-400" />
+                  <h3 className="section-title text-slate-900 dark:text-white flex items-center gap-2">
+                    <TrendingUp size={15} className="text-volt-600 dark:text-volt-400" />
                     Performance Visualizer
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Analyze player growth trajectory and skill balance.</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Analyze player growth trajectory and skill balance.</p>
                 </div>
-                <div className="flex items-center bg-pitch-900 p-0.5 rounded-lg border border-white/10 text-2xs">
+                <div className="flex items-center bg-slate-100 dark:bg-pitch-900 p-0.5 rounded-lg border border-slate-200 dark:border-white/10 text-2xs">
                   <button
                     type="button"
                     onClick={() => setPerformanceChartView("trend")}
                     className={clsx(
                       "px-2.5 py-1 rounded font-semibold transition-all",
-                      performanceChartView === "trend" ? "bg-volt-400 text-pitch-900 font-bold" : "text-slate-400 hover:text-white"
+                      performanceChartView === "trend" ? "bg-volt-400 text-pitch-900 font-bold shadow-xs" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     )}
                   >
                     Progression
@@ -958,7 +958,7 @@ const StudentDetailPage: React.FC = () => {
                     onClick={() => setPerformanceChartView("radar")}
                     className={clsx(
                       "px-2.5 py-1 rounded font-semibold transition-all",
-                      performanceChartView === "radar" ? "bg-volt-400 text-pitch-900 font-bold" : "text-slate-400 hover:text-white"
+                      performanceChartView === "radar" ? "bg-volt-400 text-pitch-900 font-bold shadow-xs" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     )}
                   >
                     Radar
@@ -1157,18 +1157,18 @@ const StudentDetailPage: React.FC = () => {
                           {/* Granular Parameter Badges */}
                           {session.skillScores && session.skillScores.length > 0 && (
                             <div>
-                              <span className="text-3xs uppercase tracking-wider text-slate-400 font-mono block mb-2">
+                              <span className="text-3xs uppercase tracking-wider text-slate-500 dark:text-slate-400 font-mono block mb-2">
                                 Technical Evaluation Details:
                               </span>
                               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
                                 {session.skillScores.map((skill) => (
                                   <div
                                     key={skill.parameter}
-                                    className="p-2 rounded-lg bg-pitch-900/80 border border-white/5 text-center"
+                                    className="p-2 rounded-lg bg-white dark:bg-pitch-900/80 border border-slate-200 dark:border-white/5 text-center shadow-2xs"
                                   >
-                                    <span className="text-3xs text-slate-400 block truncate font-medium">{skill.parameter}</span>
+                                    <span className="text-3xs text-slate-500 dark:text-slate-400 block truncate font-medium">{skill.parameter}</span>
                                     <span className={clsx("font-mono font-black text-sm", getRatingColor(skill.score))}>
-                                      {skill.score} <span className="text-3xs text-slate-600 font-normal">/10</span>
+                                      {skill.score} <span className="text-3xs text-slate-400 dark:text-slate-600 font-normal">/10</span>
                                     </span>
                                   </div>
                                 ))}
@@ -1179,8 +1179,8 @@ const StudentDetailPage: React.FC = () => {
                           {/* Coach Note & Video Link */}
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs pt-1">
                             {session.remarks ? (
-                              <p className="text-slate-300 text-xs italic bg-white/[0.02] p-2 rounded-lg border border-white/5 flex-1">
-                                <span className="text-volt-400 font-semibold not-italic text-2xs font-mono mr-1.5">Coach Remark:</span>
+                              <p className="text-slate-700 dark:text-slate-300 text-xs italic bg-slate-50 dark:bg-white/[0.02] p-2 rounded-lg border border-slate-200 dark:border-white/5 flex-1">
+                                <span className="text-volt-600 dark:text-volt-400 font-semibold not-italic text-2xs font-mono mr-1.5">Coach Remark:</span>
                                 "{session.remarks}"
                               </p>
                             ) : (
@@ -1192,9 +1192,9 @@ const StudentDetailPage: React.FC = () => {
                                 href={session.videoUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-xs text-volt-400 hover:underline inline-flex items-center gap-1.5 font-medium shrink-0 ml-auto"
+                                className="text-xs text-volt-600 dark:text-volt-400 hover:underline inline-flex items-center gap-1.5 font-medium shrink-0 ml-auto"
                               >
-                                <Video size={13} className="text-volt-400" />
+                                <Video size={13} className="text-volt-600 dark:text-volt-400" />
                                 Drill Video
                               </a>
                             )}
@@ -1212,11 +1212,11 @@ const StudentDetailPage: React.FC = () => {
           <div className="card p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="section-title text-volt-400 flex items-center gap-2">
-                  <FileText size={15} className="text-volt-400" />
+                <h3 className="section-title text-volt-600 dark:text-volt-400 flex items-center gap-2">
+                  <FileText size={15} className="text-volt-600 dark:text-volt-400" />
                   Staff Developmental Notes &amp; Observations
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   General coaching notes, scouting reports, and developmental recommendations.
                 </p>
               </div>
@@ -1241,7 +1241,7 @@ const StudentDetailPage: React.FC = () => {
 
             {/* Note Composer Form (Collapsible) */}
             {canManagePerformance && isNotesOpen && (
-              <form onSubmit={handleAddRemark} className="space-y-3 bg-pitch-900/50 p-4 rounded-xl border border-white/5 animate-fade-in">
+              <form onSubmit={handleAddRemark} className="space-y-3 bg-slate-50 dark:bg-pitch-900/50 p-4 rounded-xl border border-slate-200 dark:border-white/5 animate-fade-in">
                 <textarea
                   value={newRemarkText}
                   onChange={(e) => setNewRemarkText(e.target.value)}
@@ -1274,14 +1274,14 @@ const StudentDetailPage: React.FC = () => {
                       ? `${r.coachId.firstName} ${r.coachId.lastName}`
                       : "Coach / Evaluator";
                   return (
-                    <div key={r._id} className="bg-pitch-800/60 rounded-xl p-3.5 border-l-2 border-volt-400 space-y-1">
+                    <div key={r._id} className="bg-slate-50 dark:bg-pitch-800/60 rounded-xl p-3.5 border-l-2 border-volt-400 dark:border-volt-400 border-y border-r border-slate-200 dark:border-transparent space-y-1 shadow-2xs">
                       <div className="flex items-center justify-between text-2xs">
-                        <span className="text-volt-400 font-bold">{coachName}</span>
+                        <span className="text-volt-600 dark:text-volt-400 font-bold">{coachName}</span>
                         <span className="text-slate-500 font-mono">
                           {new Date(r.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-200 leading-relaxed italic">"{r.text}"</p>
+                      <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed italic">"{r.text}"</p>
                     </div>
                   );
                 })
@@ -1794,7 +1794,7 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
 
             <div>
               <label className="label">Playing Positions (Select all that apply)</label>
-              <div className="flex flex-wrap gap-1.5 mt-1 border border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-pitch-900">
+              <div className="flex flex-wrap gap-1.5 mt-1 border border-slate-200 dark:border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-slate-50 dark:bg-pitch-900">
                 {POSITIONS.map((pos) => {
                   const isSelected = positions.includes(pos);
                   return (
@@ -1812,7 +1812,7 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
                         "px-2 py-0.5 rounded text-[10px] font-semibold uppercase border transition-all duration-150",
                         isSelected
                           ? "bg-volt-400 border-volt-400 text-pitch-900 font-extrabold"
-                          : "bg-pitch-800 border-white/5 text-slate-400 hover:border-white/10 hover:text-white"
+                          : "bg-slate-100 dark:bg-pitch-800 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/10 hover:text-slate-900 dark:hover:text-white"
                       )}
                     >
                       {pos}

@@ -191,7 +191,7 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold text-nox-high">Public Player Profile &amp; QR Code</p>
               <span className={`text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded-full font-semibold ${
-                enabled ? "bg-field-400/10 text-field-400" : "bg-white/10 text-slate-400"
+                enabled ? "bg-emerald-500/10 text-emerald-600 dark:text-field-400 border border-emerald-500/20" : "bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-transparent"
               }`}>
                 {enabled ? "Active" : "Disabled"}
               </span>
@@ -208,11 +208,11 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
           onClick={handleToggle}
           disabled={isLoading}
           className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-            enabled ? "bg-core-400" : "bg-white/10"
+            enabled ? "bg-core-400" : "bg-slate-300 dark:bg-white/10"
           }`}
         >
           <span
-            className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+            className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-xs transition-transform ${
               enabled ? "translate-x-5" : "translate-x-0.5"
             }`}
           />
@@ -220,16 +220,16 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
       </div>
 
       {enabled && publicUrl && (
-        <div className="pt-2 border-t border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 w-full sm:max-w-md">
+        <div className="pt-2 border-t border-slate-200 dark:border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-lg px-3 py-2 w-full sm:max-w-md">
             <code className="text-xs text-core-400 truncate flex-1 font-mono">{publicUrl}</code>
             <button
               type="button"
               onClick={handleCopy}
-              className="text-slate-400 hover:text-white transition-colors flex-shrink-0"
+              className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors flex-shrink-0"
               title="Copy link"
             >
-              {copied ? <CheckCircle2 size={14} className="text-field-400" /> : <Copy size={14} />}
+              {copied ? <CheckCircle2 size={14} className="text-emerald-600 dark:text-field-400" /> : <Copy size={14} />}
             </button>
           </div>
 
@@ -239,7 +239,7 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
               onClick={handleCopy}
               className="nox-btn-secondary !py-2 !px-3 text-xs flex-1 sm:flex-initial"
             >
-              {copied ? <CheckCircle2 size={13} className="text-field-400" /> : <Copy size={13} />}
+              {copied ? <CheckCircle2 size={13} className="text-emerald-600 dark:text-field-400" /> : <Copy size={13} />}
               {copied ? "Copied" : "Copy Link"}
             </button>
             <button
@@ -272,7 +272,7 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
 
       {/* Visibility Preferences & Academy Lock Notice */}
       {enabled && showSettings && (
-        <div className="pt-4 border-t border-white/[0.08] space-y-4 animate-fade-in">
+        <div className="pt-4 border-t border-slate-200 dark:border-white/[0.08] space-y-4 animate-fade-in">
           <div className="flex items-center justify-between">
             <h4 className="font-orbital text-xs font-semibold uppercase tracking-wider text-nox-high">
               Public Profile Visibility Controls
@@ -298,7 +298,7 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
                   className={`flex items-center justify-between p-3 rounded-xl border text-left text-xs transition-all ${
                     active
                       ? "bg-core-400/10 border-core-400/40 text-nox-high font-semibold"
-                      : "bg-white/[0.02] border-white/[0.06] text-nox-low hover:text-nox-mid"
+                      : "bg-slate-100 dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.06] text-slate-500 dark:text-nox-low hover:text-slate-900 dark:hover:text-nox-mid"
                   }`}
                 >
                   <span>{label}</span>
@@ -306,7 +306,7 @@ const PublicProfileToggleCard: React.FC<{ studentId: string; profile: GuardianCh
                     className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] shrink-0 ml-2 ${
                       active
                         ? "bg-core-400 border-core-400 text-pitch-950 font-bold"
-                        : "border-white/20 bg-transparent"
+                        : "border-slate-300 dark:border-white/20 bg-transparent"
                     }`}
                   >
                     {active && <Check size={11} className="text-pitch-950 stroke-[3]" />}

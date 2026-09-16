@@ -299,8 +299,8 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
                 onClick={() => setStatusFilter(tab.id)}
                 className={`px-3 py-1.5 rounded-lg font-medium transition-all whitespace-nowrap ${
                   statusFilter === tab.id
-                    ? "bg-volt-400 text-pitch-950 font-bold"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                    ? "bg-volt-400 text-pitch-950 font-bold shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5"
                 }`}
               >
                 {tab.label}
@@ -348,8 +348,8 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
           />
         ) : (
           <div className="table-responsive">
-            <table className="w-full min-w-[700px] text-left text-sm text-slate-300">
-              <thead className="bg-white/[0.02] text-2xs font-mono uppercase tracking-wider text-slate-400 border-b border-white/5">
+            <table className="w-full min-w-[700px] text-left text-sm text-slate-700 dark:text-slate-300">
+              <thead className="bg-slate-50 dark:bg-white/[0.02] text-2xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-white/5">
                 <tr>
                   <th className="py-3 px-4">Request</th>
                   <th className="py-3 px-4">Purchaser</th>
@@ -361,13 +361,13 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                 {requests.map((req) => {
                   const reqId = String(req.id || (req as any)._id || "");
                   return (
-                    <tr key={reqId || Math.random()} className="hover:bg-white/[0.02] transition-colors">
+                    <tr key={reqId || Math.random()} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
                       <td className="py-3 px-4">
-                        <span className="font-mono text-xs font-bold text-volt-400">
+                        <span className="font-mono text-xs font-bold text-volt-600 dark:text-volt-400">
                           #{reqId ? reqId.slice(-6).toUpperCase() : "NFC"}
                         </span>
                         <span className="block text-2xs text-slate-500">
@@ -377,17 +377,17 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
                     <td className="py-3 px-4">
                       {req.requesterType === "academy" && req.academyId ? (
                         <div>
-                          <p className="font-semibold text-white flex items-center gap-1 text-xs">
-                            <Building2 size={13} className="text-volt-400" />
+                          <p className="font-semibold text-slate-900 dark:text-white flex items-center gap-1 text-xs">
+                            <Building2 size={13} className="text-volt-600 dark:text-volt-400" />
                             {req.academyId.name}
                           </p>
-                          <p className="text-2xs text-slate-400">
+                          <p className="text-2xs text-slate-500 dark:text-slate-400">
                             {req.requesterId.firstName} {req.requesterId.lastName}
                           </p>
                         </div>
                       ) : (
                         <div>
-                          <p className="font-semibold text-white flex items-center gap-1 text-xs">
+                          <p className="font-semibold text-slate-900 dark:text-white flex items-center gap-1 text-xs">
                             <User size={13} className="text-core-400" />
                             {req.requesterId.firstName} {req.requesterId.lastName}
                           </p>
@@ -408,7 +408,7 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
                         </span>
                       )}
                     </td>
-                    <td className="py-3 px-4 font-mono text-xs font-bold text-white">
+                    <td className="py-3 px-4 font-mono text-xs font-bold text-slate-900 dark:text-white">
                       {req.quantity} card{req.quantity > 1 ? "s" : ""}
                     </td>
                     <td className="py-3 px-4">
@@ -422,7 +422,7 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
                         </span>
                       )}
                     </td>
-                    <td className="py-3 px-4 font-mono font-bold text-white">
+                    <td className="py-3 px-4 font-mono font-bold text-slate-900 dark:text-white">
                       ₹{req.totalAmount.toLocaleString("en-IN")}
                     </td>
                     <td className="py-3 px-4">

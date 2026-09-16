@@ -83,46 +83,46 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({ is
   };
 
   return (
-    <div className="rounded-xl border border-white/10 bg-pitch-900/60 overflow-hidden mb-6 transition-all">
+    <div className="rounded-xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-pitch-900/60 overflow-hidden mb-6 transition-all shadow-xs">
       <button
         type="button"
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-3.5 sm:px-4 text-left hover:bg-white/[0.02] transition-colors"
+        className="w-full flex items-center justify-between p-3.5 sm:px-4 text-left hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
       >
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+          <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-600 dark:text-sky-400">
             <QrCode size={16} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-white">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                 WhatsApp Payment QR Code
               </span>
               <span
                 className={clsx(
                   "text-[10px] px-1.5 py-0.5 rounded font-semibold",
-                  qrImageUrl ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-slate-800 text-slate-400"
+                  qrImageUrl ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-transparent"
                 )}
               >
                 {qrImageUrl ? "Configured" : "Not Set"}
               </span>
             </div>
-            <p className="text-2xs text-slate-400">
+            <p className="text-2xs text-slate-500 dark:text-slate-400">
               Attached to WhatsApp due-date reminders sent to guardians.
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1 text-xs text-slate-400">
+        <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
           <span>{isOpen ? "Hide settings" : "Configure QR"}</span>
           {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
         </div>
       </button>
 
       {isOpen && (
-        <div className="p-4 pt-2 border-t border-white/5 bg-pitch-950/40">
+        <div className="p-4 pt-2 border-t border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-pitch-950/40">
           <div className="max-w-xs">
             {isLoading && !qrImageUrl ? (
-              <div className="w-[180px] aspect-square rounded-lg bg-slate-900 animate-pulse border border-dashed border-white/10 flex items-center justify-center text-2xs text-slate-400">
+              <div className="w-[180px] aspect-square rounded-lg bg-slate-100 dark:bg-slate-900 animate-pulse border border-dashed border-slate-300 dark:border-white/10 flex items-center justify-center text-2xs text-slate-500 dark:text-slate-400">
                 Loading QR Code…
               </div>
             ) : (
@@ -470,22 +470,22 @@ const FeesPage: React.FC = () => {
       <FeeQrCodeCard isOpen={qrOpen} onToggle={() => setQrOpen((prev) => !prev)} />
 
       {/* Control & Filter Toolbar */}
-      <div className="card p-3.5 space-y-3 bg-pitch-900/80 border-white/10">
+      <div className="card p-3.5 space-y-3 bg-white dark:bg-pitch-900/80 border-slate-200/80 dark:border-white/10 shadow-xs">
         <div className="flex items-center justify-between flex-wrap gap-3">
           {/* Search input */}
           <div className="relative flex-1 min-w-[220px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <input
               type="text"
               placeholder="Search by student name, fee type..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input !pl-9 !py-1.5 text-xs w-full bg-pitch-950/60"
+              className="input !pl-9 !py-1.5 text-xs w-full bg-slate-50 dark:bg-pitch-950/60"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 dark:hover:text-white"
               >
                 <X size={13} />
               </button>
@@ -494,13 +494,13 @@ const FeesPage: React.FC = () => {
 
           {/* View mode toggle & expand controls */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center bg-pitch-950/80 rounded-lg p-0.5 border border-white/10">
+            <div className="flex items-center bg-slate-100 dark:bg-pitch-950/80 rounded-lg p-0.5 border border-slate-200 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setViewMode("student")}
                 className={clsx(
                   "flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold transition-colors",
-                  viewMode === "student" ? "bg-volt-400 text-pitch-950" : "text-slate-400 hover:text-white"
+                  viewMode === "student" ? "bg-volt-400 text-pitch-950 font-bold" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
                 title="Group multiple cards by student"
               >
@@ -512,7 +512,7 @@ const FeesPage: React.FC = () => {
                 onClick={() => setViewMode("table")}
                 className={clsx(
                   "flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold transition-colors",
-                  viewMode === "table" ? "bg-volt-400 text-pitch-950" : "text-slate-400 hover:text-white"
+                  viewMode === "table" ? "bg-volt-400 text-pitch-950 font-bold" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
                 title="Dense tabular view"
               >
@@ -521,20 +521,20 @@ const FeesPage: React.FC = () => {
               </button>
             </div>
 
-            <div className="h-4 w-px bg-white/10 mx-1 hidden sm:block" />
+            <div className="h-4 w-px bg-slate-200 dark:bg-white/10 mx-1 hidden sm:block" />
 
             <button
               type="button"
               onClick={expandAll}
-              className="text-2xs font-semibold text-slate-400 hover:text-volt-400 px-2 py-1 transition-colors"
+              className="text-2xs font-semibold text-slate-500 dark:text-slate-400 hover:text-volt-600 dark:hover:text-volt-400 px-2 py-1 transition-colors"
             >
               Expand all
             </button>
-            <span className="text-slate-600 text-2xs">·</span>
+            <span className="text-slate-300 dark:text-slate-600 text-2xs">·</span>
             <button
               type="button"
               onClick={collapseAll}
-              className="text-2xs font-semibold text-slate-400 hover:text-volt-400 px-2 py-1 transition-colors"
+              className="text-2xs font-semibold text-slate-500 dark:text-slate-400 hover:text-volt-600 dark:hover:text-volt-400 px-2 py-1 transition-colors"
             >
               Collapse all
             </button>
@@ -542,7 +542,7 @@ const FeesPage: React.FC = () => {
         </div>
 
         {/* Status Filter Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 border-t border-white/5">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 border-t border-slate-200/80 dark:border-white/5">
           {[
             { id: "", label: "All Statuses", count: statusCounts.all },
             { id: "overdue", label: "Overdue", count: statusCounts.overdue, variant: "red" },
@@ -556,8 +556,8 @@ const FeesPage: React.FC = () => {
               className={clsx(
                 "px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 border",
                 statusFilter === pill.id
-                  ? "bg-volt-400 text-pitch-950 border-volt-400"
-                  : "bg-white/[0.03] text-slate-400 border-white/5 hover:border-white/15"
+                  ? "bg-volt-400 text-pitch-950 font-bold border-volt-400"
+                  : "bg-slate-100 dark:bg-white/[0.03] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/15"
               )}
             >
               <span>{pill.label}</span>
@@ -567,8 +567,8 @@ const FeesPage: React.FC = () => {
                   statusFilter === pill.id
                     ? "bg-pitch-900/30 text-pitch-950"
                     : pill.id === "overdue" && pill.count > 0
-                    ? "bg-rose-500/20 text-rose-400"
-                    : "bg-white/10 text-slate-400"
+                    ? "bg-rose-500/20 text-rose-600 dark:text-rose-400"
+                    : "bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-400"
                 )}
               >
                 {pill.count}
@@ -629,12 +629,12 @@ const FeesPage: React.FC = () => {
             return (
               <div
                 key={group.student._id}
-                className="card border-white/10 bg-pitch-900/70 overflow-hidden transition-all shadow-sm"
+                className="card border-slate-200/80 dark:border-white/10 bg-white dark:bg-pitch-900/70 overflow-hidden transition-all shadow-xs"
               >
                 {/* Student Header Bar */}
                 <div
                   onClick={() => toggleStudentExpanded(group.student._id)}
-                  className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-white/[0.02] transition-colors"
+                  className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <Avatar
@@ -644,11 +644,11 @@ const FeesPage: React.FC = () => {
                     />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-display font-bold text-white text-sm uppercase tracking-wide truncate">
+                        <h3 className="font-display font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wide truncate">
                           {group.student.firstName} {group.student.lastName}
                         </h3>
                         {group.student.ageGroup && (
-                          <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-white/5 text-slate-400 border border-white/5">
+                          <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/5">
                             {group.student.ageGroup}
                           </span>
                         )}
@@ -660,26 +660,26 @@ const FeesPage: React.FC = () => {
                   </div>
 
                   {/* Financial summary & Progress */}
-                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 flex-wrap w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 flex-wrap w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-white/5">
                     <div className="text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <span className="text-xs font-mono font-bold text-white">
+                        <span className="text-xs font-mono font-bold text-slate-900 dark:text-white">
                           ₹{group.totalPaid.toLocaleString("en-IN")}
                         </span>
-                        <span className="text-2xs text-slate-500">/</span>
-                        <span className="text-xs font-mono text-slate-400">
+                        <span className="text-2xs text-slate-400 dark:text-slate-500">/</span>
+                        <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
                           ₹{group.totalInvoiced.toLocaleString("en-IN")}
                         </span>
                       </div>
-                      <div className="w-32 sm:w-40 bg-white/5 rounded-full h-1.5 mt-1 overflow-hidden ml-auto">
+                      <div className="w-32 sm:w-40 bg-slate-100 dark:bg-white/5 rounded-full h-1.5 mt-1 overflow-hidden ml-auto">
                         <div
                           className={clsx(
                             "h-full rounded-full transition-all",
                             group.hasOverdue
                               ? "bg-rose-500"
                               : percentPaid === 100
-                              ? "bg-emerald-400"
-                              : "bg-volt-400"
+                              ? "bg-emerald-500 dark:bg-emerald-400"
+                              : "bg-volt-500 dark:bg-volt-400"
                           )}
                           style={{ width: `${Math.min(100, percentPaid)}%` }}
                         />
@@ -707,7 +707,7 @@ const FeesPage: React.FC = () => {
                           setCreateInitialStudentId(group.student._id);
                           setShowCreate(true);
                         }}
-                        className="text-2xs font-semibold text-volt-400 hover:text-volt-300 bg-volt-400/10 border border-volt-400/20 px-2 py-1 rounded transition-colors"
+                        className="text-2xs font-semibold text-volt-600 dark:text-volt-400 hover:text-volt-700 dark:hover:text-volt-300 bg-volt-400/10 border border-volt-400/20 px-2 py-1 rounded transition-colors"
                         title="Add another fee schedule for this student"
                       >
                         + Add Fee
@@ -715,7 +715,7 @@ const FeesPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => toggleStudentExpanded(group.student._id)}
-                        className="p-1 rounded text-slate-400 hover:text-white"
+                        className="p-1 rounded text-slate-400 hover:text-slate-900 dark:hover:text-white"
                       >
                         {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                       </button>
@@ -725,7 +725,7 @@ const FeesPage: React.FC = () => {
 
                 {/* Expanded Fee Details for this Student */}
                 {isExpanded && (
-                  <div className="border-t border-white/10 bg-pitch-950/50 p-3.5 sm:p-4 space-y-4">
+                  <div className="border-t border-slate-200/80 dark:border-white/10 bg-slate-50/50 dark:bg-pitch-950/50 p-3.5 sm:p-4 space-y-4">
                     {group.fees.map((fee) => (
                       <FeePlanDetailBlock
                         key={fee._id}
@@ -749,11 +749,11 @@ const FeesPage: React.FC = () => {
 
       {/* VIEW MODE 2: Compact High-Density Table / List */}
       {!isLoading && !isError && filteredFees.length > 0 && viewMode === "table" && (
-        <div className="card overflow-hidden border-white/10 bg-pitch-900/80">
+        <div className="card overflow-hidden border-slate-200/80 dark:border-white/10 bg-white dark:bg-pitch-900/80 shadow-xs">
           <div className="table-responsive">
             <table className="w-full min-w-[680px] text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-white/10 bg-white/[0.02] text-slate-400 uppercase text-[10px] tracking-wider font-semibold">
+                <tr className="border-b border-slate-200/80 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] text-slate-500 dark:text-slate-400 uppercase text-[10px] tracking-wider font-semibold">
                   <th className="py-2.5 px-3">Player</th>
                   <th className="py-2.5 px-3">Fee Type</th>
                   <th className="py-2.5 px-3 text-right">Invoiced</th>
@@ -764,7 +764,7 @@ const FeesPage: React.FC = () => {
                   <th className="py-2.5 px-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                 {filteredFees.map((fee) => {
                   const isExpanded = expandedFees.has(fee._id);
                   const totalPaid = fee.installments.reduce((sum, i) => sum + (i.paidAmount || 0), 0);
@@ -776,30 +776,30 @@ const FeesPage: React.FC = () => {
                       <tr
                         onClick={() => toggleFeeExpanded(fee._id)}
                         className={clsx(
-                          "cursor-pointer hover:bg-white/[0.02] transition-colors",
-                          isExpanded ? "bg-white/[0.02]" : ""
+                          "cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors",
+                          isExpanded ? "bg-slate-50/80 dark:bg-white/[0.02]" : ""
                         )}
                       >
-                        <td className="py-2.5 px-3 font-semibold text-white">
+                        <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
                           <div className="flex items-center gap-2">
-                            <span className="text-slate-500">
+                            <span className="text-slate-400 dark:text-slate-500">
                               {isExpanded ? <ChevronUp size={13} /> : <ChevronRight size={13} />}
                             </span>
                             <span>{fee.studentId?.firstName} {fee.studentId?.lastName}</span>
                           </div>
                         </td>
                         <td className="py-2.5 px-3">
-                          <span className="capitalize font-mono text-slate-300">
+                          <span className="capitalize font-mono text-slate-600 dark:text-slate-300">
                             {fee.feeType.replace("_", " ")}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-white">
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-900 dark:text-white">
                           ₹{fee.finalAmount.toLocaleString("en-IN")}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-emerald-400 font-semibold">
+                        <td className="py-2.5 px-3 text-right font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
                           ₹{totalPaid.toLocaleString("en-IN")}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-amber-400 font-semibold">
+                        <td className="py-2.5 px-3 text-right font-mono text-amber-600 dark:text-amber-400 font-semibold">
                           ₹{balance.toLocaleString("en-IN")}
                         </td>
                         <td className="py-2.5 px-3 text-center">
@@ -808,7 +808,7 @@ const FeesPage: React.FC = () => {
                           </Badge>
                         </td>
                         <td className="py-2.5 px-3">
-                          <span className="text-2xs text-slate-400 font-mono">
+                          <span className="text-2xs text-slate-500 dark:text-slate-400 font-mono">
                             {paidCount}/{fee.installments.length} paid
                           </span>
                         </td>
@@ -816,7 +816,7 @@ const FeesPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => toggleFeeExpanded(fee._id)}
-                            className="text-2xs font-semibold text-volt-400 hover:underline"
+                            className="text-2xs font-semibold text-volt-600 dark:text-volt-400 hover:underline"
                           >
                             {isExpanded ? "Hide" : "Details"}
                           </button>
@@ -825,8 +825,8 @@ const FeesPage: React.FC = () => {
 
                       {/* Expanded Installment Table */}
                       {isExpanded && (
-                        <tr className="bg-pitch-950/70">
-                          <td colSpan={8} className="p-3.5 border-t border-b border-white/10">
+                        <tr className="bg-slate-50/70 dark:bg-pitch-950/70">
+                          <td colSpan={8} className="p-3.5 border-t border-b border-slate-200/80 dark:border-white/10">
                             <FeePlanDetailBlock
                               fee={fee}
                               remindingKey={remindingKey}
@@ -921,22 +921,22 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
   onToggleAudit,
 }) => {
   return (
-    <div className="rounded-lg border border-white/5 bg-pitch-900/50 p-3.5 space-y-3">
+    <div className="rounded-lg border border-slate-200/80 dark:border-white/5 bg-slate-50/60 dark:bg-pitch-900/50 p-3.5 space-y-3">
       {/* Plan Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-white uppercase tracking-wider capitalize font-mono">
+          <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider capitalize font-mono">
             {fee.feeType.replace("_", " ")}
           </span>
-          <span className="text-slate-500 text-2xs">·</span>
-          <span className="text-xs font-mono font-semibold text-slate-300">
+          <span className="text-slate-400 dark:text-slate-500 text-2xs">·</span>
+          <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">
             Total: ₹{fee.finalAmount.toLocaleString("en-IN")}
           </span>
           {fee.auditLog && fee.auditLog.length > 0 && (
             <button
               type="button"
               onClick={onToggleAudit}
-              className="text-[10px] text-slate-400 hover:text-volt-400 ml-2 font-mono flex items-center gap-1 border border-white/10 px-1.5 py-0.5 rounded transition-colors"
+              className="text-[10px] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-volt-400 ml-2 font-mono flex items-center gap-1 border border-slate-200 dark:border-white/10 px-1.5 py-0.5 rounded transition-colors"
             >
               <History size={11} />
               <span>{fee.auditLog.length} Audit Events</span>
@@ -958,29 +958,29 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
           return (
             <div
               key={inst.installmentNumber}
-              className="flex items-center justify-between text-xs bg-white/[0.02] border border-white/5 rounded-lg px-3 py-2 flex-wrap gap-2 hover:bg-white/[0.04] transition-colors"
+              className="flex items-center justify-between text-xs bg-white dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/5 rounded-lg px-3 py-2 flex-wrap gap-2 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors shadow-2xs"
             >
               {/* Left Info: Milestone #, Due Date, Payment Details */}
               <div className="flex flex-col min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-white">
+                  <span className="font-semibold text-slate-900 dark:text-white">
                     Milestone {inst.installmentNumber}
                   </span>
-                  <span className="text-slate-500">·</span>
-                  <span className={clsx("text-2xs", isPastDue ? "text-rose-400 font-semibold" : "text-slate-400")}>
+                  <span className="text-slate-400 dark:text-slate-500">·</span>
+                  <span className={clsx("text-2xs", isPastDue ? "text-rose-600 dark:text-rose-400 font-semibold" : "text-slate-500 dark:text-slate-400")}>
                     Due: {new Date(inst.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                     {isPastDue && " (Overdue)"}
                   </span>
                 </div>
                 {inst.paidAt && (
-                  <span className="text-[10px] text-slate-400 mt-0.5">
-                    Paid via <span className="uppercase font-semibold text-slate-300">{inst.paymentMethod || "cash"}</span> on{" "}
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    Paid via <span className="uppercase font-semibold text-slate-700 dark:text-slate-300">{inst.paymentMethod || "cash"}</span> on{" "}
                     {new Date(inst.paidAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                     {inst.transactionId && ` (Txn: ${inst.transactionId})`}
                   </span>
                 )}
                 {inst.status !== "paid" && (inst.reminderSentCount ?? 0) > 0 && (
-                  <span className="text-[10px] text-sky-400/90 font-mono mt-0.5">
+                  <span className="text-[10px] text-sky-600 dark:text-sky-400/90 font-mono mt-0.5">
                     QR alert sent {inst.reminderSentCount} time{(inst.reminderSentCount ?? 0) > 1 ? "s" : ""}
                     {inst.lastReminderAt && ` (last: ${new Date(inst.lastReminderAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })})`}
                   </span>
@@ -990,9 +990,9 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
               {/* Right: Amounts, Badge, Actions */}
               <div className="flex items-center gap-3 flex-wrap ml-auto">
                 <span className="font-mono text-xs">
-                  <span className="text-emerald-400 font-semibold">₹{inst.paidAmount.toLocaleString("en-IN")}</span>
-                  <span className="text-slate-500"> / </span>
-                  <span className="text-slate-300">₹{inst.amount.toLocaleString("en-IN")}</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">₹{inst.paidAmount.toLocaleString("en-IN")}</span>
+                  <span className="text-slate-400 dark:text-slate-500"> / </span>
+                  <span className="text-slate-700 dark:text-slate-300">₹{inst.amount.toLocaleString("en-IN")}</span>
                 </span>
 
                 <Badge variant={STATUS_VARIANT[inst.status] ?? (isPastDue ? "red" : "gray")} size="sm">
@@ -1013,7 +1013,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                             transactionId: inst.transactionId || "",
                           })
                         }
-                        className="text-[10px] text-slate-400 hover:text-volt-400 font-semibold border border-white/5 bg-white/5 rounded px-2 py-1 transition-colors"
+                        className="text-[10px] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-volt-400 font-semibold border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-white/5 rounded px-2 py-1 transition-colors"
                         title="Edit payment details"
                       >
                         Edit
@@ -1021,7 +1021,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                       <button
                         type="button"
                         onClick={() => onUndoPayment(fee._id, inst.installmentNumber)}
-                        className="text-[10px] text-slate-400 hover:text-rose-400 font-semibold border border-white/5 bg-white/5 rounded px-2 py-1 transition-colors"
+                        className="text-[10px] text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 font-semibold border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-white/5 rounded px-2 py-1 transition-colors"
                         title="Undo this payment"
                       >
                         Undo
@@ -1035,7 +1035,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                         type="button"
                         onClick={() => onSendReminder(fee._id, inst.installmentNumber)}
                         disabled={remindingKey === `${fee._id}-${inst.installmentNumber}`}
-                        className="flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 bg-sky-500/10 border border-sky-500/20 px-2 py-1 rounded transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1 text-[11px] text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 bg-sky-500/10 border border-sky-500/20 px-2 py-1 rounded transition-colors disabled:opacity-50"
                         title="Send WhatsApp payment link and QR code alert"
                       >
                         {remindingKey === `${fee._id}-${inst.installmentNumber}` ? (
@@ -1054,7 +1054,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                             amount: unpaid,
                           })
                         }
-                        className="text-[11px] font-semibold text-pitch-950 bg-volt-400 hover:bg-volt-300 px-2.5 py-1 rounded transition-colors"
+                        className="text-[11px] font-semibold text-pitch-950 bg-volt-400 hover:bg-volt-300 px-2.5 py-1 rounded transition-colors shadow-2xs"
                       >
                         Record Pay
                       </button>
@@ -1069,7 +1069,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
 
       {/* Collapsible Audit Trail */}
       {isAuditExpanded && fee.auditLog && fee.auditLog.length > 0 && (
-        <div className="border-t border-white/5 pt-2.5 space-y-1.5 animate-fade-in">
+        <div className="border-t border-slate-200 dark:border-white/5 pt-2.5 space-y-1.5 animate-fade-in">
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
             Audit Trail Records
           </p>
@@ -1077,10 +1077,10 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
             {fee.auditLog.map((log, idx) => (
               <div
                 key={idx}
-                className="flex justify-between items-start text-[10px] bg-white/[0.01] border border-white/5 rounded px-2.5 py-1 font-mono text-slate-400"
+                className="flex justify-between items-start text-[10px] bg-slate-100/60 dark:bg-white/[0.01] border border-slate-200 dark:border-white/5 rounded px-2.5 py-1 font-mono text-slate-600 dark:text-slate-400"
               >
                 <div>
-                  <span className="text-volt-400 font-semibold capitalize">[{log.action.replace("_", " ")}]</span>{" "}
+                  <span className="text-volt-600 dark:text-volt-400 font-semibold capitalize">[{log.action.replace("_", " ")}]</span>{" "}
                   <span>{log.details || `Amount: ₹${log.amount}`}</span>
                 </div>
                 <div className="text-right text-[9px] text-slate-500 shrink-0 ml-2">
@@ -1351,7 +1351,9 @@ const CreateFeeModal: React.FC<{
                 onClick={() => setFeeTypeAndAdjust(t)}
                 className={clsx(
                   "flex-1 px-3 py-2 rounded border text-xs font-semibold uppercase tracking-wide transition-colors",
-                  feeType === t ? "bg-volt-400 text-pitch-900 border-volt-400" : "border-white/10 text-slate-400 hover:border-white/25",
+                  feeType === t
+                    ? "bg-volt-400 text-pitch-900 border-volt-400 font-bold"
+                    : "border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/25",
                 )}
               >
                 {t === "one_time" ? "One-time" : t === "installment" ? "Installment plan" : "Early bird"}
@@ -1372,12 +1374,12 @@ const CreateFeeModal: React.FC<{
             </label>
             <div className="flex gap-3">
               {totalAmount && (
-                <button type="button" onClick={splitEvenly} className="text-2xs text-volt-400 hover:underline">
+                <button type="button" onClick={splitEvenly} className="text-2xs text-volt-600 dark:text-volt-400 hover:underline">
                   Split evenly
                 </button>
               )}
               {feeType === "installment" && (
-                <button type="button" onClick={addInstallment} className="text-2xs text-ice-400 hover:underline">
+                <button type="button" onClick={addInstallment} className="text-2xs text-sky-600 dark:text-ice-400 hover:underline">
                   + Add installment
                 </button>
               )}

@@ -26,9 +26,9 @@ import {
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-slate-900 dark:bg-pitch-800 border border-slate-700 dark:border-white/10 rounded px-3 py-2 text-xs">
-      <p className="text-slate-400">{label}</p>
-      <p className="text-volt-400 font-bold">{payload[0].value}%</p>
+    <div className="bg-white dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded px-3 py-2 text-xs shadow-md">
+      <p className="text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="text-volt-600 dark:text-volt-400 font-bold">{payload[0].value}%</p>
     </div>
   );
 };

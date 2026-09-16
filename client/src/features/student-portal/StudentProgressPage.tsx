@@ -143,7 +143,7 @@ const StudentProgressPage: React.FC = () => {
       )}
 
       {/* Navigation Tabs */}
-      <div className="flex gap-2 border-b border-white/[0.06] overflow-x-auto no-scrollbar">
+      <div className="flex gap-2 border-b border-slate-200 dark:border-white/[0.06] overflow-x-auto no-scrollbar">
         {TABS.map((t) => {
           const Icon = t.icon;
           const active = tab === t.id;
@@ -196,7 +196,7 @@ const AttendanceTab: React.FC = () => {
         <NoxStatCard label="Attendance Rate" value={`${data.summary.percentage}%`} accent="ion" />
       </div>
 
-      <div className="nox-card divide-y divide-white/[0.06] overflow-hidden">
+      <div className="nox-card divide-y divide-slate-200 dark:divide-white/[0.06] overflow-hidden">
         {data.records.map((r) => (
           <div key={r._id} className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.01] transition-colors">
             <div>
@@ -250,10 +250,10 @@ const ScheduleTab: React.FC = () => {
               const sCoach = session.coach || (typeof (session as any).coachId === "object" ? `${(session as any).coachId?.firstName} ${(session as any).coachId?.lastName}` : undefined);
 
               return (
-                <div key={sId} className="nox-card p-4 space-y-3 hover:border-white/15 transition-all">
+                <div key={sId} className="nox-card p-4 space-y-3 hover:border-slate-300 dark:hover:border-white/15 transition-all">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 text-slate-300 capitalize">
+                      <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-transparent capitalize">
                         {sType}
                       </span>
                       <h4 className="font-orbital font-bold text-sm text-nox-high mt-1.5">
@@ -265,9 +265,9 @@ const ScheduleTab: React.FC = () => {
                     </Badge>
                   </div>
 
-                  <div className="space-y-1.5 text-2xs text-nox-mid pt-1 border-t border-white/5">
+                  <div className="space-y-1.5 text-2xs text-nox-mid pt-1 border-t border-slate-100 dark:border-white/5">
                     <div className="flex items-center gap-2">
-                      <Calendar size={12} className="text-volt-400 shrink-0" />
+                      <Calendar size={12} className="text-volt-600 dark:text-volt-400 shrink-0" />
                       <span>
                         {new Date(session.date).toLocaleDateString("en-US", {
                           weekday: "short",
@@ -284,7 +284,7 @@ const ScheduleTab: React.FC = () => {
 
                     {session.location && (
                       <div className="flex items-center gap-2">
-                        <MapPin size={12} className="text-emerald-400 shrink-0" />
+                        <MapPin size={12} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
                         <span>
                           {session.location} {session.fieldNumber ? `(Pitch #${session.fieldNumber})` : ""}
                         </span>
@@ -307,10 +307,10 @@ const ScheduleTab: React.FC = () => {
 
       {pastSessions.length > 0 && (
         <div className="space-y-3 pt-2">
-          <h3 className="font-orbital text-xs uppercase tracking-wider text-slate-400 font-bold">
+          <h3 className="font-orbital text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400 font-bold">
             Recent Past Sessions
           </h3>
-          <div className="nox-card divide-y divide-white/[0.06] overflow-hidden">
+          <div className="nox-card divide-y divide-slate-200 dark:divide-white/[0.06] overflow-hidden">
             {pastSessions.slice(0, 10).map((session) => {
               const sId = (session as any).id || (session as any)._id;
               const sTitle = (session as any).notes || session.teamName || (session as any).title || "Squad Practice";
@@ -370,7 +370,7 @@ const FeesTab: React.FC = () => {
             {fee.installments.map((inst) => (
               <div
                 key={inst.installmentNumber}
-                className="flex items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2.5"
+                className="flex items-center justify-between text-sm bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-transparent rounded-lg px-3 py-2.5"
               >
                 <span className="text-nox-mid text-xs">
                   Installment {inst.installmentNumber} &bull; due{" "}
@@ -411,7 +411,7 @@ const PerformanceTab: React.FC = () => {
           <h3 className="font-orbital text-xs uppercase tracking-wider text-core-400 font-bold flex items-center gap-2">
             <Award size={14} /> Performance Assessments ({data.performance.length})
           </h3>
-          <div className="nox-card divide-y divide-white/[0.06]">
+          <div className="nox-card divide-y divide-slate-200 dark:divide-white/[0.06]">
             {data.performance.map((p) => (
               <div key={p._id} className="px-5 py-4 flex items-center justify-between hover:bg-white/[0.01]">
                 <div>
@@ -439,10 +439,10 @@ const PerformanceTab: React.FC = () => {
 
       {data.remarks.length > 0 && (
         <div className="space-y-3">
-          <h3 className="font-orbital text-xs uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-2">
+          <h3 className="font-orbital text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-2">
             <Sparkles size={14} /> Coach Notes & Technical Remarks ({data.remarks.length})
           </h3>
-          <div className="nox-card divide-y divide-white/[0.06]">
+          <div className="nox-card divide-y divide-slate-200 dark:divide-white/[0.06]">
             {data.remarks.map((r) => (
               <div key={r._id} className="px-5 py-4 hover:bg-white/[0.01]">
                 <div className="text-2xs text-nox-low font-mono">

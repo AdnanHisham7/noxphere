@@ -37,8 +37,8 @@ const formatCurrency = (n: number) =>
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-slate-900 dark:bg-pitch-800 border border-slate-700 dark:border-white/10 rounded px-3 py-2 text-xs shadow-lg">
-      <p className="text-slate-400 font-medium mb-1">{label}</p>
+    <div className="bg-white dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded px-3 py-2 text-xs shadow-lg">
+      <p className="text-slate-500 dark:text-slate-400 font-medium mb-1">{label}</p>
       {payload.map((p: any) => (
         <p key={p.dataKey} style={{ color: p.fill }} className="font-bold flex items-center justify-between gap-4">
           <span>{p.name}:</span>
