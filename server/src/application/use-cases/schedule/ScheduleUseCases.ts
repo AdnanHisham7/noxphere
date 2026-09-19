@@ -131,7 +131,7 @@ export class ScheduleUseCases {
       .populate("coachId", "firstName lastName")
       .populate("coachIds", "firstName lastName")
       .populate("teamId", "name ageGroup")
-      .sort({ date: -1, startTime: -1 })
+      .sort({ date: -1, startTime: -1, createdAt: -1 })
       .lean();
     return sessions.map(toCard);
   }
@@ -237,22 +237,31 @@ export class ScheduleUseCases {
     }
 
     let resolvedPlayerIds: any[] = [];
+    const activeStudentFilter = {
+      isActive: true,
+      deletedAt: { $exists: false },
+      status: { $nin: ["inactive", "on_leave", "graduated", "dropped_out"] },
+    };
+
     if (dto.targetType === "batch") {
-      resolvedPlayerIds = (dto.playerIds || []).map((id) => new mongoose.Types.ObjectId(id));
+      const candidateIds = (dto.playerIds || []).map((id) => new mongoose.Types.ObjectId(id));
+      const validStudents = await StudentModel.find({
+        _id: { $in: candidateIds },
+        ...activeStudentFilter,
+      }).select("_id").lean();
+      resolvedPlayerIds = validStudents.map((s) => s._id);
     } else if (dto.targetType === "category") {
       const categoriesFilter = dto.categories && dto.categories.length > 0 ? { $in: dto.categories } : dto.category;
       const baseStudents = await StudentModel.find({
         franchiseId: dto.franchiseId,
         ageGroup: categoriesFilter,
-        isActive: true,
-        deletedAt: { $exists: false },
+        ...activeStudentFilter,
       }).select("_id").lean();
       resolvedPlayerIds = baseStudents.map((s) => s._id);
     } else {
       const baseStudents = await StudentModel.find({
         teamId: dto.teamId,
-        isActive: true,
-        deletedAt: { $exists: false },
+        ...activeStudentFilter,
       }).select("_id").lean();
       resolvedPlayerIds = baseStudents.map((s) => s._id);
     }

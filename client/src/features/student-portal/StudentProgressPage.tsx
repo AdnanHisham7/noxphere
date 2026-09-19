@@ -258,12 +258,18 @@ const ScheduleTab: React.FC = () => {
   }
 
   const now = new Date();
-  const upcomingSessions = sessions.filter(
-    (s) => new Date(s.date) >= new Date(now.setHours(0, 0, 0, 0)),
-  );
-  const pastSessions = sessions.filter(
-    (s) => new Date(s.date) < new Date(now.setHours(0, 0, 0, 0)),
-  );
+  const todayStart = new Date(now.setHours(0, 0, 0, 0));
+
+  const isUpcoming = (s: any) => {
+    // Already marked or completed sessions must never appear in upcoming sessions
+    if (s.status === "completed" || s.isMarked || s.attendanceStatus) {
+      return false;
+    }
+    return new Date(s.date) >= todayStart;
+  };
+
+  const upcomingSessions = sessions.filter(isUpcoming);
+  const pastSessions = sessions.filter((s) => !isUpcoming(s));
 
   return (
     <div className="space-y-6">

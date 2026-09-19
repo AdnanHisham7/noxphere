@@ -95,7 +95,7 @@ export const employeeApi = baseApi.injectEndpoints({
       }
     >({
       query: ({ academyId, ...body }) => ({ url: `/employees/${academyId}`, method: "POST", body }),
-      invalidatesTags: ["Employee"],
+      invalidatesTags: ["Employee", { type: "User", id: "LIST" }],
     }),
     updateEmployee: builder.mutation<
       Employee,
@@ -106,7 +106,7 @@ export const employeeApi = baseApi.injectEndpoints({
         method: "PUT",
         body: data,
       }),
-      invalidatesTags: ["Employee"],
+      invalidatesTags: ["Employee", { type: "User", id: "LIST" }],
     }),
     setEmployeeActive: builder.mutation<Employee, { academyId: string; employeeId: string; isActive: boolean }>({
       query: ({ academyId, employeeId, isActive }) => ({

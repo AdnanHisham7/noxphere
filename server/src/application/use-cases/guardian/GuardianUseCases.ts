@@ -163,7 +163,7 @@ export class GuardianUseCases {
     return student;
   }
 
-  async getChildSessions(guardianUserId: string, studentId: string) {
+  async getChildSessions(guardianUserId: string, studentId: string): Promise<any[]> {
     const student = await this.assertOwnsStudent(guardianUserId, studentId);
     const conditions: Array<Record<string, unknown>> = [
       { playerIds: student._id },
@@ -189,6 +189,21 @@ export class GuardianUseCases {
       .sort({ date: 1, startTime: 1 })
       .limit(30)
       .lean();
-    return sessions;
+
+    const sessionIds = sessions.map((s) => s._id);
+    const attendanceRecords = await AttendanceModel.find({
+      studentId: student._id,
+      sessionId: { $in: sessionIds },
+    }).select("sessionId status").lean();
+
+    const attendanceMap = new Map(
+      attendanceRecords.map((a) => [a.sessionId?.toString(), a.status])
+    );
+
+    return sessions.map((s) => ({
+      ...s,
+      isMarked: s.status === "completed" || attendanceMap.has(s._id.toString()),
+      attendanceStatus: attendanceMap.get(s._id.toString()) || null,
+    }));
   }
 }

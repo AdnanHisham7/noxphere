@@ -142,18 +142,26 @@ const SchedulePage: React.FC = () => {
   const { confirm, ConfirmDialog } = useConfirm();
   const [alertAllGuardians, { isLoading: alerting }] = useAlertAllGuardiansMutation();
 
-  // Filtered Sessions
+  // Filtered Sessions (Latest sessions on top)
   const filteredSessions = useMemo(() => {
-    return sessionsList.filter((s) => {
-      const targetName = (s.teamName || s.category || "").toLowerCase();
-      const loc = (s.location || "").toLowerCase();
-      const query = searchQuery.toLowerCase();
-      const matchesSearch = !query || targetName.includes(query) || loc.includes(query);
-      const matchesType = typeFilter === "all" || s.type === typeFilter;
-      const matchesStatus = statusFilter === "all" || s.status === statusFilter;
+    return sessionsList
+      .filter((s) => {
+        const targetName = (s.teamName || s.category || "").toLowerCase();
+        const loc = (s.location || "").toLowerCase();
+        const query = searchQuery.toLowerCase();
+        const matchesSearch = !query || targetName.includes(query) || loc.includes(query);
+        const matchesType = typeFilter === "all" || s.type === typeFilter;
+        const matchesStatus = statusFilter === "all" || s.status === statusFilter;
 
-      return matchesSearch && matchesType && matchesStatus;
-    });
+        return matchesSearch && matchesType && matchesStatus;
+      })
+      .sort((a, b) => {
+        const dateCompare = (b.date || "").localeCompare(a.date || "");
+        if (dateCompare !== 0) return dateCompare;
+        const timeCompare = (b.startTime || "").localeCompare(a.startTime || "");
+        if (timeCompare !== 0) return timeCompare;
+        return (b.createdAt || "").localeCompare(a.createdAt || "");
+      });
   }, [sessionsList, searchQuery, typeFilter, statusFilter]);
 
   // Operational KPIs
@@ -629,7 +637,11 @@ const CreateSessionModal: React.FC<{
     { franchiseId: crossFranchiseId, limit: 100 },
     { skip: !crossFranchiseId }
   );
-  const crossStudents = crossStudentsResult?.items ?? [];
+  const crossStudents = useMemo(() => {
+    return (crossStudentsResult?.items ?? []).filter(
+      (s) => s.isActive !== false && (!s.status || s.status === "active")
+    );
+  }, [crossStudentsResult?.items]);
 
   const otherFranchises = (academyFranchises ?? []).filter(
     (f) => f.id !== selectedFranchiseId
@@ -639,7 +651,11 @@ const CreateSessionModal: React.FC<{
     { franchiseId: selectedFranchiseId, limit: 100 },
     { skip: !selectedFranchiseId }
   );
-  const availableStudents = studentsResult?.items ?? [];
+  const availableStudents = useMemo(() => {
+    return (studentsResult?.items ?? []).filter(
+      (s) => s.isActive !== false && (!s.status || s.status === "active")
+    );
+  }, [studentsResult?.items]);
 
   React.useEffect(() => {
     if (activeTeams.length > 0 && !teamId) {
@@ -1254,7 +1270,11 @@ const EditSessionModal: React.FC<{
     { franchiseId: crossFranchiseId, limit: 100 },
     { skip: !crossFranchiseId }
   );
-  const crossStudents = crossStudentsResult?.items ?? [];
+  const crossStudents = useMemo(() => {
+    return (crossStudentsResult?.items ?? []).filter(
+      (s) => s.isActive !== false && (!s.status || s.status === "active" || session.playerIds?.includes(s.id))
+    );
+  }, [crossStudentsResult?.items, session.playerIds]);
 
   const otherFranchises = (academyFranchises ?? []).filter(
     (f) => f.id !== session.franchiseId
@@ -1264,7 +1284,11 @@ const EditSessionModal: React.FC<{
     { franchiseId: session.franchiseId, limit: 100 },
     { skip: !session.franchiseId }
   );
-  const availableStudents = studentsResult?.items ?? [];
+  const availableStudents = useMemo(() => {
+    return (studentsResult?.items ?? []).filter(
+      (s) => s.isActive !== false && (!s.status || s.status === "active" || session.playerIds?.includes(s.id))
+    );
+  }, [studentsResult?.items, session.playerIds]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

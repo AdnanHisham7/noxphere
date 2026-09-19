@@ -129,21 +129,25 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
 
   return (
     <div className="h-full text-slate-100 font-sans relative overflow-hidden flex flex-col justify-between">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4 z-10">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3 mb-4 z-10">
+        <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
           <button
             onClick={onBack}
-            className="bg-slate-900 border border-slate-800 text-xs font-bold text-cyan-400 uppercase tracking-wider px-4 py-1.5 rounded hover:bg-slate-800 transition flex items-center gap-1.5"
+            className="bg-slate-900 border border-slate-800 text-xs font-bold text-cyan-400 uppercase tracking-wider px-3 sm:px-4 py-1.5 rounded hover:bg-slate-800 transition flex items-center gap-1.5 shrink-0"
           >
             <ArrowLeft size={13} /> Back
           </button>
-          <h2 className="text-base font-black uppercase text-slate-900 dark:text-white tracking-wide">
-            {teamName} Management Console
+          <h2
+            className="text-sm sm:text-base font-black uppercase text-slate-900 dark:text-white tracking-wide truncate min-w-0 flex-1"
+            title={`${teamName} Management Console`}
+          >
+            <span className="truncate">{teamName}</span>{" "}
+            <span className="text-slate-400 font-normal hidden xs:inline">Management Console</span>
           </h2>
         </div>
         <button
           onClick={() => setIsDrawerOpen(true)}
-          className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs uppercase px-3 py-1.5 rounded flex items-center gap-1.5 shadow-lg shadow-cyan-950/50"
+          className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs uppercase px-3 py-1.5 rounded flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-950/50 shrink-0 self-stretch sm:self-auto"
         >
           <ArrowLeftRight size={13} /> Substitutes ({reservePlayers.length})
         </button>
