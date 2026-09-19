@@ -267,7 +267,7 @@ export class StudentPortalUseCases {
     return { performance, remarks };
   }
 
-  async getMySessions(userId: string) {
+  async getMySessions(userId: string): Promise<any[]> {
     const student = await this.getOwnStudentRecord(userId);
     if (!student.franchiseId) return [];
 
@@ -297,6 +297,21 @@ export class StudentPortalUseCases {
       .sort({ date: 1, startTime: 1 })
       .limit(30)
       .lean();
-    return sessions;
+
+    const sessionIds = sessions.map((s) => s._id);
+    const attendanceRecords = await AttendanceModel.find({
+      studentId: student._id,
+      sessionId: { $in: sessionIds },
+    }).select("sessionId status").lean();
+
+    const attendanceMap = new Map(
+      attendanceRecords.map((a) => [a.sessionId?.toString(), a.status])
+    );
+
+    return sessions.map((s) => ({
+      ...s,
+      isMarked: s.status === "completed" || attendanceMap.has(s._id.toString()),
+      attendanceStatus: attendanceMap.get(s._id.toString()) || null,
+    }));
   }
 }

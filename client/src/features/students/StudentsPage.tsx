@@ -611,10 +611,12 @@ const StudentsPage: React.FC = () => {
               description={
                 search || filterTeam || filterAge || filterStatus
                   ? "Try adjusting your filters"
-                  : "Add your first player to get started"
+                  : isCoach
+                    ? "No players assigned to your squad yet"
+                    : "Add your first player to get started"
               }
               action={
-                !search && !filterTeam && !filterAge && !filterStatus ? (
+                !isCoach && canManageSquad && !search && !filterTeam && !filterAge && !filterStatus ? (
                   <Button onClick={() => setShowAddModal(true)}>
                     Add Player
                   </Button>

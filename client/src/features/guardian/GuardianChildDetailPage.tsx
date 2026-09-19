@@ -552,55 +552,95 @@ const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
     );
   }
 
+  const now = new Date();
+  const todayStart = new Date(now.setHours(0, 0, 0, 0));
+
+  const isUpcoming = (s: any) => {
+    // Marked or completed sessions must never appear in upcoming sessions
+    if (s.status === "completed" || s.isMarked || s.attendanceStatus) {
+      return false;
+    }
+    return new Date(s.date) >= todayStart;
+  };
+
+  const upcomingSessions = sessions.filter(isUpcoming);
+  const pastSessions = sessions.filter((s) => !isUpcoming(s));
+
+  const renderSessionCard = (s: any) => (
+    <div
+      key={s.id || s._id}
+      className="nox-card p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-core-400/30 transition-colors"
+    >
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2">
+          <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-core-400/10 text-core-400 font-semibold">
+            {s.type}
+          </span>
+          <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-white/5 text-slate-400">
+            {s.targetType === "batch"
+              ? "Custom Batch"
+              : s.targetType === "category"
+                ? s.category || "Category"
+                : s.teamName || "Team"}
+          </span>
+          {s.attendanceStatus ? (
+            <NoxStatusBadge status={s.attendanceStatus} />
+          ) : (
+            <NoxStatusBadge status={s.status} />
+          )}
+        </div>
+        <h4 className="font-orbital text-sm font-semibold text-nox-high">
+          {s.notes ||
+            `${s.type.charAt(0).toUpperCase() + s.type.slice(1)} Session`}
+        </h4>
+        <div className="flex flex-wrap items-center gap-4 text-xs text-nox-mid pt-1">
+          <span className="flex items-center gap-1.5">
+            <CalendarCheck size={13} className="text-core-400" />
+            {new Date(s.date).toLocaleDateString(undefined, {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Clock size={13} className="text-core-400" />
+            {s.startTime} - {s.endTime}
+          </span>
+          {s.location && (
+            <span className="flex items-center gap-1.5">
+              <MapPin size={13} className="text-core-400" />
+              {s.location} {s.fieldNumber ? `(Field ${s.fieldNumber})` : ""}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="space-y-4">
-      {sessions.map((s) => (
-        <div
-          key={s.id}
-          className="nox-card p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-core-400/30 transition-colors"
-        >
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-core-400/10 text-core-400 font-semibold">
-                {s.type}
-              </span>
-              <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-white/5 text-slate-400">
-                {s.targetType === "batch"
-                  ? "Custom Batch"
-                  : s.targetType === "category"
-                    ? s.category || "Category"
-                    : s.teamName || "Team"}
-              </span>
-              <NoxStatusBadge status={s.status} />
-            </div>
-            <h4 className="font-orbital text-sm font-semibold text-nox-high">
-              {s.notes ||
-                `${s.type.charAt(0).toUpperCase() + s.type.slice(1)} Session`}
-            </h4>
-            <div className="flex flex-wrap items-center gap-4 text-xs text-nox-mid pt-1">
-              <span className="flex items-center gap-1.5">
-                <CalendarCheck size={13} className="text-core-400" />
-                {new Date(s.date).toLocaleDateString(undefined, {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Clock size={13} className="text-core-400" />
-                {s.startTime} - {s.endTime}
-              </span>
-              {s.location && (
-                <span className="flex items-center gap-1.5">
-                  <MapPin size={13} className="text-core-400" />
-                  {s.location} {s.fieldNumber ? `(Field ${s.fieldNumber})` : ""}
-                </span>
-              )}
-            </div>
+    <div className="space-y-6">
+      {upcomingSessions.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="font-orbital text-xs uppercase tracking-wider text-core-400 font-bold flex items-center gap-2">
+            <CalendarCheck size={14} /> Upcoming Sessions ({upcomingSessions.length})
+          </h3>
+          <div className="space-y-3">
+            {upcomingSessions.map(renderSessionCard)}
           </div>
         </div>
-      ))}
+      )}
+
+      {pastSessions.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="font-orbital text-xs uppercase tracking-wider text-slate-400 font-bold flex items-center gap-2">
+            <CalendarCheck size={14} /> Past &amp; Completed Sessions ({pastSessions.length})
+          </h3>
+          <div className="space-y-3">
+            {pastSessions.map(renderSessionCard)}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -59,13 +59,49 @@ export class UsersUseCases {
       },
       { page: filters.page ?? 1, limit: filters.limit ?? 20 },
     );
-    return { ...result, data: result.data.map(sanitize) };
+
+    const userIds = result.data.map((u) => u.id);
+    const userEmails = result.data.map((u) => u.email?.toLowerCase()).filter(Boolean);
+
+    const employees = await EmployeeModel.find({
+      $or: [
+        { userId: { $in: userIds } },
+        { email: { $in: userEmails } },
+      ],
+    }).select("userId email salaryAmount").lean();
+
+    const salaryByUserId = new Map<string, number>();
+    const salaryByEmail = new Map<string, number>();
+
+    for (const emp of employees) {
+      if (emp.userId) {
+        salaryByUserId.set(emp.userId.toString(), emp.salaryAmount ?? 0);
+      }
+      if (emp.email) {
+        salaryByEmail.set(emp.email.toLowerCase(), emp.salaryAmount ?? 0);
+      }
+    }
+
+    return {
+      ...result,
+      data: result.data.map((u) => {
+        const sanitized = sanitize(u);
+        const salary = salaryByUserId.get(u.id) ?? salaryByEmail.get(u.email?.toLowerCase()) ?? (u as any).salaryAmount ?? 0;
+        return { ...sanitized, salaryAmount: salary };
+      }),
+    };
   }
 
   async getUserById(id: string) {
     const user = await this.userRepo.findById(id);
     if (!user) throw new NotFoundError("User");
-    return sanitize(user);
+    const emp = await EmployeeModel.findOne({
+      $or: [{ userId: id }, { email: user.email.toLowerCase() }],
+    }).select("salaryAmount").lean();
+    return {
+      ...sanitize(user),
+      salaryAmount: emp?.salaryAmount ?? (user as any).salaryAmount ?? 0,
+    };
   }
 
   async createUser(dto: CreateUserDto, requester?: RequestingUser) {

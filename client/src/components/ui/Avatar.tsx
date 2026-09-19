@@ -27,7 +27,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = "md", classNam
       src={src}
       alt={name}
       className={clsx(
-        "rounded-full object-cover ring-1 ring-white/10",
+        "rounded-full object-cover ring-1 ring-white/10 shrink-0 aspect-square",
         sizes[size],
         className,
       )}
@@ -35,7 +35,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = "md", classNam
   ) : (
     <div
       className={clsx(
-        "rounded-full bg-pitch-600 border border-white/10 flex items-center justify-center font-display font-bold text-volt-400",
+        "rounded-full bg-pitch-600 border border-white/10 flex items-center justify-center font-display font-bold text-volt-400 shrink-0 aspect-square",
         sizes[size],
         className,
       )}

@@ -32,12 +32,13 @@ export const config = {
   },
 
   email: {
-    host: process.env.SMTP_HOST || "smtp.gmail.com",
-    port: parseInt(process.env.SMTP_PORT || "587", 10),
-    user: process.env.SMTP_USER || "",
-    pass: process.env.SMTP_PASS || "",
-    from: process.env.FROM_EMAIL || "noreply@footballfranchise.com",
-    fromName: process.env.FROM_NAME || "Football Franchise",
+    host: process.env.SMTP_HOST || process.env.EMAIL_HOST || "smtp.gmail.com",
+    port: parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || "587", 10),
+    user: (process.env.SMTP_USER || process.env.EMAIL_USER || process.env.MAIL_USER || "").trim(),
+    pass: (process.env.SMTP_PASS || process.env.EMAIL_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD || "").trim(),
+    from: (process.env.FROM_EMAIL || process.env.SMTP_USER || process.env.EMAIL_USER || "noreply@noxphere.com").trim(),
+    fromName: process.env.FROM_NAME || process.env.EMAIL_FROM_NAME || "Noxphere",
+    secure: process.env.SMTP_SECURE === "true" || process.env.EMAIL_SECURE === "true",
   },
 
   firebase: {

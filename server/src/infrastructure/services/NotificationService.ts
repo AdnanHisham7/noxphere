@@ -94,26 +94,60 @@ const initFirebase = () => {
 };
 
 // ─── Email transporter ────────────────────────────────────────────────────────
-const createMailTransporter = () => {
-  const isGmail = (config.email.host || '').toLowerCase().includes('gmail');
-  const cleanPass = (config.email.pass || '').replace(/\s+/g, '');
-  const service = process.env.EMAIL_SERVICE || (isGmail ? 'gmail' : undefined);
+let cachedTransporter: nodemailer.Transporter | null = null;
 
-  if (service) {
-    return nodemailer.createTransport({
-      service,
-      auth: { user: config.email.user, pass: cleanPass },
-      tls: { rejectUnauthorized: false },
+export const getMailTransporter = (): nodemailer.Transporter => {
+  if (cachedTransporter) return cachedTransporter;
+
+  const isGmail =
+    (config.email.host || '').toLowerCase().includes('gmail') ||
+    (config.email.user || '').toLowerCase().includes('@gmail.com');
+  const cleanPass = (config.email.pass || '').replace(/[\s"']/g, '');
+  const port = config.email.port || 587;
+  const isSecure = config.email.secure || port === 465;
+
+  const transportConfig: any = {
+    host: config.email.host || (isGmail ? 'smtp.gmail.com' : 'localhost'),
+    port,
+    secure: isSecure,
+    auth: {
+      user: config.email.user,
+      pass: cleanPass,
+    },
+    tls: {
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2',
+    },
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 100,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
+  };
+
+  if (!isSecure && port === 587) {
+    transportConfig.requireTLS = true;
+  }
+
+  cachedTransporter = nodemailer.createTransport(transportConfig);
+
+  // Auto-verify on boot if credentials are present
+  if (config.email.user && cleanPass) {
+    cachedTransporter.verify((error, _success) => {
+      if (error) {
+        logger.error(`[NotificationService] SMTP Connection Verification Failed: ${error.message}`, {
+          code: (error as any).code,
+          command: (error as any).command,
+          response: (error as any).response,
+        });
+      } else {
+        logger.info('[NotificationService] SMTP Server connection verified successfully');
+      }
     });
   }
 
-  return nodemailer.createTransport({
-    host: config.email.host,
-    port: config.email.port,
-    secure: config.email.port === 465,
-    auth: { user: config.email.user, pass: cleanPass },
-    tls: { rejectUnauthorized: false },
-  });
+  return cachedTransporter;
 };
 
 // ─── Main service ─────────────────────────────────────────────────────────────
@@ -369,9 +403,10 @@ export class NotificationService {
       return;
     }
 
-    const transporter = createMailTransporter();
+    const transporter = getMailTransporter();
     try {
-      const fromAddress = `"${config.email.fromName}" <${config.email.user || config.email.from}>`;
+      const senderEmail = config.email.user || config.email.from;
+      const fromAddress = `"${config.email.fromName}" <${senderEmail}>`;
       const mailOptions: nodemailer.SendMailOptions = {
         from: fromAddress,
         to: emails.length === 1 ? emails[0] : fromAddress,
@@ -382,9 +417,15 @@ export class NotificationService {
       await transporter.sendMail(mailOptions);
       logger.info(`[NotificationService] Email sent successfully to ${emails.length} recipients: [${subject}]`);
     } catch (err: any) {
-      logger.error('[NotificationService] Email error:', err?.message || err);
-      // In development or when SMTP credentials fail, log simulated dispatch so admins/developers can see it was routed
-      logger.info(`[NotificationService] (Dev simulation) Email payload to ${emails.join(', ')}: [${subject}] "${opts.body}"`);
+      logger.error('[NotificationService] Email error:', {
+        message: err?.message,
+        code: err?.code,
+        command: err?.command,
+        response: err?.response,
+      });
+      if (config.env === 'development') {
+        logger.info(`[NotificationService] (Dev simulation) Email payload to ${emails.join(', ')}: [${subject}] "${opts.body}"`);
+      }
     }
   }
 
@@ -681,7 +722,6 @@ export class NotificationService {
     studentName?: string;
     academyName?: string;
   }): Promise<void> {
-    const transporter = createMailTransporter();
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
         <div style="background: #0a0a0f; padding: 24px; text-align: center;">
@@ -733,16 +773,23 @@ export class NotificationService {
       return;
     }
 
+    const transporter = getMailTransporter();
     try {
+      const senderEmail = config.email.user || config.email.from;
       await transporter.sendMail({
-        from: `"${config.email.fromName}" <${config.email.user || config.email.from}>`,
+        from: `"${config.email.fromName}" <${senderEmail}>`,
         to: params.to,
         subject: `Welcome to Noxphere — Your ${params.role} Login Credentials`,
         html,
       });
       logger.info(`[NotificationService] Credentials email sent successfully to ${params.to}`);
-    } catch (err) {
-      logger.error('[NotificationService] Failed to send credentials email:', err);
+    } catch (err: any) {
+      logger.error('[NotificationService] Failed to send credentials email:', {
+        message: err?.message,
+        code: err?.code,
+        command: err?.command,
+        response: err?.response,
+      });
     }
   }
 
@@ -756,7 +803,7 @@ export class NotificationService {
     academyName: string;
     loginUrl: string;
   }): Promise<void> {
-    const transporter = createMailTransporter();
+    const transporter = getMailTransporter();
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
         <div style="background: #0a0a0f; padding: 24px; text-align: center;">
@@ -789,15 +836,21 @@ export class NotificationService {
     }
 
     try {
+      const senderEmail = config.email.user || config.email.from;
       await transporter.sendMail({
-        from: `"${config.email.fromName}" <${config.email.user || config.email.from}>`,
+        from: `"${config.email.fromName}" <${senderEmail}>`,
         to: params.to,
         subject: `New Player Enrolled: ${params.studentName} — ${params.academyName}`,
         html,
       });
       logger.info(`[NotificationService] Student linked email sent successfully to ${params.to}`);
-    } catch (err) {
-      logger.error('[NotificationService] Failed to send student linked email:', err);
+    } catch (err: any) {
+      logger.error('[NotificationService] Failed to send student linked email:', {
+        message: err?.message,
+        code: err?.code,
+        command: err?.command,
+        response: err?.response,
+      });
     }
   }
 
@@ -811,7 +864,6 @@ export class NotificationService {
     studentName: string;
     academyName: string;
   }): Promise<void> {
-    const transporter = createMailTransporter();
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
         <div style="background: #0a0a0f; padding: 24px; text-align: center;">
@@ -857,16 +909,23 @@ export class NotificationService {
       return;
     }
 
+    const transporter = getMailTransporter();
     try {
+      const senderEmail = config.email.user || config.email.from;
       await transporter.sendMail({
-        from: `"${config.email.fromName}" <${config.email.user || config.email.from}>`,
+        from: `"${config.email.fromName}" <${senderEmail}>`,
         to: params.to,
         subject: `${params.otp} is your Noxphere Guardian Verification Code for ${params.studentName}`,
         html,
       });
       logger.info(`[NotificationService] Guardian verification OTP email sent to ${params.to}`);
-    } catch (err) {
-      logger.error('[NotificationService] Failed to send guardian verification OTP email:', err);
+    } catch (err: any) {
+      logger.error('[NotificationService] Failed to send guardian verification OTP email:', {
+        message: err?.message,
+        code: err?.code,
+        command: err?.command,
+        response: err?.response,
+      });
     }
   }
 }

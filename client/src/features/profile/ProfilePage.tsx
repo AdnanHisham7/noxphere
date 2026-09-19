@@ -218,14 +218,14 @@ export const ProfilePage: React.FC = () => {
         {/* Ambient Top Glow */}
         <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-r from-volt-400/10 via-blue-500/10 to-purple-500/10 dark:from-volt-400/15 dark:via-blue-500/10 dark:to-transparent pointer-events-none" />
 
-        <div className="relative p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-          <div className="flex items-center gap-5">
-            <div className="relative group">
+        <div className="relative p-4 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 min-w-0">
+          <div className="flex flex-col xs:flex-row items-start xs:items-center gap-4 sm:gap-5 min-w-0 flex-1 w-full">
+            <div className="relative group shrink-0">
               <Avatar
                 name={`${profile?.firstName || authUser?.firstName || ""} ${profile?.lastName || authUser?.lastName || ""}`}
                 src={avatar || profile?.avatar || authUser?.avatar}
                 size="lg"
-                className="w-20 h-20 text-xl font-bold ring-4 ring-white dark:ring-pitch-800 shadow-md"
+                className="w-16 h-16 sm:w-20 sm:h-20 text-lg sm:text-xl font-bold ring-4 ring-white dark:ring-pitch-800 shadow-md shrink-0 aspect-square"
               />
               {!isEnrolledInAcademy && (
                 <button
@@ -238,33 +238,33 @@ export const ProfilePage: React.FC = () => {
               )}
             </div>
 
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-display font-black text-slate-900 dark:text-white tracking-tight">
+            <div className="space-y-1.5 min-w-0 flex-1 w-full">
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-display font-black text-slate-900 dark:text-white tracking-tight break-words min-w-0">
                   {profile?.firstName || authUser?.firstName} {profile?.lastName || authUser?.lastName}
                 </h1>
-                <span className={`text-2xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${roleConfig.bg} ${roleConfig.color}`}>
+                <span className={`text-2xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border shrink-0 ${roleConfig.bg} ${roleConfig.color}`}>
                   {roleConfig.label}
                 </span>
               </div>
 
-              <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                <Mail size={14} className="text-slate-400 flex-shrink-0" />
-                <span>{profile?.email || authUser?.email}</span>
-                <span className="inline-flex items-center gap-1 text-2xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-full">
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-1.5 sm:gap-2 break-all">
+                <Mail size={14} className="text-slate-400 shrink-0" />
+                <span className="break-all">{profile?.email || authUser?.email}</span>
+                <span className="inline-flex items-center gap-1 text-2xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-full shrink-0">
                   <CheckCircle2 size={11} /> Verified
                 </span>
               </p>
 
               {/* Organization info badge */}
               {(academyName || franchiseName) && (
-                <div className="flex items-center gap-2 pt-1 text-xs text-slate-600 dark:text-slate-400">
-                  <Building2 size={13} className="text-volt-500 flex-shrink-0" />
-                  <span className="font-semibold">{academyName}</span>
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-1 text-xs text-slate-600 dark:text-slate-400 min-w-0 break-words">
+                  <Building2 size={13} className="text-volt-500 shrink-0" />
+                  <span className="font-semibold break-words">{academyName}</span>
                   {franchiseName && (
                     <>
                       <span>·</span>
-                      <span className="text-slate-500">{franchiseName}</span>
+                      <span className="text-slate-500 break-words">{franchiseName}</span>
                     </>
                   )}
                 </div>
@@ -492,16 +492,16 @@ export const ProfilePage: React.FC = () => {
 
               {/* Player Card Headshot Banner */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-slate-50 dark:bg-pitch-800/40 border border-slate-200/60 dark:border-white/5">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-14 h-14 rounded-full overflow-hidden bg-pitch-900 border-2 border-volt-400 flex items-center justify-center shrink-0 shadow-sm">
+                <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                  <div className="w-14 h-14 rounded-full overflow-hidden bg-pitch-900 border-2 border-volt-400 flex items-center justify-center shrink-0 shadow-sm aspect-square">
                     {cardPhoto || studentDetails?.photo ? (
-                      <img src={cardPhoto || studentDetails?.photo} alt="Player Card" className="w-full h-full object-cover object-top" />
+                      <img src={cardPhoto || studentDetails?.photo} alt="Player Card" className="w-full h-full object-cover object-top shrink-0 aspect-square" />
                     ) : (
                       <Shirt size={24} className="text-slate-400" />
                     )}
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white flex flex-wrap items-center gap-2">
                       <span>Official Player Card Photo</span>
                       {!isEnrolledInAcademy && (
                         <span className="text-3xs font-mono uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-semibold">
