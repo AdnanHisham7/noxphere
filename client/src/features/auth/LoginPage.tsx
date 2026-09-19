@@ -16,6 +16,7 @@ import { RootState } from '../../store';
 import { Button, Input } from '../../components/ui';
 import { ThemeToggle } from '../../components/common/ThemeToggle';
 import { ArrowRight } from 'lucide-react';
+import { ForgotPasswordModal } from './ForgotPasswordModal';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -29,10 +30,13 @@ const LoginPage: React.FC = () => {
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((s: RootState) => s.auth);
   const [login, { isLoading }] = useLoginMutation();
+  const [showForgotPassword, setShowForgotPassword] = React.useState(false);
 
   const {
     register,
     handleSubmit,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
 
@@ -197,7 +201,11 @@ const LoginPage: React.FC = () => {
             />
 
             <div className="flex items-center justify-end">
-              <button type="button" className="text-xs font-semibold text-volt-600 dark:text-volt-400 hover:underline">
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
+                className="text-xs font-semibold text-volt-600 dark:text-volt-400 hover:underline"
+              >
                 Forgot password?
               </button>
             </div>
@@ -239,6 +247,17 @@ const LoginPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        defaultEmail={getValues('email') || ''}
+        onSuccess={(resetEmail) => {
+          setValue('email', resetEmail);
+          setValue('password', '');
+        }}
+      />
     </div>
   );
 };

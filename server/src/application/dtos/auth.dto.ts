@@ -27,10 +27,28 @@ export const ChangePasswordSchema = z.object({
   newPassword: z.string().min(8).max(100),
 });
 
+export const SendForgotPasswordOtpSchema = z.object({
+  email: z.string().email('Valid email is required'),
+});
+
+export const VerifyForgotPasswordOtpSchema = z.object({
+  email: z.string().email('Valid email is required'),
+  otp: z.string().trim().min(6, 'OTP must be 6 digits').max(6, 'OTP must be 6 digits'),
+});
+
+export const ResetForgotPasswordSchema = z.object({
+  email: z.string().email('Valid email is required'),
+  otp: z.string().trim().min(6, 'OTP must be 6 digits').max(6, 'OTP must be 6 digits'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters').max(100),
+});
+
 export type RegisterDto = z.infer<typeof RegisterSchema>;
 export type LoginDto = z.infer<typeof LoginSchema>;
 export type RefreshTokenDto = z.infer<typeof RefreshTokenSchema>;
 export type ChangePasswordDto = z.infer<typeof ChangePasswordSchema>;
+export type SendForgotPasswordOtpDto = z.infer<typeof SendForgotPasswordOtpSchema>;
+export type VerifyForgotPasswordOtpDto = z.infer<typeof VerifyForgotPasswordOtpSchema>;
+export type ResetForgotPasswordDto = z.infer<typeof ResetForgotPasswordSchema>;
 
 // src/application/dtos/student.dto.ts
 export const CreateStudentSchema = z.object({
