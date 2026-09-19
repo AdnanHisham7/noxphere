@@ -37,11 +37,15 @@ export const config = {
     user: (process.env.SMTP_USER || process.env.EMAIL_USER || process.env.MAIL_USER || "").trim(),
     pass: (process.env.SMTP_PASS || process.env.EMAIL_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD || "").trim(),
     from: (process.env.FROM_EMAIL || process.env.SMTP_USER || process.env.EMAIL_USER || "noreply@noxphere.com").trim(),
-    fromName: process.env.FROM_NAME || process.env.EMAIL_FROM_NAME || "Noxphere",
+    fromName: process.env.FROM_NAME || process.env.EMAIL_FROM_NAME || "Football Camp",
     secure:
       process.env.SMTP_SECURE === "true" ||
       process.env.EMAIL_SECURE === "true" ||
       (process.env.SMTP_PORT === "465" || !process.env.SMTP_PORT),
+  },
+
+  resend: {
+    apiKey: (process.env.RESEND_API_KEY || "").trim(),
   },
 
   firebase: {
