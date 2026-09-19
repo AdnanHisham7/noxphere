@@ -399,6 +399,100 @@ export class NotificationService {
   }
 
   /**
+   * Dispatches email via Resend HTTP API (port 443, allowed on Render Free tier)
+   * or falls back to Nodemailer SMTP (for local dev or open SMTP environments).
+   */
+  private async dispatchMail(options: {
+    to: string | string[];
+    subject: string;
+    html: string;
+    bcc?: string[];
+  }): Promise<boolean> {
+    const recipients = Array.isArray(options.to) ? options.to : [options.to];
+    if (recipients.length === 0) return false;
+
+    // 1. If Resend API Key is configured, use HTTPS (Port 443) — never blocked by Render
+    const resendKey = (config.resend.apiKey || process.env.RESEND_API_KEY || '').trim();
+    if (resendKey) {
+      try {
+        const rawFrom = (config.email.from || '').trim();
+        // If from is empty or ends with gmail.com, default to onboarding@resend.dev unless a custom domain is verified
+        const fromEmail =
+          rawFrom && !rawFrom.toLowerCase().endsWith('@gmail.com')
+            ? rawFrom
+            : 'onboarding@resend.dev';
+        const fromHeader = `"${config.email.fromName}" <${fromEmail}>`;
+
+        const payload: Record<string, any> = {
+          from: fromHeader,
+          to: recipients,
+          subject: options.subject,
+          html: options.html,
+        };
+        if (options.bcc && options.bcc.length > 0) {
+          payload.bcc = options.bcc;
+        }
+
+        const fetchFn = (globalThis as any).fetch;
+        if (fetchFn) {
+          const res = await fetchFn('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${resendKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+
+          const data: any = await res.json().catch(() => ({}));
+          if (res.ok) {
+            logger.info(
+              `[NotificationService] Email delivered via Resend API (id: ${data.id}) to ${recipients.join(', ')}: [${options.subject}]`
+            );
+            return true;
+          } else {
+            logger.error(`[NotificationService] Resend API error: ${data.message || res.statusText}`, data);
+          }
+        }
+      } catch (resendErr: any) {
+        logger.error(`[NotificationService] Resend network error: ${resendErr?.message}`);
+      }
+    }
+
+    // 2. If neither Resend nor SMTP user is set, simulate in dev
+    if (!config.email.user && !resendKey) {
+      logger.info(
+        `[NotificationService] (Dev simulation) Email payload to ${recipients.join(', ')}: [${options.subject}]`
+      );
+      return true;
+    }
+
+    // 3. Fallback to Nodemailer SMTP
+    try {
+      const transporter = getMailTransporter();
+      const senderEmail = config.email.user || config.email.from;
+      const fromAddress = `"${config.email.fromName}" <${senderEmail}>`;
+      await transporter.sendMail({
+        from: fromAddress,
+        to: recipients.length === 1 ? recipients[0] : fromAddress,
+        bcc: options.bcc && options.bcc.length > 0 ? options.bcc : recipients.length > 1 ? recipients : undefined,
+        subject: options.subject,
+        html: options.html,
+      });
+      logger.info(`[NotificationService] Email sent via SMTP to ${recipients.join(', ')}: [${options.subject}]`);
+      return true;
+    } catch (err: any) {
+      logger.error('[NotificationService] Email SMTP error:', {
+        message: err?.message,
+        code: err?.code,
+        command: err?.command,
+        response: err?.response,
+      });
+      return false;
+    }
+  }
+
+  /**
    * Send email notification
    */
   private async sendEmail(users: any[], opts: SendNotificationOptions): Promise<void> {
@@ -417,35 +511,11 @@ export class NotificationService {
     const subject = opts.emailSubject ?? opts.title;
     const html = opts.emailHtml ?? this.buildAnnouncementEmailHtml(opts, academyName);
 
-    if (!config.email.user) {
-      logger.info(`[NotificationService] (Dev simulation) Email dispatched to ${emails.length} recipients: [${subject}]`);
-      return;
-    }
-
-    const transporter = getMailTransporter();
-    try {
-      const senderEmail = config.email.user || config.email.from;
-      const fromAddress = `"${config.email.fromName}" <${senderEmail}>`;
-      const mailOptions: nodemailer.SendMailOptions = {
-        from: fromAddress,
-        to: emails.length === 1 ? emails[0] : fromAddress,
-        bcc: emails.length > 1 ? emails : undefined,
-        subject,
-        html,
-      };
-      await transporter.sendMail(mailOptions);
-      logger.info(`[NotificationService] Email sent successfully to ${emails.length} recipients: [${subject}]`);
-    } catch (err: any) {
-      logger.error('[NotificationService] Email error:', {
-        message: err?.message,
-        code: err?.code,
-        command: err?.command,
-        response: err?.response,
-      });
-      if (config.env === 'development') {
-        logger.info(`[NotificationService] (Dev simulation) Email payload to ${emails.join(', ')}: [${subject}] "${opts.body}"`);
-      }
-    }
+    await this.dispatchMail({
+      to: emails,
+      subject,
+      html,
+    });
   }
 
   /**
@@ -787,29 +857,11 @@ export class NotificationService {
 
     logger.info(`[NotificationService] Sending account credentials email to ${params.to} (Password: ${params.password})`);
 
-    if (!config.email.user) {
-      logger.info(`[NotificationService] (Dev simulation) Account credentials for ${params.to}: ${params.password}, Login: ${params.loginUrl}`);
-      return;
-    }
-
-    const transporter = getMailTransporter();
-    try {
-      const senderEmail = config.email.user || config.email.from;
-      await transporter.sendMail({
-        from: `"${config.email.fromName}" <${senderEmail}>`,
-        to: params.to,
-        subject: `Welcome to Noxphere — Your ${params.role} Login Credentials`,
-        html,
-      });
-      logger.info(`[NotificationService] Credentials email sent successfully to ${params.to}`);
-    } catch (err: any) {
-      logger.error('[NotificationService] Failed to send credentials email:', {
-        message: err?.message,
-        code: err?.code,
-        command: err?.command,
-        response: err?.response,
-      });
-    }
+    await this.dispatchMail({
+      to: params.to,
+      subject: `Welcome to Noxphere — Your ${params.role} Login Credentials`,
+      html,
+    });
   }
 
   /**
@@ -822,7 +874,6 @@ export class NotificationService {
     academyName: string;
     loginUrl: string;
   }): Promise<void> {
-    const transporter = getMailTransporter();
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
         <div style="background: #0a0a0f; padding: 24px; text-align: center;">
@@ -849,28 +900,11 @@ export class NotificationService {
       </div>
     `;
 
-    if (!config.email.user) {
-      logger.info(`[NotificationService] (Dev simulation) Student linked email for ${params.to}: ${params.studentName}`);
-      return;
-    }
-
-    try {
-      const senderEmail = config.email.user || config.email.from;
-      await transporter.sendMail({
-        from: `"${config.email.fromName}" <${senderEmail}>`,
-        to: params.to,
-        subject: `New Player Enrolled: ${params.studentName} — ${params.academyName}`,
-        html,
-      });
-      logger.info(`[NotificationService] Student linked email sent successfully to ${params.to}`);
-    } catch (err: any) {
-      logger.error('[NotificationService] Failed to send student linked email:', {
-        message: err?.message,
-        code: err?.code,
-        command: err?.command,
-        response: err?.response,
-      });
-    }
+    await this.dispatchMail({
+      to: params.to,
+      subject: `New Player Enrolled: ${params.studentName} — ${params.academyName}`,
+      html,
+    });
   }
 
   /**
@@ -923,29 +957,11 @@ export class NotificationService {
 
     logger.info(`[NotificationService] Guardian verification OTP for ${params.to}: ${params.otp}`);
 
-    if (!config.email.user) {
-      logger.info(`[NotificationService] (Dev simulation) Guardian OTP for ${params.to}: ${params.otp}`);
-      return;
-    }
-
-    const transporter = getMailTransporter();
-    try {
-      const senderEmail = config.email.user || config.email.from;
-      await transporter.sendMail({
-        from: `"${config.email.fromName}" <${senderEmail}>`,
-        to: params.to,
-        subject: `${params.otp} is your Noxphere Guardian Verification Code for ${params.studentName}`,
-        html,
-      });
-      logger.info(`[NotificationService] Guardian verification OTP email sent to ${params.to}`);
-    } catch (err: any) {
-      logger.error('[NotificationService] Failed to send guardian verification OTP email:', {
-        message: err?.message,
-        code: err?.code,
-        command: err?.command,
-        response: err?.response,
-      });
-    }
+    await this.dispatchMail({
+      to: params.to,
+      subject: `${params.otp} is your Noxphere Guardian Verification Code for ${params.studentName}`,
+      html,
+    });
   }
 }
 
