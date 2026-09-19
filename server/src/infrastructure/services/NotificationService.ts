@@ -106,28 +106,47 @@ export const getMailTransporter = (): nodemailer.Transporter => {
   const port = config.email.port || 587;
   const isSecure = config.email.secure || port === 465;
 
-  const transportConfig: any = {
-    host: config.email.host || (isGmail ? 'smtp.gmail.com' : 'localhost'),
-    port,
-    secure: isSecure,
-    auth: {
-      user: config.email.user,
-      pass: cleanPass,
-    },
-    tls: {
-      rejectUnauthorized: false,
-      minVersion: 'TLSv1.2',
-    },
-    pool: true,
-    maxConnections: 3,
-    maxMessages: 100,
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 20000,
-  };
+  let transportConfig: any;
 
-  if (!isSecure && port === 587) {
-    transportConfig.requireTLS = true;
+  if (isGmail) {
+    transportConfig = {
+      service: "gmail",
+      auth: {
+        user: config.email.user,
+        pass: cleanPass,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+      pool: true,
+      maxConnections: 3,
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000,
+    };
+  } else {
+    transportConfig = {
+      host: config.email.host || "localhost",
+      port,
+      secure: isSecure,
+      auth: {
+        user: config.email.user,
+        pass: cleanPass,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+      pool: true,
+      maxConnections: 3,
+      maxMessages: 100,
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000,
+    };
+
+    if (!isSecure && port === 587) {
+      transportConfig.requireTLS = true;
+    }
   }
 
   cachedTransporter = nodemailer.createTransport(transportConfig);
