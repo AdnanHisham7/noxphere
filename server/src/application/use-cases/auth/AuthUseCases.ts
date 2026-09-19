@@ -3,13 +3,15 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { IUserRepository } from '../../../domain/repositories/IUserRepository';
 import { UserEntity, UserRole, defaultPermissions } from '../../../domain/entities/User.entity';
-import { AppError, UnauthorizedError, ConflictError, NotFoundError, ForbiddenError } from '../../../shared/errors/AppError';
-import { RegisterDto, LoginDto, RefreshTokenDto } from '../../dtos/auth.dto';
+import { AppError, UnauthorizedError, ConflictError, NotFoundError, ForbiddenError, BadRequestError } from '../../../shared/errors/AppError';
+import { RegisterDto, LoginDto, RefreshTokenDto, ResetForgotPasswordDto } from '../../dtos/auth.dto';
 import { config } from '../../../config/app.config';
 import { FranchiseModel } from '../../../infrastructure/database/models/Franchise.model';
 import { StudentModel } from '../../../infrastructure/database/models/Student.model';
 import { AcademyModel } from '../../../infrastructure/database/models/Academy.model';
 import { UserModel } from '../../../infrastructure/database/models/User.model';
+import { PasswordResetOtpModel } from '../../../infrastructure/database/models/PasswordResetOtp.model';
+import { notificationService } from '../../../infrastructure/services/NotificationService';
 import { normalizePhone, getPhoneMatchVariants } from '../../../shared/utils/phone';
 
 export interface AuthTokens {
@@ -390,5 +392,92 @@ export class AuthUseCases {
     }
 
     return { available: true };
+  }
+
+  async sendForgotPasswordOtp(email: string): Promise<{ message: string }> {
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await UserModel.findOne({ email: cleanEmail });
+    if (!user) {
+      throw new NotFoundError('No account found with this email address');
+    }
+    if (!user.isActive) {
+      throw new UnauthorizedError('Your account has been deactivated. Please contact support.');
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Invalidate existing OTPs
+    await PasswordResetOtpModel.deleteMany({ email: cleanEmail });
+
+    // Store new OTP record with 10-minute expiry
+    await PasswordResetOtpModel.create({
+      email: cleanEmail,
+      otp,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      verified: false,
+    });
+
+    console.log(`[ForgotPassword] Generated password reset OTP for ${cleanEmail}: ${otp}`);
+
+    await notificationService.sendPasswordResetOtpEmail({
+      to: cleanEmail,
+      recipientName: user.firstName,
+      otp,
+    });
+
+    return { message: 'A 6-digit verification code has been sent to your email.' };
+  }
+
+  async verifyForgotPasswordOtp(email: string, otp: string): Promise<{ message: string }> {
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanOtp = otp.trim();
+
+    const record = await PasswordResetOtpModel.findOne({ email: cleanEmail, otp: cleanOtp });
+    if (!record) {
+      throw new BadRequestError('Invalid or expired verification code.');
+    }
+
+    if (new Date() > record.expiresAt) {
+      await PasswordResetOtpModel.deleteMany({ email: cleanEmail });
+      throw new BadRequestError('Verification code has expired. Please request a new one.');
+    }
+
+    record.verified = true;
+    await record.save();
+
+    return { message: 'Code verified successfully.' };
+  }
+
+  async resetForgotPassword(dto: ResetForgotPasswordDto): Promise<{ message: string }> {
+    const cleanEmail = dto.email.toLowerCase().trim();
+    const cleanOtp = dto.otp.trim();
+
+    const record = await PasswordResetOtpModel.findOne({ email: cleanEmail, otp: cleanOtp });
+    if (!record) {
+      throw new BadRequestError('Invalid or expired verification code.');
+    }
+
+    if (new Date() > record.expiresAt) {
+      await PasswordResetOtpModel.deleteMany({ email: cleanEmail });
+      throw new BadRequestError('Verification code has expired. Please request a new one.');
+    }
+
+    const user = await UserModel.findOne({ email: cleanEmail });
+    if (!user) {
+      throw new NotFoundError('User account not found.');
+    }
+
+    // Hash new password using bcrypt
+    const newPasswordHash = await bcrypt.hash(dto.newPassword, 12);
+    user.passwordHash = newPasswordHash;
+    await user.save();
+
+    // Invalidate OTPs for this email
+    await PasswordResetOtpModel.deleteMany({ email: cleanEmail });
+
+    console.log(`[ForgotPassword] Password reset successfully for ${cleanEmail}`);
+
+    return { message: 'Password has been reset successfully. You can now sign in with your new password.' };
   }
 }

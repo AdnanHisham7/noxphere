@@ -16,8 +16,16 @@ authRouter.post('/register-student', (req, res, next) => {
   (req.app.locals.controllers.student as any).registerPublic(req, res, next);
 });
 authRouter.post('/login', (req, res, next) => {
-
   (req.app.locals.controllers.auth as any).login(req, res, next);
+});
+authRouter.post('/forgot-password/send-otp', (req, res, next) => {
+  (req.app.locals.controllers.auth as any).sendForgotPasswordOtp(req, res, next);
+});
+authRouter.post('/forgot-password/verify-otp', (req, res, next) => {
+  (req.app.locals.controllers.auth as any).verifyForgotPasswordOtp(req, res, next);
+});
+authRouter.post('/forgot-password/reset', (req, res, next) => {
+  (req.app.locals.controllers.auth as any).resetForgotPassword(req, res, next);
 });
 authRouter.post('/refresh', (req, res, next) => {
   (req.app.locals.controllers.auth as any).refreshToken(req, res, next);

@@ -7,6 +7,9 @@ import {
   RegisterSchema,
   RefreshTokenSchema,
   ChangePasswordSchema,
+  SendForgotPasswordOtpSchema,
+  VerifyForgotPasswordOtpSchema,
+  ResetForgotPasswordSchema,
 } from '../../../application/dtos/auth.dto';
 
 export class AuthController {
@@ -90,6 +93,36 @@ export class AuthController {
       };
       const result = await this.authUseCases.checkAvailability({ email, phone, purpose });
       ResponseHandler.success(res, result, 'Availability checked successfully');
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  sendForgotPasswordOtp = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { email } = SendForgotPasswordOtpSchema.parse(req.body);
+      const result = await this.authUseCases.sendForgotPasswordOtp(email);
+      ResponseHandler.success(res, result, result.message);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  verifyForgotPasswordOtp = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { email, otp } = VerifyForgotPasswordOtpSchema.parse(req.body);
+      const result = await this.authUseCases.verifyForgotPasswordOtp(email, otp);
+      ResponseHandler.success(res, result, result.message);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  resetForgotPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const dto = ResetForgotPasswordSchema.parse(req.body);
+      const result = await this.authUseCases.resetForgotPassword(dto);
+      ResponseHandler.success(res, result, result.message);
     } catch (err) {
       next(err);
     }
