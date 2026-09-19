@@ -678,7 +678,7 @@ const ComposeModal: React.FC<{
     useState<AdminNotification["audience"]>("franchise");
   const [teamId, setTeamId] = useState("");
   const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
-  const [channels, setChannels] = useState<string[]>(["push", "whatsapp"]);
+  const [channels, setChannels] = useState<string[]>(["push", "whatsapp", "email"]);
   const [attachments, setAttachments] = useState<{ name: string; url: string }[]>(
     []
   );
@@ -712,7 +712,7 @@ const ComposeModal: React.FC<{
       setTitle("");
       setBody("");
       setImageUrl(undefined);
-      setChannels(["push", "whatsapp"]);
+      setChannels(["push", "whatsapp", "email"]);
       setAttachments([]);
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't send notification — try again");
