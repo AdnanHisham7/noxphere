@@ -451,7 +451,16 @@ export class NotificationService {
             );
             return true;
           } else {
-            logger.error(`[NotificationService] Resend API error: ${data.message || res.statusText}`, data);
+            logger.error(`[NotificationService] Resend API error: ${data.message || res.statusText}`, {
+              statusCode: data.statusCode || res.status,
+              name: data.name,
+              message: data.message,
+            });
+            if (data.name === 'validation_error' && data.message?.includes('verify a domain')) {
+              logger.warn(
+                '[NotificationService] ACTION REQUIRED ON RESEND: Resend sandbox currently restricts recipient delivery. Add and verify your custom domain on https://resend.com/domains, then set FROM_EMAIL to an address on your domain (e.g. noreply@yourdomain.com).'
+              );
+            }
           }
         }
       } catch (resendErr: any) {
