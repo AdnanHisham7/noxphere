@@ -201,8 +201,10 @@ export class NotificationService {
 
     await Promise.allSettled(tasks);
 
-    // Persist in-app notifications
-    await this.persistNotifications(users.map((u) => u._id.toString()), opts);
+    // Persist in-app notifications only when push channel is selected
+    if (channels.includes('push')) {
+      await this.persistNotifications(users.map((u) => u._id.toString()), opts);
+    }
   }
 
   /**
