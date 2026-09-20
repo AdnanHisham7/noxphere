@@ -1255,7 +1255,7 @@ const StudentDetailPage: React.FC = () => {
                     return (
                       <div key={s.parameter} className="space-y-1.5">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-300 font-medium">
+                          <span className="text-slate-700 dark:text-slate-300 font-medium">
                             {s.parameter}
                           </span>
                           <div className="flex items-center gap-2">
@@ -1275,7 +1275,7 @@ const StudentDetailPage: React.FC = () => {
                             </span>
                           </div>
                         </div>
-                        <div className="h-2 w-full bg-pitch-900 rounded-full overflow-hidden border border-white/5">
+                        <div className="h-2 w-full bg-slate-200 dark:bg-pitch-900 rounded-full overflow-hidden border border-slate-300 dark:border-white/5">
                           <div
                             className={clsx(
                               "h-full transition-all duration-500 rounded-full",
@@ -1311,7 +1311,7 @@ const StudentDetailPage: React.FC = () => {
                     Analyze player growth trajectory and skill balance.
                   </p>
                 </div>
-                <div className="flex items-center bg-pitch-900 p-0.5 rounded-lg border border-white/10 text-2xs">
+                <div className="flex items-center bg-slate-100 dark:bg-pitch-900 p-0.5 rounded-lg border border-slate-200 dark:border-white/10 text-2xs">
                   <button
                     type="button"
                     onClick={() => setPerformanceChartView("trend")}
@@ -1430,7 +1430,7 @@ const StudentDetailPage: React.FC = () => {
 
           {/* 3. Streamlined Session Evaluations Log */}
           <div className="card p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-white/5 pb-3">
               <div>
                 <h3 className="section-title text-slate-900 dark:text-white flex items-center gap-2">
                   <Calendar size={15} className="text-volt-400" />
@@ -1479,7 +1479,7 @@ const StudentDetailPage: React.FC = () => {
                 }
               />
             ) : (
-              <div className="overflow-hidden rounded-xl border border-white/10 divide-y divide-white/5">
+              <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-white/10 divide-y divide-slate-100 dark:divide-white/5">
                 {filteredSessions.map((session) => {
                   const isExpanded = !!expandedSessionIds[session._id];
                   const sessionObj =
@@ -1505,7 +1505,7 @@ const StudentDetailPage: React.FC = () => {
                   return (
                     <div
                       key={session._id}
-                      className="bg-pitch-900/40 hover:bg-pitch-900/70 transition-colors"
+                      className="bg-slate-50 dark:bg-pitch-900/40 hover:bg-slate-100 dark:hover:bg-pitch-900/70 transition-colors"
                     >
                       {/* Compact Primary Row */}
                       <div
@@ -1610,7 +1610,7 @@ const StudentDetailPage: React.FC = () => {
 
                       {/* Expandable Granular Breakdown */}
                       {isExpanded && (
-                        <div className="px-4 pb-4 pt-2 border-t border-white/5 bg-pitch-950/60 space-y-3 animate-fade-in">
+                        <div className="px-4 pb-4 pt-2 border-t border-slate-100 dark:border-white/5 bg-slate-100/70 dark:bg-pitch-950/60 space-y-3 animate-fade-in">
                           {/* Granular Parameter Badges */}
                           {session.skillScores &&
                             session.skillScores.length > 0 && (
@@ -1622,9 +1622,9 @@ const StudentDetailPage: React.FC = () => {
                                   {session.skillScores.map((skill) => (
                                     <div
                                       key={skill.parameter}
-                                      className="p-2 rounded-lg bg-pitch-900/80 border border-white/5 text-center"
+                                      className="p-2 rounded-lg bg-white dark:bg-pitch-900/80 border border-slate-200 dark:border-white/5 text-center"
                                     >
-                                      <span className="text-3xs text-slate-400 block truncate font-medium">
+                                      <span className="text-3xs text-slate-500 dark:text-slate-400 block truncate font-medium">
                                         {skill.parameter}
                                       </span>
                                       <span
@@ -1634,7 +1634,7 @@ const StudentDetailPage: React.FC = () => {
                                         )}
                                       >
                                         {skill.score}{" "}
-                                        <span className="text-3xs text-slate-600 font-normal">
+                                        <span className="text-3xs text-slate-400 dark:text-slate-600 font-normal">
                                           /10
                                         </span>
                                       </span>
@@ -1647,7 +1647,7 @@ const StudentDetailPage: React.FC = () => {
                           {/* Coach Note & Video Link */}
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs pt-1">
                             {session.remarks ? (
-                              <p className="text-slate-300 text-xs italic bg-white/[0.02] p-2 rounded-lg border border-white/5 flex-1">
+                              <p className="text-slate-700 dark:text-slate-300 text-xs italic bg-slate-100 dark:bg-white/[0.02] p-2 rounded-lg border border-slate-200 dark:border-white/5 flex-1">
                                 <span className="text-volt-400 font-semibold not-italic text-2xs font-mono mr-1.5">
                                   Coach Remark:
                                 </span>
@@ -1716,7 +1716,7 @@ const StudentDetailPage: React.FC = () => {
             {canManagePerformance && isNotesOpen && (
               <form
                 onSubmit={handleAddRemark}
-                className="space-y-3 bg-pitch-900/50 p-4 rounded-xl border border-white/5 animate-fade-in"
+                className="space-y-3 bg-slate-50 dark:bg-pitch-900/50 p-4 rounded-xl border border-slate-200 dark:border-white/5 animate-fade-in"
               >
                 <textarea
                   value={newRemarkText}
@@ -1756,7 +1756,7 @@ const StudentDetailPage: React.FC = () => {
                   return (
                     <div
                       key={r._id}
-                      className="bg-pitch-800/60 rounded-xl p-3.5 border-l-2 border-volt-400 space-y-1"
+                      className="bg-slate-50 dark:bg-pitch-800/60 rounded-xl p-3.5 border-l-2 border-volt-400 space-y-1 border border-slate-200 dark:border-transparent"
                     >
                       <div className="flex items-center justify-between text-2xs">
                         <span className="text-volt-400 font-bold">
@@ -1770,7 +1770,7 @@ const StudentDetailPage: React.FC = () => {
                           })}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-200 leading-relaxed italic">
+                      <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed italic">
                         "{r.text}"
                       </p>
                     </div>

@@ -178,32 +178,77 @@ export class GuardianUseCases {
         { targetType: "category", categories: student.ageGroup },
       );
     }
-    const filter: Record<string, unknown> = {
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    // Upcoming sessions: from today onwards, scoped to this student's team/category/roster
+    const upcomingFilter: Record<string, unknown> = {
       franchiseId: student.franchiseId,
       deletedAt: { $exists: false },
+      date: { $gte: todayStart },
       $or: conditions,
     };
-    const sessions = await SessionModel.find(filter)
+
+    const upcomingSessions = await SessionModel.find(upcomingFilter)
       .populate("teamId", "name")
       .populate("coachId", "firstName lastName")
       .sort({ date: 1, startTime: 1 })
-      .limit(30)
+      .limit(20)
       .lean();
 
-    const sessionIds = sessions.map((s) => s._id);
-    const attendanceRecords = await AttendanceModel.find({
+    // Past sessions: only those the student actually attended
+    const attendedRecords = await AttendanceModel.find({
       studentId: student._id,
-      sessionId: { $in: sessionIds },
-    }).select("sessionId status").lean();
+      sessionId: { $exists: true },
+    })
+      .select("sessionId status")
+      .sort({ sessionDate: -1 })
+      .limit(20)
+      .lean();
 
-    const attendanceMap = new Map(
-      attendanceRecords.map((a) => [a.sessionId?.toString(), a.status])
+    const attendedSessionIds = attendedRecords.map((a) => a.sessionId);
+    const attendedMap = new Map(
+      attendedRecords.map((a) => [a.sessionId?.toString(), a.status])
     );
 
-    return sessions.map((s) => ({
+    const pastSessions = attendedSessionIds.length
+      ? await SessionModel.find({
+          _id: { $in: attendedSessionIds },
+          deletedAt: { $exists: false },
+        })
+          .populate("teamId", "name")
+          .populate("coachId", "firstName lastName")
+          .sort({ date: -1 })
+          .lean()
+      : [];
+
+    // Build upcoming attendance map for sessions that have already been marked
+    const upcomingSessionIds = upcomingSessions.map((s) => s._id);
+    const upcomingAttendance = upcomingSessionIds.length
+      ? await AttendanceModel.find({
+          studentId: student._id,
+          sessionId: { $in: upcomingSessionIds },
+        })
+          .select("sessionId status")
+          .lean()
+      : [];
+    const upcomingAttendanceMap = new Map(
+      upcomingAttendance.map((a) => [a.sessionId?.toString(), a.status])
+    );
+
+    const mappedUpcoming = upcomingSessions.map((s) => ({
       ...s,
-      isMarked: s.status === "completed" || attendanceMap.has(s._id.toString()),
-      attendanceStatus: attendanceMap.get(s._id.toString()) || null,
+      isMarked: s.status === "completed" || upcomingAttendanceMap.has(s._id.toString()),
+      attendanceStatus: upcomingAttendanceMap.get(s._id.toString()) || null,
     }));
+
+    const mappedPast = pastSessions.map((s) => ({
+      ...s,
+      isMarked: true,
+      attendanceStatus: attendedMap.get(s._id.toString()) || null,
+    }));
+
+    return [...mappedUpcoming, ...mappedPast];
   }
 }
