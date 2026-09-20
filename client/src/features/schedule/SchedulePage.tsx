@@ -142,8 +142,10 @@ const SchedulePage: React.FC = () => {
   const { confirm, ConfirmDialog } = useConfirm();
   const [alertAllGuardians, { isLoading: alerting }] = useAlertAllGuardiansMutation();
 
-  // Filtered Sessions (Latest sessions on top)
+  // Filtered Sessions — upcoming first (soonest date), then ongoing, then the rest latest-first
   const filteredSessions = useMemo(() => {
+    const STATUS_ORDER: Record<string, number> = { upcoming: 0, ongoing: 1, completed: 2, cancelled: 3 };
+
     return sessionsList
       .filter((s) => {
         const targetName = (s.teamName || s.category || "").toLowerCase();
@@ -156,10 +158,16 @@ const SchedulePage: React.FC = () => {
         return matchesSearch && matchesType && matchesStatus;
       })
       .sort((a, b) => {
-        const dateCompare = (b.date || "").localeCompare(a.date || "");
-        if (dateCompare !== 0) return dateCompare;
-        const timeCompare = (b.startTime || "").localeCompare(a.startTime || "");
-        if (timeCompare !== 0) return timeCompare;
+        const aOrder = STATUS_ORDER[a.status] ?? 4;
+        const bOrder = STATUS_ORDER[b.status] ?? 4;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+
+        // Upcoming & ongoing: soonest first; completed & cancelled: latest first
+        const ascending = aOrder <= 1;
+        const dateCompare = (a.date || "").localeCompare(b.date || "");
+        if (dateCompare !== 0) return ascending ? dateCompare : -dateCompare;
+        const timeCompare = (a.startTime || "").localeCompare(b.startTime || "");
+        if (timeCompare !== 0) return ascending ? timeCompare : -timeCompare;
         return (b.createdAt || "").localeCompare(a.createdAt || "");
       });
   }, [sessionsList, searchQuery, typeFilter, statusFilter]);
@@ -348,7 +356,7 @@ const SchedulePage: React.FC = () => {
             <table className="w-full min-w-[680px] text-left text-xs">
               <thead className="bg-slate-50 dark:bg-pitch-900/80 border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 font-mono uppercase text-2xs tracking-wider">
                 <tr>
-                  <th className="py-3 px-4">Time Window</th>
+                  <th className="py-3 px-4">Date &amp; Time</th>
                   <th className="py-3 px-4">Target / Group</th>
                   <th className="py-3 px-4">Type</th>
                   <th className="py-3 px-4">Location & Field</th>
@@ -360,13 +368,25 @@ const SchedulePage: React.FC = () => {
               <tbody className="divide-y divide-slate-100 dark:divide-white/5 font-mono">
                 {filteredSessions.map((session) => (
                   <tr key={session.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
-                    {/* Time Window */}
+                    {/* Date & Time */}
                     <td className="py-3.5 px-4 text-slate-900 dark:text-white font-medium whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <Clock size={13} className="text-slate-400 dark:text-slate-500" />
-                        <span>
-                          {session.startTime} – {session.endTime}
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-slate-500 dark:text-slate-400 text-2xs font-mono">
+                          {session.date
+                            ? new Date(`${session.date}T00:00:00`).toLocaleDateString("en-GB", {
+                                weekday: "short",
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })
+                            : "—"}
                         </span>
+                        <div className="flex items-center gap-1.5">
+                          <Clock size={13} className="text-slate-400 dark:text-slate-500" />
+                          <span>
+                            {session.startTime} – {session.endTime}
+                          </span>
+                        </div>
                       </div>
                     </td>
 
