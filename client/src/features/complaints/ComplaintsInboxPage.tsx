@@ -146,6 +146,8 @@ const ComplaintDetail: React.FC<{
     complaint.status === "resolved" ? "resolved" : "in_progress",
   );
 
+  const isResolved = complaint.status === "resolved";
+
   const handleSend = async () => {
     if (!response.trim()) return toast.error("Enter a response");
     try {
@@ -171,37 +173,56 @@ const ComplaintDetail: React.FC<{
       </div>
       <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded p-3 leading-relaxed">{complaint.message}</p>
 
-      <div>
-        <label className="label">Your response</label>
-        <textarea
-          className="input min-h-24 resize-none w-full"
-          value={response}
-          onChange={(e) => setResponse(e.target.value)}
-          placeholder="Write a response…"
-        />
-      </div>
-      <div>
-        <label className="label">Mark as</label>
-        <div className="flex gap-2">
-          {(["in_progress", "resolved"] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatus(s)}
-              className={clsx(
-                "flex-1 rounded px-3 py-2 text-sm font-semibold border transition-colors",
-                status === s
-                  ? "bg-volt-400 border-volt-400 text-pitch-900"
-                  : "bg-slate-50 dark:bg-pitch-800 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              )}
-            >
-              {s === "in_progress" ? "In Progress" : "Resolved"}
-            </button>
-          ))}
-        </div>
-      </div>
-      <Button className="w-full" icon={<Send size={14} />} loading={isLoading} onClick={handleSend}>
-        Send Response
-      </Button>
+      {isResolved ? (
+        <>
+          {complaint.response && (
+            <div>
+              <label className="label">Response sent</label>
+              <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded p-3 leading-relaxed">
+                {complaint.response}
+              </p>
+            </div>
+          )}
+          <div className="flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700/40 px-4 py-3">
+            <svg className="shrink-0 text-green-600 dark:text-green-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <p className="text-xs font-semibold text-green-700 dark:text-green-400">This complaint has been resolved and is now closed.</p>
+          </div>
+        </>
+      ) : (
+        <>
+          <div>
+            <label className="label">Your response</label>
+            <textarea
+              className="input min-h-24 resize-none w-full"
+              value={response}
+              onChange={(e) => setResponse(e.target.value)}
+              placeholder="Write a response…"
+            />
+          </div>
+          <div>
+            <label className="label">Mark as</label>
+            <div className="flex gap-2">
+              {(["in_progress", "resolved"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStatus(s)}
+                  className={clsx(
+                    "flex-1 rounded px-3 py-2 text-sm font-semibold border transition-colors",
+                    status === s
+                      ? "bg-volt-400 border-volt-400 text-pitch-900"
+                      : "bg-slate-50 dark:bg-pitch-800 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  )}
+                >
+                  {s === "in_progress" ? "In Progress" : "Resolved"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <Button className="w-full" icon={<Send size={14} />} loading={isLoading} onClick={handleSend}>
+            Send Response
+          </Button>
+        </>
+      )}
     </div>
   );
 };
