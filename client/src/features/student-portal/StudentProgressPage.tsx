@@ -269,7 +269,8 @@ const ScheduleTab: React.FC = () => {
   };
 
   const upcomingSessions = sessions.filter(isUpcoming);
-  const pastSessions = sessions.filter((s) => !isUpcoming(s));
+  // Past sessions: only sessions the student actually attended (have a real attendance record)
+  const pastSessions = sessions.filter((s: any) => !!s.attendanceStatus);
 
   return (
     <div className="space-y-6">
@@ -367,8 +368,8 @@ const ScheduleTab: React.FC = () => {
 
       {pastSessions.length > 0 && (
         <div className="space-y-3 pt-2">
-          <h3 className="font-orbital text-xs uppercase tracking-wider text-slate-400 font-bold">
-            Recent Past Sessions
+          <h3 className="font-orbital text-xs uppercase tracking-wider text-slate-400 font-bold flex items-center gap-2">
+            <CheckCircle2 size={13} /> Sessions I Attended ({pastSessions.length})
           </h3>
           <div className="nox-card divide-y divide-white/[0.06] overflow-hidden">
             {pastSessions.slice(0, 10).map((session) => {
@@ -394,14 +395,19 @@ const ScheduleTab: React.FC = () => {
                       &bull; {session.startTime} - {session.endTime}
                     </p>
                   </div>
-                  <Badge variant="gray" className="text-2xs">
-                    Completed
-                  </Badge>
+                  <NoxStatusBadge status={(session as any).attendanceStatus} />
                 </div>
               );
             })}
           </div>
         </div>
+      )}
+
+      {upcomingSessions.length === 0 && pastSessions.length === 0 && (
+        <NoxEmptyState
+          title="No sessions yet"
+          body="Your upcoming sessions and attendance history will appear here once sessions are marked by your coach."
+        />
       )}
     </div>
   );

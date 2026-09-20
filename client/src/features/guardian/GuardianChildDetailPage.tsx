@@ -564,7 +564,8 @@ const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
   };
 
   const upcomingSessions = sessions.filter(isUpcoming);
-  const pastSessions = sessions.filter((s) => !isUpcoming(s));
+  // Past sessions: only sessions this student actually attended (have a real attendance record)
+  const pastSessions = sessions.filter((s: any) => !!s.attendanceStatus);
 
   const renderSessionCard = (s: any) => (
     <div
@@ -634,12 +635,19 @@ const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
       {pastSessions.length > 0 && (
         <div className="space-y-3">
           <h3 className="font-orbital text-xs uppercase tracking-wider text-slate-400 font-bold flex items-center gap-2">
-            <CalendarCheck size={14} /> Past &amp; Completed Sessions ({pastSessions.length})
+            <CalendarCheck size={14} /> Sessions Attended ({pastSessions.length})
           </h3>
           <div className="space-y-3">
             {pastSessions.map(renderSessionCard)}
           </div>
         </div>
+      )}
+
+      {upcomingSessions.length === 0 && pastSessions.length === 0 && (
+        <NoxEmptyState
+          title="No session history yet"
+          body="Upcoming sessions will appear here once scheduled. Past attendance will show here once sessions are marked by the coach."
+        />
       )}
     </div>
   );
