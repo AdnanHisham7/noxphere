@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import logoSrc from '../../assets/logo.png';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
@@ -27,10 +27,27 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((s: RootState) => s.auth);
   const [login, { isLoading }] = useLoginMutation();
   const [showForgotPassword, setShowForgotPassword] = React.useState(false);
+
+  const getRedirectTarget = () => {
+    const redirectParam = searchParams.get('redirect');
+    if (redirectParam) {
+      try {
+        return decodeURIComponent(redirectParam);
+      } catch {
+        return redirectParam;
+      }
+    }
+    const fromState = (location.state as any)?.from;
+    if (typeof fromState === 'string') return fromState;
+    if (fromState?.pathname) return `${fromState.pathname}${fromState.search || ''}`;
+    return '/dashboard';
+  };
 
   const {
     register,
@@ -41,7 +58,9 @@ const LoginPage: React.FC = () => {
   } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
 
   useEffect(() => {
-    if (isAuthenticated) navigate('/dashboard', { replace: true });
+    if (isAuthenticated) {
+      navigate(getRedirectTarget(), { replace: true });
+    }
   }, [isAuthenticated, navigate]);
 
   const onSubmit = async (data: LoginForm) => {
@@ -65,7 +84,7 @@ const LoginPage: React.FC = () => {
         dispatch(clearActiveFranchise());
       }
       toast.success('Welcome back!');
-      navigate('/dashboard');
+      navigate(getRedirectTarget(), { replace: true });
     } catch (err: any) {
       toast.error(err?.data?.message || 'Login failed');
     }

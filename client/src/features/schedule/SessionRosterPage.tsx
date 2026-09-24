@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
-import { ArrowLeft, CalendarDays, Save, Zap, Star, AlertTriangle, AlertCircle } from "lucide-react";
+import { ArrowLeft, CalendarDays, Save, Zap, Star, AlertTriangle, AlertCircle, LayoutList, LayoutGrid } from "lucide-react";
 import { toast } from "react-hot-toast";
+import clsx from "clsx";
 import {
   Button,
   Badge,
@@ -95,6 +96,7 @@ const SessionRosterPage: React.FC = () => {
 
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [pendingNavigationPath, setPendingNavigationPath] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   useEffect(() => {
     if (!data) return;
@@ -537,6 +539,38 @@ const SessionRosterPage: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
+              {/* View Switcher: List vs Grid */}
+              <div className="flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-pitch-900 border border-slate-200 dark:border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  className={clsx(
+                    "flex items-center gap-1.5 px-2.5 py-1 rounded text-2xs font-semibold transition-all",
+                    viewMode === "list"
+                      ? "bg-white dark:bg-pitch-800 text-slate-900 dark:text-white shadow-xs font-bold"
+                      : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                  )}
+                  title="List Table View"
+                >
+                  <LayoutList size={13} />
+                  <span>List</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  className={clsx(
+                    "flex items-center gap-1.5 px-2.5 py-1 rounded text-2xs font-semibold transition-all",
+                    viewMode === "grid"
+                      ? "bg-white dark:bg-pitch-800 text-slate-900 dark:text-white shadow-xs font-bold"
+                      : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                  )}
+                  title="Athlete Grid Cards View"
+                >
+                  <LayoutGrid size={13} />
+                  <span>Grid</span>
+                </button>
+              </div>
+
               {skillParameters.length > 0 && (
                 <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-2xs">
                   <span className="hidden sm:inline">Bulk Rating:</span>
@@ -564,10 +598,210 @@ const SessionRosterPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Unified Operational Grid - Spreadsheet Matrix */}
-          <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-800/50 shadow-sm dark:shadow-none overflow-hidden">
-            <div className="table-responsive max-w-full">
-              <table className="w-full min-w-[720px] text-left text-xs border-collapse">
+          {viewMode === "grid" ? (
+            /* Responsive Grid Mode Cards */
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {roster.map((player) => {
+                const currentStatus = getAttendanceStatus(player);
+                const isAbsentOrExcused =
+                  currentStatus === "absent" || currentStatus === "excused";
+                const playerScores = scoresPending[player.studentId] || {};
+                const overallScore = getPlayerOverallScore(player.studentId);
+                const isUnmarked = !currentStatus;
+
+                return (
+                  <div
+                    key={player.studentId}
+                    className={clsx(
+                      "card p-4 space-y-3.5 border transition-all duration-200 relative overflow-hidden",
+                      isUnmarked
+                        ? "border-rose-400/40 bg-rose-50/20 dark:bg-rose-950/10 shadow-xs"
+                        : currentStatus === "present"
+                          ? "border-emerald-400/30 bg-white dark:bg-pitch-800/90"
+                          : currentStatus === "late"
+                            ? "border-amber-400/30 bg-white dark:bg-pitch-800/90"
+                            : "border-slate-200 dark:border-white/10 opacity-70 bg-slate-50/50 dark:bg-pitch-900/40"
+                    )}
+                  >
+                    {/* Header: Avatar, Name, Jersey, Pos, and Rating Badge */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar
+                          name={`${player.firstName} ${player.lastName}`}
+                          src={player.photo}
+                          size="md"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                            {player.firstName} {player.lastName}
+                          </p>
+                          <div className="flex items-center gap-2 text-2xs font-mono text-slate-500 mt-0.5">
+                            <span className="font-semibold text-volt-600 dark:text-volt-400">
+                              #{player.jerseyNumber ?? "—"}
+                            </span>
+                            <span>•</span>
+                            <span className="truncate">{player.position || "Athlete"}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Overall Rating Badge */}
+                      <div className="text-right shrink-0">
+                        {overallScore !== null ? (
+                          <div
+                            className={clsx(
+                              "inline-flex flex-col items-center px-2 py-1 rounded-lg border",
+                              getOverallScoreBadgeStyle(overallScore)
+                            )}
+                          >
+                            <span className="text-2xs font-mono font-bold leading-none">OVR</span>
+                            <span className="text-base font-display font-black leading-tight">
+                              {overallScore.toFixed(1)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="inline-block px-2 py-1 rounded text-2xs font-mono text-slate-400 bg-slate-100 dark:bg-pitch-900 border border-slate-200 dark:border-white/5">
+                            NR
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Attendance Selector Buttons */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-2xs">
+                        <span className="font-mono text-slate-400 uppercase tracking-wider font-semibold">
+                          Attendance {isUnmarked && <span className="text-rose-500 font-bold">* Required</span>}
+                        </span>
+                        {currentStatus && (
+                          <span className="font-mono font-semibold capitalize text-slate-600 dark:text-slate-300">
+                            {currentStatus}
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {ATTENDANCE_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() =>
+                              setAttendancePending((p) => ({
+                                ...p,
+                                [player.studentId]: opt.value,
+                              }))
+                            }
+                            className={clsx(
+                              "py-1.5 px-2 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1",
+                              currentStatus === opt.value
+                                ? `${opt.activeBg} border-transparent shadow-xs`
+                                : "bg-slate-100 dark:bg-pitch-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20"
+                            )}
+                          >
+                            <span>{opt.label}</span>
+                            <span className="hidden sm:inline text-2xs font-normal">
+                              {opt.fullLabel}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Technical Attributes Grid */}
+                    {skillParameters.length > 0 && !isAbsentOrExcused && (
+                      <div className="pt-2 border-t border-slate-100 dark:border-white/5 space-y-2">
+                        <div className="flex items-center justify-between text-2xs text-slate-400">
+                          <span className="font-mono uppercase tracking-wider font-semibold">
+                            Technical Attributes
+                          </span>
+                          <div className="flex items-center gap-1">
+                            {[6, 7, 8, 9].map((qVal) => (
+                              <button
+                                key={qVal}
+                                type="button"
+                                onClick={() => handleQuickSetPlayerScores(player.studentId, qVal)}
+                                className="px-1.5 py-0.5 rounded text-3xs font-mono bg-slate-100 dark:bg-pitch-900 hover:bg-volt-400 hover:text-pitch-950 text-slate-500 transition-colors"
+                                title={`Set all attributes to ${qVal}`}
+                              >
+                                {qVal}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          {skillParameters.map((param) => {
+                            const currentScore = playerScores[param] ?? 7;
+                            return (
+                              <div
+                                key={param}
+                                className="p-2 rounded-lg bg-slate-50 dark:bg-pitch-900/60 border border-slate-200/60 dark:border-white/5 space-y-1"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="text-2xs font-semibold text-slate-700 dark:text-slate-300 truncate" title={param}>
+                                    {param}
+                                  </span>
+                                  <span
+                                    className={clsx(
+                                      "px-1.5 py-0.2 rounded text-2xs font-mono font-bold border",
+                                      getScoreBadgeStyle(currentScore)
+                                    )}
+                                  >
+                                    {currentScore}/10
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                                    <button
+                                      key={num}
+                                      type="button"
+                                      onClick={() => setScore(player.studentId, param, num)}
+                                      className={clsx(
+                                        "flex-1 h-5 rounded text-[10px] font-mono font-bold transition-all",
+                                        currentScore === num
+                                          ? "bg-volt-400 text-pitch-950 shadow-xs"
+                                          : "bg-white dark:bg-pitch-800 text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/50 dark:border-white/5"
+                                      )}
+                                    >
+                                      {num}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Session Notes / Remarks */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-white/5">
+                      <input
+                        type="text"
+                        value={
+                          remarksPending[player.studentId] ??
+                          player.performanceRemarks ??
+                          player.attendanceRemarks ??
+                          ""
+                        }
+                        onChange={(e) =>
+                          setRemarksPending((r) => ({
+                            ...r,
+                            [player.studentId]: e.target.value,
+                          }))
+                        }
+                        placeholder="Session notes (e.g. Sharp on wing, tactical awareness)..."
+                        className="w-full text-xs py-1.5 px-2.5 rounded-lg bg-slate-50 dark:bg-pitch-900/60 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-volt-400"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* Unified Operational Grid - Spreadsheet Matrix */
+            <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-800/50 shadow-sm dark:shadow-none overflow-hidden">
+              <div className="table-responsive max-w-full">
+                <table className="w-full min-w-[720px] text-left text-xs border-collapse">
                 <thead className="bg-slate-50 dark:bg-pitch-900/80 border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 font-mono uppercase text-2xs tracking-wider">
                   <tr>
                     <th className="py-2.5 px-3 sticky left-0 z-20 bg-slate-50 dark:bg-pitch-900 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)] min-w-[170px]">
@@ -772,6 +1006,7 @@ const SessionRosterPage: React.FC = () => {
               </table>
             </div>
           </div>
+        )}
         </>
       )}
 

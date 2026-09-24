@@ -34,10 +34,11 @@ export interface TransferListing {
 export interface TransferRequest {
   id: string;
   listingId: string;
-  studentId: string;
+  studentId: string | any;
+  student?: any;
   fromFranchiseId: string;
-  fromManagerId: string;
-  toManagerId: string;
+  fromManagerId: string | any;
+  toManagerId: string | any;
   offeredPrice: number;
   currency: string;
   status: "pending" | "accepted" | "rejected" | "cancelled";

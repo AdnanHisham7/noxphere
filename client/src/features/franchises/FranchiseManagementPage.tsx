@@ -1,7 +1,7 @@
 // src/features/franchises/FranchiseManagementPage.tsx
 import React, { useEffect, useState } from "react";
 import { clsx } from "clsx";
-import { Building2, Plus, Power, Trash2, ListChecks, X, Pencil, LayoutDashboard } from "lucide-react";
+import { Building2, Plus, Power, Trash2, ListChecks, X, Pencil, LayoutDashboard, Users } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
@@ -20,6 +20,7 @@ import {
   useDeleteFranchiseMutation,
   type Franchise,
 } from "../../store/api/franchiseApi";
+import { useGetAcademySubscriptionStatusQuery } from "../../store/api/academySubscriptionApi";
 
 const FranchiseManagementPage: React.FC = () => {
   const dispatch = useDispatch();
@@ -51,6 +52,10 @@ const FranchiseManagementPage: React.FC = () => {
     activeAcademyId ? { academyId: activeAcademyId } : undefined,
     { skip: !activeAcademyId },
   );
+
+  const { data: subStatus } = useGetAcademySubscriptionStatusQuery(activeAcademyId ?? "", {
+    skip: !activeAcademyId,
+  });
 
   const [createFranchise, { isLoading: creating }] = useCreateFranchiseMutation();
   const [toggleActive] = useToggleFranchiseActiveMutation();
@@ -137,6 +142,50 @@ const FranchiseManagementPage: React.FC = () => {
         </div>
       )}
 
+      {/* Academy Purchased Student Capacity Banner */}
+      {activeAcademyId && subStatus && (
+        <div className="card p-4 bg-gradient-to-r from-volt-400/[0.08] via-transparent to-transparent border-volt-400/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-volt-400/15 text-volt-500 flex items-center justify-center flex-shrink-0 border border-volt-400/30">
+              <Users size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-display font-bold text-sm text-slate-900 dark:text-white">
+                  Purchased Student Capacity
+                </span>
+                <span className="pill pill-green text-2xs">
+                  {subStatus.provisionedCapacity > 0 ? "Active Plan" : "No Active Quota"}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {subStatus.provisionedCapacity > 0 ? (
+                  <>
+                    <strong className="text-slate-800 dark:text-slate-200">
+                      {subStatus.activeStudentCount}
+                    </strong>{" "}
+                    of{" "}
+                    <strong className="text-slate-800 dark:text-slate-200">
+                      {subStatus.provisionedCapacity}
+                    </strong>{" "}
+                    purchased athlete slots used across all branches ({subStatus.remainingInviteSlots ?? 0} slots remaining)
+                  </>
+                ) : (
+                  "Student capacity across all branches is governed by your purchased subscription tier."
+                )}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/subscription")}
+            className="btn-secondary text-xs py-1.5 px-3 whitespace-nowrap self-start sm:self-auto"
+          >
+            Manage Subscription Quota
+          </button>
+        </div>
+      )}
+
       {activeAcademyId && isError && (
         <EmptyState title="Couldn't load franchises" description="Please try again shortly." />
       )}
@@ -171,8 +220,12 @@ const FranchiseManagementPage: React.FC = () => {
                 </div>
               </div>
               <p className="text-xs text-slate-400">{f.location?.name}</p>
-              <div className="flex items-center gap-3 text-2xs text-slate-500">
-                <span>Max {f.maxStudents} students</span>
+              <div className="flex items-center gap-2 text-2xs text-slate-500">
+                <span className="font-semibold text-slate-700 dark:text-slate-300">
+                  {subStatus && subStatus.provisionedCapacity > 0
+                    ? `Academy Plan: Max ${subStatus.provisionedCapacity} students`
+                    : `Purchased Max: ${f.maxStudents || 100} students`}
+                </span>
                 {f.ageGroups?.length > 0 && <span>· {f.ageGroups.join(", ")}</span>}
               </div>
               <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -220,6 +273,7 @@ const FranchiseManagementPage: React.FC = () => {
       {showCreate && activeAcademyId && (
         <CreateFranchiseModal
           academyId={activeAcademyId}
+          purchasedCapacity={subStatus?.provisionedCapacity}
           onClose={() => setShowCreate(false)}
           creating={creating}
           onCreate={async (body) => {
@@ -239,6 +293,7 @@ const FranchiseManagementPage: React.FC = () => {
       {detailsFranchise && (
         <FranchiseDetailsModal
           franchise={detailsFranchise}
+          purchasedCapacity={subStatus?.provisionedCapacity}
           onClose={() => setDetailsFranchise(null)}
         />
       )}
@@ -248,6 +303,7 @@ const FranchiseManagementPage: React.FC = () => {
 
 const CreateFranchiseModal: React.FC<{
   academyId: string;
+  purchasedCapacity?: number;
   onClose: () => void;
   creating: boolean;
   onCreate: (body: {
@@ -256,11 +312,11 @@ const CreateFranchiseModal: React.FC<{
     location: { name: string; address: string; latitude: number; longitude: number; fieldNumber?: string };
     maxStudents?: number;
   }) => void;
-}> = ({ academyId, onClose, creating, onCreate }) => {
+}> = ({ academyId, purchasedCapacity, onClose, creating, onCreate }) => {
   const [name, setName] = useState("");
   const [locationName, setLocationName] = useState("");
   const [address, setAddress] = useState("");
-  const [maxStudents, setMaxStudents] = useState("100");
+  const [maxStudents, setMaxStudents] = useState(purchasedCapacity ? String(purchasedCapacity) : "100");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -272,7 +328,7 @@ const CreateFranchiseModal: React.FC<{
       academyId,
       name,
       location: { name: locationName, address, latitude: 0, longitude: 0 },
-      maxStudents: parseInt(maxStudents, 10) || 100,
+      maxStudents: parseInt(maxStudents, 10) || purchasedCapacity || 100,
     });
   };
 
@@ -282,7 +338,18 @@ const CreateFranchiseModal: React.FC<{
         <Input label="Franchise name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Downtown Franchise" required />
         <Input label="Location name" value={locationName} onChange={(e) => setLocationName(e.target.value)} placeholder="e.g. Downtown Sports Complex" required />
         <Input label="Address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street address" required />
-        <Input label="Max students" type="number" min={1} value={maxStudents} onChange={(e) => setMaxStudents(e.target.value)} />
+        <div className="space-y-1">
+          <Input
+            label="Max students allocation"
+            type="number"
+            min={1}
+            value={maxStudents}
+            onChange={(e) => setMaxStudents(e.target.value)}
+          />
+          <p className="text-2xs text-slate-400">
+            Enforced based on your academy&apos;s purchased plan capacity ({purchasedCapacity || 100} students).
+          </p>
+        </div>
         <div className="flex gap-3 pt-2">
           <Button type="submit" className="flex-1" loading={creating}>Create franchise</Button>
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
@@ -294,8 +361,9 @@ const CreateFranchiseModal: React.FC<{
 
 const FranchiseDetailsModal: React.FC<{
   franchise: Franchise;
+  purchasedCapacity?: number;
   onClose: () => void;
-}> = ({ franchise, onClose }) => {
+}> = ({ franchise, purchasedCapacity, onClose }) => {
   const [updateFranchise, { isLoading }] = useUpdateFranchiseMutation();
   const [name, setName] = useState(franchise.name);
   const [locationName, setLocationName] = useState(franchise.location?.name ?? "");
@@ -303,7 +371,9 @@ const FranchiseDetailsModal: React.FC<{
   const [latitude, setLatitude] = useState(String(franchise.location?.latitude ?? 0));
   const [longitude, setLongitude] = useState(String(franchise.location?.longitude ?? 0));
   const [fieldNumber, setFieldNumber] = useState(franchise.location?.fieldNumber ?? "");
-  const [maxStudents, setMaxStudents] = useState(String(franchise.maxStudents ?? 100));
+  const [maxStudents, setMaxStudents] = useState(
+    String(franchise.maxStudents || purchasedCapacity || 100)
+  );
 
   const handleSave = async () => {
     if (!name.trim() || !locationName.trim() || !address.trim()) {
@@ -343,7 +413,12 @@ const FranchiseDetailsModal: React.FC<{
           <Input label="Longitude" type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} />
         </div>
         <Input label="Field number (optional)" value={fieldNumber} onChange={(e) => setFieldNumber(e.target.value)} />
-        <Input label="Max students" type="number" min={1} value={maxStudents} onChange={(e) => setMaxStudents(e.target.value)} />
+        <div className="space-y-1">
+          <Input label="Max students allocation" type="number" min={1} value={maxStudents} onChange={(e) => setMaxStudents(e.target.value)} />
+          <p className="text-2xs text-slate-400">
+            Configured based on your academy&apos;s purchased subscription capacity ({purchasedCapacity || 100} students).
+          </p>
+        </div>
         <div className="flex gap-3 pt-2">
           <Button loading={isLoading} onClick={handleSave} className="flex-1">Save changes</Button>
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>

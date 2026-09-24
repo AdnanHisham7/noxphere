@@ -467,23 +467,82 @@ const StudentDetailPage: React.FC = () => {
       </div>
 
       {/* Hero section */}
-      <div className="card overflow-hidden">
-        <div className="h-1 bg-volt-400" />
+      <div className="card overflow-hidden relative shadow-lg border-slate-200 dark:border-white/10 bg-gradient-to-b from-white via-white to-slate-50 dark:from-pitch-900 dark:via-pitch-900 dark:to-pitch-950">
+        <div className="h-1 bg-gradient-to-r from-volt-400 via-emerald-400 to-volt-400" />
 
-        <div className="px-6 pt-6 pb-6 md:pt-0 md:pb-0">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-6">
-            {/* LEFT SIDE */}
-            <div className="flex-1 min-w-0 order-2 lg:order-1">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="p-5 sm:p-6 lg:p-7">
+          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
+            {/* LEFT / CENTER: Athlete Avatar + Primary Identity + Stats */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6 flex-1 min-w-0">
+              {/* Athlete Visual */}
+              <div className="relative shrink-0 flex items-end justify-center w-36 h-48 sm:w-44 sm:h-56 rounded-2xl bg-gradient-to-b from-slate-100 to-slate-200/80 dark:from-pitch-800 dark:to-pitch-950 border border-slate-200 dark:border-volt-400/20 shadow-md overflow-hidden group">
+                {student.photo ? (
+                  <img
+                    src={student.photo}
+                    alt={`${student.firstName} ${student.lastName}`}
+                    className="h-full w-auto object-contain object-bottom relative z-10 select-none pointer-events-none transition-transform duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <PlayerPlaceholder
+                    image={mannequinPng}
+                    name={`${student.firstName} ${student.lastName}`}
+                    number={student.jerseyNumber ?? 0}
+                    nameTop="25%"
+                    numberTop="35%"
+                    nameSize="14px"
+                    numberSize="80px"
+                    nameWidth="72%"
+                  />
+                )}
+
+                {/* Jersey Badge Overlay */}
+                {student.jerseyNumber !== undefined && (
+                  <div className="absolute top-2.5 left-2.5 z-20 px-2 py-0.5 rounded-md bg-pitch-950/80 text-volt-400 font-display font-black text-xs border border-volt-400/30 backdrop-blur-sm">
+                    #{student.jerseyNumber}
+                  </div>
+                )}
+
+                {/* Photo Upload Button */}
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="absolute bottom-2 right-2 z-20 bg-pitch-900/90 hover:bg-volt-400 hover:text-pitch-900 text-white border border-white/20 rounded-full p-2 transition-all shadow-md disabled:opacity-60"
+                  aria-label="Change photo"
+                  title="Upload player photo"
+                >
+                  {uploadingPhoto ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <Camera size={13} />
+                  )}
+                </button>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => handlePhotoChange(e.target.files?.[0])}
+                />
+              </div>
+
+              {/* Player Identity, Badges, Metrics & Actions */}
+              <div className="space-y-3.5 text-center sm:text-left flex-1 min-w-0">
                 <div>
-                  <h1 className="font-display font-900 text-slate-900 dark:text-white text-3xl uppercase leading-tight tracking-tight">
+                  <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap mb-1">
+                    <span className="text-2xs font-mono font-bold uppercase tracking-wider text-slate-400">
+                      {student.position || "Player"} · {student.ageGroup}
+                    </span>
+                    {student.selectionPhase && (
+                      <span className="pill pill-blue text-3xs font-mono">
+                        {student.selectionPhase}
+                      </span>
+                    )}
+                  </div>
+                  <h1 className="font-display font-900 text-slate-900 dark:text-white text-2xl sm:text-3xl lg:text-4xl uppercase leading-tight tracking-tight">
                     {student.firstName} {student.lastName}
                   </h1>
-                  <p className="text-slate-400 text-sm mt-0.5">
-                    {student.position ?? "—"} · {student.ageGroup} · #
-                    {student.jerseyNumber ?? "—"}
-                  </p>
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <div className="flex items-center justify-center sm:justify-start gap-2 mt-2 flex-wrap">
                     <Badge
                       variant={
                         student.selectionStatus === "selected"
@@ -509,10 +568,10 @@ const StudentDetailPage: React.FC = () => {
                           handleStatusChange(e.target.value as StudentStatus)
                         }
                         className={clsx(
-                          "text-2xs font-bold uppercase tracking-wide rounded px-2 py-1 border bg-pitch-800",
+                          "text-2xs font-bold uppercase tracking-wide rounded px-2 py-1 border bg-slate-100 dark:bg-pitch-800",
                           student.status === "active"
-                            ? "text-field-400 border-field-400/30"
-                            : "text-ember-400 border-ember-400/30",
+                            ? "text-field-500 dark:text-field-400 border-field-400/30"
+                            : "text-ember-500 dark:text-ember-400 border-ember-400/30",
                         )}
                       >
                         <option value="active">Active</option>
@@ -530,10 +589,9 @@ const StudentDetailPage: React.FC = () => {
                     )}
                   </div>
                 </div>
-              </div>
 
               {/* Quick stat chips */}
-              <div className="flex flex-wrap items-center gap-3 mt-4">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-4">
                 <span className="stat-badge text-field-400 flex items-center gap-1.5">
                   <Check size={12} className="text-field-400" />
                   {student.attendancePercentage}% attendance
@@ -547,8 +605,8 @@ const StudentDetailPage: React.FC = () => {
                 </span>
               </div>
 
-              {/* Action buttons */}
-              <div className="flex flex-wrap items-center gap-2 mt-5 pt-5 border-t border-white/5">
+                {/* Action buttons */}
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-4 pt-4 border-t border-slate-200/70 dark:border-white/5">
                 <Button
                   size="sm"
                   variant="secondary"
@@ -805,66 +863,28 @@ const StudentDetailPage: React.FC = () => {
                 >
                   <Mail size={13} /> Message Guardian
                 </a>
+                </div>
               </div>
             </div>
 
-            {/* CENTER IMAGE */}
-            <div className="flex justify-center items-center order-1 lg:order-2 py-6">
-              <div className="relative flex items-end justify-center w-40 h-52 sm:w-48 sm:h-60">
-                {student.photo ? (
-                  <img
-                    src={student.photo}
-                    alt={`${student.firstName} ${student.lastName}`}
-                    className="h-full w-auto object-contain object-bottom relative z-10 select-none pointer-events-none border border-volt-400/20 rounded"
-                  />
-                ) : (
-                  <PlayerPlaceholder
-                    image={mannequinPng}
-                    name={`${student.firstName} ${student.lastName}`}
-                    number={student.jerseyNumber ?? 0}
-                    nameTop="25%"
-                    numberTop="35%"
-                    nameSize="14px"
-                    numberSize="80px"
-                    nameWidth="72%"
-                  />
-                )}
-                <button
-                  type="button"
-                  onClick={() => photoInputRef.current?.click()}
-                  disabled={uploadingPhoto}
-                  className="absolute bottom-1 right-1 z-20 bg-pitch-900/90 hover:bg-volt-400 hover:text-pitch-900 text-white border border-white/10 rounded-full p-2 transition-colors disabled:opacity-60"
-                  aria-label="Change photo"
-                >
-                  {uploadingPhoto ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <Camera size={14} />
+            {/* RIGHT SIDE: FUT-Style Overall Rating Card */}
+            <div className="flex flex-row lg:flex-col items-center justify-center lg:items-end gap-3 shrink-0 self-center lg:self-start">
+              <div className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-pitch-950/70 border border-slate-200/80 dark:border-white/10 shadow-sm text-center min-w-[140px]">
+                <div className="flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  <Star size={12} className="text-volt-500 fill-volt-500" /> Overall Rating
+                </div>
+                <p
+                  className={clsx(
+                    "font-display font-black text-4xl sm:text-5xl tabular-nums leading-none tracking-tight",
+                    getRatingColor(student.overallRating),
                   )}
-                </button>
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  className="hidden"
-                  onChange={(e) => handlePhotoChange(e.target.files?.[0])}
-                />
+                >
+                  {student.overallRating.toFixed(1)}
+                </p>
+                <div className="mt-2 px-2.5 py-0.5 rounded-full text-3xs font-mono font-bold uppercase tracking-wider bg-volt-400/10 text-volt-600 dark:text-volt-400 border border-volt-400/20">
+                  {student.overallRating >= 8.5 ? "Elite Tier" : student.overallRating >= 7 ? "Standout" : "Developing"}
+                </div>
               </div>
-            </div>
-
-            {/* RIGHT SIDE RATING */}
-            <div className="flex flex-col items-center lg:items-end justify-center order-3 text-center lg:text-right">
-              <p
-                className={clsx(
-                  "font-display font-900 text-5xl sm:text-6xl tabular-nums",
-                  getRatingColor(student.overallRating),
-                )}
-              >
-                {student.overallRating.toFixed(1)}
-              </p>
-              <p className="text-2xs text-slate-500 mt-1 uppercase tracking-wide">
-                Overall Rating
-              </p>
             </div>
           </div>
         </div>
