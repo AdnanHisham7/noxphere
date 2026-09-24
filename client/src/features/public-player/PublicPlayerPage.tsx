@@ -21,6 +21,7 @@ import { useGetPublicPlayerProfileQuery } from "../../store/api/publicPlayerApi"
 import { PlayerPlaceholder } from "@/components/ui/PlayerPlaceholder";
 import { ThemeToggle } from "../../components/common/ThemeToggle";
 import mannequinPng from "../../assets/players/mannequin.png";
+import logoSrc from "@/assets/logo.png";
 
 // Position to 3-letter abbreviation helper
 const getPosAbbr = (pos?: string): string => {
@@ -126,10 +127,8 @@ export const PublicPlayerPage: React.FC = () => {
 
       {/* Top Floating Utility Bar */}
       <div className="w-full max-w-md flex items-center justify-between mb-6 z-20 px-2">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-pitch-950 text-volt-400 flex items-center justify-center font-display font-black text-sm border border-volt-400/30">
-            N
-          </div>
+        <div className="flex items-center gap-2.5">
+          <img src={logoSrc} alt="Noxphere" className="w-7 h-7 object-contain drop-shadow" />
           <span className="font-display font-bold text-slate-800 dark:text-white text-xs tracking-wider uppercase">
             Noxphere Athlete Card
           </span>
@@ -320,9 +319,10 @@ export const PublicPlayerPage: React.FC = () => {
                   <ShieldCheck size={16} />
                   <span>Hardware NFC Authenticated</span>
                 </div>
-                <span className="text-3xs font-mono text-slate-400 uppercase tracking-wider">
-                  Noxphere PASS
-                </span>
+                <div className="flex items-center gap-1.5 text-3xs font-mono text-slate-400 uppercase tracking-wider">
+                  <img src={logoSrc} alt="Noxphere" className="w-3.5 h-3.5 object-contain" />
+                  <span>Noxphere PASS</span>
+                </div>
               </div>
             </div>
           </div>

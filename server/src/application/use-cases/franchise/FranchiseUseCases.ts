@@ -1,6 +1,6 @@
-// src/application/use-cases/franchise/FranchiseUseCases.ts
 import { FranchiseModel, FranchiseDocument } from "../../../infrastructure/database/models/Franchise.model";
 import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
+import { AcademySubscriptionModel } from "../../../infrastructure/database/models/AcademySubscription.model";
 import { NotFoundError, ConflictError } from "../../../shared/errors/AppError";
 import { CreateFranchiseDto, UpdateFranchiseDto } from "../../dtos/franchise.dto";
 
@@ -67,6 +67,10 @@ export class FranchiseUseCases {
     const academy = await AcademyModel.findById(dto.academyId);
     if (!academy) throw new NotFoundError("Academy");
 
+    const subscription = await AcademySubscriptionModel.findOne({ academyId: dto.academyId }).lean();
+    const purchasedCapacity = subscription?.provisionedCapacity;
+    const finalMaxStudents = dto.maxStudents ?? (purchasedCapacity && purchasedCapacity > 0 ? purchasedCapacity : 100);
+
     const franchiseCode = await generateCode(dto.name);
     const franchise = await FranchiseModel.create({
       academyId: dto.academyId,
@@ -75,7 +79,7 @@ export class FranchiseUseCases {
       managerId: dto.managerId,
       location: dto.location,
       ageGroups: dto.ageGroups,
-      maxStudents: dto.maxStudents,
+      maxStudents: finalMaxStudents,
       alertBeforeMinutes: dto.alertBeforeMinutes,
       notificationAlertAfterMinutes: dto.notificationAlertAfterMinutes,
       skillParameters: academy.skillParameters,

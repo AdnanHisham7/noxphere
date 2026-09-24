@@ -5,6 +5,7 @@ export interface AcademyPublicInfo {
   academy: {
     id: string;
     name: string;
+    logo?: string;
     location?: string | { name?: string; address?: string };
     ageGroups?: string[];
   };

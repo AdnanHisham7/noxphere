@@ -1,6 +1,7 @@
 // src/features/registration/AcademyRegistrationPage.tsx
 import React, { useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import logoSrc from "@/assets/logo.png";
 import {
   useGetAcademyPublicInfoQuery,
   useSendRegistrationOtpMutation,
@@ -379,16 +380,35 @@ export const AcademyRegistrationPage: React.FC = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-pitch-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200">
       {/* Top bar */}
       <header className="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between bg-white/80 dark:bg-pitch-900/80 backdrop-blur-sm sticky top-0 z-20">
-        <div className="flex items-center gap-2">
-          <span className="w-8 h-8 rounded-full bg-volt-400 flex items-center justify-center font-bold text-pitch-900 text-sm">
-            N
-          </span>
-          <div>
-            <div className="font-display font-bold text-base leading-tight text-slate-900 dark:text-white">
-              {academyInfo.academy.name}
+        <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+            <img src={logoSrc} alt="Noxphere" className="w-8 h-8 object-contain drop-shadow" />
+            <div className="hidden sm:block">
+              <span className="font-display font-black text-sm tracking-wide text-slate-900 dark:text-white uppercase">
+                Noxphere
+              </span>
             </div>
-            <div className="text-2xs font-mono uppercase tracking-wider text-slate-500">
-              Official Academy Enrollment
+          </Link>
+          <div className="h-5 w-px bg-slate-200 dark:bg-white/10" />
+          <div className="flex items-center gap-2">
+            {academyInfo.academy.logo ? (
+              <img
+                src={academyInfo.academy.logo}
+                alt={academyInfo.academy.name}
+                className="w-7 h-7 rounded-full object-cover border border-slate-200 dark:border-white/10"
+              />
+            ) : (
+              <span className="w-7 h-7 rounded-full bg-volt-400 flex items-center justify-center font-bold text-pitch-900 text-xs">
+                {academyInfo.academy.name.charAt(0).toUpperCase()}
+              </span>
+            )}
+            <div>
+              <div className="font-display font-bold text-sm sm:text-base leading-tight text-slate-900 dark:text-white">
+                {academyInfo.academy.name}
+              </div>
+              <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500">
+                Official Academy Enrollment
+              </div>
             </div>
           </div>
         </div>
@@ -456,14 +476,26 @@ export const AcademyRegistrationPage: React.FC = () => {
           /* Application Form */
           <div className="card p-6 sm:p-8 space-y-6 shadow-lg border-slate-200 dark:border-white/10">
             {/* Header banner */}
-            <div className="space-y-2 border-b border-slate-200 dark:border-white/10 pb-6">
-              <span className="pill pill-yellow text-2xs">Admissions Open</span>
-              <h1 className="text-2xl font-display font-bold text-slate-900 dark:text-white">
-                Player Registration & Enrollment
-              </h1>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                Enroll under <strong>{academyInfo.academy.name}</strong> in 3 simple steps.
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="pill pill-yellow text-2xs">Admissions Open</span>
+                  <span className="pill pill-blue text-2xs">Official Portal</span>
+                </div>
+                <h1 className="text-2xl font-display font-bold text-slate-900 dark:text-white">
+                  Player Registration &amp; Enrollment
+                </h1>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Enroll under <strong>{academyInfo.academy.name}</strong> in 3 simple steps.
+                </p>
+              </div>
+              <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 shrink-0 self-start sm:self-auto">
+                <img src={logoSrc} alt="Noxphere" className="w-7 h-7 object-contain" />
+                <div className="text-left">
+                  <div className="text-[9px] font-mono text-slate-400 uppercase tracking-wider">Powered by</div>
+                  <div className="text-xs font-display font-black text-slate-800 dark:text-white leading-none">Noxphere OS</div>
+                </div>
+              </div>
             </div>
 
             {/* Step Progress Tracker */}

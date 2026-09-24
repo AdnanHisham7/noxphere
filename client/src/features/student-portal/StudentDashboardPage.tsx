@@ -528,17 +528,18 @@ const StudentDashboardPage: React.FC = () => {
                     aria-checked={data.profile.publicProfileEnabled}
                     onClick={handleTogglePublicEnabled}
                     disabled={isUpdatingSettings}
-                    className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-volt-400 focus:ring-offset-2 dark:focus:ring-offset-pitch-900 ${
                       data.profile.publicProfileEnabled
-                        ? "bg-core-400"
-                        : "bg-white/10"
-                    }`}
+                        ? "bg-volt-400"
+                        : "bg-slate-300 dark:bg-pitch-700"
+                    } ${isUpdatingSettings ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     <span
-                      className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                      aria-hidden="true"
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
                         data.profile.publicProfileEnabled
                           ? "translate-x-5"
-                          : "translate-x-0.5"
+                          : "translate-x-0"
                       }`}
                     />
                   </button>

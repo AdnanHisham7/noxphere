@@ -33,7 +33,7 @@ export const PlayerPlaceholder: React.FC<PlayerPlaceholderProps> = ({
       <img
         src={image}
         alt={name ?? "Player"}
-        className="h-full w-full object-contain object-bottom select-none pointer-events-none"
+        className="h-full w-full object-cover object-bottom select-none pointer-events-none"
       />
 
       {/* Overlaid Name & Jersey Number (rendered only if not hidden) */}
