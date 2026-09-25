@@ -150,7 +150,7 @@ export const PublicPlayerPage: React.FC = () => {
               <div className="absolute inset-0 opacity-[0.07] dark:opacity-[0.12] bg-[radial-gradient(#000_1px,transparent_1px)] dark:bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
 
               {/* Top Left: FUT Rating & Position Shield */}
-              <div className="absolute top-5 left-5 flex flex-col items-center z-10">
+              <div className="absolute top-4 left-4 flex flex-col items-center z-30">
                 <div className="flex flex-col items-center bg-slate-900/90 dark:bg-pitch-950/90 text-white backdrop-blur-md px-3 py-2 rounded-2xl border border-white/20 shadow-lg">
                   <span className="font-display font-black text-2xl sm:text-3xl text-volt-400 tracking-tighter leading-none">
                     {cardScore !== null ? cardScore : "NR"}
@@ -166,7 +166,7 @@ export const PublicPlayerPage: React.FC = () => {
               </div>
 
               {/* Top Right: Jersey Number & NFC Chip */}
-              <div className="absolute top-5 right-5 flex flex-col items-end gap-2 z-10">
+              <div className="absolute top-4 right-4 flex flex-col items-end gap-2 z-30">
                 {player.jerseyNumber !== undefined && (
                   <div className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900/90 dark:bg-pitch-950/90 text-white border border-white/20 backdrop-blur-md shadow-md">
                     <span className="text-3xs font-mono font-bold text-volt-400">
@@ -177,37 +177,39 @@ export const PublicPlayerPage: React.FC = () => {
                     </span>
                   </div>
                 )}
-                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 backdrop-blur-md text-[10px] font-mono font-semibold">
-                  <Radio size={10} className="animate-pulse" />
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/90 dark:bg-pitch-950/90 border border-emerald-500/40 text-emerald-400 backdrop-blur-md text-[10px] font-mono font-semibold shadow-md">
+                  <Radio size={10} className="animate-pulse text-emerald-400" />
                   <span>NFC ID</span>
                 </div>
               </div>
 
-              {/* Athlete Visual */}
+              {/* Athlete Visual - Full bleed, no side gaps */}
               {player.photo && !photoError ? (
-                <div className="relative h-full w-full flex items-end justify-center z-10 px-4">
+                <div className="absolute inset-0 w-full h-full overflow-hidden z-0">
                   <img
                     src={player.photo}
                     alt={`${player.firstName} ${player.lastName}`}
                     onError={() => setPhotoError(true)}
-                    className="h-full w-auto max-w-full object-contain object-bottom select-none pointer-events-none drop-shadow-2xl"
+                    className="w-full h-full object-cover object-top select-none pointer-events-none"
                   />
                 </div>
               ) : (
-                <PlayerPlaceholder
-                  image={mannequinPng}
-                  name={`${player.firstName} ${player.lastName}`}
-                  number={player.jerseyNumber ?? 0}
-                  className="h-full w-full px-6 pb-2 drop-shadow-2xl"
-                  nameTop="24%"
-                  numberTop="32%"
-                  nameSize="12px"
-                  numberSize="70px"
-                  nameWidth="80%"
-                />
+                <div className="relative h-full w-full flex items-end justify-center z-0 overflow-hidden">
+                  <PlayerPlaceholder
+                    image={mannequinPng}
+                    name={`${player.firstName} ${player.lastName}`}
+                    number={player.jerseyNumber ?? 0}
+                    className="h-full w-full drop-shadow-2xl"
+                    nameTop="24%"
+                    numberTop="32%"
+                    nameSize="12px"
+                    numberSize="70px"
+                    nameWidth="80%"
+                  />
+                </div>
               )}
 
-              <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-white dark:from-pitch-900 to-transparent pointer-events-none" />
+              <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-white via-white/80 to-transparent dark:from-pitch-900 dark:via-pitch-900/80 dark:to-transparent pointer-events-none z-10" />
             </div>
 
             {/* CARD BODY: DOSSIER & METRICS */}
