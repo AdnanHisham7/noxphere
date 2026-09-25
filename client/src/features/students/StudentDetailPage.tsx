@@ -1,5 +1,5 @@
 // src/features/students/StudentDetailPage.tsx
-import React, { useRef, useState, useMemo } from "react";
+import React, { useRef, useState, useMemo, useEffect } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import {
   RadarChart,
@@ -43,6 +43,7 @@ import {
   Zap,
   SlidersHorizontal,
   Plus,
+  MoreVertical,
 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
@@ -151,6 +152,34 @@ const StudentDetailPage: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewName, setPreviewName] = useState<string>("");
   const { confirm, ConfirmDialog } = useConfirm();
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
+  const [studentPhotoError, setStudentPhotoError] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        actionsMenuRef.current &&
+        !actionsMenuRef.current.contains(event.target as Node)
+      ) {
+        setActionsMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setActionsMenuOpen(false);
+      }
+    };
+
+    if (actionsMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [actionsMenuOpen]);
 
   // Performance Tab State
   const [performanceChartView, setPerformanceChartView] = useState<
@@ -470,17 +499,181 @@ const StudentDetailPage: React.FC = () => {
       <div className="card overflow-hidden relative shadow-lg border-slate-200 dark:border-white/10 bg-gradient-to-b from-white via-white to-slate-50 dark:from-pitch-900 dark:via-pitch-900 dark:to-pitch-950">
         <div className="h-1 bg-gradient-to-r from-volt-400 via-emerald-400 to-volt-400" />
 
-        <div className="p-5 sm:p-6 lg:p-7">
+        <div className="p-4 sm:p-6 lg:p-7 relative">
+          {/* Top-Right 3-Vertical-Dot Options Button for Mobile & Tablet */}
+          <div className="lg:hidden absolute top-4 right-4 sm:top-6 sm:right-6 z-30" ref={actionsMenuRef}>
+            <button
+              type="button"
+              onClick={() => setActionsMenuOpen((prev) => !prev)}
+              className={clsx(
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border shadow-sm transition-all duration-200 select-none",
+                actionsMenuOpen
+                  ? "bg-slate-200 dark:bg-pitch-700 text-slate-900 dark:text-white border-volt-400/60 ring-2 ring-volt-400/20"
+                  : "bg-white hover:bg-slate-100 dark:bg-pitch-800 dark:hover:bg-pitch-700 text-slate-700 dark:text-slate-100 border-slate-200 dark:border-white/15"
+              )}
+              aria-haspopup="true"
+              aria-expanded={actionsMenuOpen}
+              title="Player options & actions"
+            >
+              <MoreVertical size={16} className="text-volt-500 shrink-0" />
+              <span className="font-display font-bold uppercase tracking-wider text-[11px] hidden xs:inline">Options</span>
+              <ChevronDown
+                size={13}
+                className={clsx(
+                  "text-slate-400 transition-transform duration-200 hidden xs:inline",
+                  actionsMenuOpen && "rotate-180 text-volt-500"
+                )}
+              />
+            </button>
+
+            {actionsMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white dark:bg-pitch-800 border border-slate-200 dark:border-white/15 shadow-2xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.85)] z-50 p-1.5 animate-fade-in divide-y divide-slate-100 dark:divide-white/10">
+                <div className="px-2.5 py-1.5 mb-0.5">
+                  <span className="text-3xs font-mono font-bold uppercase tracking-widest text-slate-400 dark:text-slate-400 block">
+                    Player Actions
+                  </span>
+                </div>
+
+                <div className="py-1 space-y-0.5">
+                  <button
+                    type="button"
+                    disabled={isDownloading}
+                    onClick={() => {
+                      setActionsMenuOpen(false);
+                      handleDownloadCard();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-volt-400/10 dark:bg-volt-400/15 text-volt-600 dark:text-volt-400 flex items-center justify-center shrink-0">
+                      {isDownloading ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <FileText size={14} />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-semibold block truncate text-slate-900 dark:text-white">
+                        {isDownloading ? "Generating..." : "Download Card PDF"}
+                      </span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
+                        High-res printable scout card
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActionsMenuOpen(false);
+                      setEditModal(true);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-blue-500/10 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                      <Pencil size={14} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-semibold block truncate text-slate-900 dark:text-white">Edit Details</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
+                        Update squad & profile data
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActionsMenuOpen(false);
+                      window.open(`/students/${student.id}/report`, "_blank");
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                      <FileText size={14} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-semibold block truncate text-slate-900 dark:text-white">Generate Report</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
+                        Comprehensive progress dossier
+                      </span>
+                    </div>
+                  </button>
+
+                  {canTransferFranchise && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActionsMenuOpen(false);
+                        setFranchiseTransferModal(true);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors group"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-amber-500/10 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                        <ArrowLeftRight size={14} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-semibold block truncate text-slate-900 dark:text-white">Transfer Franchise</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
+                          Move to another franchise
+                        </span>
+                      </div>
+                    </button>
+                  )}
+
+                  {student.transferStatus !== "listed" &&
+                    student.transferStatus !== "sold" &&
+                    transferWallEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionsMenuOpen(false);
+                          setTransferModal(true);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors group"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-ice-400/10 dark:bg-ice-400/15 text-ice-500 dark:text-ice-400 flex items-center justify-center shrink-0">
+                          <Repeat2 size={14} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-semibold block truncate text-slate-900 dark:text-white">List on Transfer Wall</span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
+                            Publish to recruitment market
+                          </span>
+                        </div>
+                      </button>
+                    )}
+
+                  <a
+                    href={`mailto:${student.guardian.email}`}
+                    onClick={() => setActionsMenuOpen(false)}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-rose-500/10 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                      <Mail size={14} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-semibold block truncate text-slate-900 dark:text-white">Message Guardian</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
+                        {student.guardian.email}
+                      </span>
+                    </div>
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
             {/* LEFT / CENTER: Athlete Avatar + Primary Identity + Stats */}
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6 flex-1 min-w-0">
               {/* Athlete Visual */}
               <div className="relative shrink-0 flex items-end justify-center w-36 h-48 sm:w-44 sm:h-56 rounded-2xl bg-gradient-to-b from-slate-100 to-slate-200/80 dark:from-pitch-800 dark:to-pitch-950 border border-slate-200 dark:border-volt-400/20 shadow-md overflow-hidden group">
-                {student.photo ? (
+                {student.photo && !studentPhotoError ? (
                   <img
                     src={student.photo}
                     alt={`${student.firstName} ${student.lastName}`}
-                    className="h-full w-auto object-contain object-bottom relative z-10 select-none pointer-events-none transition-transform duration-300 group-hover:scale-105"
+                    onError={() => setStudentPhotoError(true)}
+                    className="h-full w-auto object-contain object-bottom relative z-10 select-none pointer-events-none"
                   />
                 ) : (
                   <PlayerPlaceholder
@@ -590,8 +783,8 @@ const StudentDetailPage: React.FC = () => {
                   </div>
                 </div>
 
-              {/* Quick stat chips */}
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-4">
+              {/* Quick stat chips (Desktop only) */}
+              <div className="hidden lg:flex flex-wrap items-center gap-3 mt-4">
                 <span className="stat-badge text-field-400 flex items-center gap-1.5">
                   <Check size={12} className="text-field-400" />
                   {student.attendancePercentage}% attendance
@@ -605,8 +798,8 @@ const StudentDetailPage: React.FC = () => {
                 </span>
               </div>
 
-                {/* Action buttons */}
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-4 pt-4 border-t border-slate-200/70 dark:border-white/5">
+                {/* Desktop Action buttons */}
+                <div className="hidden lg:flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-slate-200/70 dark:border-white/5">
                 <Button
                   size="sm"
                   variant="secondary"
@@ -669,6 +862,7 @@ const StudentDetailPage: React.FC = () => {
                           <div className="relative bg-gradient-to-b from-white/5 to-transparent p-1 backdrop-blur-sm overflow-hidden">
                             <img
                               src={student.photo ?? mannequinPng}
+                              crossOrigin="anonymous"
                               className="h-[550px] relative z-10 drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)] object-contain"
                               alt="Player"
                             />
@@ -864,11 +1058,68 @@ const StudentDetailPage: React.FC = () => {
                   <Mail size={13} /> Message Guardian
                 </a>
                 </div>
+
+                {/* Mobile & Tablet Full-Width Metrics Grid (Eliminates empty side space) */}
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full mt-4 pt-4 border-t border-slate-200/70 dark:border-white/10 lg:hidden">
+                  {/* Overall Rating Card */}
+                  <div className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-gradient-to-b from-volt-400/10 to-volt-400/5 dark:from-volt-400/15 dark:to-pitch-800 border border-volt-400/30 dark:border-volt-400/30 shadow-xs text-center">
+                    <span className="flex items-center gap-1 text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
+                      <Star size={11} className="text-volt-500 fill-volt-500" /> OVR
+                    </span>
+                    <span
+                      className={clsx(
+                        "font-display font-black text-2xl sm:text-3xl tabular-nums leading-none tracking-tight",
+                        getRatingColor(student.overallRating),
+                      )}
+                    >
+                      {student.overallRating.toFixed(1)}
+                    </span>
+                    <span className="mt-1 px-1.5 py-0.5 rounded-full text-3xs font-mono font-bold uppercase tracking-wider bg-volt-400/20 text-volt-700 dark:text-volt-300 border border-volt-400/30 truncate max-w-full">
+                      {student.overallRating >= 8.5
+                        ? "Elite"
+                        : student.overallRating >= 7
+                          ? "Standout"
+                          : "Dev"}
+                    </span>
+                  </div>
+
+                  {/* Attendance Card */}
+                  <div className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-slate-50 dark:bg-pitch-800 border border-slate-200/80 dark:border-white/10 shadow-xs text-center">
+                    <span className="flex items-center gap-1 text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
+                      <Check size={11} className="text-field-500" /> Attendance
+                    </span>
+                    <span className="font-display font-black text-2xl sm:text-3xl text-field-500 dark:text-field-400 tabular-nums leading-none tracking-tight">
+                      {student.attendancePercentage}%
+                    </span>
+                    <span className="mt-1 text-3xs font-mono text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                      Verified
+                    </span>
+                  </div>
+
+                  {/* Enrolled Card */}
+                  <div className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-slate-50 dark:bg-pitch-800 border border-slate-200/80 dark:border-white/10 shadow-xs text-center">
+                    <span className="flex items-center gap-1 text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
+                      <Calendar size={11} className="text-ice-400" /> Enrolled
+                    </span>
+                    <span className="font-display font-black text-xs sm:text-sm text-slate-800 dark:text-slate-100 uppercase tracking-tight leading-none mt-1">
+                      {new Date(student.enrollmentDate).toLocaleDateString(
+                        "en-IN",
+                        {
+                          month: "short",
+                          year: "numeric",
+                        },
+                      )}
+                    </span>
+                    <span className="mt-1 text-3xs font-mono text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                      Active Squad
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* RIGHT SIDE: FUT-Style Overall Rating Card */}
-            <div className="flex flex-row lg:flex-col items-center justify-center lg:items-end gap-3 shrink-0 self-center lg:self-start">
+            {/* RIGHT SIDE: FUT-Style Overall Rating Card (Desktop only) */}
+            <div className="hidden lg:flex flex-col items-end gap-3 shrink-0 self-start">
               <div className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-pitch-950/70 border border-slate-200/80 dark:border-white/10 shadow-sm text-center min-w-[140px]">
                 <div className="flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 mb-1">
                   <Star size={12} className="text-volt-500 fill-volt-500" /> Overall Rating
