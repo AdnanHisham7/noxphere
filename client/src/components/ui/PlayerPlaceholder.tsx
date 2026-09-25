@@ -1,6 +1,7 @@
 // src/components/ui/PlayerPlaceholder.tsx
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { clsx } from "clsx";
+import mannequinPng from "../../assets/players/mannequin.png";
 
 interface PlayerPlaceholderProps {
   image: string;
@@ -27,13 +28,22 @@ export const PlayerPlaceholder: React.FC<PlayerPlaceholderProps> = ({
   nameWidth = "70%",
   hideNameAndNumber = false,
 }) => {
+  const [imgSrc, setImgSrc] = useState(image);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setImgSrc(image);
+    setHasError(false);
+  }, [image]);
+
   return (
     <div className={clsx("relative h-full w-full", className)}>
       {/* Base Photo / Mannequin */}
       <img
-        src={image}
+        src={hasError ? mannequinPng : imgSrc}
         alt={name ?? "Player"}
-        className="h-full w-full object-cover object-bottom select-none pointer-events-none"
+        onError={() => setHasError(true)}
+        className="h-full w-full object-contain object-bottom select-none pointer-events-none"
       />
 
       {/* Overlaid Name & Jersey Number (rendered only if not hidden) */}

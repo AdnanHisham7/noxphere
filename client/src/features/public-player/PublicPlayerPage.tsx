@@ -58,6 +58,7 @@ export const PublicPlayerPage: React.FC = () => {
 
   const [showQrModal, setShowQrModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -128,7 +129,11 @@ export const PublicPlayerPage: React.FC = () => {
       {/* Top Floating Utility Bar */}
       <div className="w-full max-w-md flex items-center justify-between mb-6 z-20 px-2">
         <div className="flex items-center gap-2.5">
-          <img src={logoSrc} alt="Noxphere" className="w-7 h-7 object-contain drop-shadow" />
+          <img
+            src={logoSrc}
+            alt="Noxphere"
+            className="w-7 h-7 object-contain drop-shadow"
+          />
           <span className="font-display font-bold text-slate-800 dark:text-white text-xs tracking-wider uppercase">
             Noxphere Athlete Card
           </span>
@@ -141,7 +146,7 @@ export const PublicPlayerPage: React.FC = () => {
         <div className="relative rounded-[2.5rem] p-[2px] bg-gradient-to-b from-amber-300 via-volt-400 to-slate-400 dark:from-volt-400/70 dark:via-emerald-400/50 dark:to-pitch-700 shadow-2xl shadow-volt-400/10 dark:shadow-volt-400/20">
           <div className="rounded-[2.4rem] bg-white dark:bg-pitch-900 overflow-hidden border border-slate-200/80 dark:border-white/10 transition-colors">
             {/* CARD TOP: ATHLETE VISUAL & BADGES */}
-            <div className="relative h-80 bg-gradient-to-b from-slate-200 via-slate-100 to-white dark:from-pitch-800 dark:via-pitch-850 dark:to-pitch-900 flex items-end justify-center overflow-hidden border-b border-slate-200/80 dark:border-white/10">
+            <div className="relative h-80 bg-gradient-to-b from-slate-200 via-slate-100 to-white dark:from-pitch-800 dark:via-pitch-900 dark:to-pitch-950 flex items-end justify-center overflow-hidden border-b border-slate-200/80 dark:border-white/10">
               <div className="absolute inset-0 opacity-[0.07] dark:opacity-[0.12] bg-[radial-gradient(#000_1px,transparent_1px)] dark:bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
 
               {/* Top Left: FUT Rating & Position Shield */}
@@ -179,18 +184,28 @@ export const PublicPlayerPage: React.FC = () => {
               </div>
 
               {/* Athlete Visual */}
-              <PlayerPlaceholder
-                image={player.photo || mannequinPng}
-                name={`${player.firstName} ${player.lastName}`}
-                number={player.jerseyNumber ?? 0}
-                className="h-full w-full px-6 pb-2 drop-shadow-2xl"
-                nameTop="24%"
-                numberTop="32%"
-                nameSize="12px"
-                numberSize="70px"
-                nameWidth="80%"
-                hideNameAndNumber={Boolean(player.photo)}
-              />
+              {player.photo && !photoError ? (
+                <div className="relative h-full w-full flex items-end justify-center z-10 px-4">
+                  <img
+                    src={player.photo}
+                    alt={`${player.firstName} ${player.lastName}`}
+                    onError={() => setPhotoError(true)}
+                    className="h-full w-auto max-w-full object-contain object-bottom select-none pointer-events-none drop-shadow-2xl"
+                  />
+                </div>
+              ) : (
+                <PlayerPlaceholder
+                  image={mannequinPng}
+                  name={`${player.firstName} ${player.lastName}`}
+                  number={player.jerseyNumber ?? 0}
+                  className="h-full w-full px-6 pb-2 drop-shadow-2xl"
+                  nameTop="24%"
+                  numberTop="32%"
+                  nameSize="12px"
+                  numberSize="70px"
+                  nameWidth="80%"
+                />
+              )}
 
               <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-white dark:from-pitch-900 to-transparent pointer-events-none" />
             </div>
@@ -255,7 +270,10 @@ export const PublicPlayerPage: React.FC = () => {
                       Attributes
                     </span>
                     <span className="text-2xs font-mono font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                      <Sparkles size={11} /> {player.totalEvaluations ? `${player.totalEvaluations} Sessions Verified` : "Coach Verified"}
+                      <Sparkles size={11} />{" "}
+                      {player.totalEvaluations
+                        ? `${player.totalEvaluations} Sessions Verified`
+                        : "Coach Verified"}
                     </span>
                   </div>
 
@@ -284,25 +302,38 @@ export const PublicPlayerPage: React.FC = () => {
                 </div>
               ) : player.isFreeAgent ? (
                 <div className="p-3.5 rounded-2xl bg-amber-500/5 dark:bg-amber-400/5 border border-amber-500/20 dark:border-amber-400/15 flex items-start gap-3">
-                  <Compass size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                  <Compass
+                    size={18}
+                    className="text-amber-500 shrink-0 mt-0.5"
+                  />
                   <div className="text-left space-y-0.5">
                     <p className="text-xs font-bold text-slate-900 dark:text-white">
                       Free Agent Scouting Profile
                     </p>
                     <p className="text-2xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                      Tactical attributes (PAC, SHO, PAS, DRI, DEF, PHY) are officially logged and certified by coaches upon academy signing and training session evaluations.
+                      Tactical attributes (PAC, SHO, PAS, DRI, DEF, PHY) are
+                      officially logged and certified by coaches upon academy
+                      signing and training session evaluations.
                     </p>
                   </div>
                 </div>
               ) : (
                 <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-pitch-950/40 border border-slate-200/80 dark:border-white/5 flex items-start gap-3">
-                  <Activity size={18} className="text-volt-500 shrink-0 mt-0.5" />
+                  <Activity
+                    size={18}
+                    className="text-volt-500 shrink-0 mt-0.5"
+                  />
                   <div className="text-left space-y-0.5">
                     <p className="text-xs font-bold text-slate-900 dark:text-white">
                       Awaiting Academy Assessments
                     </p>
                     <p className="text-2xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                      Tactical attributes will dynamically calibrate as training sessions and match assessments are recorded at {player.academyName || player.franchiseName || "the academy"}.
+                      Tactical attributes will dynamically calibrate as training
+                      sessions and match assessments are recorded at{" "}
+                      {player.academyName ||
+                        player.franchiseName ||
+                        "the academy"}
+                      .
                     </p>
                   </div>
                 </div>
@@ -320,7 +351,11 @@ export const PublicPlayerPage: React.FC = () => {
                   <span>Hardware NFC Authenticated</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-3xs font-mono text-slate-400 uppercase tracking-wider">
-                  <img src={logoSrc} alt="Noxphere" className="w-3.5 h-3.5 object-contain" />
+                  <img
+                    src={logoSrc}
+                    alt="Noxphere"
+                    className="w-3.5 h-3.5 object-contain"
+                  />
                   <span>Noxphere PASS</span>
                 </div>
               </div>
