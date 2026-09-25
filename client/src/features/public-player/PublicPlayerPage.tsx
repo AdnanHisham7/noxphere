@@ -209,7 +209,8 @@ export const PublicPlayerPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-white via-white/80 to-transparent dark:from-pitch-900 dark:via-pitch-900/80 dark:to-transparent pointer-events-none z-10" />
+              {/* Soft, low-opacity gradual gradient blend */}
+              <div className="absolute bottom-0 inset-x-0 h-28 bg-gradient-to-t from-white/60 via-white/20 to-transparent dark:from-pitch-900/70 dark:via-pitch-900/20 dark:to-transparent pointer-events-none z-10" />
             </div>
 
             {/* CARD BODY: DOSSIER & METRICS */}
