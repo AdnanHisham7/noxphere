@@ -27,6 +27,13 @@ export interface UpdateTeamInput {
   secondaryColor?: string;
 }
 
+export interface FormationPresetInput {
+  id: string;
+  label: string;
+  formationType: string;
+  squad: Record<string, string>;
+}
+
 export class TeamUseCases {
   async createTeam(input: CreateTeamInput) {
     let academyId = input.academyId;
@@ -99,7 +106,18 @@ export class TeamUseCases {
     const students = await StudentModel.find({ teamId: id, deletedAt: { $exists: false } })
       .select("firstName lastName photo jerseyNumber position attendancePercentage overallRating")
       .lean();
-    return { ...team, id: team._id.toString(), students };
+
+    // Normalize formationPresets: squad stored as Mongoose Map, convert to plain object
+    const formationPresets = ((team as any).formationPresets ?? []).map((fp: any) => ({
+      id: fp.id,
+      label: fp.label,
+      formationType: fp.formationType,
+      squad: fp.squad instanceof Map
+        ? Object.fromEntries(fp.squad)
+        : (fp.squad && typeof fp.squad === "object" ? { ...fp.squad } : {}),
+    }));
+
+    return { ...team, id: team._id.toString(), students, formationPresets };
   }
 
   async updateTeam(id: string, input: UpdateTeamInput) {
@@ -118,5 +136,32 @@ export class TeamUseCases {
       { $set: { deletedAt: new Date() } },
     );
     if (!team) throw new NotFoundError("Team not found");
+  }
+
+  async saveFormationPreset(teamId: string, preset: FormationPresetInput) {
+    const team = await TeamModel.findOne({ _id: teamId, deletedAt: { $exists: false } });
+    if (!team) throw new NotFoundError("Team not found");
+
+    // Replace if same id exists, otherwise push
+    const presets: any[] = (team as any).formationPresets ?? [];
+    const idx = presets.findIndex((p: any) => p.id === preset.id);
+    if (idx >= 0) {
+      presets[idx] = preset;
+    } else {
+      presets.push(preset);
+    }
+    (team as any).formationPresets = presets;
+    await team.save();
+
+    return preset;
+  }
+
+  async deleteFormationPreset(teamId: string, presetId: string) {
+    const team = await TeamModel.findOne({ _id: teamId, deletedAt: { $exists: false } });
+    if (!team) throw new NotFoundError("Team not found");
+
+    const presets: any[] = (team as any).formationPresets ?? [];
+    (team as any).formationPresets = presets.filter((p: any) => p.id !== presetId);
+    await team.save();
   }
 }

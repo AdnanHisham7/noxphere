@@ -20,6 +20,8 @@ import {
   Layers,
   Mail,
   Smartphone,
+  Link,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import clsx from "clsx";
@@ -496,6 +498,22 @@ const NotificationsPage: React.FC = () => {
                           </div>
                         );
                       })()}
+
+                      {/* Link */}
+                      {(alert.data?.linkUrl as string | undefined) && (
+                        <div className="mt-2.5">
+                          <a
+                            href={alert.data!.linkUrl as string}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-400/10 border border-blue-200 dark:border-blue-400/20 px-3 py-1.5 rounded-lg font-semibold transition-all"
+                          >
+                            <ExternalLink size={13} />
+                            <span>{(alert.data?.linkLabel as string | undefined) || alert.data!.linkUrl as string}</span>
+                          </a>
+                        </div>
+                      )}
                     </div>
 
                     {/* Mark as read button */}
@@ -605,7 +623,7 @@ const NotificationsPage: React.FC = () => {
                       />
                     )}
 
-                    {/* Render Multiple Attachments & Single Document Fallback */}
+                    {/* Attachments */}
                     {(() => {
                       const atts: { name: string; url: string }[] = [];
                       if (n.attachments && n.attachments.length > 0) {
@@ -636,6 +654,23 @@ const NotificationsPage: React.FC = () => {
                         </div>
                       );
                     })()}
+
+                    {/* Link */}
+                    {n.linkUrl && (
+                      <div className="mt-3">
+                        <a
+                          href={n.linkUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-400/10 border border-blue-200 dark:border-blue-400/20 px-3 py-1.5 rounded-lg font-semibold transition-all"
+                        >
+                          <ExternalLink size={13} />
+                          <span>{n.linkLabel || n.linkUrl}</span>
+                        </a>
+                      </div>
+                    )}
+
+
 
                     <p className="text-xs text-slate-500 font-mono mt-3">
                       {new Date(n.createdAt).toLocaleString()} ·{" "}
@@ -681,6 +716,8 @@ const ComposeModal: React.FC<{
   const [attachments, setAttachments] = useState<{ name: string; url: string }[]>(
     []
   );
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkLabel, setLinkLabel] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -705,6 +742,8 @@ const ComposeModal: React.FC<{
         documentFilename: attachments[0]?.name,
         attachments,
         channels,
+        linkUrl: linkUrl.trim() || undefined,
+        linkLabel: linkLabel.trim() || undefined,
       }).unwrap();
       toast.success("Notification sent");
       onClose();
@@ -713,6 +752,8 @@ const ComposeModal: React.FC<{
       setImageUrl(undefined);
       setChannels(["push", "whatsapp", "email"]);
       setAttachments([]);
+      setLinkUrl("");
+      setLinkLabel("");
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't send notification — try again");
     }
@@ -884,6 +925,27 @@ const ComposeModal: React.FC<{
                 </div>
               ))}
             </div>
+          )}
+        </div>
+        {/* Optional link */}
+        <div className="space-y-2 border-t border-slate-100 dark:border-white/5 pt-3">
+          <label className="label flex items-center gap-1.5">
+            <Link size={13} className="text-slate-400" />
+            Link (Optional)
+          </label>
+          <Input
+            placeholder="https://..."
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            type="url"
+          />
+          {linkUrl.trim() && (
+            <Input
+              label="Link label (optional)"
+              placeholder="e.g. View Full Schedule"
+              value={linkLabel}
+              onChange={(e) => setLinkLabel(e.target.value)}
+            />
           )}
         </div>
 

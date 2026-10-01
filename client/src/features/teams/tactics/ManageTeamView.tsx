@@ -1,7 +1,7 @@
 // src/features/teams/tactics/ManageTeamView.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { ArrowLeft, ArrowLeftRight, Sparkles, X, Palette, ChevronDown, ChevronUp, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, Sparkles, X, Palette, ChevronDown, ChevronUp, FileSpreadsheet, Trash2 } from "lucide-react";
 import {
   Player,
   FormationType,
@@ -14,8 +14,13 @@ import { TacticalCard } from "./TacticalCard";
 import { Avatar } from "../../../components/ui";
 import { PlayerPlaceholder } from "../../../components/ui/PlayerPlaceholder";
 import mannequinPng from "../../../assets/players/mannequin.png";
+import {
+  useSaveFormationPresetMutation,
+  useDeleteFormationPresetMutation,
+} from "../../../store/api/teamsApi";
 
 interface ManageTeamViewProps {
+  teamId: string;
   teamName: string;
   players: Player[];
   coach?: { firstName: string; lastName: string } | null;
@@ -24,9 +29,11 @@ interface ManageTeamViewProps {
   onBack: () => void;
   onEditColors: () => void;
   onGenerateReport?: () => void;
+  initialFormationPresets?: SavedFormation[];
 }
 
 export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
+  teamId,
   teamName,
   players,
   coach,
@@ -35,16 +42,25 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
   onBack,
   onEditColors,
   onGenerateReport,
+  initialFormationPresets = [],
 }) => {
   const [formation, setFormation] = useState<FormationType>("4-2-3-1");
   const [squad, setSquad] = useState<Record<string, string>>(() =>
     autopickSquad("4-2-3-1", players),
   );
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-  const [savedFormations, setSavedFormations] = useState<SavedFormation[]>([]);
+  const [savedFormations, setSavedFormations] = useState<SavedFormation[]>(initialFormationPresets);
   const [labelInput, setLabelInput] = useState("Friendly Match");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const [savePresetToDb, { isLoading: isSaving }] = useSaveFormationPresetMutation();
+  const [deletePresetFromDb] = useDeleteFormationPresetMutation();
+
+  // Sync from DB whenever initialFormationPresets changes (on team load)
+  useEffect(() => {
+    setSavedFormations(initialFormationPresets);
+  }, [initialFormationPresets.length]);
 
   const cardBackground: React.CSSProperties = {
     backgroundImage: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
@@ -95,15 +111,30 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
     }
   };
 
-  const saveFormationPreset = () => {
+  const saveFormationPreset = async () => {
     const preset: SavedFormation = {
       id: Date.now().toString(),
       label: labelInput,
       formationType: formation,
       squad: { ...squad },
     };
-    setSavedFormations((prev) => [...prev, preset]);
-    toast.success(`Saved: ${labelInput}`);
+    try {
+      await savePresetToDb({ teamId, preset }).unwrap();
+      setSavedFormations((prev) => [...prev, preset]);
+      toast.success(`Saved: ${labelInput}`);
+    } catch {
+      toast.error("Couldn't save formation — try again");
+    }
+  };
+
+  const deleteFormationPreset = async (presetId: string) => {
+    try {
+      await deletePresetFromDb({ teamId, presetId }).unwrap();
+      setSavedFormations((prev) => prev.filter((sf) => sf.id !== presetId));
+      toast.success("Formation deleted");
+    } catch {
+      toast.error("Couldn't delete formation — try again");
+    }
   };
 
   const applyPreset = (preset: SavedFormation) => {
@@ -228,16 +259,17 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                 </select>
                 <button
                   onClick={saveFormationPreset}
-                  className="bg-lime-500 hover:bg-lime-600 text-slate-950 font-bold px-3 py-1 rounded text-2xs uppercase tracking-wide"
+                  disabled={isSaving}
+                  className="bg-lime-500 hover:bg-lime-600 disabled:opacity-50 text-slate-950 font-bold px-3 py-1 rounded text-2xs uppercase tracking-wide"
                 >
-                  Save
+                  {isSaving ? "..." : "Save"}
                 </button>
               </div>
 
               <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                 {savedFormations.length === 0 && (
                   <p className="text-2xs text-slate-400">
-                    No saved formations yet — these stay for this session only.
+                    No saved formations yet — save one to persist across sessions.
                   </p>
                 )}
                 {savedFormations.map((sf) => (
@@ -251,12 +283,21 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                       </p>
                       <p className="text-[10px] text-slate-400">{sf.formationType}</p>
                     </div>
-                    <button
-                      onClick={() => applyPreset(sf)}
-                      className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/50 px-2 py-0.5 rounded border border-cyan-200 dark:border-cyan-900/40 hover:bg-cyan-100 dark:hover:bg-cyan-900/30"
-                    >
-                      Load
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => applyPreset(sf)}
+                        className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/50 px-2 py-0.5 rounded border border-cyan-200 dark:border-cyan-900/40 hover:bg-cyan-100 dark:hover:bg-cyan-900/30"
+                      >
+                        Load
+                      </button>
+                      <button
+                        onClick={() => deleteFormationPreset(sf.id)}
+                        className="text-[10px] text-slate-400 hover:text-red-500 p-0.5 rounded transition-colors"
+                        title="Delete preset"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

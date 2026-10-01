@@ -72,4 +72,33 @@ export class TeamController {
       next(err);
     }
   };
+
+  saveFormationPreset = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const { id: presetId, label, formationType, squad } = req.body;
+      if (!presetId || !label || !formationType || !squad) {
+        throw new BadRequestError("id, label, formationType, and squad are required");
+      }
+      const preset = await this.teamUseCases.saveFormationPreset(id, {
+        id: presetId,
+        label,
+        formationType,
+        squad,
+      });
+      ResponseHandler.success(res, preset, "Formation preset saved");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  deleteFormationPreset = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id, presetId } = req.params;
+      await this.teamUseCases.deleteFormationPreset(id, presetId);
+      ResponseHandler.noContent(res, "Formation preset deleted");
+    } catch (err) {
+      next(err);
+    }
+  };
 }

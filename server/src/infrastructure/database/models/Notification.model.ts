@@ -15,6 +15,8 @@ export interface NotificationDocument extends Document {
   documentUrl?: string; // legacy support
   documentFilename?: string; // legacy support
   attachments?: { name: string; url: string }[];
+  linkUrl?: string;
+  linkLabel?: string;
   channels?: string[];
   createdBy: mongoose.Types.ObjectId;
   readBy: mongoose.Types.ObjectId[];
@@ -43,6 +45,8 @@ const NotificationSchema = new Schema<NotificationDocument>(
         url: { type: String, required: true },
       },
     ],
+    linkUrl: { type: String },
+    linkLabel: { type: String },
     channels: [{ type: String }],
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     readBy: [{ type: Schema.Types.ObjectId, ref: "User" }],
