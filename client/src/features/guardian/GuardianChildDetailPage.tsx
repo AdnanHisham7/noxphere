@@ -200,19 +200,19 @@ const PublicProfileToggleCard: React.FC<{
   };
 
   return (
-    <div className="nox-card p-5 mb-8 space-y-4 border-core-400/20 bg-gradient-to-r from-core-400/[0.03] to-transparent">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-core-400/[0.12] flex items-center justify-center flex-shrink-0">
+    <div className="nox-card p-4 sm:p-5 mb-8 space-y-4 border-core-400/20 bg-gradient-to-r from-core-400/[0.03] to-transparent overflow-hidden">
+      <div className="flex items-start justify-between gap-3 sm:gap-4">
+        <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-core-400/[0.12] flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0">
             <Globe size={18} className="text-core-400" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <p className="text-sm font-semibold text-nox-high">
                 Public Player Profile &amp; QR Code
               </p>
               <span
-                className={`text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded-full font-semibold ${
+                className={`text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded-full font-semibold shrink-0 ${
                   enabled
                     ? "bg-field-400/10 text-field-400"
                     : "bg-white/10 text-slate-400"
@@ -221,7 +221,7 @@ const PublicProfileToggleCard: React.FC<{
                 {enabled ? "Active" : "Disabled"}
               </span>
             </div>
-            <p className="text-xs text-nox-mid mt-0.5 max-w-xl">
+            <p className="text-xs text-nox-mid mt-1 sm:mt-0.5 max-w-xl leading-relaxed">
               Turn this on to share {profile.firstName}&apos;s verified public
               player card (ratings, match stats, and profile) with scouts and
               academy administrators.
@@ -234,7 +234,7 @@ const PublicProfileToggleCard: React.FC<{
           aria-checked={enabled}
           onClick={handleToggle}
           disabled={isLoading}
-          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-volt-400 focus:ring-offset-2 dark:focus:ring-offset-pitch-900 ${
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-volt-400 focus:ring-offset-2 dark:focus:ring-offset-pitch-900 mt-1 sm:mt-0 ${
             enabled ? "bg-volt-400" : "bg-slate-300 dark:bg-pitch-700"
           } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
         >
@@ -248,61 +248,64 @@ const PublicProfileToggleCard: React.FC<{
       </div>
 
       {enabled && publicUrl && (
-        <div className="pt-2 border-t border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 w-full sm:max-w-md">
-            <code className="text-xs text-core-400 truncate flex-1 font-mono">
+        <div className="pt-3 border-t border-white/[0.06] flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 w-full xl:max-w-md min-w-0">
+            <code className="text-xs text-core-400 truncate flex-1 font-mono select-all">
               {publicUrl}
             </code>
             <button
               type="button"
               onClick={handleCopy}
-              className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors flex-shrink-0"
+              className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors flex-shrink-0 p-1 rounded hover:bg-white/[0.06]"
               title="Copy link"
             >
               {copied ? (
-                <CheckCircle2 size={14} className="text-field-400" />
+                <CheckCircle2 size={15} className="text-field-400" />
               ) : (
-                <Copy size={14} />
+                <Copy size={15} />
               )}
             </button>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-4 xl:flex xl:items-center gap-2 w-full xl:w-auto">
             <button
               type="button"
               onClick={handleCopy}
-              className="nox-btn-secondary !py-2 !px-3 text-xs flex-1 sm:flex-initial"
+              className="nox-btn-secondary !py-2 !px-3 text-xs w-full xl:w-auto justify-center"
             >
               {copied ? (
-                <CheckCircle2 size={13} className="text-field-400" />
+                <CheckCircle2 size={13} className="text-field-400 shrink-0" />
               ) : (
-                <Copy size={13} />
+                <Copy size={13} className="shrink-0" />
               )}
-              {copied ? "Copied" : "Copy Link"}
+              <span className="truncate">{copied ? "Copied" : "Copy Link"}</span>
             </button>
             <button
               type="button"
               onClick={() => setShowQrModal(true)}
-              className="nox-btn-secondary !py-2 !px-3 text-xs flex-1 sm:flex-initial"
+              className="nox-btn-secondary !py-2 !px-3 text-xs w-full xl:w-auto justify-center"
             >
-              <QrCode size={13} />
-              Show QR
+              <QrCode size={13} className="shrink-0" />
+              <span className="truncate">Show QR</span>
             </button>
             <button
               type="button"
               onClick={() => setShowSettings((v) => !v)}
-              className="nox-btn-secondary !py-2 !px-3 text-xs flex-1 sm:flex-initial"
+              className="nox-btn-secondary !py-2 !px-3 text-xs w-full xl:w-auto justify-center"
             >
-              {showSettings ? "Close Settings" : "Visibility Settings"}
+              <span className="truncate">
+                {showSettings ? "Close Settings" : "Visibility"}
+                <span className="hidden sm:inline"> Settings</span>
+              </span>
             </button>
             <a
               href={publicUrl}
               target="_blank"
               rel="noreferrer"
-              className="nox-btn-primary !py-2 !px-3 text-xs flex-1 sm:flex-initial"
+              className="nox-btn-primary !py-2 !px-3 text-xs w-full xl:w-auto justify-center"
             >
-              <ExternalLink size={13} />
-              View Card
+              <ExternalLink size={13} className="shrink-0" />
+              <span className="truncate">View Card</span>
             </a>
           </div>
         </div>
@@ -311,7 +314,7 @@ const PublicProfileToggleCard: React.FC<{
       {/* Visibility Preferences & Academy Lock Notice */}
       {enabled && showSettings && (
         <div className="pt-4 border-t border-white/[0.08] space-y-4 animate-fade-in">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
             <h4 className="font-orbital text-xs font-semibold uppercase tracking-wider text-nox-high">
               Public Profile Visibility Controls
             </h4>
@@ -320,7 +323,7 @@ const PublicProfileToggleCard: React.FC<{
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
             {[
               { key: "showPhoto", label: "Show Photo / Avatar" },
               { key: "showPosition", label: "Show Playing Position" },
@@ -335,15 +338,15 @@ const PublicProfileToggleCard: React.FC<{
                   type="button"
                   key={key}
                   onClick={() => setSettings((s) => ({ ...s, [key]: !active }))}
-                  className={`flex items-center justify-between p-3 rounded-xl border text-left text-xs transition-all ${
+                  className={`flex items-center justify-between p-2.5 sm:p-3 rounded-xl border text-left text-xs transition-all ${
                     active
                       ? "bg-core-400/10 border-core-400/40 text-nox-high font-semibold"
                       : "bg-white/[0.02] border-white/[0.06] text-nox-low hover:text-nox-mid"
                   }`}
                 >
-                  <span>{label}</span>
+                  <span className="min-w-0 pr-2 leading-snug">{label}</span>
                   <div
-                    className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] shrink-0 ml-2 ${
+                    className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] shrink-0 ${
                       active
                         ? "bg-core-400 border-core-400 text-pitch-950 font-bold"
                         : "border-white/20 bg-transparent"
@@ -358,7 +361,7 @@ const PublicProfileToggleCard: React.FC<{
             })}
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <div>
               <label className="text-2xs uppercase tracking-wider text-nox-low font-mono block mb-1">
                 Player Statement / Bio (Optional)
@@ -394,9 +397,9 @@ const PublicProfileToggleCard: React.FC<{
           </div>
 
           {/* Academy Verified Record Notice */}
-          <div className="p-3.5 rounded-xl bg-amber-400/[0.06] border border-amber-400/20 flex items-start gap-3">
+          <div className="p-3 sm:p-3.5 rounded-xl bg-amber-400/[0.06] border border-amber-400/20 flex items-start gap-2.5 sm:gap-3">
             <Lock size={15} className="text-amber-400 shrink-0 mt-0.5" />
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-amber-300">
                 Official Academy Roster Player · Data Locked
               </p>
@@ -410,11 +413,11 @@ const PublicProfileToggleCard: React.FC<{
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-1">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-1">
             <button
               type="button"
               onClick={() => setShowSettings(false)}
-              className="nox-btn-secondary !py-2 !px-4 text-xs"
+              className="nox-btn-secondary !py-2 !px-4 text-xs w-full sm:w-auto justify-center"
             >
               Cancel
             </button>
@@ -422,7 +425,7 @@ const PublicProfileToggleCard: React.FC<{
               type="button"
               onClick={handleSaveSettings}
               disabled={isLoading}
-              className="nox-btn-primary !py-2 !px-4 text-xs"
+              className="nox-btn-primary !py-2 !px-4 text-xs w-full sm:w-auto justify-center"
             >
               {isLoading ? "Saving…" : "Save Visibility Settings"}
             </button>
@@ -432,12 +435,13 @@ const PublicProfileToggleCard: React.FC<{
 
       {/* Interactive QR Code Modal */}
       {showQrModal && publicUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="nox-card max-w-sm w-full p-6 text-center relative border-core-400/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in overflow-y-auto">
+          <div className="nox-card max-w-sm w-full p-5 sm:p-6 text-center relative border-core-400/30 max-h-[92vh] overflow-y-auto my-auto">
             <button
               type="button"
               onClick={() => setShowQrModal(false)}
-              className="absolute top-4 right-4 text-nox-mid hover:text-slate-900 dark:hover:text-white transition-colors"
+              className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 text-nox-mid hover:text-slate-900 dark:hover:text-white transition-colors p-1"
+              aria-label="Close modal"
             >
               <X size={18} />
             </button>
@@ -445,16 +449,23 @@ const PublicProfileToggleCard: React.FC<{
             <div className="flex items-center justify-center gap-2 text-core-400 font-mono text-2xs uppercase tracking-wider mb-2">
               <Globe size={12} /> Verified Player ID
             </div>
-            <h3 className="font-orbital font-bold text-lg text-nox-high mb-1">
+            <h3 className="font-orbital font-bold text-base sm:text-lg text-nox-high mb-1 break-words">
               {profile.firstName} {profile.lastName}
             </h3>
-            <p className="text-xs text-nox-mid mb-5">
+            <p className="text-xs text-nox-mid mb-4 sm:mb-5 leading-relaxed">
               Scan this QR code to view the public verified player card and
               stats.
             </p>
 
-            <div className="bg-white p-4 rounded-xl inline-block shadow-xl border border-slate-200 mb-5">
-              <QRCode value={publicUrl} size={180} />
+            <div className="bg-white p-3 sm:p-4 rounded-xl inline-block shadow-xl border border-slate-200 mb-4 sm:mb-5 max-w-[210px] w-full">
+              <div className="w-full flex items-center justify-center">
+                <QRCode
+                  value={publicUrl}
+                  size={180}
+                  style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                  viewBox="0 0 256 256"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -464,11 +475,13 @@ const PublicProfileToggleCard: React.FC<{
                 className="nox-btn-secondary w-full text-xs justify-center py-2.5"
               >
                 {copied ? (
-                  <CheckCircle2 size={14} className="text-field-400" />
+                  <CheckCircle2 size={14} className="text-field-400 shrink-0" />
                 ) : (
-                  <Copy size={14} />
+                  <Copy size={14} className="shrink-0" />
                 )}
-                {copied ? "Link Copied to Clipboard" : "Copy Profile Link"}
+                <span>
+                  {copied ? "Link Copied to Clipboard" : "Copy Profile Link"}
+                </span>
               </button>
               <button
                 type="button"
