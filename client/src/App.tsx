@@ -11,6 +11,7 @@ import ProtectedRoute from "./components/layout/ProtectedRoute";
 import RoleProtectedRoute from "./components/layout/RoleProtectedRoute";
 import { GUARDIAN_NAV_ITEMS } from "./features/guardian/guardianNav";
 import { STUDENT_NAV_ITEMS } from "./features/student-portal/studentNav";
+import { ScrollToTop } from "./components/common/ScrollToTop";
 
 import logoSrc from "./assets/logo.png";
 
@@ -179,6 +180,7 @@ const App: React.FC = () => (
           },
         }}
       />
+      <ScrollToTop />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public */}
