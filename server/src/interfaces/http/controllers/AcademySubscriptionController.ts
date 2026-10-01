@@ -9,7 +9,7 @@ import { BadRequestError, ForbiddenError } from "../../../shared/errors/AppError
 const CheckoutSchema = z.object({
   capacity: z.number().int().min(1),
   staffCapacity: z.number().int().min(0).default(0),
-  billingInterval: z.enum(["month", "year"]),
+  billingInterval: z.enum(["month", "quarter", "half_year", "year"]),
 });
 
 const UpgradeSchema = z.object({

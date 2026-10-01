@@ -165,7 +165,6 @@ const NotificationsPage: React.FC = () => {
 
   const canManageBroadcasts =
     user?.role === "manager" ||
-    user?.role === "coach" ||
     user?.role === "super_admin";
 
   // Automatically select the first franchise upon opening alerts page if none is active

@@ -2,9 +2,10 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { Plus, Users, Trash2, Swords } from "lucide-react";
+import { Plus, Users, Trash2, Swords, FileSpreadsheet } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { RootState } from "../../store";
+import { TeamReportModal } from "./TeamReportModal";
 import {
   Card,
   Button,
@@ -85,6 +86,7 @@ const TeamsPage: React.FC = () => {
   const [secondaryColor, setSecondaryColor] = useState("#334155");
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [brandingTeamId, setBrandingTeamId] = useState<string | null>(null);
+  const [reportTeamId, setReportTeamId] = useState<string | null>(null);
 
   const resetCreateForm = () => {
     setName("");
@@ -318,6 +320,13 @@ const TeamsPage: React.FC = () => {
                     >
                       View roster →
                     </button>
+                    <button
+                      onClick={() => setReportTeamId(team.id)}
+                      className="text-xs flex items-center gap-1 text-emerald-500 hover:text-emerald-400 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors font-medium"
+                      title="Generate official squad report and formation"
+                    >
+                      <FileSpreadsheet size={12} /> Report
+                    </button>
                     {!isHeadOffice && (
                       <button
                         onClick={() => navigate(`/teams/${team.id}/manage`)}
@@ -467,6 +476,14 @@ const TeamsPage: React.FC = () => {
           team={teams?.find((t) => t.id === brandingTeamId) ?? null}
           categories={categories}
           onClose={() => setBrandingTeamId(null)}
+        />
+      )}
+
+      {reportTeamId && (
+        <TeamReportModal
+          teamId={reportTeamId}
+          isOpen={Boolean(reportTeamId)}
+          onClose={() => setReportTeamId(null)}
         />
       )}
 

@@ -90,28 +90,6 @@ const TransferWallPage: React.FC = () => {
     skip: !targetListingId || isTransferWallDisabled,
   });
 
-  if (isTransferWallDisabled) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-pitch-950 text-slate-800 dark:text-slate-100 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-500 mb-4 shadow-lg shadow-amber-500/10">
-          <AlertCircle size={32} />
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">
-          Transfer Wall is Disabled
-        </h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mb-6 leading-relaxed">
-          The Transfer Wall scouting and recruitment marketplace is currently deactivated.
-        </p>
-        <Link to={isAuthenticated ? "/dashboard" : "/login"}>
-          <Button variant="primary">
-            <ArrowLeft size={16} className="mr-2" />
-            {isAuthenticated ? "Back to Dashboard" : "Go to Sign In"}
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-
   useEffect(() => {
     if (targetListingId) {
       if (directListing && (!selectedListing || selectedListing.id !== directListing.id)) {
@@ -135,13 +113,13 @@ const TransferWallPage: React.FC = () => {
   };
 
   const { data: incomingRequests, isLoading: loadingIncoming } = useGetIncomingRequestsQuery(undefined, {
-    skip: !isAuthenticated,
+    skip: !isAuthenticated || isTransferWallDisabled,
   });
   const { data: outgoingRequests, isLoading: loadingOutgoing } = useGetOutgoingRequestsQuery(undefined, {
-    skip: !isAuthenticated,
+    skip: !isAuthenticated || isTransferWallDisabled,
   });
   const { data: myListingsResult, isLoading: loadingMyListings } = useGetMyListingsQuery(undefined, {
-    skip: !isAuthenticated,
+    skip: !isAuthenticated || isTransferWallDisabled,
   });
   const myListings = myListingsResult?.data ?? [];
 
@@ -223,6 +201,77 @@ const TransferWallPage: React.FC = () => {
       toast.error(err?.data?.message || 'Failed to delist player');
     }
   };
+
+  if (isTransferWallDisabled) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-pitch-950 text-slate-800 dark:text-slate-100 flex flex-col">
+        {/* Branded header */}
+        <header className="h-16 border-b border-slate-200 dark:border-white/10 bg-white/80 dark:bg-pitch-900/80 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link to="/" className="flex items-center gap-2">
+              <img src={logoSrc} alt="Noxphere" className="h-7 w-auto" />
+              <span className="font-display font-900 text-lg uppercase tracking-tight text-slate-900 dark:text-white">
+                Noxphere
+              </span>
+            </Link>
+            <div className="w-px h-5 bg-slate-200 dark:bg-white/10" />
+            <span className="font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Transfer Wall
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <ThemeToggle size="sm" />
+            {isAuthenticated ? (
+              <Link to="/dashboard">
+                <Button variant="secondary" size="sm">
+                  <ArrowLeft size={14} className="mr-1.5" /> Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <Link to="/login">
+                <Button variant="primary" size="sm">Sign In</Button>
+              </Link>
+            )}
+          </div>
+        </header>
+
+        {/* Disabled hero message */}
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="max-w-md w-full text-center space-y-4 p-8 rounded-2xl bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 shadow-xl">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/20 text-amber-500 dark:text-amber-400 flex items-center justify-center mx-auto shadow-inner">
+              <Shield size={32} />
+            </div>
+            <div>
+              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mb-2">
+                Market Paused
+              </span>
+              <h1 className="text-xl sm:text-2xl font-display font-bold text-slate-900 dark:text-white">
+                Transfer Wall is Currently Disabled
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
+                The inter-academy Transfer Wall and athlete recruitment marketplace has been deactivated by administration. Player listings, bids, and transfer negotiations are temporarily unavailable.
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+              {isAuthenticated ? (
+                <Link to="/dashboard" className="w-full sm:w-auto">
+                  <Button variant="primary" className="w-full text-xs font-semibold">
+                    <ArrowLeft size={14} className="mr-1.5" /> Return to Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <Link to="/" className="w-full sm:w-auto">
+                  <Button variant="secondary" className="w-full text-xs font-semibold">
+                    Go to Homepage
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-pitch-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">

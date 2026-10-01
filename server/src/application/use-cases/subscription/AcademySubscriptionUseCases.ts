@@ -25,26 +25,26 @@ import {
   SubscriptionCapacityExceededError,
 } from "../../../shared/errors/AppError";
 
-const DAYS_IN_PERIOD: Record<"month" | "year", number> = {
-  // A flat 30/365 is used rather than the exact days in the calendar
-  // month the subscription happens to start in, so the quoted price in
-  // the pricing modal always matches what Stripe actually charges —
-  // Stripe's own "month" interval already handles the real calendar
-  // billing date, this constant is only used to *compute* the rate-based
-  // total, not to schedule the renewal.
+const DAYS_IN_PERIOD: Record<BillingInterval, number> = {
   month: 30,
+  quarter: 90,
+  half_year: 180,
   year: 365,
 };
 
-function studentRupeeAmount(ratePerStudentPerDay: number, capacity: number, interval: "month" | "year"): number {
-  return ratePerStudentPerDay * capacity * DAYS_IN_PERIOD[interval];
+const STAFF_MONTHS_IN_PERIOD: Record<BillingInterval, number> = {
+  month: 1,
+  quarter: 3,
+  half_year: 6,
+  year: 12,
+};
+
+function studentRupeeAmount(ratePerStudentPerDay: number, capacity: number, interval: BillingInterval): number {
+  return ratePerStudentPerDay * capacity * (DAYS_IN_PERIOD[interval] ?? 30);
 }
 
-// Staff billing is a flat ₹/staff/*month* rate (not a day-rate like
-// students), so a yearly plan is simply 12 months of it — there's no
-// day-count subtlety to mirror here the way there is for students.
-function staffRupeeAmount(staffRatePerMonth: number, staffCapacity: number, interval: "month" | "year"): number {
-  return staffRatePerMonth * staffCapacity * (interval === "year" ? 12 : 1);
+function staffRupeeAmount(staffRatePerMonth: number, staffCapacity: number, interval: BillingInterval): number {
+  return staffRatePerMonth * staffCapacity * (STAFF_MONTHS_IN_PERIOD[interval] ?? 1);
 }
 
 function toPaise(rupees: number): number {
@@ -149,9 +149,9 @@ export class AcademySubscriptionUseCases {
     const staffUtilization = provisionedStaffCapacity > 0 ? Math.round((activeStaffCount / provisionedStaffCapacity) * 100) : 0;
     const remainingInviteSlots = Math.max(0, provisionedCapacity - (activeStudentCount + pendingInvitationCount));
 
-    const interval = subscription?.billingInterval ?? "month";
-    const currentRate = subscription?.ratePerStudentPerDay ?? rate;
-    const currentStaffRate = subscription?.staffRatePerStaffPerMonth ?? staffRate;
+    const interval = (subscription?.billingInterval as BillingInterval) ?? "month";
+    const currentRate = rate;
+    const currentStaffRate = staffRate;
 
     const estimatedRenewalRupees =
       studentRupeeAmount(currentRate, provisionedCapacity, interval) +
@@ -222,8 +222,43 @@ export class AcademySubscriptionUseCases {
 
     let invoices: any[] = [];
     if (subscription?.stripeCustomerId) {
-      invoices = await stripeService.listInvoices(subscription.stripeCustomerId);
+      try {
+        invoices = await stripeService.listInvoices(subscription.stripeCustomerId);
+      } catch {
+        invoices = [];
+      }
     }
+
+    const recordedPayments = (subscription?.payments || []).map((p: any) => ({
+      id: p.paymentId || p.orderId || p._id?.toString(),
+      number: p.receiptNumber || `INV-${(p.paymentId || p.orderId || "PAY").slice(-8).toUpperCase()}`,
+      amountPaid: p.amount,
+      amountDue: 0,
+      status: p.status || "paid",
+      created: (p.paidAt ? new Date(p.paidAt) : (subscription as any).createdAt || new Date()).toISOString(),
+      invoicePdf: null,
+      hostedInvoiceUrl: null,
+    }));
+
+    if (recordedPayments.length === 0 && subscription?.razorpayPaymentId) {
+      const legacyAmount =
+        studentRupeeAmount(currentRate, provisionedCapacity, interval) +
+        staffRupeeAmount(currentStaffRate, provisionedStaffCapacity, interval);
+      recordedPayments.push({
+        id: subscription.razorpayPaymentId,
+        number: `INV-${subscription.razorpayPaymentId.slice(-8).toUpperCase()}`,
+        amountPaid: legacyAmount,
+        amountDue: 0,
+        status: "paid",
+        created: ((subscription as any).updatedAt || (subscription as any).createdAt || new Date()).toISOString(),
+        invoicePdf: null,
+        hostedInvoiceUrl: null,
+      });
+    }
+
+    const allTransactions = [...recordedPayments, ...invoices].sort(
+      (a, b) => new Date(b.created).getTime() - new Date(a.created).getTime()
+    );
 
     return {
       hasSubscription: !!subscription,
@@ -247,7 +282,7 @@ export class AcademySubscriptionUseCases {
       staffRatePerStaffPerMonth: currentStaffRate,
       estimatedRenewalRupees,
       alerts,
-      transactions: invoices,
+      transactions: allTransactions,
     };
   }
 
@@ -307,7 +342,7 @@ export class AcademySubscriptionUseCases {
 
   async createCheckoutSession(
     academyId: string,
-    dto: { capacity: number; staffCapacity: number; billingInterval: "month" | "year" },
+    dto: { capacity: number; staffCapacity: number; billingInterval: BillingInterval },
     requesterId: string,
   ): Promise<{ url: string }> {
     if (dto.capacity < 1) throw new BadRequestError("Capacity must be at least 1 student");
@@ -474,15 +509,47 @@ export class AcademySubscriptionUseCases {
     subscription.razorpayPaymentId = paymentId;
     subscription.razorpaySignature = signature;
 
-    const days = subscription.billingInterval === "year" ? 365 : 30;
+    const rate = await this.getEffectiveRate(academyId);
+    const staffRate = await this.getEffectiveStaffRate(academyId);
+    const interval = (subscription.billingInterval as BillingInterval) || "month";
+
+    const days = DAYS_IN_PERIOD[interval] || 30;
     const now = new Date();
-    if (subscription.currentPeriodEnd && new Date(subscription.currentPeriodEnd) > now) {
+    const isRenewal = Boolean(subscription.currentPeriodEnd && new Date(subscription.currentPeriodEnd) > now);
+
+    if (isRenewal) {
       subscription.currentPeriodEnd = new Date(
-        new Date(subscription.currentPeriodEnd).getTime() + days * 24 * 60 * 60 * 1000
+        new Date(subscription.currentPeriodEnd!).getTime() + days * 24 * 60 * 60 * 1000
       );
     } else {
       subscription.currentPeriodEnd = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
     }
+
+    subscription.status = "active";
+    subscription.razorpayOrderId = orderId;
+    subscription.razorpayPaymentId = paymentId;
+    subscription.razorpaySignature = signature;
+    subscription.ratePerStudentPerDay = rate;
+    subscription.staffRatePerStaffPerMonth = staffRate;
+
+    const amountPaid =
+      studentRupeeAmount(rate, subscription.provisionedCapacity, interval) +
+      staffRupeeAmount(staffRate, subscription.provisionedStaffCapacity, interval);
+
+    subscription.payments = subscription.payments || [];
+    subscription.payments.unshift({
+      orderId,
+      paymentId,
+      amount: amountPaid,
+      currency: "INR",
+      status: "paid",
+      billingInterval: interval,
+      studentCapacity: subscription.provisionedCapacity,
+      staffCapacity: subscription.provisionedStaffCapacity,
+      type: isRenewal ? "renewal" : "subscription",
+      paidAt: now,
+      receiptNumber: `INV-${paymentId.slice(-8).toUpperCase()}`,
+    });
 
     await subscription.save();
 

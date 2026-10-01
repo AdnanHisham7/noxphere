@@ -8,7 +8,21 @@ export type SubscriptionStatus =
   | "canceled"
   | "unpaid";
 
-export type BillingInterval = "month" | "year";
+export type BillingInterval = "month" | "quarter" | "half_year" | "year";
+
+export interface SubscriptionPaymentRecord {
+  orderId: string;
+  paymentId: string;
+  amount: number;
+  currency: string;
+  status: string;
+  billingInterval: BillingInterval;
+  studentCapacity: number;
+  staffCapacity: number;
+  type: "subscription" | "renewal" | "upgrade";
+  paidAt: Date;
+  receiptNumber?: string;
+}
 
 export interface AcademySubscriptionDocument extends Document {
   academyId: mongoose.Types.ObjectId;
@@ -41,6 +55,7 @@ export interface AcademySubscriptionDocument extends Document {
   provisionedStaffCapacity: number;
   status: SubscriptionStatus;
   currentPeriodEnd?: Date;
+  payments?: SubscriptionPaymentRecord[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -60,7 +75,11 @@ const AcademySubscriptionSchema = new Schema<AcademySubscriptionDocument>(
     razorpayOrderId: { type: String, index: true },
     razorpayPaymentId: String,
     razorpaySignature: String,
-    billingInterval: { type: String, enum: ["month", "year"], required: true },
+    billingInterval: {
+      type: String,
+      enum: ["month", "quarter", "half_year", "year"],
+      required: true,
+    },
     ratePerStudentPerDay: { type: Number, required: true, min: 0 },
     staffRatePerStaffPerMonth: { type: Number, required: true, min: 0, default: 10 },
     provisionedCapacity: { type: Number, required: true, min: 1 },
@@ -72,6 +91,21 @@ const AcademySubscriptionSchema = new Schema<AcademySubscriptionDocument>(
       index: true,
     },
     currentPeriodEnd: Date,
+    payments: [
+      {
+        orderId: String,
+        paymentId: String,
+        amount: { type: Number, required: true },
+        currency: { type: String, default: "INR" },
+        status: { type: String, default: "paid" },
+        billingInterval: String,
+        studentCapacity: Number,
+        staffCapacity: Number,
+        type: { type: String, enum: ["subscription", "renewal", "upgrade"], default: "subscription" },
+        paidAt: { type: Date, default: Date.now },
+        receiptNumber: String,
+      },
+    ],
   },
   {
     timestamps: true,

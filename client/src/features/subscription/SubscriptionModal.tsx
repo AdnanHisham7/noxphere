@@ -46,12 +46,24 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId,
       if (status.billingInterval) setBillingInterval(status.billingInterval);
       setInitialized(true);
     }
-  }, [status, initialized]);
-
-  const rate = status?.ratePerStudentPerDay ?? status?.currentDefaultRate ?? 1;
-  const staffRate = status?.staffRatePerStaffPerMonth ?? status?.currentDefaultStaffRate ?? 10;
-  const days = billingInterval === "month" ? 30 : 365;
-  const staffMonths = billingInterval === "year" ? 12 : 1;
+  }, [status, initialized]);  const rate = status?.currentDefaultRate ?? status?.ratePerStudentPerDay ?? 1;
+  const staffRate = status?.currentDefaultStaffRate ?? status?.staffRatePerStaffPerMonth ?? 10;
+  const days =
+    billingInterval === "month"
+      ? 30
+      : billingInterval === "quarter"
+      ? 90
+      : billingInterval === "half_year"
+      ? 180
+      : 365;
+  const staffMonths =
+    billingInterval === "month"
+      ? 1
+      : billingInterval === "quarter"
+      ? 3
+      : billingInterval === "half_year"
+      ? 6
+      : 12;
   const studentTotal = useMemo(() => rate * capacity * days, [rate, capacity, days]);
   const staffTotal = useMemo(() => staffRate * staffCapacity * staffMonths, [staffRate, staffCapacity, staffMonths]);
   const total = studentTotal + staffTotal;
@@ -71,7 +83,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId,
         amount: orderData.amount,
         currency: orderData.currency || "INR",
         name: "Noxphere",
-        description: `${isRenewal ? "Renew" : "Subscribe"} — ${capacity} Students (${billingInterval}ly)`,
+        description: `${isRenewal ? "Renew" : "Subscribe"} — ${capacity} Students (${billingInterval})`,
         order_id: orderData.orderId,
         prefill: {
           name: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || user?.email,
@@ -117,7 +129,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId,
     : isUpgrade
       ? "Increase Capacity"
       : "Subscribe to Noxphere";
-
 
   return (
     <Modal isOpen={true} onClose={onClose} title={modalTitle} size="sm">
@@ -167,26 +178,32 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId,
           {!isUpgrade && (
             <div>
               <label className="label">Billing cycle</label>
-              <div className="flex gap-2">
-                {(["month", "year"] as BillingInterval[]).map((interval) => (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {([
+                  { id: "month", label: "Monthly", sub: "30 days" },
+                  { id: "quarter", label: "3 Months", sub: "90 days" },
+                  { id: "half_year", label: "6 Months", sub: "180 days" },
+                  { id: "year", label: "Yearly", sub: "365 days" },
+                ] as const).map((cycle) => (
                   <button
-                    key={interval}
+                    key={cycle.id}
                     type="button"
-                    onClick={() => setBillingInterval(interval)}
-                    className={`flex-1 rounded px-3 py-2 text-sm font-semibold border transition-colors ${
-                      billingInterval === interval
-                        ? "bg-volt-400 border-volt-400 text-pitch-900"
-                        : "bg-pitch-800 border-white/10 text-slate-400 hover:border-white/20"
+                    onClick={() => setBillingInterval(cycle.id)}
+                    className={`rounded px-2.5 py-2 text-xs font-semibold border transition-all text-center ${
+                      billingInterval === cycle.id
+                        ? "bg-volt-400 border-volt-400 text-pitch-900 shadow-sm"
+                        : "bg-slate-100 dark:bg-pitch-800 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/20"
                     }`}
                   >
-                    {interval === "month" ? "Monthly" : "Yearly"}
+                    <div>{cycle.label}</div>
+                    <div className={`text-[10px] ${billingInterval === cycle.id ? "text-pitch-900/80" : "text-slate-400 dark:text-slate-500"}`}>{cycle.sub}</div>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="p-3 bg-pitch-800 border border-white/10 rounded space-y-1">
+          <div className="p-3 bg-slate-50 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded space-y-1">
             <div className="flex justify-between text-xs text-slate-500">
               <span>Students ({capacity} × {formatCurrency(rate)}/day × {days}d)</span>
               <span>{formatCurrency(studentTotal)}</span>
@@ -197,7 +214,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId,
             </div>
             <div className="flex justify-between text-sm font-bold text-slate-900 dark:text-white pt-1 border-t border-slate-200 dark:border-white/10 mt-1">
               <span>{isUpgrade ? "New total (prorated this cycle)" : "Total due now"}</span>
-              <span className="text-volt-400">{formatCurrency(total)}</span>
+              <span className="text-volt-500 dark:text-volt-400">{formatCurrency(total)}</span>
             </div>
           </div>
 

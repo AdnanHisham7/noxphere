@@ -25,6 +25,9 @@ const StudentDetailPage = lazy(
 const StudentReportPage = lazy(
   () => import("./features/students/StudentReportPage"),
 );
+const TeamReportPage = lazy(
+  () => import("./features/teams/TeamReportPage"),
+);
 const TransferWallPage = lazy(
   () => import("./features/transfer-wall/TransferWallPage"),
 );
@@ -78,6 +81,9 @@ const ComplaintsInboxPage = lazy(
 );
 const GuardianDashboardPage = lazy(
   () => import("./features/guardian/GuardianDashboardPage"),
+);
+const GuardianAlertsPage = lazy(
+  () => import("./features/guardian/GuardianAlertsPage"),
 );
 const GuardianComplaintsPage = lazy(
   () => import("./features/guardian/GuardianComplaintsPage"),
@@ -197,6 +203,7 @@ const App: React.FC = () => (
             {/* Print-friendly, no app chrome by design (see StudentReportPage) —
                 also kept outside MainLayout for the same reason. */}
             <Route path="/students/:id/report" element={<StudentReportPage />} />
+            <Route path="/teams/:id/report" element={<TeamReportPage />} />
 
             <Route element={<MainLayout />}>
               {/* Everyone logged in */}
@@ -273,6 +280,7 @@ const App: React.FC = () => (
                 element={<PortalLayout navItems={GUARDIAN_NAV_ITEMS} portalLabel="Guardian portal" />}
               >
                 <Route path="/guardian/dashboard" element={<GuardianDashboardPage />} />
+                <Route path="/guardian/alerts" element={<GuardianAlertsPage />} />
                 <Route path="/guardian/children/:id" element={<GuardianChildDetailPage />} />
                 <Route path="/guardian/complaints" element={<GuardianComplaintsPage />} />
                 <Route path="/guardian/profile" element={<ProfilePage />} />
