@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { clsx } from 'clsx';
@@ -12,14 +12,19 @@ import { closeMobileSidebar } from '../../store/slices/uiSlice';
 export const MainLayout: React.FC = () => {
   const dispatch = useDispatch();
   const location = useLocation();
+  const mainRef = useRef<HTMLElement>(null);
   const collapsed = useSelector((s: RootState) => s.ui.sidebarCollapsed);
   const activeFranchiseId = useSelector((s: RootState) => s.ui.activeFranchiseId);
   const user = useSelector((s: RootState) => s.auth.user);
 
-  // Close mobile sidebar drawer whenever route changes
+  // Close mobile sidebar drawer and reset scroll to top whenever route changes
   useEffect(() => {
     dispatch(closeMobileSidebar());
-  }, [location.pathname, dispatch]);
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+      mainRef.current.scrollLeft = 0;
+    }
+  }, [location.pathname, location.search, dispatch]);
 
   // Connects once per authenticated session and joins this user's and
   // franchise's rooms (see index.ts) so live events — starting with the
@@ -42,7 +47,7 @@ export const MainLayout: React.FC = () => {
           )}
         >
           <TopBar />
-          <main className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-5 md:p-6">
+          <main ref={mainRef} className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-5 md:p-6">
             <Outlet />
           </main>
         </div>

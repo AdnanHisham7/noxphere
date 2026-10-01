@@ -1,10 +1,10 @@
-// src/features/teams/TeamManagePage.tsx
-import React from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ShieldAlert } from "lucide-react";
 import { useGetTeamByIdQuery } from "../../store/api/teamsApi";
 import { EmptyState, Skeleton, Button } from "../../components/ui";
 import { ManageTeamView } from "./tactics/ManageTeamView";
+import { TeamReportModal } from "./TeamReportModal";
 import type { Player, Position } from "./tactics/types";
 
 const MIN_PLAYERS_FOR_CONSOLE = 0;
@@ -82,6 +82,8 @@ const TeamManagePage: React.FC = () => {
     photo: s.photo,
   }));
 
+  const [isReportOpen, setIsReportOpen] = useState(false);
+
   return (
     <div className="h-[calc(100vh-4rem)] p-4">
       <ManageTeamView
@@ -92,7 +94,16 @@ const TeamManagePage: React.FC = () => {
         secondaryColor={team.secondaryColor ?? "#334155"}
         onBack={() => navigate("/teams")}
         onEditColors={() => navigate("/teams")}
+        onGenerateReport={() => setIsReportOpen(true)}
       />
+
+      {isReportOpen && id && (
+        <TeamReportModal
+          teamId={id}
+          isOpen={isReportOpen}
+          onClose={() => setIsReportOpen(false)}
+        />
+      )}
     </div>
   );
 };

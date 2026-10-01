@@ -1,7 +1,7 @@
 // src/features/teams/tactics/ManageTeamView.tsx
 import React, { useState } from "react";
 import { toast } from "react-hot-toast";
-import { ArrowLeft, ArrowLeftRight, Sparkles, X, Palette, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, Sparkles, X, Palette, ChevronDown, ChevronUp, FileSpreadsheet } from "lucide-react";
 import {
   Player,
   FormationType,
@@ -23,6 +23,7 @@ interface ManageTeamViewProps {
   secondaryColor: string;
   onBack: () => void;
   onEditColors: () => void;
+  onGenerateReport?: () => void;
 }
 
 export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
@@ -33,6 +34,7 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
   secondaryColor,
   onBack,
   onEditColors,
+  onGenerateReport,
 }) => {
   const [formation, setFormation] = useState<FormationType>("4-2-3-1");
   const [squad, setSquad] = useState<Record<string, string>>(() =>
@@ -164,6 +166,15 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
           >
             <ArrowLeftRight size={13} /> Subs ({reservePlayers.length})
           </button>
+          {onGenerateReport && (
+            <button
+              onClick={onGenerateReport}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase px-3 py-1.5 rounded flex items-center gap-1.5 shadow-sm shadow-emerald-900/30"
+              title="Generate Team Report and Export PDF"
+            >
+              <FileSpreadsheet size={13} /> Report
+            </button>
+          )}
         </div>
       </div>
 

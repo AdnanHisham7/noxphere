@@ -20,12 +20,20 @@ import {
 import { RootState } from "../../store";
 import {
   useGetAcademyBillingDetailsQuery,
+  useGetPlatformDefaultRateQuery,
+  useGetPlatformDefaultStaffRateQuery,
   type BillingAlert,
   type BillingTransaction,
 } from "../../store/api/academySubscriptionApi";
 import { Button, Badge, Skeleton } from "../../components/ui";
 import { SubscriptionModal } from "./SubscriptionModal";
 import { clsx } from "clsx";
+
+const formatCleanPrice = (val: number): string => {
+  const rounded = Math.round((val + Number.EPSILON) * 100) / 100;
+  // toFixed(2) then strip trailing zeros and optional trailing dot
+  return rounded.toFixed(2).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+};
 
 export const SubscriptionManagementPage: React.FC = () => {
   const { user } = useSelector((s: RootState) => s.auth);
@@ -42,6 +50,21 @@ export const SubscriptionManagementPage: React.FC = () => {
   } = useGetAcademyBillingDetailsQuery(academyId || "", {
     skip: !academyId,
   });
+
+  const { data: platformStudentRate } = useGetPlatformDefaultRateQuery();
+  const { data: platformStaffRate } = useGetPlatformDefaultStaffRateQuery();
+
+  const effectiveStudentRate =
+    details?.ratePerStudentPerDay ??
+    platformStudentRate ??
+    details?.platformDefaultRate ??
+    1;
+
+  const effectiveStaffRate =
+    details?.staffRatePerStaffPerMonth ??
+    platformStaffRate ??
+    details?.platformDefaultStaffRate ??
+    10;
 
   const openModal = (mode: "subscribe" | "upgrade") => {
     setModalMode(mode);
@@ -240,7 +263,7 @@ export const SubscriptionManagementPage: React.FC = () => {
           </div>
           <div className="mt-2 text-2xs text-slate-500 dark:text-slate-400 flex justify-between">
             <span>{details?.remainingStudentSlots ?? 0} slots remaining</span>
-            <span>₹{details?.ratePerStudentPerDay ?? 1}/student/day</span>
+            <span>₹{formatCleanPrice(effectiveStudentRate)}/student/day</span>
           </div>
         </div>
 
@@ -317,7 +340,7 @@ export const SubscriptionManagementPage: React.FC = () => {
               <ShieldCheck size={16} className="text-volt-400" />
               Capacity & Automated Quota Protection
             </h3>
-            <span className="text-2xs text-slate-500 dark:text-slate-400">Stripe Synchronized</span>
+            <span className="text-2xs text-slate-500 dark:text-slate-400">Razorpay Synchronized</span>
           </div>
 
           <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -325,24 +348,60 @@ export const SubscriptionManagementPage: React.FC = () => {
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-pitch-800/60 border border-slate-200/80 dark:border-white/5">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-2xs font-bold text-slate-700 dark:text-slate-300 uppercase">Student Rate Formula</span>
-                <span className="text-xs font-mono font-bold text-volt-400">₹1 / day</span>
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-pitch-800/60 border border-slate-200/80 dark:border-white/5 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-2xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+                  Student Rate Formula
+                </span>
+                <span className="text-xs font-mono font-bold text-volt-500 dark:text-volt-400">
+                  ₹{formatCleanPrice(effectiveStudentRate)} <span className="text-[10px] font-normal text-slate-500">/ day</span>
+                </span>
               </div>
-              <p className="text-2xs text-slate-500 dark:text-slate-400">
-                Calculated on provisioned student capacity. 30 days per month or 365 days per annual cycle.
+              <p className="text-2xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Calculated on provisioned student capacity. Configured by platform administration:
               </p>
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-slate-300">
+                  ₹{formatCleanPrice(effectiveStudentRate * 30)}/mo
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-slate-300">
+                  ₹{formatCleanPrice(effectiveStudentRate * 90)}/3-mo
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-slate-300">
+                  ₹{formatCleanPrice(effectiveStudentRate * 180)}/6-mo
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-slate-300">
+                  ₹{formatCleanPrice(effectiveStudentRate * 365)}/yr
+                </span>
+              </div>
             </div>
 
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-pitch-800/60 border border-slate-200/80 dark:border-white/5">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-2xs font-bold text-slate-700 dark:text-slate-300 uppercase">Staff Rate Formula</span>
-                <span className="text-xs font-mono font-bold text-volt-400">₹10 / mo</span>
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-pitch-800/60 border border-slate-200/80 dark:border-white/5 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-2xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+                  Staff Rate Formula
+                </span>
+                <span className="text-xs font-mono font-bold text-volt-500 dark:text-volt-400">
+                  ₹{formatCleanPrice(effectiveStaffRate)} <span className="text-[10px] font-normal text-slate-500">/ mo</span>
+                </span>
               </div>
-              <p className="text-2xs text-slate-500 dark:text-slate-400">
-                Covers coach logins, tactical dashboard access, attendance tools, and performance tracking.
+              <p className="text-2xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Covers coach logins, tactical board access, attendance tools, and performance logs:
               </p>
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-slate-300">
+                  ₹{formatCleanPrice(effectiveStaffRate * 1)}/mo
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-slate-300">
+                  ₹{formatCleanPrice(effectiveStaffRate * 3)}/3-mo
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-slate-300">
+                  ₹{formatCleanPrice(effectiveStaffRate * 6)}/6-mo
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-slate-300">
+                  ₹{formatCleanPrice(effectiveStaffRate * 12)}/yr
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -355,7 +414,7 @@ export const SubscriptionManagementPage: React.FC = () => {
             </div>
             <h4 className="text-base font-bold text-slate-900 dark:text-white">Need more slots for upcoming batches?</h4>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-              You can scale your student and coach capacity instantly. Prorated charges will be applied automatically via your Stripe billing account.
+              You can scale your student and coach capacity instantly. Prorated charges will be applied automatically via your Razorpay billing account.
             </p>
           </div>
 
@@ -391,7 +450,7 @@ export const SubscriptionManagementPage: React.FC = () => {
             <Info size={28} className="mx-auto text-slate-400 dark:text-slate-500" />
             <p className="text-xs text-slate-500 dark:text-slate-400">No payment transactions recorded yet.</p>
             <p className="text-2xs text-slate-400 dark:text-slate-500">
-              When subscription checkout is completed, verified Stripe invoices and tax receipts will appear here.
+              When subscription checkout is completed, verified invoices and payment receipts will appear here.
             </p>
           </div>
         ) : (

@@ -1,6 +1,6 @@
-// src/components/layout/PortalNotificationBell.tsx
 import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Link } from "react-router-dom";
 import { Bell, FileText, Download } from "lucide-react";
 import { useClickOutside } from "../../hooks/useClickOutside";
 import { RootState } from "../../store";
@@ -22,7 +22,7 @@ import {
 // counts as read.
 export const PortalNotificationBell: React.FC = () => {
   const dispatch = useDispatch();
-  const { isAuthenticated } = useSelector((s: RootState) => s.auth);
+  const { isAuthenticated, user } = useSelector((s: RootState) => s.auth);
   const { unreadCount, items: notifications } = useSelector(
     (s: RootState) => s.notifications,
   );
@@ -158,6 +158,15 @@ export const PortalNotificationBell: React.FC = () => {
                   </button>
                 ))
               )}
+            </div>
+            <div className="p-2.5 border-t border-slate-100 dark:border-white/[0.06] bg-slate-50/60 dark:bg-white/[0.02] text-center">
+              <Link
+                to={user?.role === "guardian" ? "/guardian/alerts" : "/notifications"}
+                onClick={() => setOpen(false)}
+                className="text-xs font-semibold text-core-500 hover:text-core-400 dark:text-core-400 inline-flex items-center gap-1"
+              >
+                View all alerts →
+              </Link>
             </div>
           </div>
       )}

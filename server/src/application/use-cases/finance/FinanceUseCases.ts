@@ -4,18 +4,35 @@ import { FeeModel } from "../../../infrastructure/database/models/Fee.model";
 import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
 import { StudentModel } from "../../../infrastructure/database/models/Student.model";
-import { AcademySubscriptionModel } from "../../../infrastructure/database/models/AcademySubscription.model";
+import {
+  AcademySubscriptionModel,
+  type BillingInterval,
+} from "../../../infrastructure/database/models/AcademySubscription.model";
 import { NfcCardRequestModel } from "../../../infrastructure/database/models/NfcCardRequest.model";
 
 function computeSubscriptionAmount(sub: {
   ratePerStudentPerDay: number;
   provisionedCapacity: number;
-  billingInterval: "month" | "year";
+  billingInterval: BillingInterval;
   staffRatePerStaffPerMonth?: number;
   provisionedStaffCapacity?: number;
 }): number {
-  const days = sub.billingInterval === "year" ? 365 : 30;
-  const months = sub.billingInterval === "year" ? 12 : 1;
+  const days =
+    sub.billingInterval === "year"
+      ? 365
+      : sub.billingInterval === "half_year"
+      ? 180
+      : sub.billingInterval === "quarter"
+      ? 90
+      : 30;
+  const months =
+    sub.billingInterval === "year"
+      ? 12
+      : sub.billingInterval === "half_year"
+      ? 6
+      : sub.billingInterval === "quarter"
+      ? 3
+      : 1;
   const studentTotal = (sub.ratePerStudentPerDay || 0) * (sub.provisionedCapacity || 0) * days;
   const staffTotal = (sub.staffRatePerStaffPerMonth || 0) * (sub.provisionedStaffCapacity || 0) * months;
   return round2(studentTotal + staffTotal);

@@ -2,6 +2,7 @@
 import Stripe from "stripe";
 import { config } from "../../config/app.config";
 import { logger } from "../../shared/utils/logger";
+import type { BillingInterval } from "../database/models/AcademySubscription.model";
 
 // Every price here is built inline with price_data rather than a
 // pre-created Stripe Price object, because the ₹/student/day rate is
@@ -54,7 +55,7 @@ class StripeService {
   async createSubscriptionCheckoutSession(params: {
     customerId: string;
     academyId: string;
-    billingInterval: "month" | "year";
+    billingInterval: BillingInterval;
     unitAmountPaise: number;
     capacity: number;
     ratePerStudentPerDay: number;
@@ -62,6 +63,10 @@ class StripeService {
     cancelUrl: string;
   }): Promise<Stripe.Checkout.Session> {
     const stripe = this.getClient();
+    const recurringInterval = params.billingInterval === "year" ? "year" : "month";
+    const intervalCount =
+      params.billingInterval === "quarter" ? 3 : params.billingInterval === "half_year" ? 6 : 1;
+
     return stripe.checkout.sessions.create({
       mode: "subscription",
       customer: params.customerId,
@@ -70,7 +75,7 @@ class StripeService {
           price_data: {
             currency: "inr",
             unit_amount: params.unitAmountPaise,
-            recurring: { interval: params.billingInterval },
+            recurring: { interval: recurringInterval, interval_count: intervalCount },
             product_data: {
               name: `Noxphere subscription — ${params.capacity} students`,
               metadata: {
@@ -153,7 +158,7 @@ class StripeService {
   async updateSubscriptionCapacity(params: {
     subscriptionId: string;
     academyId: string;
-    billingInterval: "month" | "year";
+    billingInterval: BillingInterval;
     unitAmountPaise: number;
     capacity: number;
     ratePerStudentPerDay: number;
@@ -184,6 +189,10 @@ class StripeService {
         ? existingProduct
         : existingProduct.id;
 
+    const recurringInterval = params.billingInterval === "year" ? "year" : "month";
+    const intervalCount =
+      params.billingInterval === "quarter" ? 3 : params.billingInterval === "half_year" ? 6 : 1;
+
     return stripe.subscriptions.update(params.subscriptionId, {
       items: [
         {
@@ -194,7 +203,8 @@ class StripeService {
             currency: "inr",
             unit_amount: params.unitAmountPaise,
             recurring: {
-              interval: params.billingInterval,
+              interval: recurringInterval,
+              interval_count: intervalCount,
             },
           },
 

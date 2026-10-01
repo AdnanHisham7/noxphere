@@ -2,7 +2,7 @@
 import { baseApi } from "./baseApi";
 
 export type SubscriptionStatus = "incomplete" | "active" | "past_due" | "canceled" | "unpaid" | null;
-export type BillingInterval = "month" | "year";
+export type BillingInterval = "month" | "quarter" | "half_year" | "year";
 
 export interface AcademySubscriptionStatus {
   hasSubscription: boolean;
@@ -165,6 +165,10 @@ export interface AcademyBillingDetails {
   remainingStaffSlots: number;
   ratePerStudentPerDay: number;
   staffRatePerStaffPerMonth: number;
+  platformDefaultRate?: number;
+  platformDefaultStaffRate?: number;
+  hasCustomRate?: boolean;
+  hasCustomStaffRate?: boolean;
   estimatedRenewalRupees: number;
   alerts: BillingAlert[];
   transactions: BillingTransaction[];

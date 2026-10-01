@@ -1117,12 +1117,12 @@ export const AcademyNfcManagementPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-volt-500/10 dark:bg-volt-400/10 border border-volt-500/20 dark:border-volt-400/20 text-slate-800 dark:text-volt-300 text-xs flex items-start gap-2">
+              <div className="p-3.5 rounded-xl bg-volt-400/10 dark:bg-volt-400/15 border border-volt-500/30 dark:border-volt-400/30 text-slate-800 dark:text-slate-100 text-xs flex items-start gap-2.5">
                 <Sparkles size={16} className="shrink-0 mt-0.5 text-volt-600 dark:text-volt-400" />
-                <span>
-                  <strong>Approval Workflow:</strong> Your order request will be
+                <span className="leading-relaxed">
+                  <strong className="font-semibold text-slate-900 dark:text-white">Approval Workflow:</strong> Your order request will be
                   submitted to the Super Admin for verification. Once approved,
-                  you can complete payment via Stripe right from this page to
+                  you can complete payment via Razorpay right from this page to
                   commence production and shipping!
                 </span>
               </div>
