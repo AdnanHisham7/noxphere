@@ -19,6 +19,8 @@ export class AdminNotificationController {
         documentFilename,
         attachments,
         channels,
+        linkUrl,
+        linkLabel,
       } = req.body;
       if (!franchiseId || !title || !body || !audience) {
         throw new BadRequestError("franchiseId, title, body and audience are required");
@@ -35,6 +37,8 @@ export class AdminNotificationController {
           documentFilename,
           attachments,
           channels,
+          linkUrl,
+          linkLabel,
         },
         req.user!.sub,
       );

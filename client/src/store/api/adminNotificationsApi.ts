@@ -10,6 +10,8 @@ export interface AdminNotification {
   documentUrl?: string;
   documentFilename?: string;
   attachments?: { name: string; url: string }[];
+  linkUrl?: string;
+  linkLabel?: string;
   channels?: string[];
   createdAt: string;
   readBy: string[];
@@ -25,6 +27,8 @@ export interface CreateNotificationBody {
   documentUrl?: string;
   documentFilename?: string;
   attachments?: { name: string; url: string }[];
+  linkUrl?: string;
+  linkLabel?: string;
   channels?: string[];
 }
 

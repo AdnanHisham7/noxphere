@@ -1,5 +1,12 @@
 import mongoose, { Schema, Document } from "mongoose";
 
+export interface FormationPreset {
+  id: string;
+  label: string;
+  formationType: string;
+  squad: Record<string, string>;
+}
+
 export interface TeamDocument extends Document {
   name: string;
   ageGroup: string;
@@ -11,6 +18,7 @@ export interface TeamDocument extends Document {
   bannerUrl?: string;
   primaryColor?: string;
   secondaryColor?: string;
+  formationPresets?: FormationPreset[];
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -30,6 +38,15 @@ const TeamSchema = new Schema<TeamDocument>(
     bannerUrl: String,
     primaryColor: { type: String, match: HEX_COLOR_REGEX, default: "#1f2937" },
     secondaryColor: { type: String, match: HEX_COLOR_REGEX, default: "#334155" },
+    formationPresets: {
+      type: [{
+        id: { type: String, required: true },
+        label: { type: String, required: true },
+        formationType: { type: String, required: true },
+        squad: { type: Map, of: String, required: true },
+      }],
+      default: [],
+    },
     deletedAt: { type: Date, select: false },
   },
   {

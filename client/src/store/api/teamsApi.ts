@@ -16,6 +16,13 @@ export interface Team {
   franchise?: { id: string; name: string };
 }
 
+export interface FormationPreset {
+  id: string;
+  label: string;
+  formationType: string;
+  squad: Record<string, string>;
+}
+
 export interface TeamDetail extends Omit<Team, "coach"> {
   coachId?: { firstName: string; lastName: string };
   students: {
@@ -28,6 +35,7 @@ export interface TeamDetail extends Omit<Team, "coach"> {
     attendancePercentage: number;
     overallRating: number;
   }[];
+  formationPresets?: FormationPreset[];
 }
 
 export interface CreateTeamBody {
@@ -69,6 +77,22 @@ export const teamsApi = baseApi.injectEndpoints({
       query: (id) => ({ url: `/teams/${id}`, method: "DELETE" }),
       invalidatesTags: ["Team"],
     }),
+    saveFormationPreset: builder.mutation<FormationPreset, { teamId: string; preset: FormationPreset }>({
+      query: ({ teamId, preset }) => ({
+        url: `/teams/${teamId}/formation-presets`,
+        method: "POST",
+        body: preset,
+      }),
+      transformResponse: (res: { data: FormationPreset }) => res.data,
+      invalidatesTags: (_r, _e, { teamId }) => [{ type: "Team", id: teamId }],
+    }),
+    deleteFormationPreset: builder.mutation<void, { teamId: string; presetId: string }>({
+      query: ({ teamId, presetId }) => ({
+        url: `/teams/${teamId}/formation-presets/${presetId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_r, _e, { teamId }) => [{ type: "Team", id: teamId }],
+    }),
   }),
 });
 
@@ -78,4 +102,6 @@ export const {
   useCreateTeamMutation,
   useUpdateTeamMutation,
   useDeleteTeamMutation,
+  useSaveFormationPresetMutation,
+  useDeleteFormationPresetMutation,
 } = teamsApi;

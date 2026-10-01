@@ -18,6 +18,8 @@ export interface CreateNotificationInput {
   documentUrl?: string;
   documentFilename?: string;
   attachments?: { name: string; url: string }[];
+  linkUrl?: string;
+  linkLabel?: string;
   channels?: string[];
 }
 
@@ -150,6 +152,8 @@ export class AdminNotificationUseCases {
       documentUrl: input.documentUrl,
       documentFilename: input.documentFilename,
       attachments: input.attachments,
+      linkUrl: input.linkUrl,
+      linkLabel: input.linkLabel,
       channels: selectedChannels,
       createdBy,
       readBy: [],

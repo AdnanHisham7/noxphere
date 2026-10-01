@@ -41,6 +41,10 @@ const TeamManagePage: React.FC = () => {
   const navigate = useNavigate();
   const { data: team, isLoading, isError } = useGetTeamByIdQuery(id ?? "", { skip: !id });
 
+  // ── All hooks MUST be declared unconditionally before any early returns ──
+  // React error #310 was caused by useState being called AFTER conditional returns.
+  const [isReportOpen, setIsReportOpen] = useState(false);
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-4">
@@ -82,11 +86,10 @@ const TeamManagePage: React.FC = () => {
     photo: s.photo,
   }));
 
-  const [isReportOpen, setIsReportOpen] = useState(false);
-
   return (
     <div className="h-[calc(100vh-4rem)] p-4">
       <ManageTeamView
+        teamId={id!}
         teamName={team.name}
         players={players}
         coach={team.coachId ?? null}
@@ -95,6 +98,7 @@ const TeamManagePage: React.FC = () => {
         onBack={() => navigate("/teams")}
         onEditColors={() => navigate("/teams")}
         onGenerateReport={() => setIsReportOpen(true)}
+        initialFormationPresets={(team.formationPresets ?? []) as any}
       />
 
       {isReportOpen && id && (
