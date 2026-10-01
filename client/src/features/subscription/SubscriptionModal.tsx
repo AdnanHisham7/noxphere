@@ -5,6 +5,8 @@ import { toast } from "react-hot-toast";
 import { Modal, Button } from "../../components/ui";
 import {
   useGetAcademySubscriptionStatusQuery,
+  useGetPlatformDefaultRateQuery,
+  useGetPlatformDefaultStaffRateQuery,
   useCreateRazorpaySubscriptionOrderMutation,
   useVerifyRazorpaySubscriptionPaymentMutation,
   useUpgradeSubscriptionCapacityMutation,
@@ -23,11 +25,17 @@ interface SubscriptionModalProps {
   mode?: "subscribe" | "upgrade" | "renew";
 }
 
-const formatCurrency = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+const formatCurrency = (n: number) => {
+  const rounded = Math.round((n + Number.EPSILON) * 100) / 100;
+  return `₹${rounded.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+};
 
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId, onClose, onSuccess, mode }) => {
   const user = useSelector((s: RootState) => s.auth.user);
   const { data: status, isLoading } = useGetAcademySubscriptionStatusQuery(academyId);
+  const { data: platformStudentRate } = useGetPlatformDefaultRateQuery();
+  const { data: platformStaffRate } = useGetPlatformDefaultStaffRateQuery();
+
   const [createRazorpayOrder, { isLoading: creatingOrder }] = useCreateRazorpaySubscriptionOrderMutation();
   const [verifyRazorpayPayment, { isLoading: verifyingPayment }] = useVerifyRazorpaySubscriptionPaymentMutation();
   const [upgrade, { isLoading: upgrading }] = useUpgradeSubscriptionCapacityMutation();
@@ -46,8 +54,19 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId,
       if (status.billingInterval) setBillingInterval(status.billingInterval);
       setInitialized(true);
     }
-  }, [status, initialized]);  const rate = status?.currentDefaultRate ?? status?.ratePerStudentPerDay ?? 1;
-  const staffRate = status?.currentDefaultStaffRate ?? status?.staffRatePerStaffPerMonth ?? 10;
+  }, [status, initialized]);
+
+  const rate =
+    status?.currentDefaultRate ??
+    platformStudentRate ??
+    status?.ratePerStudentPerDay ??
+    1;
+
+  const staffRate =
+    status?.currentDefaultStaffRate ??
+    platformStaffRate ??
+    status?.staffRatePerStaffPerMonth ??
+    10;
   const days =
     billingInterval === "month"
       ? 30
@@ -64,9 +83,15 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId,
       : billingInterval === "half_year"
       ? 6
       : 12;
-  const studentTotal = useMemo(() => rate * capacity * days, [rate, capacity, days]);
-  const staffTotal = useMemo(() => staffRate * staffCapacity * staffMonths, [staffRate, staffCapacity, staffMonths]);
-  const total = studentTotal + staffTotal;
+  const studentTotal = useMemo(
+    () => Math.round((rate * capacity * days + Number.EPSILON) * 100) / 100,
+    [rate, capacity, days]
+  );
+  const staffTotal = useMemo(
+    () => Math.round((staffRate * staffCapacity * staffMonths + Number.EPSILON) * 100) / 100,
+    [staffRate, staffCapacity, staffMonths]
+  );
+  const total = Math.round((studentTotal + staffTotal + Number.EPSILON) * 100) / 100;
 
   const handleRazorpayPayment = async () => {
     try {

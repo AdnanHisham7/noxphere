@@ -165,6 +165,10 @@ export interface AcademyBillingDetails {
   remainingStaffSlots: number;
   ratePerStudentPerDay: number;
   staffRatePerStaffPerMonth: number;
+  platformDefaultRate?: number;
+  platformDefaultStaffRate?: number;
+  hasCustomRate?: boolean;
+  hasCustomStaffRate?: boolean;
   estimatedRenewalRupees: number;
   alerts: BillingAlert[];
   transactions: BillingTransaction[];

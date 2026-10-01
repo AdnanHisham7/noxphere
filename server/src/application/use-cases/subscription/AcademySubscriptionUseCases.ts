@@ -131,7 +131,16 @@ export class AcademySubscriptionUseCases {
   }
 
   async getBillingDetails(academyId: string) {
-    const [subscription, rate, staffRate, activeStudentCount, activeStaffCount, pendingInvitationCount] = await Promise.all([
+    const [
+      subscription,
+      rate,
+      staffRate,
+      activeStudentCount,
+      activeStaffCount,
+      pendingInvitationCount,
+      academy,
+      platformSettings,
+    ] = await Promise.all([
       AcademySubscriptionModel.findOne({ academyId }).lean(),
       this.getEffectiveRate(academyId),
       this.getEffectiveStaffRate(academyId),
@@ -141,6 +150,8 @@ export class AcademySubscriptionUseCases {
         academyId: new mongoose.Types.ObjectId(academyId),
         status: "pending",
       }),
+      AcademyModel.findById(academyId).select("subscriptionRateOverride staffRateOverride").lean(),
+      PlatformSettingsModel.findOne().lean(),
     ]);
 
     const provisionedCapacity = subscription?.provisionedCapacity ?? 0;
@@ -280,6 +291,10 @@ export class AcademySubscriptionUseCases {
       remainingStaffSlots: Math.max(0, provisionedStaffCapacity - activeStaffCount),
       ratePerStudentPerDay: currentRate,
       staffRatePerStaffPerMonth: currentStaffRate,
+      platformDefaultRate: platformSettings?.defaultRatePerStudentPerDay ?? 1,
+      platformDefaultStaffRate: platformSettings?.defaultStaffRatePerStaffPerMonth ?? 10,
+      hasCustomRate: academy?.subscriptionRateOverride !== undefined && academy?.subscriptionRateOverride !== null,
+      hasCustomStaffRate: academy?.staffRateOverride !== undefined && academy?.staffRateOverride !== null,
       estimatedRenewalRupees,
       alerts,
       transactions: allTransactions,
