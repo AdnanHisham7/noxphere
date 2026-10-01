@@ -15,6 +15,9 @@ export interface AcademySubscriptionDocument extends Document {
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   stripeCheckoutSessionId?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
   billingInterval: BillingInterval;
   // The ₹/student/day rate actually in effect for this subscription,
   // captured at checkout time. A later change to the platform default or
@@ -54,6 +57,9 @@ const AcademySubscriptionSchema = new Schema<AcademySubscriptionDocument>(
     stripeCustomerId: String,
     stripeSubscriptionId: String,
     stripeCheckoutSessionId: String,
+    razorpayOrderId: { type: String, index: true },
+    razorpayPaymentId: String,
+    razorpaySignature: String,
     billingInterval: { type: String, enum: ["month", "year"], required: true },
     ratePerStudentPerDay: { type: Number, required: true, min: 0 },
     staffRatePerStaffPerMonth: { type: Number, required: true, min: 0, default: 10 },

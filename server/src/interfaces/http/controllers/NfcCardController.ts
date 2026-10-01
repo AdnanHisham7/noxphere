@@ -106,6 +106,37 @@ export class NfcCardController {
     }
   };
 
+  createRazorpayOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const result = await this.useCases.createRazorpayOrder(req.params.id, {
+        sub: req.user!.sub,
+        role: req.user!.role,
+        academyId: req.user?.academyId,
+      });
+      ResponseHandler.success(res, result, "Razorpay NFC order created");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  verifyRazorpayPayment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { orderId, paymentId, signature } = req.body;
+      if (!orderId || !paymentId || !signature) {
+        throw new BadRequestError("orderId, paymentId, and signature are required");
+      }
+      const result = await this.useCases.verifyRazorpayPayment({
+        requestId: req.params.id,
+        orderId,
+        paymentId,
+        signature,
+      });
+      ResponseHandler.success(res, result, "NFC order payment verified");
+    } catch (err) {
+      next(err);
+    }
+  };
+
   createCheckoutSession = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const result = await this.useCases.createCheckoutSession(req.params.id, {

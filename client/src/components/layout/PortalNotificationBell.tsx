@@ -68,8 +68,8 @@ export const PortalNotificationBell: React.FC = () => {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 w-80 max-w-[90vw] bg-white dark:bg-ink-900 border border-slate-200 dark:border-white/[0.08] rounded-xl shadow-xl z-50 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-white/[0.06] bg-slate-50/60 dark:bg-transparent">
+        <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-auto sm:right-0 sm:top-11 sm:w-80 max-w-sm bg-white dark:bg-ink-900 border border-slate-200 dark:border-white/[0.08] rounded-xl shadow-2xl z-50 overflow-hidden max-h-[75vh] flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-white/[0.06] bg-slate-50/60 dark:bg-transparent shrink-0">
               <span className="text-xs font-mono uppercase tracking-wide text-slate-500 dark:text-nox-low font-semibold">
                 Alerts
               </span>
@@ -80,7 +80,7 @@ export const PortalNotificationBell: React.FC = () => {
                 Mark all read
               </button>
             </div>
-            <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.04]">
+            <div className="overflow-y-auto min-h-0 flex-1 divide-y divide-slate-100 dark:divide-white/[0.04] custom-scrollbar">
               {notifications.length === 0 ? (
                 <p className="text-center text-slate-400 dark:text-nox-low text-sm py-8">
                   No notifications

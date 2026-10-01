@@ -10,6 +10,7 @@ import { StudentModel } from "../../../infrastructure/database/models/Student.mo
 import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
 import { stripeService } from "../../../infrastructure/services/StripeService";
+import { razorpayService } from "../../../infrastructure/services/RazorpayService";
 import { NotificationService } from "../../../infrastructure/services/NotificationService";
 import { config } from "../../../config/app.config";
 import {
@@ -424,6 +425,102 @@ export class NfcCardUseCases {
     }
 
     return { url: session.url };
+  }
+
+  async createRazorpayOrder(
+    requestId: string,
+    user: { sub: string; role: string; academyId?: string },
+  ): Promise<{
+    orderId: string;
+    amount: number;
+    currency: string;
+    keyId: string;
+    totalAmount: number;
+    cardType: string;
+    quantity: number;
+  }> {
+    const request = await NfcCardRequestModel.findById(requestId);
+    if (!request) throw new NotFoundError("NFC Card request not found");
+
+    if (request.status !== "approved") {
+      throw new BadRequestError(
+        `Payment is only allowed for approved requests. Current status is '${request.status}'.`,
+      );
+    }
+
+    if (user.role === "student" && request.requesterId.toString() !== user.sub) {
+      throw new ForbiddenError("Not authorized to pay for this request");
+    }
+    if (
+      user.role === "manager" &&
+      request.academyId &&
+      request.academyId.toString() !== user.academyId
+    ) {
+      throw new ForbiddenError("Not authorized to pay for this request");
+    }
+
+    const amountPaise = Math.round(request.totalAmount * 100);
+    const order = await razorpayService.createOrder({
+      amountPaise,
+      currency: "INR",
+      receipt: `nfc_${request._id.toString().slice(-10)}`,
+      notes: {
+        nfcRequestId: request._id.toString(),
+        requesterId: user.sub,
+        cardType: request.cardType,
+        quantity: request.quantity,
+      },
+    });
+
+    request.razorpayOrderId = order.id;
+    await request.save();
+
+    return {
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: razorpayService.getKeyId(),
+      totalAmount: request.totalAmount,
+      cardType: request.cardType,
+      quantity: request.quantity,
+    };
+  }
+
+  async verifyRazorpayPayment(params: {
+    requestId: string;
+    orderId: string;
+    paymentId: string;
+    signature: string;
+  }): Promise<{ paid: boolean; request: any }> {
+    const { requestId, orderId, paymentId, signature } = params;
+    const isValid = razorpayService.verifyPaymentSignature({
+      orderId,
+      paymentId,
+      signature,
+    });
+    if (!isValid) {
+      throw new BadRequestError("Invalid Razorpay payment signature");
+    }
+
+    const request = await NfcCardRequestModel.findById(requestId);
+    if (!request) throw new NotFoundError("NFC Card request not found");
+
+    request.status = "paid";
+    request.paidAt = new Date();
+    request.razorpayOrderId = orderId;
+    request.razorpayPaymentId = paymentId;
+    request.razorpaySignature = signature;
+    await request.save();
+
+    // Alert Super Admins about the payment received!
+    await this.notificationService.notifySuperAdmins({
+      type: "payment_received",
+      title: "NFC Cards Paid — Ready to Dispatch",
+      body: `An order of ${request.quantity} ${request.cardType} NFC card(s) has been paid via Razorpay (₹${request.totalAmount}). Please prepare shipment to ${request.shippingAddress?.recipientName}.`,
+      metadata: { requestId: request._id.toString(), orderId, paymentId },
+    });
+
+    return { paid: true, request };
   }
 
   async verifyCheckoutSession(

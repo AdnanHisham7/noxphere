@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
-import { ArrowLeft, CalendarDays, Save, Zap, Star, AlertTriangle, AlertCircle, LayoutList, LayoutGrid } from "lucide-react";
+import { ArrowLeft, CalendarDays, Save, Zap, Star, AlertTriangle, AlertCircle, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, ArrowRight, CheckCircle2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import clsx from "clsx";
 import {
@@ -96,7 +96,41 @@ const SessionRosterPage: React.FC = () => {
 
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [pendingNavigationPath, setPendingNavigationPath] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [viewMode, setViewMode] = useState<"list" | "grid">(() => {
+    if (typeof window !== "undefined") {
+      return window.innerWidth < 768 ? "grid" : "list";
+    }
+    return "list";
+  });
+
+  const [activeSwipePlayerIndex, setActiveSwipePlayerIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+
+  const minSwipeDistance = 45;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEndX(null);
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (touchStartX === null || touchEndX === null) return;
+    const distance = touchStartX - touchEndX;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    const rosterLen = data?.roster?.length ?? 0;
+    if (isLeftSwipe && activeSwipePlayerIndex < rosterLen - 1) {
+      setActiveSwipePlayerIndex((prev) => prev + 1);
+    }
+    if (isRightSwipe && activeSwipePlayerIndex > 0) {
+      setActiveSwipePlayerIndex((prev) => prev - 1);
+    }
+  };
 
   useEffect(() => {
     if (!data) return;
@@ -599,204 +633,507 @@ const SessionRosterPage: React.FC = () => {
           </div>
 
           {viewMode === "grid" ? (
-            /* Responsive Grid Mode Cards */
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {roster.map((player) => {
-                const currentStatus = getAttendanceStatus(player);
-                const isAbsentOrExcused =
-                  currentStatus === "absent" || currentStatus === "excused";
-                const playerScores = scoresPending[player.studentId] || {};
-                const overallScore = getPlayerOverallScore(player.studentId);
-                const isUnmarked = !currentStatus;
+            <>
+              {/* MOBILE SCREEN: Swipable Single Player Card Deck */}
+              <div className="md:hidden space-y-3">
+                {roster.length > 0 && (() => {
+                  const safeIndex = Math.min(activeSwipePlayerIndex, roster.length - 1);
+                  const player = roster[safeIndex];
+                  const currentStatus = getAttendanceStatus(player);
+                  const isAbsentOrExcused = currentStatus === "absent" || currentStatus === "excused";
+                  const playerScores = scoresPending[player.studentId] || {};
+                  const overallScore = getPlayerOverallScore(player.studentId);
+                  const isUnmarked = !currentStatus;
 
-                return (
-                  <div
-                    key={player.studentId}
-                    className={clsx(
-                      "card p-4 space-y-3.5 border transition-all duration-200 relative overflow-hidden",
-                      isUnmarked
-                        ? "border-rose-400/40 bg-rose-50/20 dark:bg-rose-950/10 shadow-xs"
-                        : currentStatus === "present"
-                          ? "border-emerald-400/30 bg-white dark:bg-pitch-800/90"
-                          : currentStatus === "late"
-                            ? "border-amber-400/30 bg-white dark:bg-pitch-800/90"
-                            : "border-slate-200 dark:border-white/10 opacity-70 bg-slate-50/50 dark:bg-pitch-900/40"
-                    )}
-                  >
-                    {/* Header: Avatar, Name, Jersey, Pos, and Rating Badge */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Avatar
-                          name={`${player.firstName} ${player.lastName}`}
-                          src={player.photo}
-                          size="md"
-                        />
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                            {player.firstName} {player.lastName}
-                          </p>
-                          <div className="flex items-center gap-2 text-2xs font-mono text-slate-500 mt-0.5">
-                            <span className="font-semibold text-volt-600 dark:text-volt-400">
-                              #{player.jerseyNumber ?? "—"}
-                            </span>
-                            <span>•</span>
-                            <span className="truncate">{player.position || "Athlete"}</span>
-                          </div>
-                        </div>
-                      </div>
+                  return (
+                    <>
+                      {/* Top Swiper Navigation & Progress */}
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-pitch-800 border border-slate-200 dark:border-white/10 shadow-xs">
+                        <button
+                          type="button"
+                          onClick={() => setActiveSwipePlayerIndex((i) => Math.max(0, i - 1))}
+                          disabled={safeIndex === 0}
+                          className="w-9 h-9 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                          aria-label="Previous player"
+                        >
+                          <ChevronLeft size={18} />
+                        </button>
 
-                      {/* Overall Rating Badge */}
-                      <div className="text-right shrink-0">
-                        {overallScore !== null ? (
-                          <div
-                            className={clsx(
-                              "inline-flex flex-col items-center px-2 py-1 rounded-lg border",
-                              getOverallScoreBadgeStyle(overallScore)
-                            )}
-                          >
-                            <span className="text-2xs font-mono font-bold leading-none">OVR</span>
-                            <span className="text-base font-display font-black leading-tight">
-                              {overallScore.toFixed(1)}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="inline-block px-2 py-1 rounded text-2xs font-mono text-slate-400 bg-slate-100 dark:bg-pitch-900 border border-slate-200 dark:border-white/5">
-                            NR
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-2xs font-mono font-bold text-slate-900 dark:text-white">
+                            Athlete {safeIndex + 1} of {roster.length}
                           </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Attendance Selector Buttons */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-2xs">
-                        <span className="font-mono text-slate-400 uppercase tracking-wider font-semibold">
-                          Attendance {isUnmarked && <span className="text-rose-500 font-bold">* Required</span>}
-                        </span>
-                        {currentStatus && (
-                          <span className="font-mono font-semibold capitalize text-slate-600 dark:text-slate-300">
-                            {currentStatus}
-                          </span>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {ATTENDANCE_OPTIONS.map((opt) => (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() =>
-                              setAttendancePending((p) => ({
-                                ...p,
-                                [player.studentId]: opt.value,
-                              }))
-                            }
-                            className={clsx(
-                              "py-1.5 px-2 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1",
-                              currentStatus === opt.value
-                                ? `${opt.activeBg} border-transparent shadow-xs`
-                                : "bg-slate-100 dark:bg-pitch-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20"
-                            )}
-                          >
-                            <span>{opt.label}</span>
-                            <span className="hidden sm:inline text-2xs font-normal">
-                              {opt.fullLabel}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Technical Attributes Grid */}
-                    {skillParameters.length > 0 && !isAbsentOrExcused && (
-                      <div className="pt-2 border-t border-slate-100 dark:border-white/5 space-y-2">
-                        <div className="flex items-center justify-between text-2xs text-slate-400">
-                          <span className="font-mono uppercase tracking-wider font-semibold">
-                            Technical Attributes
-                          </span>
-                          <div className="flex items-center gap-1">
-                            {[6, 7, 8, 9].map((qVal) => (
-                              <button
-                                key={qVal}
-                                type="button"
-                                onClick={() => handleQuickSetPlayerScores(player.studentId, qVal)}
-                                className="px-1.5 py-0.5 rounded text-3xs font-mono bg-slate-100 dark:bg-pitch-900 hover:bg-volt-400 hover:text-pitch-950 text-slate-500 transition-colors"
-                                title={`Set all attributes to ${qVal}`}
-                              >
-                                {qVal}
-                              </button>
-                            ))}
+                          <div className="w-28 bg-slate-100 dark:bg-pitch-900 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="bg-volt-400 h-full rounded-full transition-all duration-300"
+                              style={{ width: `${((safeIndex + 1) / roster.length) * 100}%` }}
+                            />
                           </div>
                         </div>
 
-                        <div className="space-y-1.5">
-                          {skillParameters.map((param) => {
-                            const currentScore = playerScores[param] ?? 7;
-                            return (
-                              <div
-                                key={param}
-                                className="p-2 rounded-lg bg-slate-50 dark:bg-pitch-900/60 border border-slate-200/60 dark:border-white/5 space-y-1"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="text-2xs font-semibold text-slate-700 dark:text-slate-300 truncate" title={param}>
-                                    {param}
+                        <button
+                          type="button"
+                          onClick={() => setActiveSwipePlayerIndex((i) => Math.min(roster.length - 1, i + 1))}
+                          disabled={safeIndex === roster.length - 1}
+                          className="w-9 h-9 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                          aria-label="Next player"
+                        >
+                          <ChevronRight size={18} />
+                        </button>
+                      </div>
+
+                      {/* Quick Player Jump Chips */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                        {roster.map((p, idx) => {
+                          const status = getAttendanceStatus(p);
+                          const isCurrent = idx === safeIndex;
+                          return (
+                            <button
+                              key={p.studentId}
+                              type="button"
+                              onClick={() => setActiveSwipePlayerIndex(idx)}
+                              className={clsx(
+                                "px-2.5 py-1 rounded-lg text-2xs font-mono font-semibold shrink-0 transition-all border flex items-center gap-1",
+                                isCurrent
+                                  ? "bg-slate-900 dark:bg-white text-white dark:text-pitch-950 border-slate-900 dark:border-white shadow-xs font-bold"
+                                  : "bg-white dark:bg-pitch-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10"
+                              )}
+                            >
+                              <span>#{p.jerseyNumber ?? idx + 1}</span>
+                              <span
+                                className={clsx(
+                                  "w-1.5 h-1.5 rounded-full shrink-0",
+                                  status === "present"
+                                    ? "bg-emerald-500"
+                                    : status === "late"
+                                    ? "bg-amber-400"
+                                    : status === "absent"
+                                    ? "bg-rose-500"
+                                    : status === "excused"
+                                    ? "bg-cyan-400"
+                                    : "bg-slate-300 dark:bg-slate-600"
+                                )}
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Swipable Card Container */}
+                      <div
+                        onTouchStart={onTouchStart}
+                        onTouchMove={onTouchMove}
+                        onTouchEnd={onTouchEnd}
+                        className="touch-pan-y select-none transition-all duration-200"
+                      >
+                        <div
+                          className={clsx(
+                            "card p-4 space-y-4 border transition-all duration-200 relative overflow-hidden shadow-sm",
+                            isUnmarked
+                              ? "border-rose-400/40 bg-rose-50/20 dark:bg-rose-950/10"
+                              : currentStatus === "present"
+                              ? "border-emerald-400/30 bg-white dark:bg-pitch-800/95"
+                              : currentStatus === "late"
+                              ? "border-amber-400/30 bg-white dark:bg-pitch-800/95"
+                              : "border-slate-200 dark:border-white/10 opacity-75 bg-slate-50/50 dark:bg-pitch-900/40"
+                          )}
+                        >
+                          {/* Header: Avatar, Name, Jersey, Pos, and Rating Badge */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <Avatar
+                                name={`${player.firstName} ${player.lastName}`}
+                                src={player.photo}
+                                size="md"
+                              />
+                              <div className="min-w-0">
+                                <p className="text-base font-bold text-slate-900 dark:text-white truncate">
+                                  {player.firstName} {player.lastName}
+                                </p>
+                                <div className="flex items-center gap-2 text-2xs font-mono text-slate-500 mt-0.5">
+                                  <span className="font-semibold text-volt-600 dark:text-volt-400">
+                                    #{player.jerseyNumber ?? "—"}
                                   </span>
-                                  <span
-                                    className={clsx(
-                                      "px-1.5 py-0.2 rounded text-2xs font-mono font-bold border",
-                                      getScoreBadgeStyle(currentScore)
-                                    )}
-                                  >
-                                    {currentScore}/10
+                                  <span>•</span>
+                                  <span className="truncate">{player.position || "Athlete"}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Overall Rating Badge */}
+                            <div className="text-right shrink-0">
+                              {overallScore !== null ? (
+                                <div
+                                  className={clsx(
+                                    "inline-flex flex-col items-center px-2 py-1 rounded-lg border",
+                                    getOverallScoreBadgeStyle(overallScore)
+                                  )}
+                                >
+                                  <span className="text-2xs font-mono font-bold leading-none">OVR</span>
+                                  <span className="text-base font-display font-black leading-tight">
+                                    {overallScore.toFixed(1)}
                                   </span>
                                 </div>
+                              ) : (
+                                <span className="inline-block px-2 py-1 rounded text-2xs font-mono text-slate-400 bg-slate-100 dark:bg-pitch-900 border border-slate-200 dark:border-white/5">
+                                  NR
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Attendance Selector Buttons */}
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-2xs">
+                              <span className="font-mono text-slate-400 uppercase tracking-wider font-semibold">
+                                Attendance {isUnmarked && <span className="text-rose-500 font-bold">* Required</span>}
+                              </span>
+                              {currentStatus && (
+                                <span className="font-mono font-semibold capitalize text-slate-600 dark:text-slate-300">
+                                  {currentStatus}
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-4 gap-2">
+                              {ATTENDANCE_OPTIONS.map((opt) => (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  onClick={() =>
+                                    setAttendancePending((p) => ({
+                                      ...p,
+                                      [player.studentId]: opt.value,
+                                    }))
+                                  }
+                                  className={clsx(
+                                    "py-2.5 px-2 rounded-xl text-xs font-bold transition-all border flex flex-col items-center justify-center gap-0.5",
+                                    currentStatus === opt.value
+                                      ? `${opt.activeBg} border-transparent shadow-xs scale-102`
+                                      : "bg-slate-100 dark:bg-pitch-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10 active:scale-95"
+                                  )}
+                                >
+                                  <span className="text-sm">{opt.label}</span>
+                                  <span className="text-[10px] font-normal">{opt.fullLabel}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Technical Attributes Grid */}
+                          {skillParameters.length > 0 && !isAbsentOrExcused && (
+                            <div className="pt-2 border-t border-slate-100 dark:border-white/5 space-y-2">
+                              <div className="flex items-center justify-between text-2xs text-slate-400">
+                                <span className="font-mono uppercase tracking-wider font-semibold">
+                                  Technical Attributes
+                                </span>
                                 <div className="flex items-center gap-1">
-                                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                                  {[6, 7, 8, 9].map((qVal) => (
                                     <button
-                                      key={num}
+                                      key={qVal}
                                       type="button"
-                                      onClick={() => setScore(player.studentId, param, num)}
-                                      className={clsx(
-                                        "flex-1 h-5 rounded text-[10px] font-mono font-bold transition-all",
-                                        currentScore === num
-                                          ? "bg-volt-400 text-pitch-950 shadow-xs"
-                                          : "bg-white dark:bg-pitch-800 text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/50 dark:border-white/5"
-                                      )}
+                                      onClick={() => handleQuickSetPlayerScores(player.studentId, qVal)}
+                                      className="px-1.5 py-0.5 rounded text-3xs font-mono bg-slate-100 dark:bg-pitch-900 hover:bg-volt-400 hover:text-pitch-950 text-slate-500 transition-colors"
+                                      title={`Set all attributes to ${qVal}`}
                                     >
-                                      {num}
+                                      {qVal}
                                     </button>
                                   ))}
                                 </div>
                               </div>
-                            );
-                          })}
+
+                              <div className="space-y-1.5">
+                                {skillParameters.map((param) => {
+                                  const currentScore = playerScores[param] ?? 7;
+                                  return (
+                                    <div
+                                      key={param}
+                                      className="p-2 rounded-lg bg-slate-50 dark:bg-pitch-900/60 border border-slate-200/60 dark:border-white/5 space-y-1"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-2xs font-semibold text-slate-700 dark:text-slate-300 truncate" title={param}>
+                                          {param}
+                                        </span>
+                                        <span
+                                          className={clsx(
+                                            "px-1.5 py-0.2 rounded text-2xs font-mono font-bold border",
+                                            getScoreBadgeStyle(currentScore)
+                                          )}
+                                        >
+                                          {currentScore}/10
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                                          <button
+                                            key={num}
+                                            type="button"
+                                            onClick={() => setScore(player.studentId, param, num)}
+                                            className={clsx(
+                                              "flex-1 h-6 rounded text-[10px] font-mono font-bold transition-all",
+                                              currentScore === num
+                                                ? "bg-volt-400 text-pitch-950 shadow-xs"
+                                                : "bg-white dark:bg-pitch-800 text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/50 dark:border-white/5"
+                                            )}
+                                          >
+                                            {num}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Session Notes / Remarks */}
+                          <div className="pt-2 border-t border-slate-100 dark:border-white/5">
+                            <input
+                              type="text"
+                              value={
+                                remarksPending[player.studentId] ??
+                                player.performanceRemarks ??
+                                player.attendanceRemarks ??
+                                ""
+                              }
+                              onChange={(e) =>
+                                setRemarksPending((r) => ({
+                                  ...r,
+                                  [player.studentId]: e.target.value,
+                                }))
+                              }
+                              placeholder="Session notes (e.g. Sharp on wing, tactical awareness)..."
+                              className="w-full text-xs py-2 px-2.5 rounded-lg bg-slate-50 dark:bg-pitch-900/60 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-volt-400"
+                            />
+                          </div>
                         </div>
                       </div>
-                    )}
 
-                    {/* Session Notes / Remarks */}
-                    <div className="pt-2 border-t border-slate-100 dark:border-white/5">
-                      <input
-                        type="text"
-                        value={
-                          remarksPending[player.studentId] ??
-                          player.performanceRemarks ??
-                          player.attendanceRemarks ??
-                          ""
-                        }
-                        onChange={(e) =>
-                          setRemarksPending((r) => ({
-                            ...r,
-                            [player.studentId]: e.target.value,
-                          }))
-                        }
-                        placeholder="Session notes (e.g. Sharp on wing, tactical awareness)..."
-                        className="w-full text-xs py-1.5 px-2.5 rounded-lg bg-slate-50 dark:bg-pitch-900/60 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-volt-400"
-                      />
+                      {/* Mobile Card Bottom Navigation */}
+                      <div className="space-y-2 pt-1">
+                        {safeIndex < roster.length - 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => setActiveSwipePlayerIndex((i) => i + 1)}
+                            className="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-pitch-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm active:scale-98"
+                          >
+                            <span>Mark Next Athlete</span>
+                            <ArrowRight size={14} />
+                          </button>
+                        ) : (
+                          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center justify-center gap-2">
+                            <CheckCircle2 size={16} />
+                            <span>All athletes reviewed</span>
+                          </div>
+                        )}
+                        <p className="text-center text-3xs font-mono text-slate-400 dark:text-slate-500">
+                          👈 Swipe card left or right to switch athletes 👉
+                        </p>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* DESKTOP SCREEN: Multi-column Grid Cards */}
+              <div className="hidden md:grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {roster.map((player) => {
+                  const currentStatus = getAttendanceStatus(player);
+                  const isAbsentOrExcused =
+                    currentStatus === "absent" || currentStatus === "excused";
+                  const playerScores = scoresPending[player.studentId] || {};
+                  const overallScore = getPlayerOverallScore(player.studentId);
+                  const isUnmarked = !currentStatus;
+
+                  return (
+                    <div
+                      key={player.studentId}
+                      className={clsx(
+                        "card p-4 space-y-3.5 border transition-all duration-200 relative overflow-hidden",
+                        isUnmarked
+                          ? "border-rose-400/40 bg-rose-50/20 dark:bg-rose-950/10 shadow-xs"
+                          : currentStatus === "present"
+                            ? "border-emerald-400/30 bg-white dark:bg-pitch-800/90"
+                            : currentStatus === "late"
+                              ? "border-amber-400/30 bg-white dark:bg-pitch-800/90"
+                              : "border-slate-200 dark:border-white/10 opacity-70 bg-slate-50/50 dark:bg-pitch-900/40"
+                      )}
+                    >
+                      {/* Header: Avatar, Name, Jersey, Pos, and Rating Badge */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar
+                            name={`${player.firstName} ${player.lastName}`}
+                            src={player.photo}
+                            size="md"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                              {player.firstName} {player.lastName}
+                            </p>
+                            <div className="flex items-center gap-2 text-2xs font-mono text-slate-500 mt-0.5">
+                              <span className="font-semibold text-volt-600 dark:text-volt-400">
+                                #{player.jerseyNumber ?? "—"}
+                              </span>
+                              <span>•</span>
+                              <span className="truncate">{player.position || "Athlete"}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Overall Rating Badge */}
+                        <div className="text-right shrink-0">
+                          {overallScore !== null ? (
+                            <div
+                              className={clsx(
+                                "inline-flex flex-col items-center px-2 py-1 rounded-lg border",
+                                getOverallScoreBadgeStyle(overallScore)
+                              )}
+                            >
+                              <span className="text-2xs font-mono font-bold leading-none">OVR</span>
+                              <span className="text-base font-display font-black leading-tight">
+                                {overallScore.toFixed(1)}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="inline-block px-2 py-1 rounded text-2xs font-mono text-slate-400 bg-slate-100 dark:bg-pitch-900 border border-slate-200 dark:border-white/5">
+                              NR
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Attendance Selector Buttons */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-2xs">
+                          <span className="font-mono text-slate-400 uppercase tracking-wider font-semibold">
+                            Attendance {isUnmarked && <span className="text-rose-500 font-bold">* Required</span>}
+                          </span>
+                          {currentStatus && (
+                            <span className="font-mono font-semibold capitalize text-slate-600 dark:text-slate-300">
+                              {currentStatus}
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {ATTENDANCE_OPTIONS.map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() =>
+                                setAttendancePending((p) => ({
+                                  ...p,
+                                  [player.studentId]: opt.value,
+                                }))
+                              }
+                              className={clsx(
+                                "py-1.5 px-2 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1",
+                                currentStatus === opt.value
+                                  ? `${opt.activeBg} border-transparent shadow-xs`
+                                  : "bg-slate-100 dark:bg-pitch-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20"
+                              )}
+                            >
+                              <span>{opt.label}</span>
+                              <span className="hidden sm:inline text-2xs font-normal">
+                                {opt.fullLabel}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Technical Attributes Grid */}
+                      {skillParameters.length > 0 && !isAbsentOrExcused && (
+                        <div className="pt-2 border-t border-slate-100 dark:border-white/5 space-y-2">
+                          <div className="flex items-center justify-between text-2xs text-slate-400">
+                            <span className="font-mono uppercase tracking-wider font-semibold">
+                              Technical Attributes
+                            </span>
+                            <div className="flex items-center gap-1">
+                              {[6, 7, 8, 9].map((qVal) => (
+                                <button
+                                  key={qVal}
+                                  type="button"
+                                  onClick={() => handleQuickSetPlayerScores(player.studentId, qVal)}
+                                  className="px-1.5 py-0.5 rounded text-3xs font-mono bg-slate-100 dark:bg-pitch-900 hover:bg-volt-400 hover:text-pitch-950 text-slate-500 transition-colors"
+                                  title={`Set all attributes to ${qVal}`}
+                                >
+                                  {qVal}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            {skillParameters.map((param) => {
+                              const currentScore = playerScores[param] ?? 7;
+                              return (
+                                <div
+                                  key={param}
+                                  className="p-2 rounded-lg bg-slate-50 dark:bg-pitch-900/60 border border-slate-200/60 dark:border-white/5 space-y-1"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-2xs font-semibold text-slate-700 dark:text-slate-300 truncate" title={param}>
+                                      {param}
+                                    </span>
+                                    <span
+                                      className={clsx(
+                                        "px-1.5 py-0.2 rounded text-2xs font-mono font-bold border",
+                                        getScoreBadgeStyle(currentScore)
+                                      )}
+                                    >
+                                      {currentScore}/10
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                                      <button
+                                        key={num}
+                                        type="button"
+                                        onClick={() => setScore(player.studentId, param, num)}
+                                        className={clsx(
+                                          "flex-1 h-5 rounded text-[10px] font-mono font-bold transition-all",
+                                          currentScore === num
+                                            ? "bg-volt-400 text-pitch-950 shadow-xs"
+                                            : "bg-white dark:bg-pitch-800 text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/50 dark:border-white/5"
+                                        )}
+                                      >
+                                        {num}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Session Notes / Remarks */}
+                      <div className="pt-2 border-t border-slate-100 dark:border-white/5">
+                        <input
+                          type="text"
+                          value={
+                            remarksPending[player.studentId] ??
+                            player.performanceRemarks ??
+                            player.attendanceRemarks ??
+                            ""
+                          }
+                          onChange={(e) =>
+                            setRemarksPending((r) => ({
+                              ...r,
+                              [player.studentId]: e.target.value,
+                            }))
+                          }
+                          placeholder="Session notes (e.g. Sharp on wing, tactical awareness)..."
+                          className="w-full text-xs py-1.5 px-2.5 rounded-lg bg-slate-50 dark:bg-pitch-900/60 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-volt-400"
+                        />
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            </>
           ) : (
             /* Unified Operational Grid - Spreadsheet Matrix */
             <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-800/50 shadow-sm dark:shadow-none overflow-hidden">

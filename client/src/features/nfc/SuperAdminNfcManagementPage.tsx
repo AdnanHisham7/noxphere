@@ -604,44 +604,44 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
         >
           <div className="space-y-5 text-sm">
             {/* Requester info banner */}
-            <div className="p-4 rounded-xl bg-pitch-900 border border-white/10 grid sm:grid-cols-2 gap-3">
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 grid sm:grid-cols-2 gap-3">
               <div>
-                <p className="text-2xs font-mono uppercase text-slate-400 font-semibold">
+                <p className="text-2xs font-mono uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                   Requester Details
                 </p>
                 <p className="font-bold text-slate-900 dark:text-white mt-1">
                   {selectedRequest.requesterId.firstName}{" "}
                   {selectedRequest.requesterId.lastName}
                 </p>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-600 dark:text-slate-400">
                   {selectedRequest.requesterId.email}
                 </p>
                 {selectedRequest.requesterId.phone && (
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
                     Phone: {selectedRequest.requesterId.phone}
                   </p>
                 )}
                 {selectedRequest.academyId && (
-                  <p className="text-xs text-volt-400 mt-1 font-semibold">
+                  <p className="text-xs text-volt-600 dark:text-volt-400 mt-1 font-semibold">
                     Academy: {selectedRequest.academyId.name}
                   </p>
                 )}
               </div>
 
               <div>
-                <p className="text-2xs font-mono uppercase text-slate-400 font-semibold">
+                <p className="text-2xs font-mono uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                   Order Summary
                 </p>
-                <p className="text-xs text-slate-300 mt-1">
+                <p className="text-xs text-slate-700 dark:text-slate-300 mt-1">
                   Quantity:{" "}
                   <strong className="text-slate-900 dark:text-white">
                     {selectedRequest.quantity} cards
                   </strong>
                 </p>
-                <p className="text-xs text-slate-300">
+                <p className="text-xs text-slate-700 dark:text-slate-300">
                   Rate: <strong>₹{selectedRequest.unitPrice} / card</strong>
                 </p>
-                <p className="text-sm font-mono font-bold text-volt-400 mt-1">
+                <p className="text-sm font-mono font-bold text-volt-600 dark:text-volt-400 mt-1">
                   Total: ₹{selectedRequest.totalAmount.toLocaleString("en-IN")}
                 </p>
               </div>
@@ -650,16 +650,16 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
             {/* Custom Artwork preview if available */}
             {selectedRequest.cardType === "custom" &&
               selectedRequest.customDesignUrl && (
-                <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/25 space-y-3">
+                <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/25 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-purple-300 flex items-center gap-2 text-xs">
+                    <span className="font-bold text-purple-700 dark:text-purple-300 flex items-center gap-2 text-xs">
                       <Palette size={15} /> Uploaded Custom Design Artwork
                     </span>
                     <a
                       href={selectedRequest.customDesignUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="nox-btn-secondary !py-1 !px-2.5 text-xs flex items-center gap-1.5"
+                      className="btn-secondary !py-1 !px-2.5 text-xs flex items-center gap-1.5"
                     >
                       <Download size={13} /> Download File
                     </a>
@@ -669,11 +669,11 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
                   {selectedRequest.customDesignUrl.match(
                     /\.(jpeg|jpg|png|webp|gif)/i,
                   ) && (
-                    <div className="relative rounded-lg overflow-hidden border border-white/10 max-h-56 bg-pitch-950 flex items-center justify-center">
+                    <div className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-white/10 max-h-56 bg-slate-100 dark:bg-pitch-950 flex items-center justify-center p-2">
                       <img
                         src={selectedRequest.customDesignUrl}
                         alt="Custom Design"
-                        className="max-h-56 object-contain"
+                        className="max-h-52 object-contain rounded"
                       />
                     </div>
                   )}
@@ -681,23 +681,23 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
               )}
 
             {/* Shipping Address */}
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-1 text-xs">
-              <p className="font-mono text-2xs uppercase text-slate-400 font-bold tracking-wider">
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 space-y-1 text-xs">
+              <p className="font-mono text-2xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                 Shipping &amp; Delivery Destination
               </p>
               <p className="font-bold text-slate-900 dark:text-white">
                 {selectedRequest.shippingAddress.recipientName}
               </p>
-              <p className="text-slate-400">
+              <p className="text-slate-600 dark:text-slate-400">
                 Contact: {selectedRequest.shippingAddress.phone}
               </p>
-              <p className="text-slate-300">
+              <p className="text-slate-700 dark:text-slate-300">
                 {selectedRequest.shippingAddress.addressLine1}
                 {selectedRequest.shippingAddress.addressLine2
                   ? `, ${selectedRequest.shippingAddress.addressLine2}`
                   : ""}
               </p>
-              <p className="text-slate-300">
+              <p className="text-slate-700 dark:text-slate-300">
                 {selectedRequest.shippingAddress.city},{" "}
                 {selectedRequest.shippingAddress.state} -{" "}
                 {selectedRequest.shippingAddress.postalCode},{" "}
@@ -707,17 +707,17 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
 
             {/* Students List */}
             <div>
-              <p className="font-mono text-2xs uppercase text-slate-400 font-bold tracking-wider mb-2">
+              <p className="font-mono text-2xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider mb-2">
                 Card Players ({selectedRequest.students.length})
               </p>
-              <div className="max-h-48 overflow-y-auto space-y-1.5 border border-white/5 rounded-xl p-2 bg-pitch-950">
+              <div className="max-h-48 overflow-y-auto space-y-1.5 border border-slate-200 dark:border-white/5 rounded-xl p-2 bg-slate-50 dark:bg-pitch-950">
                 {selectedRequest.students.map((st, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between p-2 rounded-lg bg-pitch-900 border border-white/5 text-xs"
+                    className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/5 text-xs shadow-xs"
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-volt-400/20 text-volt-400 font-mono text-2xs flex items-center justify-center font-bold">
+                      <span className="w-5 h-5 rounded-full bg-volt-400/20 text-volt-700 dark:text-volt-400 font-mono text-2xs flex items-center justify-center font-bold">
                         {st.jerseyNumber ?? idx + 1}
                       </span>
                       <div>
@@ -725,7 +725,7 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
                           {st.studentName}
                         </span>
                         {st.ageGroup && (
-                          <span className="text-2xs text-slate-400 ml-1.5">
+                          <span className="text-2xs text-slate-500 dark:text-slate-400 ml-1.5">
                             ({st.ageGroup})
                           </span>
                         )}
@@ -736,7 +736,7 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
                         href={`/players/${st.publicProfileToken}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-2xs font-mono text-volt-400 hover:underline flex items-center gap-1"
+                        className="text-2xs font-mono text-volt-600 dark:text-volt-400 hover:underline flex items-center gap-1 font-semibold"
                       >
                         Scouting Card <ExternalLink size={11} />
                       </a>
@@ -748,19 +748,19 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
 
             {/* Dispatch details if present */}
             {selectedRequest.dispatchDetails?.dispatchedAt && (
-              <div className="p-3.5 rounded-xl bg-ice-500/10 border border-ice-500/20 text-xs space-y-1">
-                <p className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Truck size={15} className="text-ice-400" /> Dispatch Record
+              <div className="p-3.5 rounded-xl bg-sky-50 dark:bg-ice-500/10 border border-sky-200 dark:border-ice-500/20 text-xs space-y-1">
+                <p className="font-bold text-sky-800 dark:text-white flex items-center gap-1.5">
+                  <Truck size={15} className="text-sky-600 dark:text-ice-400" /> Dispatch Record
                 </p>
-                <p className="text-slate-300">
+                <p className="text-slate-700 dark:text-slate-300">
                   Courier:{" "}
-                  <strong>
+                  <strong className="text-slate-900 dark:text-white">
                     {selectedRequest.dispatchDetails.courierName || "Standard"}
                   </strong>{" "}
                   {selectedRequest.dispatchDetails.trackingNumber && (
                     <>
                       • Tracking Code:{" "}
-                      <strong>
+                      <strong className="text-slate-900 dark:text-white">
                         {selectedRequest.dispatchDetails.trackingNumber}
                       </strong>
                     </>
@@ -770,7 +770,7 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
             )}
 
             {/* Actions footer */}
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-white/10">
               <Button
                 variant="secondary"
                 onClick={() => setSelectedRequest(null)}

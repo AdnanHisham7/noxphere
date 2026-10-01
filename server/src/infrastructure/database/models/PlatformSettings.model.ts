@@ -9,6 +9,7 @@ export interface PlatformSettingsDocument extends Document {
   defaultStaffRatePerStaffPerMonth: number;
   defaultNfcCardPrice: number;
   defaultNfcCustomCardPrice: number;
+  transferWallEnabled: boolean;
   updatedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -20,6 +21,7 @@ const PlatformSettingsSchema = new Schema<PlatformSettingsDocument>(
     defaultStaffRatePerStaffPerMonth: { type: Number, required: true, default: 10, min: 0 },
     defaultNfcCardPrice: { type: Number, required: true, default: 299, min: 0 },
     defaultNfcCustomCardPrice: { type: Number, required: true, default: 399, min: 0 },
+    transferWallEnabled: { type: Boolean, default: true },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true },

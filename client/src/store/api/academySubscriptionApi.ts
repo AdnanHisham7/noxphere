@@ -29,6 +29,29 @@ export const academySubscriptionApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: AcademySubscriptionStatus }) => res.data,
       providesTags: ["Academy"],
     }),
+    createRazorpaySubscriptionOrder: builder.mutation<
+      { orderId: string; amount: number; currency: string; keyId: string; academyName: string; totalRupees: number },
+      { academyId: string; capacity: number; staffCapacity: number; billingInterval: BillingInterval; isRenewal?: boolean }
+    >({
+      query: ({ academyId, ...body }) => ({
+        url: `/academy-subscriptions/${academyId}/razorpay-order`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (res: { data: any }) => res.data,
+    }),
+    verifyRazorpaySubscriptionPayment: builder.mutation<
+      { status: string; isActive: boolean },
+      { academyId: string; orderId: string; paymentId: string; signature: string }
+    >({
+      query: ({ academyId, ...body }) => ({
+        url: `/academy-subscriptions/${academyId}/verify-payment`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (res: { data: { status: string; isActive: boolean } }) => res.data,
+      invalidatesTags: ["Academy"],
+    }),
     createSubscriptionCheckout: builder.mutation<
       { url: string },
       { academyId: string; capacity: number; staffCapacity: number; billingInterval: BillingInterval }
@@ -76,6 +99,20 @@ export const academySubscriptionApi = baseApi.injectEndpoints({
       query: (academyId) => `/academy-subscriptions/${academyId}/billing-details`,
       transformResponse: (res: { data: AcademyBillingDetails }) => res.data,
       providesTags: ["Academy"],
+    }),
+    getPlatformTransferWall: builder.query<boolean, void>({
+      query: () => "/academy-subscriptions/platform-transfer-wall",
+      transformResponse: (res: { data: { enabled: boolean } }) => res.data.enabled,
+      providesTags: ["Academy"],
+    }),
+    setPlatformTransferWall: builder.mutation<boolean, boolean>({
+      query: (enabled) => ({
+        url: "/academy-subscriptions/platform-transfer-wall",
+        method: "PUT",
+        body: { enabled },
+      }),
+      transformResponse: (res: { data: { enabled: boolean } }) => res.data.enabled,
+      invalidatesTags: ["Academy"],
     }),
     verifySubscriptionSession: builder.mutation<
       { status: string; isActive: boolean },
@@ -142,5 +179,9 @@ export const {
   useSetPlatformDefaultRateMutation,
   useGetPlatformDefaultStaffRateQuery,
   useSetPlatformDefaultStaffRateMutation,
+  useGetPlatformTransferWallQuery,
+  useSetPlatformTransferWallMutation,
+  useCreateRazorpaySubscriptionOrderMutation,
+  useVerifyRazorpaySubscriptionPaymentMutation,
   useVerifySubscriptionSessionMutation,
 } = academySubscriptionApi;

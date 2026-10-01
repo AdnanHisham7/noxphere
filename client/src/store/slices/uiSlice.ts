@@ -1,5 +1,6 @@
   // src/store/slices/uiSlice.ts
   import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+  import { clearCredentials, setCredentials } from './authSlice';
 
   export type ThemeMode = 'dark' | 'light';
 
@@ -71,6 +72,18 @@
           }
         }
       },
+    },
+    extraReducers: (builder) => {
+      builder.addCase(clearCredentials, (state) => {
+        state.activeFranchiseId = null;
+        localStorage.removeItem('activeFranchiseId');
+      });
+      builder.addCase(setCredentials, (state, action) => {
+        if (!action.payload.user?.franchiseId) {
+          state.activeFranchiseId = null;
+          localStorage.removeItem('activeFranchiseId');
+        }
+      });
     },
   });
 
