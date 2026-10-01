@@ -3,14 +3,15 @@ import { useSelector } from "react-redux";
 import { RootState } from "../store";
 import { useGetFranchiseByIdQuery } from "../store/api/franchiseApi";
 import { academyApi } from "../store/api/academyApi";
+import { useGetPlatformTransferWallQuery } from "../store/api/academySubscriptionApi";
 
 /**
- * Resolves the transfer-wall toggle for the current user's academy, via
- * their franchise. Defaults to `true` while the chain is still loading, or
- * for roles with no franchise (super_admin) — this only ever needs to
- * hide/disable something for manager/coach, never to gate super_admin.
+ * Resolves the transfer-wall toggle globally (platform-level) and per-academy.
+ * If the platform-wide toggle is disabled by Super Admin, returns false everywhere.
+ * Otherwise, checks the user's academy transfer-wall setting.
  */
 export function useTransferWallEnabled(): boolean {
+  const { data: platformEnabled } = useGetPlatformTransferWallQuery();
   const { user } = useSelector((s: RootState) => s.auth);
   const franchiseId = user?.franchiseId;
   const academyId = user?.academyId;
@@ -21,6 +22,7 @@ export function useTransferWallEnabled(): boolean {
     skip: !targetAcademyId,
   });
 
+  if (platformEnabled === false) return false;
   if (!targetAcademyId || !academy) return true;
   return academy.transferWallEnabled;
 }

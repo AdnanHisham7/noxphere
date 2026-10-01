@@ -15,8 +15,5 @@ export const useCurrentAcademyId = (): string | null => {
   const { data: franchise } = useGetFranchiseByIdQuery(franchiseId ?? "", {
     skip: !franchiseId || !!user?.academyId,
   });
-  const { data: franchises } = useGetFranchisesQuery(undefined, {
-    skip: !!user?.academyId || !!franchise?.academyId,
-  });
-  return user?.academyId || franchise?.academyId || franchises?.[0]?.academyId || null;
+  return user?.academyId || franchise?.academyId || null;
 };

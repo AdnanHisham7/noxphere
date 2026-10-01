@@ -1,8 +1,23 @@
-// src/interfaces/http/routes/transfer.routes.ts
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.middleware';
+import { PlatformSettingsModel } from '../../../infrastructure/database/models/PlatformSettings.model';
+import { ForbiddenError } from '../../../shared/errors/AppError';
 
 export const transferRouter = Router();
+
+const checkTransferWall = async (_req: any, _res: any, next: any) => {
+  try {
+    const settings = await PlatformSettingsModel.findOne().lean();
+    if (settings && settings.transferWallEnabled === false) {
+      return next(new ForbiddenError('Transfer Wall is currently disabled platform-wide by administration.'));
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+};
+
+transferRouter.use(checkTransferWall);
 
 // Public routes
 transferRouter.get('/', (req, res, next) => {

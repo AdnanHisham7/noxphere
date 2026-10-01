@@ -44,7 +44,15 @@ nfcCardRouter.post("/requests/:id/fulfillment", authenticate, authorize("super_a
   req.app.locals.controllers.nfcCard.updateFulfillment(req, res, next);
 });
 
-// ─── Stripe Payments ──────────────────────────────────────────────────────────
+// ─── Razorpay / Online Payments ──────────────────────────────────────────────────────────
+nfcCardRouter.post("/requests/:id/razorpay-order", authenticate, (req, res, next) => {
+  req.app.locals.controllers.nfcCard.createRazorpayOrder(req, res, next);
+});
+
+nfcCardRouter.post("/requests/:id/verify-payment", authenticate, (req, res, next) => {
+  req.app.locals.controllers.nfcCard.verifyRazorpayPayment(req, res, next);
+});
+
 nfcCardRouter.post("/requests/:id/checkout-session", authenticate, (req, res, next) => {
   req.app.locals.controllers.nfcCard.createCheckoutSession(req, res, next);
 });

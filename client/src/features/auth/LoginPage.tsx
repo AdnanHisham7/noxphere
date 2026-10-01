@@ -17,6 +17,7 @@ import { Button, Input } from '../../components/ui';
 import { ThemeToggle } from '../../components/common/ThemeToggle';
 import { ArrowRight } from 'lucide-react';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
+import { useGetPlatformTransferWallQuery } from '../../store/api/academySubscriptionApi';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -33,6 +34,7 @@ const LoginPage: React.FC = () => {
   const { isAuthenticated } = useSelector((s: RootState) => s.auth);
   const [login, { isLoading }] = useLoginMutation();
   const [showForgotPassword, setShowForgotPassword] = React.useState(false);
+  const { data: platformTransferWall } = useGetPlatformTransferWallQuery();
 
   const getRedirectTarget = () => {
     const redirectParam = searchParams.get('redirect');
@@ -60,8 +62,11 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated) {
       navigate(getRedirectTarget(), { replace: true });
+    } else {
+      dispatch(clearActiveFranchise());
+      dispatch(baseApi.util.resetApiState());
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, dispatch]);
 
   const onSubmit = async (data: LoginForm) => {
     try {
@@ -255,15 +260,17 @@ const LoginPage: React.FC = () => {
           </div>
 
           {/* Transfer Wall public link */}
-          <div className="text-center pt-2">
-            <a
-              href="/transfer-wall"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-ice-400 hover:underline"
-            >
-              <span>Explore Public Transfer Wall</span>
-              <ArrowRight size={13} />
-            </a>
-          </div>
+          {platformTransferWall !== false && (
+            <div className="text-center pt-2">
+              <a
+                href="/transfer-wall"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-ice-400 hover:underline"
+              >
+                <span>Explore Public Transfer Wall</span>
+                <ArrowRight size={13} />
+              </a>
+            </div>
+          )}
         </div>
       </div>
 

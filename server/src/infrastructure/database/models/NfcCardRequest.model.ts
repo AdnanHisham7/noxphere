@@ -62,6 +62,9 @@ export interface NfcCardRequestDocument extends Document {
   deliveredAt?: Date;
   stripeSessionId?: string;
   stripePaymentIntentId?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
   paidAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -182,6 +185,12 @@ const NfcCardRequestSchema = new Schema<NfcCardRequestDocument>(
       index: true,
     },
     stripePaymentIntentId: String,
+    razorpayOrderId: {
+      type: String,
+      index: true,
+    },
+    razorpayPaymentId: String,
+    razorpaySignature: String,
     paidAt: Date,
   },
   {

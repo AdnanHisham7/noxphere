@@ -225,6 +225,41 @@ export const nfcCardApi = baseApi.injectEndpoints({
       invalidatesTags: ["NfcRequest"],
     }),
 
+    createNfcRazorpayOrder: builder.mutation<
+      {
+        orderId: string;
+        amount: number;
+        currency: string;
+        keyId: string;
+        totalAmount: number;
+        cardType: string;
+        quantity: number;
+      },
+      string
+    >({
+      query: (requestId) => ({
+        url: `/nfc/requests/${requestId}/razorpay-order`,
+        method: "POST",
+      }),
+      transformResponse: (res: { data: any }) => res.data,
+    }),
+
+    verifyNfcRazorpayPayment: builder.mutation<
+      { paid: boolean; request: NfcCardRequest },
+      { requestId: string; orderId: string; paymentId: string; signature: string }
+    >({
+      query: ({ requestId, ...body }) => ({
+        url: `/nfc/requests/${requestId}/verify-payment`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (res: { data: { paid: boolean; request: any } }) => ({
+        paid: res?.data?.paid,
+        request: normalizeRequest(res?.data?.request),
+      }),
+      invalidatesTags: ["NfcRequest"],
+    }),
+
     createNfcCheckoutSession: builder.mutation<{ url: string }, string>({
       query: (requestId) => ({
         url: `/nfc/requests/${requestId}/checkout-session`,
@@ -264,6 +299,8 @@ export const {
   useApproveNfcRequestMutation,
   useRejectNfcRequestMutation,
   useUpdateNfcFulfillmentMutation,
+  useCreateNfcRazorpayOrderMutation,
+  useVerifyNfcRazorpayPaymentMutation,
   useCreateNfcCheckoutSessionMutation,
   useVerifyNfcCheckoutSessionMutation,
 } = nfcCardApi;

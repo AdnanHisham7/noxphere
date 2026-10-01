@@ -107,9 +107,9 @@ const FranchiseSwitcher: React.FC = () => {
                 setOpen(false);
               }}
               className={clsx(
-                "w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-white/4 transition-colors",
+                "w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-pitch-700/80 dark:hover:text-white dark:hover:bg-white/10 transition-colors",
                 !currentFranchiseId
-                  ? "text-volt-600 dark:text-volt-400 font-semibold"
+                  ? "text-volt-600 dark:text-volt-400 font-semibold bg-slate-50 dark:bg-white/5"
                   : "text-slate-700 dark:text-slate-300",
               )}
             >
@@ -126,9 +126,9 @@ const FranchiseSwitcher: React.FC = () => {
                     setOpen(false);
                   }}
                   className={clsx(
-                    "w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-white/4 transition-colors",
+                    "w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-pitch-700/80 dark:hover:text-white dark:hover:bg-white/10 transition-colors",
                     f.id === currentFranchiseId
-                      ? "text-volt-600 dark:text-volt-400 font-semibold"
+                      ? "text-volt-600 dark:text-volt-400 font-semibold bg-slate-50 dark:bg-white/5"
                       : "text-slate-700 dark:text-slate-300",
                   )}
                 >
@@ -212,9 +212,9 @@ const CoachFranchiseSwitcher: React.FC = () => {
                   setOpen(false);
                 }}
                 className={clsx(
-                  "w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-white/4 transition-colors",
+                  "w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-pitch-700/80 dark:hover:text-white dark:hover:bg-white/10 transition-colors",
                   f.id === currentFranchiseId
-                    ? "text-volt-600 dark:text-volt-400 font-semibold"
+                    ? "text-volt-600 dark:text-volt-400 font-semibold bg-slate-50 dark:bg-white/5"
                     : "text-slate-700 dark:text-slate-300",
                 )}
               >
@@ -345,35 +345,35 @@ export const TopBar: React.FC = () => {
           </button>
 
           {notifOpen && (
-            <div className="absolute right-0 top-12 w-[calc(100vw-1.5rem)] sm:w-80 max-w-sm card shadow-panel z-50 animate-slide-up">
-                <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/5">
+            <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-auto sm:right-0 sm:top-12 sm:w-80 max-w-sm card shadow-2xl z-50 animate-slide-up max-h-[75vh] flex flex-col overflow-hidden">
+                <div className="flex items-center justify-between p-3.5 sm:p-4 border-b border-slate-200 dark:border-white/5 shrink-0 bg-slate-50/50 dark:bg-pitch-900/50">
                   <span className="section-title">Alerts</span>
                   <button
                     onClick={handleMarkAllRead}
-                    className="text-2xs text-volt-500 dark:text-volt-400 hover:underline"
+                    className="text-2xs font-semibold text-volt-600 dark:text-volt-400 hover:underline"
                   >
                     Mark all read
                   </button>
                 </div>
-                <div className="max-h-72 overflow-y-auto">
+                <div className="overflow-y-auto min-h-0 flex-1 divide-y divide-slate-100 dark:divide-white/5 custom-scrollbar">
                   {notifications.length === 0 ? (
                     <p className="text-center text-slate-500 text-sm py-8">
                       No notifications
                     </p>
                   ) : (
-                    notifications.slice(0, 10).map((n) => (
+                    notifications.slice(0, 15).map((n) => (
                       <button
                         key={n.id}
                         onClick={() => handleOpenNotification(n.id, n.isRead)}
                         className={clsx(
-                          "w-full text-left p-4 border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5",
+                          "w-full text-left p-3.5 sm:p-4 border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors",
                           !n.isRead && "bg-volt-400/10",
                         )}
                       >
                         <p className="text-xs font-semibold text-slate-900 dark:text-white">
                           {n.title}
                         </p>
-                        <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 line-clamp-2">
                           {n.body}
                         </p>
                         {n.data?.imageUrl && (
@@ -422,17 +422,17 @@ export const TopBar: React.FC = () => {
                             </div>
                           );
                         })()}
-                        <p className="text-2xs text-slate-400 dark:text-slate-600 mt-1">
+                        <p className="text-2xs text-slate-400 dark:text-slate-500 mt-1">
                           {new Date(n.createdAt).toLocaleString()}
                         </p>
                       </button>
                     ))
                   )}
                 </div>
-                <div className="p-3 border-t border-slate-200 dark:border-white/5">
+                <div className="p-3 border-t border-slate-200 dark:border-white/5 shrink-0 bg-slate-50/30 dark:bg-pitch-900/30">
                   <Link
                     to="/notifications"
-                    className="block text-center text-xs text-volt-500 dark:text-volt-400 hover:underline"
+                    className="block text-center text-xs font-semibold text-volt-600 dark:text-volt-400 hover:underline"
                     onClick={() => setNotifOpen(false)}
                   >
                     View all alerts

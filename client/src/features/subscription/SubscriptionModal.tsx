@@ -1,13 +1,17 @@
 // src/features/subscription/SubscriptionModal.tsx
 import React, { useState, useMemo, useEffect } from "react";
+import { useSelector } from "react-redux";
 import { toast } from "react-hot-toast";
 import { Modal, Button } from "../../components/ui";
 import {
   useGetAcademySubscriptionStatusQuery,
-  useCreateSubscriptionCheckoutMutation,
+  useCreateRazorpaySubscriptionOrderMutation,
+  useVerifyRazorpaySubscriptionPaymentMutation,
   useUpgradeSubscriptionCapacityMutation,
   type BillingInterval,
 } from "../../store/api/academySubscriptionApi";
+import { openRazorpayCheckout } from "../../utils/razorpay";
+import { RootState } from "../../store";
 
 interface SubscriptionModalProps {
   academyId: string;
@@ -16,17 +20,20 @@ interface SubscriptionModalProps {
   // When the modal was triggered by hitting an existing subscription's
   // capacity (rather than having none at all), we skip straight to the
   // upgrade flow instead of offering to pick a billing interval again.
-  mode?: "subscribe" | "upgrade";
+  mode?: "subscribe" | "upgrade" | "renew";
 }
 
 const formatCurrency = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId, onClose, onSuccess, mode }) => {
+  const user = useSelector((s: RootState) => s.auth.user);
   const { data: status, isLoading } = useGetAcademySubscriptionStatusQuery(academyId);
-  const [checkout, { isLoading: checkingOut }] = useCreateSubscriptionCheckoutMutation();
+  const [createRazorpayOrder, { isLoading: creatingOrder }] = useCreateRazorpaySubscriptionOrderMutation();
+  const [verifyRazorpayPayment, { isLoading: verifyingPayment }] = useVerifyRazorpaySubscriptionPaymentMutation();
   const [upgrade, { isLoading: upgrading }] = useUpgradeSubscriptionCapacityMutation();
 
-  const isUpgrade = mode === "upgrade" || status?.isActive;
+  const isRenewal = mode === "renew" || (status?.hasSubscription && !status?.isActive);
+  const isUpgrade = mode === "upgrade" || (status?.isActive && !isRenewal);
   const [capacity, setCapacity] = useState(20);
   const [staffCapacity, setStaffCapacity] = useState(0);
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("month");
@@ -34,8 +41,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId,
 
   useEffect(() => {
     if (status && !initialized) {
-      setCapacity(Math.max(status.activeStudentCount + 10, status.provisionedCapacity + 10));
-      setStaffCapacity(status.provisionedStaffCapacity);
+      setCapacity(Math.max(status.activeStudentCount || 10, status.provisionedCapacity || 10));
+      setStaffCapacity(status.provisionedStaffCapacity || 0);
       if (status.billingInterval) setBillingInterval(status.billingInterval);
       setInitialized(true);
     }
@@ -49,12 +56,48 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId,
   const staffTotal = useMemo(() => staffRate * staffCapacity * staffMonths, [staffRate, staffCapacity, staffMonths]);
   const total = studentTotal + staffTotal;
 
-  const handleSubscribe = async () => {
+  const handleRazorpayPayment = async () => {
     try {
-      const { url } = await checkout({ academyId, capacity, staffCapacity, billingInterval }).unwrap();
-      window.location.href = url;
+      const orderData = await createRazorpayOrder({
+        academyId,
+        capacity,
+        staffCapacity,
+        billingInterval,
+        isRenewal,
+      }).unwrap();
+
+      const paymentResponse = await openRazorpayCheckout({
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency || "INR",
+        name: "Noxphere",
+        description: `${isRenewal ? "Renew" : "Subscribe"} — ${capacity} Students (${billingInterval}ly)`,
+        order_id: orderData.orderId,
+        prefill: {
+          name: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || user?.email,
+          email: user?.email || "",
+        },
+        theme: {
+          color: "#10b981",
+        },
+      });
+
+      await verifyRazorpayPayment({
+        academyId,
+        orderId: paymentResponse.razorpay_order_id,
+        paymentId: paymentResponse.razorpay_payment_id,
+        signature: paymentResponse.razorpay_signature,
+      }).unwrap();
+
+      toast.success(isRenewal ? "Subscription renewed successfully!" : "Subscription activated successfully!");
+      if (onSuccess) onSuccess();
+      onClose();
     } catch (err: any) {
-      toast.error(err?.data?.message || "Couldn't start checkout — try again");
+      if (err?.message === "Payment cancelled by user") {
+        toast("Payment cancelled");
+      } else {
+        toast.error(err?.data?.message || err?.message || "Payment failed — please try again");
+      }
     }
   };
 
@@ -62,22 +105,31 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId,
     try {
       await upgrade({ academyId, capacity, staffCapacity }).unwrap();
       toast.success("Subscription capacity updated");
-      if (onSuccess) {
-        onSuccess();
-      }
+      if (onSuccess) onSuccess();
       onClose();
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't upgrade capacity — try again");
     }
   };
 
+  const modalTitle = isRenewal
+    ? "Renew Academy Subscription"
+    : isUpgrade
+      ? "Increase Capacity"
+      : "Subscribe to Noxphere";
+
+
   return (
-    <Modal isOpen={true} onClose={onClose} title={isUpgrade ? "Increase Capacity" : "Subscribe to Noxphere"} size="sm">
+    <Modal isOpen={true} onClose={onClose} title={modalTitle} size="sm">
       {isLoading ? (
         <p className="text-sm text-slate-400">Loading…</p>
       ) : (
         <div className="space-y-5">
-          {isUpgrade ? (
+          {isRenewal ? (
+            <p className="text-sm text-slate-300">
+              Your subscription has expired. Confirm your desired student & staff capacity and renew securely via Razorpay.
+            </p>
+          ) : isUpgrade ? (
             <p className="text-sm text-slate-300">
               You're subscribed for <strong>{status?.provisionedCapacity}</strong> students (
               {status?.activeStudentCount} active) and <strong>{status?.provisionedStaffCapacity}</strong> staff
@@ -86,7 +138,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId,
           ) : (
             <p className="text-sm text-slate-300">
               Adding a player or a staff account requires an active subscription. Choose capacity for each and your
-              billing cycle — you'll be redirected to Stripe to complete payment.
+              billing cycle — you'll complete payment securely via Razorpay.
             </p>
           )}
 
@@ -151,10 +203,14 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId,
 
           <Button
             className="w-full"
-            loading={checkingOut || upgrading}
-            onClick={isUpgrade ? handleUpgrade : handleSubscribe}
+            loading={creatingOrder || verifyingPayment || upgrading}
+            onClick={isUpgrade ? handleUpgrade : handleRazorpayPayment}
           >
-            {isUpgrade ? "Confirm Upgrade" : "Proceed to Payment"}
+            {isRenewal
+              ? "Renew Subscription via Razorpay"
+              : isUpgrade
+                ? "Confirm Upgrade"
+                : "Pay via Razorpay"}
           </Button>
         </div>
       )}

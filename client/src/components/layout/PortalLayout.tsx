@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { NavLink, Outlet, useNavigate, Link, useLocation } from "react-router-dom";
 import logoSrc from "../../assets/logo.png";
 import { useSelector, useDispatch } from "react-redux";
-import { LogOut, Menu, X, type LucideIcon } from "lucide-react";
+import { LogOut, Menu, X, AlertTriangle, type LucideIcon } from "lucide-react";
 import { RootState } from "../../store";
 import { clearCredentials } from "../../store/slices/authSlice";
 import { clearActiveFranchise } from "../../store/slices/uiSlice";
@@ -57,6 +57,7 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ navItems, portalLabe
   const isStudent = user?.role === "student";
   const { data: studentDashboard } = useGetMyDashboardQuery(undefined, { skip: !isStudent });
   const isFreeAgent = isStudent && studentDashboard && !studentDashboard.profile?.franchiseId;
+  const isStudentLinkedToAcademy = isStudent && (!!user?.academyId || !!user?.franchiseId || !!studentDashboard?.profile?.franchiseId);
 
   const displayNavItems = navItems.filter((item) => {
     if (isFreeAgent && item.to === "/student/progress") {
@@ -87,6 +88,31 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ navItems, portalLabe
     dispatch(baseApi.util.resetApiState());
     navigate("/login", { replace: true });
   };
+
+  if (isStudentLinkedToAcademy) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center p-6 bg-slate-50 dark:bg-pitch-950 text-slate-900 dark:text-slate-100">
+        <div className="max-w-md w-full p-8 rounded-2xl bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-center shadow-xl space-y-5">
+          <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center mx-auto">
+            <AlertTriangle size={32} />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Account Deactivated</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Your individual player account is deactivated since you are linked to an academy, please login in your guardians account to see data.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full py-3 px-4 rounded-xl bg-pitch-950 hover:bg-pitch-900 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-pitch-950 font-semibold text-sm transition-colors cursor-pointer"
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const initials = user ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}` : "";
 

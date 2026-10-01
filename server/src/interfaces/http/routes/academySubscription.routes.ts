@@ -18,6 +18,12 @@ academySubscriptionRouter.post("/verify-session", authenticate, (req, res, next)
 academySubscriptionRouter.post("/:academyId/checkout", authenticate, (req, res, next) => {
   req.app.locals.controllers.academySubscription.checkout(req, res, next);
 });
+academySubscriptionRouter.post("/:academyId/razorpay-order", authenticate, (req, res, next) => {
+  req.app.locals.controllers.academySubscription.createRazorpayOrder(req, res, next);
+});
+academySubscriptionRouter.post("/:academyId/verify-payment", authenticate, (req, res, next) => {
+  req.app.locals.controllers.academySubscription.verifyRazorpayPayment(req, res, next);
+});
 academySubscriptionRouter.post("/:academyId/upgrade", authenticate, (req, res, next) => {
   req.app.locals.controllers.academySubscription.upgrade(req, res, next);
 });
@@ -44,6 +50,17 @@ academySubscriptionRouter.put("/platform-staff-rate", authenticate, (req, res, n
     return;
   }
   req.app.locals.controllers.academySubscription.setPlatformStaffRate(req, res, next);
+});
+
+academySubscriptionRouter.get("/platform-transfer-wall", (req, res, next) => {
+  req.app.locals.controllers.academySubscription.getPlatformTransferWall(req, res, next);
+});
+academySubscriptionRouter.put("/platform-transfer-wall", authenticate, (req, res, next) => {
+  if (req.user!.role !== "super_admin") {
+    res.status(403).json({ success: false, message: "Only super_admin can configure platform transfer wall", code: "FORBIDDEN" });
+    return;
+  }
+  req.app.locals.controllers.academySubscription.setPlatformTransferWall(req, res, next);
 });
 
 // NOTE: the webhook route itself is mounted separately in index.ts, with

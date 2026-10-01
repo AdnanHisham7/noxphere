@@ -17,6 +17,8 @@ import {
 import { Badge, Button, Input, Modal, Skeleton, EmptyState, Avatar } from '../../components/ui';
 import { RootState } from '../../store';
 import { toast } from 'react-hot-toast';
+import { useTransferWallEnabled } from '../../hooks/useTransferWallEnabled';
+import { useGetPlatformTransferWallQuery } from '../../store/api/academySubscriptionApi';
 import {
   Search,
   Check,
@@ -61,6 +63,10 @@ const TransferWallPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const targetListingId = searchParams.get('listingId');
 
+  const { data: platformTransferWall } = useGetPlatformTransferWallQuery();
+  const academyTransferWall = useTransferWallEnabled();
+  const isTransferWallDisabled = platformTransferWall === false || !academyTransferWall;
+
   const [activeTab, setActiveTab] = useState<'market' | 'incoming' | 'outgoing' | 'my_listings'>('market');
   const [selectedListing, setSelectedListing] = useState<TransferListing | null>(null);
   const [requestModal, setRequestModal] = useState(false);
@@ -76,13 +82,35 @@ const TransferWallPage: React.FC = () => {
     position: filterPosition || undefined,
     ageGroup: filterAge || undefined,
     limit: 30,
-  });
+  }, { skip: isTransferWallDisabled });
   const listings = data?.data ?? [];
 
   // Directly fetch listing if specified in query params (e.g., returning from login)
   const { data: directListing } = useGetListingByIdQuery(targetListingId!, {
-    skip: !targetListingId,
+    skip: !targetListingId || isTransferWallDisabled,
   });
+
+  if (isTransferWallDisabled) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-pitch-950 text-slate-800 dark:text-slate-100 flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-500 mb-4 shadow-lg shadow-amber-500/10">
+          <AlertCircle size={32} />
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">
+          Transfer Wall is Disabled
+        </h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mb-6 leading-relaxed">
+          The Transfer Wall scouting and recruitment marketplace is currently deactivated.
+        </p>
+        <Link to={isAuthenticated ? "/dashboard" : "/login"}>
+          <Button variant="primary">
+            <ArrowLeft size={16} className="mr-2" />
+            {isAuthenticated ? "Back to Dashboard" : "Go to Sign In"}
+          </Button>
+        </Link>
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (targetListingId) {

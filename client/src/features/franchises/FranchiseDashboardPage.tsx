@@ -25,6 +25,9 @@ import {
   Building2,
   TrendingUp,
   Activity,
+  ArrowUpRight,
+  Search,
+  Filter,
 } from "lucide-react";
 import {
   StatCard,
@@ -32,6 +35,9 @@ import {
   Avatar,
   EmptyState,
   Badge,
+  Modal,
+  Button,
+  Input,
 } from "../../components/ui";
 import { setActiveFranchise } from "../../store/slices/uiSlice";
 import { useGetFranchiseByIdQuery } from "../../store/api/franchiseApi";
@@ -103,8 +109,13 @@ const FranchiseDashboardPage: React.FC = () => {
     queryParams,
     { skip },
   );
+  const [attendanceDays, setAttendanceDays] = React.useState<number>(7);
+  const [showAllActivityModal, setShowAllActivityModal] = React.useState<boolean>(false);
+  const [activitySearchTerm, setActivitySearchTerm] = React.useState<string>("");
+  const [activityTypeFilter, setActivityTypeFilter] = React.useState<string>("all");
+
   const { data: attendanceTrend, isLoading: trendLoading } =
-    useGetAttendanceTrendQuery({ ...queryParams, days: 7 }, { skip });
+    useGetAttendanceTrendQuery({ ...queryParams, days: attendanceDays }, { skip });
   const { data: radarData, isLoading: radarLoading } = useGetSkillRadarQuery(
     queryParams,
     { skip },
@@ -117,6 +128,8 @@ const FranchiseDashboardPage: React.FC = () => {
     useGetTopPerformersQuery({ ...queryParams, limit: 5 }, { skip });
   const { data: recentActivity, isLoading: activityLoading } =
     useGetRecentActivityQuery({ ...queryParams, limit: 8 }, { skip });
+  const { data: allActivity, isLoading: allActivityLoading } =
+    useGetRecentActivityQuery({ ...queryParams, limit: 100 }, { skip: skip || !showAllActivityModal });
 
   if (!franchiseId) {
     return (
@@ -205,16 +218,44 @@ const FranchiseDashboardPage: React.FC = () => {
       {/* Attendance trend + skill radar */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 card p-5 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <p className="section-title">Attendance Trend</p>
               <p className="text-xs text-slate-500 mt-0.5">
-                Last 7 days — this franchise
+                {attendanceDays === 7 && "Last 7 days — daily breakdown"}
+                {attendanceDays === 30 && "Last 30 days (Month) — daily trend"}
+                {attendanceDays === 365 && "Last 12 months (Year) — monthly average"}
+                {attendanceDays === 0 && "Overall historical attendance"}
               </p>
             </div>
-            <span className="text-volt-400 font-display font-extrabold text-xl">
-              {stats?.avgAttendance ?? 0}%
-            </span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-800 p-0.5 rounded-lg border border-slate-200 dark:border-white/5">
+                {[
+                  { label: "7D", title: "Last 7 Days", value: 7 },
+                  { label: "1M", title: "Last Month", value: 30 },
+                  { label: "1Y", title: "Last Year", value: 365 },
+                  { label: "All", title: "Overall", value: 0 },
+                ].map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setAttendanceDays(t.value)}
+                    className={clsx(
+                      "px-2.5 py-1 rounded text-2xs font-bold transition-all",
+                      attendanceDays === t.value
+                        ? "bg-white dark:bg-pitch-700 text-volt-600 dark:text-volt-400 shadow-xs"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white",
+                    )}
+                    title={t.title}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              <span className="text-volt-400 font-display font-extrabold text-xl">
+                {stats?.avgAttendance ?? 0}%
+              </span>
+            </div>
           </div>
           {trendLoading ? (
             <Skeleton className="h-40 rounded" />
@@ -427,7 +468,17 @@ const FranchiseDashboardPage: React.FC = () => {
         </div>
 
         <div className="card p-5 space-y-4">
-          <p className="section-title">Live Activity</p>
+          <div className="flex items-center justify-between">
+            <p className="section-title">Live Activity</p>
+            <button
+              type="button"
+              onClick={() => setShowAllActivityModal(true)}
+              className="text-xs text-volt-600 dark:text-volt-400 hover:underline font-semibold flex items-center gap-1"
+            >
+              <span>View all</span>
+              <ArrowUpRight size={13} />
+            </button>
+          </div>
           {activityLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -440,35 +491,172 @@ const FranchiseDashboardPage: React.FC = () => {
               description="Actions across the franchise will show up here."
             />
           ) : (
-            <div className="space-y-0">
-              {recentActivity.map((item, i) => (
-                <div
-                  key={item.id}
-                  className={clsx(
-                    "flex gap-3 py-3",
-                    i < recentActivity.length - 1 &&
-                      "border-b border-slate-100 dark:border-white/4",
-                  )}
-                >
-                  <div className="w-7 h-7 rounded bg-slate-100 dark:bg-pitch-700 flex items-center justify-center flex-shrink-0">
-                    {renderActivityIcon(item.type)}
+            <>
+              <div className="space-y-0">
+                {recentActivity.map((item, i) => (
+                  <div
+                    key={item.id}
+                    className={clsx(
+                      "flex gap-3 py-3",
+                      i < recentActivity.length - 1 &&
+                        "border-b border-slate-100 dark:border-white/4",
+                    )}
+                  >
+                    <div className="w-7 h-7 rounded bg-slate-100 dark:bg-pitch-700 flex items-center justify-center flex-shrink-0">
+                      {renderActivityIcon(item.type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-tight">
+                        {item.message}
+                      </p>
+                      <p className="text-2xs text-slate-500 dark:text-slate-600 mt-1">
+                        {formatDistanceToNowStrict(new Date(item.time), {
+                          addSuffix: true,
+                        })}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-tight">
-                      {item.message}
-                    </p>
-                    <p className="text-2xs text-slate-500 dark:text-slate-600 mt-1">
-                      {formatDistanceToNowStrict(new Date(item.time), {
-                        addSuffix: true,
-                      })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAllActivityModal(true)}
+                className="w-full pt-2 text-center text-xs text-volt-600 dark:text-volt-400 hover:underline font-semibold border-t border-slate-100 dark:border-white/5 block"
+              >
+                View all franchise activity →
+              </button>
+            </>
           )}
         </div>
       </div>
+
+      {/* View All Live Activity Modal */}
+      {showAllActivityModal && (
+        <Modal
+          isOpen={showAllActivityModal}
+          onClose={() => {
+            setShowAllActivityModal(false);
+            setActivitySearchTerm("");
+            setActivityTypeFilter("all");
+          }}
+          title="Franchise Live Activity History"
+          size="lg"
+        >
+          <div className="space-y-4">
+            {/* Filter and search bar */}
+            <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
+              <div className="relative flex-1">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Filter activities by message or name..."
+                  value={activitySearchTerm}
+                  onChange={(e) => setActivitySearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-pitch-900 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-volt-400"
+                />
+              </div>
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-800 p-0.5 rounded-lg border border-slate-200 dark:border-white/5 shrink-0">
+                {[
+                  { id: "all", label: "All" },
+                  { id: "attendance", label: "Attendance" },
+                  { id: "performance", label: "Performance" },
+                  { id: "fee", label: "Fees" },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setActivityTypeFilter(f.id)}
+                    className={clsx(
+                      "px-2.5 py-1 rounded text-2xs font-bold transition-all capitalize",
+                      activityTypeFilter === f.id
+                        ? "bg-white dark:bg-pitch-700 text-volt-600 dark:text-volt-400 shadow-xs"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white",
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Activities List */}
+            <div className="max-h-[60vh] overflow-y-auto divide-y divide-slate-100 dark:divide-white/5 custom-scrollbar pr-1">
+              {allActivityLoading ? (
+                <div className="space-y-3 py-4">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton key={i} className="h-12 rounded-lg" />
+                  ))}
+                </div>
+              ) : (() => {
+                const activities = allActivity || recentActivity || [];
+                const filtered = activities.filter((act) => {
+                  const matchesFilter = activityTypeFilter === "all" || act.type === activityTypeFilter;
+                  const matchesSearch =
+                    !activitySearchTerm ||
+                    act.message.toLowerCase().includes(activitySearchTerm.toLowerCase());
+                  return matchesFilter && matchesSearch;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="py-12 text-center">
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        No activity found
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Try adjusting your search or category filter.
+                      </p>
+                    </div>
+                  );
+                }
+
+                return filtered.map((item) => (
+                  <div key={item.id} className="flex gap-3 py-3 items-start">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-pitch-800 border border-slate-200 dark:border-white/5 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      {renderActivityIcon(item.type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-3xs font-mono uppercase tracking-wider font-bold text-slate-500 capitalize">
+                          {item.type}
+                        </span>
+                        <span className="text-2xs text-slate-400 font-mono">
+                          {new Date(item.time).toLocaleString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-800 dark:text-slate-200 mt-0.5 font-medium leading-relaxed">
+                        {item.message}
+                      </p>
+                      <p className="text-3xs text-slate-400 mt-1 font-mono">
+                        {formatDistanceToNowStrict(new Date(item.time), { addSuffix: true })}
+                      </p>
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-200 dark:border-white/5">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setShowAllActivityModal(false);
+                  setActivitySearchTerm("");
+                  setActivityTypeFilter("all");
+                }}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

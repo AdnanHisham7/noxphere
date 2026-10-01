@@ -1,13 +1,15 @@
 // src/features/academies/PlatformBillingCard.tsx
 import React, { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
-import { CircleDollarSign, Users2 } from "lucide-react";
+import { CircleDollarSign, Users2, Repeat2 } from "lucide-react";
 import { Button, Input } from "../../components/ui";
 import {
   useGetPlatformDefaultRateQuery,
   useSetPlatformDefaultRateMutation,
   useGetPlatformDefaultStaffRateQuery,
   useSetPlatformDefaultStaffRateMutation,
+  useGetPlatformTransferWallQuery,
+  useSetPlatformTransferWallMutation,
 } from "../../store/api/academySubscriptionApi";
 
 export const PlatformBillingCard: React.FC = () => {
@@ -52,6 +54,19 @@ export const PlatformBillingCard: React.FC = () => {
       toast.success("Platform default staff rate updated");
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't update rate — try again");
+    }
+  };
+
+  const { data: transferWallEnabled, isLoading: transferWallLoading } = useGetPlatformTransferWallQuery();
+  const [setPlatformTransferWall, { isLoading: togglingTransferWall }] = useSetPlatformTransferWallMutation();
+
+  const handleToggleTransferWall = async () => {
+    const nextState = transferWallEnabled === false ? true : false;
+    try {
+      await setPlatformTransferWall(nextState).unwrap();
+      toast.success(nextState ? "Platform Transfer Wall enabled" : "Platform Transfer Wall disabled globally");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to update Transfer Wall setting");
     }
   };
 
@@ -107,6 +122,35 @@ export const PlatformBillingCard: React.FC = () => {
           />
           <Button size="sm" loading={savingStaff} onClick={handleSaveStaff}>
             Save
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pt-4 border-t border-white/5">
+        <div className="flex items-center gap-2 flex-1">
+          <div className="w-9 h-9 rounded-full bg-ember-500/10 border border-ember-500/20 flex items-center justify-center flex-shrink-0">
+            <Repeat2 size={16} className="text-ember-500" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-semibold text-slate-900 dark:text-white">Platform Transfer Wall</p>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${transferWallEnabled !== false ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-500 border border-rose-500/30'}`}>
+                {transferWallEnabled !== false ? "ENABLED" : "DISABLED"}
+              </span>
+            </div>
+            <p className="text-2xs text-slate-500">
+              When disabled, all transfer wall pages, scouting listings, and navigation links are restricted globally.
+            </p>
+          </div>
+        </div>
+        <div>
+          <Button
+            size="sm"
+            variant={transferWallEnabled !== false ? "danger" : "primary"}
+            loading={togglingTransferWall || transferWallLoading}
+            onClick={handleToggleTransferWall}
+          >
+            {transferWallEnabled !== false ? "Disable Transfer Wall" : "Enable Transfer Wall"}
           </Button>
         </div>
       </div>

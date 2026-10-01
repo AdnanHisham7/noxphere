@@ -29,10 +29,12 @@ import {
   useGetNfcPricingQuery,
   useListNfcRequestsQuery,
   useCreateAcademyNfcRequestMutation,
-  useCreateNfcCheckoutSessionMutation,
+  useCreateNfcRazorpayOrderMutation,
+  useVerifyNfcRazorpayPaymentMutation,
   NfcCardRequest,
   NfcShippingAddress,
 } from "../../store/api/nfcCardApi";
+import { openRazorpayCheckout } from "../../utils/razorpay";
 import { useGetStudentsQuery, Student } from "../../store/api/studentsApi";
 import { useGetFranchisesQuery } from "../../store/api/franchiseApi";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
@@ -65,8 +67,10 @@ export const AcademyNfcManagementPage: React.FC = () => {
 
   const [createAcademyRequest, { isLoading: isCreating }] =
     useCreateAcademyNfcRequestMutation();
-  const [createCheckoutSession, { isLoading: isCheckingOut }] =
-    useCreateNfcCheckoutSessionMutation();
+  const [createRazorpayOrder, { isLoading: isOrderingRazorpay }] =
+    useCreateNfcRazorpayOrderMutation();
+  const [verifyRazorpayPayment, { isLoading: isVerifyingRazorpay }] =
+    useVerifyNfcRazorpayPaymentMutation();
   const [uploadImage, { isLoading: isUploading }] = useUploadImageMutation();
 
   // Modal states
@@ -230,12 +234,38 @@ export const AcademyNfcManagementPage: React.FC = () => {
 
   const handlePay = async (requestId: string) => {
     try {
-      const res = await createCheckoutSession(requestId).unwrap();
-      if (res.url) {
-        window.location.href = res.url;
-      }
+      const orderData = await createRazorpayOrder(requestId).unwrap();
+      const paymentResponse = await openRazorpayCheckout({
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency || "INR",
+        name: "Noxphere Smart NFC Passes",
+        description: `Order of ${orderData.quantity} ${orderData.cardType} NFC cards`,
+        order_id: orderData.orderId,
+        prefill: {
+          name: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || user?.email,
+          email: user?.email || "",
+        },
+        theme: {
+          color: "#10b981",
+        },
+      });
+
+      await verifyRazorpayPayment({
+        requestId,
+        orderId: paymentResponse.razorpay_order_id,
+        paymentId: paymentResponse.razorpay_payment_id,
+        signature: paymentResponse.razorpay_signature,
+      }).unwrap();
+
+      toast.success("NFC Cards payment completed via Razorpay!");
+      refetch();
     } catch (err: any) {
-      toast.error(extractErrorMessage(err, "Failed to open Stripe checkout"));
+      if (err?.message === "Payment cancelled by user") {
+        toast("Payment cancelled");
+      } else {
+        toast.error(extractErrorMessage(err, "Failed to complete payment via Razorpay"));
+      }
     }
   };
 
@@ -450,7 +480,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
                           <Button
                             size="sm"
                             onClick={() => handlePay(reqId)}
-                            loading={isCheckingOut}
+                            loading={isOrderingRazorpay || isVerifyingRazorpay}
                             className="!bg-field-400 hover:!bg-field-300 !text-pitch-950 font-bold"
                           >
                             Pay ₹{req.totalAmount}
@@ -633,7 +663,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
                   onClick={() =>
                     handlePay(viewRequest.id || (viewRequest as any)._id)
                   }
-                  loading={isCheckingOut}
+                  loading={isOrderingRazorpay || isVerifyingRazorpay}
                   className="!bg-field-400 hover:!bg-field-300 !text-pitch-950 font-bold"
                 >
                   Pay ₹{viewRequest.totalAmount} Now

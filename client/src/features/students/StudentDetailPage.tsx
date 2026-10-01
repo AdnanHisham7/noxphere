@@ -44,6 +44,7 @@ import {
   SlidersHorizontal,
   Plus,
   MoreVertical,
+  BarChart3,
 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
@@ -207,6 +208,7 @@ const StudentDetailPage: React.FC = () => {
     useTransferStudentFranchiseMutation();
   const transferWallEnabled = useTransferWallEnabled();
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   // Only Head Office (an academy-owner manager, or super_admin) may move a
   // player between franchises — matches the backend authorization check.
@@ -584,7 +586,7 @@ const StudentDetailPage: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setActionsMenuOpen(false);
-                      window.open(`/students/${student.id}/report`, "_blank");
+                      setReportModalOpen(true);
                     }}
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors group"
                   >
@@ -1020,9 +1022,7 @@ const StudentDetailPage: React.FC = () => {
                   size="sm"
                   variant="secondary"
                   icon={<FileText size={14} />}
-                  onClick={() =>
-                    window.open(`/students/${student.id}/report`, "_blank")
-                  }
+                  onClick={() => setReportModalOpen(true)}
                 >
                   Generate Report
                 </Button>
@@ -2286,6 +2286,15 @@ const StudentDetailPage: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      {reportModalOpen && (
+        <ReportSelectionModal
+          isOpen={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          studentId={student.id}
+          studentName={`${student.firstName} ${student.lastName}`}
+        />
+      )}
     </div>
   );
 };
@@ -2435,6 +2444,126 @@ const FranchiseTransferHistoryCard: React.FC<{ studentId: string }> = ({
         ))}
       </div>
     </div>
+  );
+};
+
+const ReportSelectionModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  studentId: string;
+  studentName: string;
+}> = ({ isOpen, onClose, studentId, studentName }) => {
+  const [selectedPeriod, setSelectedPeriod] = useState<"daily" | "monthly" | "yearly" | "all">("monthly");
+
+  if (!isOpen) return null;
+
+  const handleGenerate = () => {
+    onClose();
+    window.open(`/students/${studentId}/report?period=${selectedPeriod}`, "_blank");
+  };
+
+  const options = [
+    {
+      id: "daily",
+      title: "Daily Match & Session Report",
+      badge: "Session Level",
+      desc: "Focused evaluation on the most recent session, attendance record, drill attributes, and coach remarks.",
+      icon: Calendar,
+    },
+    {
+      id: "monthly",
+      title: "Monthly Developmental Progress",
+      badge: "Recommended",
+      desc: "30-day performance curve, monthly attendance rate, skill attribute radar, and active fee records.",
+      icon: Clock,
+    },
+    {
+      id: "yearly",
+      title: "Annual Season Evaluation",
+      badge: "Season Review",
+      desc: "Full season athletic trajectory over 12 months, continuous skill ratings, attendance consistency, and financial totals.",
+      icon: BarChart3,
+    },
+    {
+      id: "all",
+      title: "Comprehensive Career Dossier",
+      badge: "All-Time",
+      desc: "All historical sessions, career skill ratings, lifetime attendance logs, complete fee ledger, and milestones.",
+      icon: FileText,
+    },
+  ] as const;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Generate Player Report" size="md">
+      <div className="space-y-4">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Choose an evaluation timeframe for <span className="font-semibold text-slate-800 dark:text-slate-200">{studentName}</span>. The generated report includes interactive analytics graphs, attendance metrics, and print-ready formatting.
+        </p>
+
+        <div className="grid grid-cols-1 gap-2.5">
+          {options.map((opt) => {
+            const isSelected = selectedPeriod === opt.id;
+            const Icon = opt.icon;
+            return (
+              <div
+                key={opt.id}
+                onClick={() => setSelectedPeriod(opt.id as any)}
+                className={clsx(
+                  "p-3.5 rounded-xl border cursor-pointer transition-all duration-150 flex items-start gap-3.5",
+                  isSelected
+                    ? "border-volt-500 bg-volt-500/5 dark:bg-volt-400/10 ring-1 ring-volt-500/30"
+                    : "border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-pitch-950/40 hover:border-slate-300 dark:hover:border-white/20"
+                )}
+              >
+                <div
+                  className={clsx(
+                    "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+                    isSelected
+                      ? "bg-volt-400 text-pitch-950 font-bold"
+                      : "bg-slate-200/70 dark:bg-white/5 text-slate-600 dark:text-slate-400"
+                  )}
+                >
+                  <Icon size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-xs text-slate-900 dark:text-white">
+                      {opt.title}
+                    </span>
+                    <span
+                      className={clsx(
+                        "px-2 py-0.5 rounded text-3xs font-mono font-bold uppercase",
+                        isSelected
+                          ? "bg-volt-400 text-pitch-950"
+                          : "bg-slate-100 dark:bg-pitch-800 text-slate-500 dark:text-slate-400"
+                      )}
+                    >
+                      {opt.badge}
+                    </span>
+                  </div>
+                  <p className="text-2xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    {opt.desc}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-white/5">
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleGenerate}
+            icon={<FileText size={14} />}
+          >
+            Generate & Open Report
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 };
 

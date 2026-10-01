@@ -56,6 +56,43 @@ export class AcademySubscriptionController {
   };
 
 
+  createRazorpayOrder = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const academyId = req.params.academyId;
+      assertAcademyAccess(req, academyId);
+      const dto = CheckoutSchema.parse(req.body);
+      const isRenewal = Boolean(req.body.isRenewal);
+      const result = await this.useCases.createRazorpayOrder(
+        academyId,
+        { ...dto, isRenewal },
+        req.user!.sub,
+      );
+      ResponseHandler.success(res, result, "Razorpay subscription order created");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  verifyRazorpayPayment = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const academyId = req.params.academyId;
+      assertAcademyAccess(req, academyId);
+      const { orderId, paymentId, signature } = req.body;
+      if (!orderId || !paymentId || !signature) {
+        throw new BadRequestError("orderId, paymentId, and signature are required");
+      }
+      const result = await this.useCases.verifyRazorpayPayment({
+        academyId,
+        orderId,
+        paymentId,
+        signature,
+      });
+      ResponseHandler.success(res, result, "Subscription payment verified");
+    } catch (err) {
+      next(err);
+    }
+  };
+
   checkout = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const academyId = req.params.academyId;
@@ -113,6 +150,25 @@ export class AcademySubscriptionController {
       const dto = RateSchema.parse(req.body);
       const rate = await this.useCases.setPlatformDefaultStaffRate(dto.rate, req.user!.sub);
       ResponseHandler.success(res, { rate }, "Platform default staff rate updated");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  getPlatformTransferWall = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const enabled = await this.useCases.getPlatformTransferWall();
+      ResponseHandler.success(res, { enabled }, "Platform transfer wall status retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  setPlatformTransferWall = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const enabled = Boolean(req.body.enabled);
+      const updated = await this.useCases.setPlatformTransferWall(enabled, req.user!.sub);
+      ResponseHandler.success(res, { enabled: updated }, "Platform transfer wall status updated");
     } catch (err) {
       next(err);
     }

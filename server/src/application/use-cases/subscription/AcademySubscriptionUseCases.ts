@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import {
   AcademySubscriptionModel,
   SubscriptionStatus,
+  BillingInterval,
 } from "../../../infrastructure/database/models/AcademySubscription.model";
 import { PlatformSettingsModel } from "../../../infrastructure/database/models/PlatformSettings.model";
 import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
@@ -13,6 +14,7 @@ import { NfcCardRequestModel } from "../../../infrastructure/database/models/Nfc
 import { EmployeeModel } from "../../../infrastructure/database/models/Employee.model";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
 import { stripeService } from "../../../infrastructure/services/StripeService";
+import { razorpayService } from "../../../infrastructure/services/RazorpayService";
 import { notificationService } from "../../../infrastructure/services/NotificationService";
 import { config } from "../../../config/app.config";
 import {
@@ -101,9 +103,16 @@ export class AcademySubscriptionUseCases {
     const provisionedCapacity = subscription?.provisionedCapacity ?? 0;
     const remainingInviteSlots = Math.max(0, provisionedCapacity - (activeStudentCount + pendingInvitationCount));
 
+    const isExpired = Boolean(
+      subscription?.currentPeriodEnd &&
+      new Date() > new Date(subscription.currentPeriodEnd)
+    );
+    const isActive = Boolean(subscription?.status === "active" && !isExpired);
+    const effectiveStatus = isExpired ? ("past_due" as SubscriptionStatus) : (subscription?.status ?? null);
+
     return {
       hasSubscription: !!subscription,
-      status: subscription?.status ?? null,
+      status: effectiveStatus,
       billingInterval: subscription?.billingInterval ?? null,
       provisionedCapacity,
       provisionedStaffCapacity: subscription?.provisionedStaffCapacity ?? 0,
@@ -116,7 +125,8 @@ export class AcademySubscriptionUseCases {
       pendingInvitationCount,
       remainingInviteSlots,
       activeStaffCount,
-      isActive: subscription?.status === "active",
+      isActive,
+      isExpired,
     };
   }
 
@@ -195,6 +205,21 @@ export class AcademySubscriptionUseCases {
       }
     }
 
+    const isExpired = Boolean(
+      subscription?.currentPeriodEnd &&
+      new Date() > new Date(subscription.currentPeriodEnd)
+    );
+    const isActive = Boolean(subscription?.status === "active" && !isExpired);
+    const effectiveStatus = isExpired ? ("past_due" as SubscriptionStatus) : (subscription?.status ?? null);
+
+    if (isExpired) {
+      alerts.unshift({
+        type: "danger",
+        title: "Subscription Expired",
+        message: "Your subscription period has ended. Access to operations is restricted until renewed via Razorpay.",
+      });
+    }
+
     let invoices: any[] = [];
     if (subscription?.stripeCustomerId) {
       invoices = await stripeService.listInvoices(subscription.stripeCustomerId);
@@ -202,11 +227,12 @@ export class AcademySubscriptionUseCases {
 
     return {
       hasSubscription: !!subscription,
-      status: subscription?.status ?? null,
-      isActive: subscription?.status === "active",
+      status: effectiveStatus,
+      isActive,
+      isExpired,
       billingInterval: interval,
       currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
-      daysRemainingInCycle,
+      daysRemainingInCycle: isExpired ? 0 : daysRemainingInCycle,
       provisionedCapacity,
       activeStudentCount,
       studentUtilization,
@@ -350,6 +376,127 @@ export class AcademySubscriptionUseCases {
     if (!session.url) throw new BadRequestError("Stripe did not return a checkout URL");
     return { url: session.url };
   }
+
+  async createRazorpayOrder(
+    academyId: string,
+    dto: { capacity: number; staffCapacity: number; billingInterval: BillingInterval; isRenewal?: boolean },
+    requesterUserId: string,
+  ): Promise<{
+    orderId: string;
+    amount: number;
+    currency: string;
+    keyId: string;
+    academyName: string;
+    totalRupees: number;
+  }> {
+    const [academy, existing, requester] = await Promise.all([
+      AcademyModel.findById(academyId).select("name").lean(),
+      AcademySubscriptionModel.findOne({ academyId }),
+      UserModel.findById(requesterUserId).select("email firstName lastName").lean(),
+    ]);
+    if (!academy) throw new NotFoundError("Academy");
+    if (!requester) throw new NotFoundError("Requester");
+
+    const rate = await this.getEffectiveRate(academyId);
+    const staffRate = await this.getEffectiveStaffRate(academyId);
+
+    const totalRupees =
+      studentRupeeAmount(rate, dto.capacity, dto.billingInterval) +
+      staffRupeeAmount(staffRate, dto.staffCapacity, dto.billingInterval);
+    const unitAmountPaise = toPaise(totalRupees);
+
+    const order = await razorpayService.createOrder({
+      amountPaise: unitAmountPaise,
+      currency: "INR",
+      receipt: `sub_${academyId.slice(-10)}_${Date.now().toString().slice(-6)}`,
+      notes: {
+        academyId,
+        capacity: dto.capacity,
+        staffCapacity: dto.staffCapacity,
+        billingInterval: dto.billingInterval,
+        type: dto.isRenewal ? "renewal" : "new_subscription",
+      },
+    });
+
+    await AcademySubscriptionModel.findOneAndUpdate(
+      { academyId },
+      {
+        academyId,
+        razorpayOrderId: order.id,
+        billingInterval: dto.billingInterval,
+        ratePerStudentPerDay: rate,
+        staffRatePerStaffPerMonth: staffRate,
+        provisionedCapacity: dto.capacity,
+        provisionedStaffCapacity: dto.staffCapacity,
+        status:
+          existing?.status === "active" &&
+          existing.currentPeriodEnd &&
+          new Date() < new Date(existing.currentPeriodEnd)
+            ? "active"
+            : "incomplete",
+      },
+      { upsert: true, new: true },
+    );
+
+    return {
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: razorpayService.getKeyId(),
+      academyName: academy.name,
+      totalRupees,
+    };
+  }
+
+  async verifyRazorpayPayment(params: {
+    academyId: string;
+    orderId: string;
+    paymentId: string;
+    signature: string;
+  }): Promise<{ status: string; isActive: boolean }> {
+    const { academyId, orderId, paymentId, signature } = params;
+    const isValid = razorpayService.verifyPaymentSignature({
+      orderId,
+      paymentId,
+      signature,
+    });
+    if (!isValid) {
+      throw new BadRequestError("Invalid Razorpay payment signature");
+    }
+
+    const subscription = await AcademySubscriptionModel.findOne({ academyId });
+    if (!subscription) {
+      throw new NotFoundError("Academy subscription not found");
+    }
+
+    subscription.status = "active";
+    subscription.razorpayOrderId = orderId;
+    subscription.razorpayPaymentId = paymentId;
+    subscription.razorpaySignature = signature;
+
+    const days = subscription.billingInterval === "year" ? 365 : 30;
+    const now = new Date();
+    if (subscription.currentPeriodEnd && new Date(subscription.currentPeriodEnd) > now) {
+      subscription.currentPeriodEnd = new Date(
+        new Date(subscription.currentPeriodEnd).getTime() + days * 24 * 60 * 60 * 1000
+      );
+    } else {
+      subscription.currentPeriodEnd = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+    }
+
+    await subscription.save();
+
+    const academy = await AcademyModel.findById(academyId).select("name").lean();
+    await notificationService.notifySuperAdmins({
+      type: "payment_received",
+      title: "Academy Subscription Payment Received via Razorpay",
+      body: `${academy?.name || "An academy"} has completed payment via Razorpay for their ${subscription.billingInterval}ly subscription.`,
+      metadata: { academyId, orderId, paymentId },
+    });
+
+    return { status: "active", isActive: true };
+  }
+
 
   // Increases student and/or staff capacity on an already-active
   // subscription by repricing it in place (see
@@ -575,5 +722,19 @@ export class AcademySubscriptionUseCases {
       { upsert: true, new: true },
     );
     return updated.defaultStaffRatePerStaffPerMonth;
+  }
+
+  async getPlatformTransferWall(): Promise<boolean> {
+    const settings = await PlatformSettingsModel.findOne().lean();
+    return settings?.transferWallEnabled ?? true;
+  }
+
+  async setPlatformTransferWall(enabled: boolean, updatedBy: string): Promise<boolean> {
+    const updated = await PlatformSettingsModel.findOneAndUpdate(
+      {},
+      { transferWallEnabled: enabled, updatedBy },
+      { upsert: true, new: true },
+    );
+    return updated.transferWallEnabled;
   }
 }

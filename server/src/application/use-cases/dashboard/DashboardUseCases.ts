@@ -140,17 +140,89 @@ export class DashboardUseCases {
 
   async getAttendanceTrend(params: { franchiseId?: string; academyId?: string }, days = 7) {
     const franchiseIds = await this.getQueryFranchiseIds(params);
+
+    if (days === 365 || days === 0 || days >= 1000) {
+      // Monthly aggregation for 1 year or overall
+      const isOverall = days === 0 || days >= 1000;
+      let since: Date;
+      if (isOverall) {
+        const earliest = await AttendanceModel.findOne({ franchiseId: { $in: franchiseIds } })
+          .sort({ sessionDate: 1 })
+          .select("sessionDate")
+          .lean();
+        if (earliest && earliest.sessionDate) {
+          since = new Date(earliest.sessionDate);
+          since.setDate(1);
+          since.setHours(0, 0, 0, 0);
+        } else {
+          since = new Date();
+          since.setMonth(since.getMonth() - 11);
+          since.setDate(1);
+          since.setHours(0, 0, 0, 0);
+        }
+      } else {
+        // Last 12 months
+        since = new Date();
+        since.setMonth(since.getMonth() - 11);
+        since.setDate(1);
+        since.setHours(0, 0, 0, 0);
+      }
+
+      const records = await AttendanceModel.find({
+        franchiseId: { $in: franchiseIds },
+        sessionDate: { $gte: since },
+      }).select("sessionDate status");
+
+      const buckets = new Map<string, { present: number; total: number; label: string }>();
+      const cursor = new Date(since);
+      const now = new Date();
+
+      while (cursor <= now || cursor.getMonth() === now.getMonth()) {
+        const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+        const label = cursor.toLocaleDateString("en-IN", { month: "short", year: isOverall ? "2-digit" : undefined });
+        buckets.set(key, { present: 0, total: 0, label });
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+
+      for (const r of records) {
+        const rd = new Date(r.sessionDate);
+        const key = `${rd.getFullYear()}-${String(rd.getMonth() + 1).padStart(2, "0")}`;
+        const bucket = buckets.get(key);
+        if (!bucket) continue;
+        bucket.total += 1;
+        if (r.status === "present" || r.status === "late") bucket.present += 1;
+      }
+
+      return Array.from(buckets.entries()).map(([dateKey, b]) => ({
+        date: dateKey,
+        day: b.label,
+        rate: b.total > 0 ? round1((b.present / b.total) * 100) : 0,
+      }));
+    }
+
+    // Daily aggregation for 7 days, 14 days, or 30 days
+    const numDays = Math.max(1, days);
     const since = new Date();
-    since.setDate(since.getDate() - (days - 1));
+    since.setDate(since.getDate() - (numDays - 1));
     since.setHours(0, 0, 0, 0);
 
-    const records = await AttendanceModel.find({ franchiseId: { $in: franchiseIds }, sessionDate: { $gte: since } }).select("sessionDate status");
-    const buckets = new Map<string, { present: number; total: number }>();
-    for (let i = 0; i < days; i++) {
+    const records = await AttendanceModel.find({
+      franchiseId: { $in: franchiseIds },
+      sessionDate: { $gte: since },
+    }).select("sessionDate status");
+
+    const buckets = new Map<string, { present: number; total: number; label: string }>();
+    for (let i = 0; i < numDays; i++) {
       const d = new Date(since);
       d.setDate(d.getDate() + i);
-      buckets.set(d.toISOString().split("T")[0], { present: 0, total: 0 });
+      const dateKey = d.toISOString().split("T")[0];
+      const label =
+        numDays <= 7
+          ? d.toLocaleDateString("en-IN", { weekday: "short" })
+          : d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+      buckets.set(dateKey, { present: 0, total: 0, label });
     }
+
     for (const r of records) {
       const key = new Date(r.sessionDate).toISOString().split("T")[0];
       const bucket = buckets.get(key);
@@ -158,9 +230,10 @@ export class DashboardUseCases {
       bucket.total += 1;
       if (r.status === "present" || r.status === "late") bucket.present += 1;
     }
+
     return Array.from(buckets.entries()).map(([date, b]) => ({
       date,
-      day: new Date(date).toLocaleDateString("en-IN", { weekday: "short" }),
+      day: b.label,
       rate: b.total > 0 ? round1((b.present / b.total) * 100) : 0,
     }));
   }

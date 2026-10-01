@@ -1,5 +1,4 @@
-// src/features/dashboard/DashboardPage.tsx
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -44,6 +43,7 @@ import {
   Button,
 } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
+import { useTransferWallEnabled } from "../../hooks/useTransferWallEnabled";
 import { RootState } from "../../store";
 import { setActiveFranchise } from "../../store/slices/uiSlice";
 import {
@@ -102,6 +102,7 @@ const DashboardPage: React.FC = () => {
     ? undefined
     : (user?.franchiseId ?? activeFranchiseId ?? undefined);
   const isConsolidated = isOwnerManager;
+  const transferWallEnabled = useTransferWallEnabled();
   const skip = !isSuperAdmin && !franchiseId && !academyId;
   const queryParams = isSuperAdmin
     ? {}
@@ -109,13 +110,15 @@ const DashboardPage: React.FC = () => {
       ? { academyId: academyId ?? undefined }
       : { franchiseId };
 
+  const [attendanceDays, setAttendanceDays] = useState<number>(7);
+
   const { data: stats, isLoading: statsLoading } = useGetDashboardStatsQuery(
     queryParams,
     { skip },
   );
   const { data: attendanceTrend, isLoading: trendLoading } =
     useGetAttendanceTrendQuery(
-      { ...queryParams, days: 7 },
+      { ...queryParams, days: attendanceDays },
       { skip: skip || isSuperAdmin },
     );
   const { data: radarData, isLoading: radarLoading } = useGetSkillRadarQuery(
@@ -330,17 +333,44 @@ const DashboardPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Attendance trend chart */}
           <div className="lg:col-span-2 card p-5 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <p className="section-title">Attendance Trend</p>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Last 7 days —{" "}
-                  {isConsolidated ? "consolidated academy view" : "all teams"}
+                  {attendanceDays === 7 && `Last 7 days — ${isConsolidated ? "consolidated academy view" : "all teams"}`}
+                  {attendanceDays === 30 && `Last 30 days (Month) — ${isConsolidated ? "consolidated academy view" : "all teams"}`}
+                  {attendanceDays === 365 && `Last 12 months (Year) — ${isConsolidated ? "consolidated academy view" : "all teams"}`}
+                  {attendanceDays === 0 && `Overall historical trend — ${isConsolidated ? "consolidated academy view" : "all teams"}`}
                 </p>
               </div>
-              <span className="text-volt-400 font-display font-extrabold text-xl">
-                {stats?.avgAttendance ?? 0}%
-              </span>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-800 p-0.5 rounded-lg border border-slate-200 dark:border-white/5">
+                  {[
+                    { label: "7D", title: "Last 7 Days", value: 7 },
+                    { label: "1M", title: "Last Month", value: 30 },
+                    { label: "1Y", title: "Last Year", value: 365 },
+                    { label: "All", title: "Overall", value: 0 },
+                  ].map((t) => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => setAttendanceDays(t.value)}
+                      className={clsx(
+                        "px-2.5 py-1 rounded text-2xs font-bold transition-all",
+                        attendanceDays === t.value
+                          ? "bg-white dark:bg-pitch-700 text-volt-600 dark:text-volt-400 shadow-xs"
+                          : "text-slate-500 hover:text-slate-900 dark:hover:text-white",
+                      )}
+                      title={t.title}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-volt-400 font-display font-extrabold text-xl">
+                  {stats?.avgAttendance ?? 0}%
+                </span>
+              </div>
             </div>
             {trendLoading ? (
               <Skeleton className="h-40 rounded" />
@@ -807,7 +837,8 @@ const DashboardPage: React.FC = () => {
                 badgeStyle:
                   "text-slate-400 bg-slate-500/10 border-slate-500/25",
               },
-            ].map((action) => {
+            ].filter((action) => action.to !== "/transfer-wall" || transferWallEnabled)
+            .map((action) => {
               const IconComp = action.icon;
               return (
                 <Link

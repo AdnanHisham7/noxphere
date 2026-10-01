@@ -116,6 +116,20 @@ export class AuthUseCases {
         }
       } catch {}
     }
+
+    if (user.role === 'student') {
+      const student = await StudentModel.findOne({
+        $or: [{ userId: user.id }, { _id: user.id }],
+        deletedAt: { $exists: false },
+      }).lean();
+
+      const isLinkedToAcademy = !!(user.academyId || user.franchiseId || student?.franchiseId || (student as any)?.academyId);
+      if (isLinkedToAcademy) {
+        throw new UnauthorizedError(
+          'Your individual player account is deactivated since you are linked to an academy, please login in your guardians account to see data'
+        );
+      }
+    }
     
     const tokens = this.generateTokens(user);
     console.log('Tokens generated during login:', tokens);
@@ -186,6 +200,13 @@ export class AuthUseCases {
         $or: [{ userId: user.id }, { _id: user.id }],
         deletedAt: { $exists: false },
       }).lean();
+
+      const isLinkedToAcademy = !!(user.academyId || user.franchiseId || student?.franchiseId || (student as any)?.academyId);
+      if (isLinkedToAcademy) {
+        throw new ForbiddenError(
+          'Your individual player account is deactivated since you are linked to an academy, please login in your guardians account to see data'
+        );
+      }
 
       if (student) {
         const isEnrolledInAcademy = !!student.franchiseId;
