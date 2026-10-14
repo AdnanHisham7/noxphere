@@ -283,14 +283,14 @@ export class RegistrationUseCases {
       // 2. Conflict if email is taken by a non-guardian
       if (existingUserByEmail && existingUserByEmail.role !== "guardian") {
         throw new ConflictError(
-          `An account with this email already exists with role "${existingUserByEmail.role}". Please use a different email or contact your academy administrator.`,
+          "An account with this email already exists. Please use a different email or contact your academy administrator.",
         );
       }
 
       // 3. Conflict if phone is taken by a non-guardian
       if (existingUserByPhone && existingUserByPhone.role !== "guardian") {
         throw new ConflictError(
-          `An account with this phone number already exists with role "${existingUserByPhone.role}". Please use a different phone number or contact your academy administrator.`,
+          "An account with this phone number already exists. Please use a different phone number or contact your academy administrator.",
         );
       }
 
@@ -761,13 +761,13 @@ export class RegistrationUseCases {
 
       if (existingUserByEmail && existingUserByEmail.role !== "guardian") {
         throw new ConflictError(
-          `A user account with this email already exists with role: ${existingUserByEmail.role}. Cannot enroll player.`,
+          "A user account with this email already exists. Cannot enroll player.",
         );
       }
 
       if (existingUserByPhone && existingUserByPhone.role !== "guardian") {
         throw new ConflictError(
-          `A user account with this phone number already exists with role: ${existingUserByPhone.role}. Cannot enroll player.`,
+          "A user account with this phone number already exists. Cannot enroll player.",
         );
       }
 
