@@ -299,8 +299,14 @@ export class AdminFeesUseCases {
     }
 
     const franchise = await FranchiseModel.findById(fee.franchiseId).select("academyId").lean();
-    const academy = franchise ? await AcademyModel.findById(franchise.academyId).select("feeQrImageUrl").lean() : null;
+    const academy = franchise
+      ? await AcademyModel.findById(franchise.academyId)
+          .select("feeQrImageUrl feePaymentMethod bankDetails")
+          .lean()
+      : null;
     const qrImageUrl = academy?.feeQrImageUrl;
+    const feePaymentMethod = (academy?.feePaymentMethod as any) || "qr";
+    const bankDetails = academy?.bankDetails;
 
     const remainingAmount = installment.amount - installment.paidAmount;
     const studentName = `${student.firstName} ${student.lastName}`.trim();
@@ -317,6 +323,8 @@ export class AdminFeesUseCases {
       daysUntilDue,
       String(fee.franchiseId),
       qrImageUrl,
+      bankDetails,
+      feePaymentMethod,
     );
 
     installment.reminderSentCount = (installment.reminderSentCount || 0) + 1;

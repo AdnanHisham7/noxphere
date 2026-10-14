@@ -64,6 +64,16 @@ export const CreateAcademySchema = z.object({
   manager: ManagerAccountSchema,
 });
 
+export const BankDetailsSchema = z.object({
+  beneficiaryName: z.string().trim().optional(),
+  accountNumber: z.string().trim().optional(),
+  ifscCode: z.string().trim().optional(),
+  bankName: z.string().trim().optional(),
+  branchName: z.string().trim().optional(),
+  upiId: z.string().trim().optional(),
+  swiftCode: z.string().trim().optional(),
+});
+
 // Update Academy DTO (partial, without manager)
 export const UpdateAcademySchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -82,6 +92,9 @@ export const UpdateAcademySchema = z.object({
   notificationAlertAfterMinutes: z.number().min(0).optional(),
   absentAlertDays: z.number().int().min(1).max(30).optional(),
   dueDateAlertDays: z.number().int().min(0).max(30).optional(),
+  feeQrImageUrl: z.string().url().nullable().optional().or(z.literal("")).transform(v => (v === "" || v === null) ? null : v),
+  feePaymentMethod: z.enum(["qr", "bank_transfer", "both"]).optional(),
+  bankDetails: BankDetailsSchema.optional().nullable(),
   logo: z.string().optional(),
 });
 
@@ -113,6 +126,8 @@ export const AcademyConfigSchema = z.object({
   absentAlertDays: z.number().int().min(1).max(30).optional(),
   dueDateAlertDays: z.number().int().min(0).max(30).optional(),
   feeQrImageUrl: z.string().url().nullable().optional().or(z.literal("")).transform(v => (v === "" || v === null) ? null : v),
+  feePaymentMethod: z.enum(["qr", "bank_transfer", "both"]).optional(),
+  bankDetails: BankDetailsSchema.optional().nullable(),
   logo: z.string().nullable().optional().or(z.literal("")).transform(v => (v === "" || v === null) ? null : v),
   isActive: z.boolean().optional(),
 });

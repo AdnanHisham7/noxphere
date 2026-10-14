@@ -47,6 +47,8 @@ export class MongoAcademyRepository implements IAcademyRepository {
       absentAlertDays: doc.absentAlertDays,
       dueDateAlertDays: doc.dueDateAlertDays,
       feeQrImageUrl: doc.feeQrImageUrl,
+      feePaymentMethod: doc.feePaymentMethod || "qr",
+      bankDetails: doc.bankDetails,
       logo: (doc as any).logo,
       skillParameters: doc.skillParameters,
       currency: doc.currency,

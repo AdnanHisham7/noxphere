@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   Clock,
   QrCode,
+  Landmark,
   Layers,
   Table as TableIcon,
   ShieldAlert,
@@ -78,8 +79,41 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
 
   const qrImageUrl =
     academy?.feeQrImageUrl ?? (academy as any)?.data?.feeQrImageUrl;
+  const paymentMethod =
+    academy?.feePaymentMethod ?? (academy as any)?.data?.feePaymentMethod ?? "qr";
+  const existingBank =
+    academy?.bankDetails ?? (academy as any)?.data?.bankDetails ?? {};
 
-  const handleChange = async (url: string | undefined) => {
+  const [method, setMethod] = useState<"qr" | "bank_transfer" | "both">(paymentMethod);
+  const [bankForm, setBankForm] = useState({
+    beneficiaryName: existingBank.beneficiaryName || "",
+    accountNumber: existingBank.accountNumber || "",
+    ifscCode: existingBank.ifscCode || "",
+    bankName: existingBank.bankName || "",
+    branchName: existingBank.branchName || "",
+    upiId: existingBank.upiId || "",
+  });
+
+  // Keep in sync when academy data loads
+  React.useEffect(() => {
+    if (academy) {
+      const pm = academy.feePaymentMethod ?? (academy as any)?.data?.feePaymentMethod;
+      if (pm) setMethod(pm);
+      const b = academy.bankDetails ?? (academy as any)?.data?.bankDetails;
+      if (b) {
+        setBankForm({
+          beneficiaryName: b.beneficiaryName || "",
+          accountNumber: b.accountNumber || "",
+          ifscCode: b.ifscCode || "",
+          bankName: b.bankName || "",
+          branchName: b.branchName || "",
+          upiId: b.upiId || "",
+        });
+      }
+    }
+  }, [academy]);
+
+  const handleQrChange = async (url: string | undefined) => {
     if (!academyId) {
       toast.error("Academy identification pending. Please try again.");
       return;
@@ -91,11 +125,50 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
       }).unwrap();
       toast.success(url ? "QR code updated" : "QR code removed");
     } catch (err: any) {
-      toast.error(
-        err?.data?.message || "Couldn't save the QR code — try again",
-      );
+      toast.error(err?.data?.message || "Couldn't save the QR code — try again");
     }
   };
+
+  const handleMethodChange = async (newMethod: "qr" | "bank_transfer" | "both") => {
+    setMethod(newMethod);
+    if (!academyId) return;
+    try {
+      await updateConfig({
+        id: academyId,
+        config: { feePaymentMethod: newMethod },
+      }).unwrap();
+      toast.success(`Fee collection method updated to: ${newMethod === "qr" ? "QR Code" : newMethod === "bank_transfer" ? "Bank Transfer" : "Both (QR + Bank)"}`);
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to update payment method");
+    }
+  };
+
+  const handleSaveBankDetails = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!academyId) {
+      toast.error("Academy identification pending. Please try again.");
+      return;
+    }
+    try {
+      await updateConfig({
+        id: academyId,
+        config: {
+          feePaymentMethod: method,
+          bankDetails: bankForm,
+        },
+      }).unwrap();
+      toast.success("Academy bank account details saved successfully");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Couldn't save bank details — try again");
+    }
+  };
+
+  const isConfigured =
+    method === "qr"
+      ? !!qrImageUrl
+      : method === "bank_transfer"
+      ? !!(bankForm.accountNumber && bankForm.ifscCode)
+      : !!qrImageUrl || !!(bankForm.accountNumber && bankForm.ifscCode);
 
   return (
     <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/60 overflow-hidden mb-6 transition-all shadow-xs">
@@ -106,57 +179,198 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
       >
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
-            <QrCode size={16} />
+            {method === "bank_transfer" ? <Landmark size={16} /> : <QrCode size={16} />}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                WhatsApp Payment QR Code
+                Fee Collection &amp; Payment Options
               </span>
               <span
                 className={clsx(
                   "text-[10px] px-1.5 py-0.5 rounded font-semibold",
-                  qrImageUrl
+                  isConfigured
                     ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400",
                 )}
               >
-                {qrImageUrl ? "Configured" : "Not Set"}
+                {method === "qr"
+                  ? "UPI QR Code"
+                  : method === "bank_transfer"
+                  ? "Bank Account"
+                  : "Both (QR + Bank)"}
               </span>
             </div>
             <p className="text-2xs text-slate-400">
-              Attached to WhatsApp due-date reminders sent to guardians.
+              Payment info sent in WhatsApp due-date reminders and displayed in the Guardian Portal.
             </p>
           </div>
         </div>
         <div className="flex items-center gap-1 text-xs text-slate-400">
-          <span>{isOpen ? "Hide settings" : "Configure QR"}</span>
+          <span>{isOpen ? "Hide settings" : "Configure options"}</span>
           {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
         </div>
       </button>
 
       {isOpen && (
-        <div className="p-4 pt-2 border-t border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-pitch-950/40">
-          <div className="max-w-xs">
-            {isLoading && !qrImageUrl ? (
-              <div className="w-[180px] aspect-square rounded-lg bg-slate-900 animate-pulse border border-dashed border-white/10 flex items-center justify-center text-2xs text-slate-400">
-                Loading QR Code…
+        <div className="p-4 pt-3 border-t border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-pitch-950/40 space-y-4">
+          {/* Method selector */}
+          <div>
+            <label className="block text-2xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+              Preferred Payment Method to Share with Guardians
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {[
+                {
+                  id: "qr" as const,
+                  label: "UPI QR Code Only",
+                  desc: "WhatsApp alerts include QR image; Guardians scan to pay",
+                  icon: QrCode,
+                },
+                {
+                  id: "bank_transfer" as const,
+                  label: "Bank Account Only",
+                  desc: "WhatsApp alerts include A/C No, IFSC & Beneficiary details",
+                  icon: Landmark,
+                },
+                {
+                  id: "both" as const,
+                  label: "Both (QR + Bank)",
+                  desc: "Share QR code and Bank transfer info together",
+                  icon: Wallet,
+                },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => handleMethodChange(opt.id)}
+                  className={clsx(
+                    "p-3 rounded-lg border text-left transition-all",
+                    method === opt.id
+                      ? "border-volt-400 bg-volt-400/10 dark:bg-volt-400/5 text-slate-900 dark:text-white ring-1 ring-volt-400/50"
+                      : "border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/10",
+                  )}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <opt.icon size={15} className={method === opt.id ? "text-volt-400" : "text-slate-400"} />
+                    <span className="text-xs font-bold">{opt.label}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                    {opt.desc}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+            {/* QR Code Section */}
+            {(method === "qr" || method === "both") && (
+              <div className="p-3.5 rounded-lg border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 space-y-3">
+                <div className="flex items-center gap-2">
+                  <QrCode size={16} className="text-sky-400" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-white">
+                    UPI Payment QR Code
+                  </span>
+                </div>
+                <div className="max-w-xs">
+                  {isLoading && !qrImageUrl ? (
+                    <div className="w-[180px] aspect-square rounded-lg bg-slate-900 animate-pulse border border-dashed border-white/10 flex items-center justify-center text-2xs text-slate-400">
+                      Loading QR Code…
+                    </div>
+                  ) : (
+                    <ImageUploadField
+                      label="Payment QR code image"
+                      category="fee_qr"
+                      value={qrImageUrl}
+                      onChange={handleQrChange}
+                      shape="square"
+                    />
+                  )}
+                </div>
               </div>
-            ) : (
-              <ImageUploadField
-                label="Payment QR code image"
-                category="fee_qr"
-                value={qrImageUrl}
-                onChange={handleChange}
-                shape="square"
-              />
+            )}
+
+            {/* Bank Account Section */}
+            {(method === "bank_transfer" || method === "both") && (
+              <form
+                onSubmit={handleSaveBankDetails}
+                className="p-3.5 rounded-lg border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Landmark size={16} className="text-emerald-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-white">
+                      Academy Bank Details
+                    </span>
+                  </div>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    loading={saving}
+                    className="text-xs bg-volt-400 hover:bg-volt-300 text-pitch-950 font-bold"
+                  >
+                    Save Details
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <Input
+                    label="Beneficiary / Account Name"
+                    value={bankForm.beneficiaryName}
+                    onChange={(e) =>
+                      setBankForm((prev) => ({ ...prev, beneficiaryName: e.target.value }))
+                    }
+                    placeholder="e.g. Apex Football Academy"
+                    required
+                  />
+                  <Input
+                    label="Bank Name"
+                    value={bankForm.bankName}
+                    onChange={(e) =>
+                      setBankForm((prev) => ({ ...prev, bankName: e.target.value }))
+                    }
+                    placeholder="e.g. HDFC Bank"
+                    required
+                  />
+                  <Input
+                    label="Account Number"
+                    value={bankForm.accountNumber}
+                    onChange={(e) =>
+                      setBankForm((prev) => ({ ...prev, accountNumber: e.target.value }))
+                    }
+                    placeholder="Enter bank account number"
+                    required
+                  />
+                  <Input
+                    label="IFSC Code"
+                    value={bankForm.ifscCode}
+                    onChange={(e) =>
+                      setBankForm((prev) => ({ ...prev, ifscCode: e.target.value.toUpperCase() }))
+                    }
+                    placeholder="e.g. HDFC0001234"
+                    required
+                  />
+                  <Input
+                    label="Branch Name (optional)"
+                    value={bankForm.branchName}
+                    onChange={(e) =>
+                      setBankForm((prev) => ({ ...prev, branchName: e.target.value }))
+                    }
+                    placeholder="e.g. Koramangala Branch"
+                  />
+                  <Input
+                    label="Academy UPI ID (optional)"
+                    value={bankForm.upiId}
+                    onChange={(e) =>
+                      setBankForm((prev) => ({ ...prev, upiId: e.target.value }))
+                    }
+                    placeholder="e.g. academy@hdfcbank"
+                  />
+                </div>
+              </form>
             )}
           </div>
-          {saving && (
-            <p className="text-2xs text-volt-400 mt-2">
-              Saving payment QR code…
-            </p>
-          )}
         </div>
       )}
     </div>

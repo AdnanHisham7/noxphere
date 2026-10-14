@@ -15,6 +15,16 @@ export interface AcademyPitch {
   isActive?: boolean;
 }
 
+export interface AcademyBankDetails {
+  beneficiaryName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  bankName?: string;
+  branchName?: string;
+  upiId?: string;
+  swiftCode?: string;
+}
+
 export interface Manager {
   id: string;
   firstName: string;
@@ -42,6 +52,8 @@ export interface Academy {
   absentAlertDays: number;
   dueDateAlertDays: number;
   feeQrImageUrl?: string;
+  feePaymentMethod?: "qr" | "bank_transfer" | "both";
+  bankDetails?: AcademyBankDetails;
   logo?: string;
   skillParameters: string[];
   currency?: string;
@@ -105,6 +117,8 @@ export interface AcademyConfigPayload {
   absentAlertDays?: number;
   dueDateAlertDays?: number;
   feeQrImageUrl?: string;
+  feePaymentMethod?: "qr" | "bank_transfer" | "both";
+  bankDetails?: AcademyBankDetails;
   logo?: string;
   isActive?: boolean;
 }

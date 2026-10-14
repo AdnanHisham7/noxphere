@@ -30,6 +30,16 @@ export interface AcademyDocument extends Document {
   // WhatsApp alert (see NotificationService.sendFeeDueAlert). Uploaded by
   // the manager from the Fees page.
   feeQrImageUrl?: string;
+  feePaymentMethod?: "qr" | "bank_transfer" | "both";
+  bankDetails?: {
+    beneficiaryName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
+    bankName?: string;
+    branchName?: string;
+    upiId?: string;
+    swiftCode?: string;
+  };
   logo?: string;
   skillParameters: string[];
   currency: string;
@@ -95,6 +105,20 @@ const AcademySchema = new Schema<AcademyDocument>(
     absentAlertDays: { type: Number, default: 5, min: 1 },
     dueDateAlertDays: { type: Number, default: 3, min: 0 },
     feeQrImageUrl: { type: String },
+    feePaymentMethod: {
+      type: String,
+      enum: ["qr", "bank_transfer", "both"],
+      default: "qr",
+    },
+    bankDetails: {
+      beneficiaryName: { type: String, trim: true },
+      accountNumber: { type: String, trim: true },
+      ifscCode: { type: String, trim: true },
+      bankName: { type: String, trim: true },
+      branchName: { type: String, trim: true },
+      upiId: { type: String, trim: true },
+      swiftCode: { type: String, trim: true },
+    },
     logo: { type: String, trim: true },
     skillParameters: {
       type: [String],

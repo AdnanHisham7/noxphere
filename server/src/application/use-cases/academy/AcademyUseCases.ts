@@ -290,6 +290,8 @@ export class AcademyUseCases {
       if (dto.feeQrImageUrl !== undefined) {
         effectiveDto.feeQrImageUrl = dto.feeQrImageUrl ? ensureWhatsAppCompatibleImageUrl(dto.feeQrImageUrl) : dto.feeQrImageUrl;
       }
+      if (dto.feePaymentMethod !== undefined) effectiveDto.feePaymentMethod = dto.feePaymentMethod;
+      if (dto.bankDetails !== undefined) effectiveDto.bankDetails = dto.bankDetails;
       if (dto.logo !== undefined) effectiveDto.logo = dto.logo;
       if (dto.dataProtectionContactEmail !== undefined) effectiveDto.dataProtectionContactEmail = dto.dataProtectionContactEmail;
     } else {

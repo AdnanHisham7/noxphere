@@ -24,6 +24,16 @@ export interface AcademyManager {
   email: string;
 }
 
+export interface AcademyBankDetails {
+  beneficiaryName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  bankName?: string;
+  branchName?: string;
+  upiId?: string;
+  swiftCode?: string;
+}
+
 export interface AcademyEntity {
   id: string;
   name: string;
@@ -52,6 +62,8 @@ export interface AcademyEntity {
   absentAlertDays: number;
   dueDateAlertDays: number;
   feeQrImageUrl?: string;
+  feePaymentMethod?: "qr" | "bank_transfer" | "both";
+  bankDetails?: AcademyBankDetails;
   logo?: string;
   skillParameters: string[];
   currency?: string;
@@ -82,6 +94,8 @@ export interface CreateAcademyEntity {
   absentAlertDays: number;
   dueDateAlertDays: number;
   feeQrImageUrl?: string;
+  feePaymentMethod?: "qr" | "bank_transfer" | "both";
+  bankDetails?: AcademyBankDetails;
   logo?: string;
   skillParameters: string[];
   currency?: string;

@@ -657,6 +657,15 @@ export class NotificationService {
     daysUntilDue: number,
     franchiseId: string,
     qrImageUrl?: string,
+    bankDetails?: {
+      beneficiaryName?: string;
+      accountNumber?: string;
+      ifscCode?: string;
+      bankName?: string;
+      branchName?: string;
+      upiId?: string;
+    },
+    paymentMethod: "qr" | "bank_transfer" | "both" = "qr",
   ) {
     const isOverdue = daysUntilDue < 0;
     const isToday = daysUntilDue === 0;
@@ -666,8 +675,19 @@ export class NotificationService {
       ? `is due today (${dueDate})`
       : `is due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}, on ${dueDate}`;
 
+    let paymentInstructions = '';
+    if (paymentMethod === 'bank_transfer' && bankDetails && (bankDetails.accountNumber || bankDetails.ifscCode)) {
+      paymentInstructions = `\n\n*Bank Account Details for Payment:*\n• A/C Name: ${bankDetails.beneficiaryName || 'Academy'}\n• A/C No: ${bankDetails.accountNumber || '—'}\n• IFSC: ${bankDetails.ifscCode || '—'}\n• Bank: ${bankDetails.bankName || '—'}${bankDetails.branchName ? `\n• Branch: ${bankDetails.branchName}` : ''}${bankDetails.upiId ? `\n• UPI ID: ${bankDetails.upiId}` : ''}\n\nPlease transfer and share the transaction ref/UTR.`;
+    } else if (paymentMethod === 'both' && bankDetails && (bankDetails.accountNumber || bankDetails.ifscCode)) {
+      paymentInstructions = `${qrImageUrl ? ' Scan the attached QR code to pay instantly, or use bank transfer:' : ''}\n\n*Bank Account Details:*\n• A/C Name: ${bankDetails.beneficiaryName || 'Academy'}\n• A/C No: ${bankDetails.accountNumber || '—'}\n• IFSC: ${bankDetails.ifscCode || '—'}\n• Bank: ${bankDetails.bankName || '—'}${bankDetails.branchName ? `\n• Branch: ${bankDetails.branchName}` : ''}${bankDetails.upiId ? `\n• UPI ID: ${bankDetails.upiId}` : ''}`;
+    } else if (qrImageUrl) {
+      paymentInstructions = ' Scan the attached QR code to pay instantly.';
+    }
+
     const title = isOverdue ? 'Installment Overdue Alert' : isToday ? 'Installment Due Today' : 'Installment Payment Reminder';
-    const body = `₹${amount.toLocaleString('en-IN')} for ${studentName} ${timing}. Please pay to avoid disruption to training.${qrImageUrl ? ' Scan the attached QR code to pay instantly.' : ''}`;
+    const body = `₹${amount.toLocaleString('en-IN')} for ${studentName} ${timing}. Please pay to avoid disruption to training.${paymentInstructions}`;
+    const effectiveQrImage = paymentMethod === 'bank_transfer' ? undefined : qrImageUrl;
+
     await this.send({
       userIds: guardianIds,
       type: 'fee_due_soon',
@@ -675,7 +695,7 @@ export class NotificationService {
       body,
       franchiseId,
       channels: ['push', 'whatsapp'],
-      whatsappImageUrl: qrImageUrl,
+      whatsappImageUrl: effectiveQrImage,
     });
   }
 
