@@ -6,9 +6,13 @@ import { FeeModel } from "../../../infrastructure/database/models/Fee.model";
 import { PerformanceModel } from "../../../infrastructure/database/models/Performance.model";
 import { SessionModel } from "../../../infrastructure/database/models/Session.model";
 import { CoachRemarkModel } from "../../../infrastructure/database/models/CoachRemark.model";
-import { ForbiddenError } from "../../../shared/errors/AppError";
+import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
+import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
+import { AdminFeesUseCases } from "../fees/AdminFeesUseCases";
+import { ForbiddenError, NotFoundError } from "../../../shared/errors/AppError";
 
 export class GuardianUseCases {
+  constructor(private feesUseCases: AdminFeesUseCases = new AdminFeesUseCases()) {}
   /** Every read in this class is scoped to students linked to `guardianUserId`.
    *  A guardian can never fetch data for a student that isn't theirs. */
 
@@ -43,10 +47,19 @@ export class GuardianUseCases {
     }).lean();
 
     if (!students.length) {
-      return { children: [], todayAttendance: [], upcomingFees: [], overdueFees: [] };
+      return {
+        children: [],
+        todayAttendance: [],
+        lateFees: [],
+        pendingFees: [],
+        upcomingFees: [],
+        overdueFees: [],
+      };
     }
 
     const studentIds = students.map((s) => s._id);
+    const studentMap = new Map(students.map((s) => [s._id.toString(), s]));
+
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date();
@@ -60,27 +73,54 @@ export class GuardianUseCases {
       FeeModel.find({ studentId: { $in: studentIds } }).lean(),
     ]);
 
-    const upcomingFees: Array<{ studentId: string; installmentNumber: number; amount: number; dueDate: Date }> = [];
-    const overdueFees: Array<{ studentId: string; installmentNumber: number; amount: number; dueDate: Date }> = [];
+    const lateFees: Array<any> = [];
+    const pendingFees: Array<any> = [];
+    const upcomingFees: Array<any> = [];
     const now = new Date();
     const in14Days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
     for (const fee of fees) {
+      const student = studentMap.get(fee.studentId.toString());
       for (const inst of fee.installments) {
         if (inst.status === "paid" || inst.status === "refunded") continue;
+        const remainingAmount = inst.amount - inst.paidAmount;
+        if (remainingAmount <= 0) continue;
+
+        const dueDate = new Date(inst.dueDate);
+        const daysDiff = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const isLate = dueDate < now;
+        const isDueSoon = !isLate && dueDate <= in14Days;
+
         const entry = {
+          feeId: fee._id.toString(),
           studentId: fee.studentId.toString(),
+          studentName: student ? `${student.firstName} ${student.lastName}`.trim() : "Student",
+          studentPhoto: student?.photo,
+          feeType: fee.feeType,
           installmentNumber: inst.installmentNumber,
-          amount: inst.amount - inst.paidAmount,
+          amount: remainingAmount,
+          totalAmount: inst.amount,
+          paidAmount: inst.paidAmount,
           dueDate: inst.dueDate,
+          status: isLate ? "overdue" : inst.status,
+          urgency: isLate ? "late" : isDueSoon ? "due_soon" : "upcoming",
+          daysDiff,
+          currency: fee.currency || "INR",
         };
-        if (inst.dueDate < now) {
-          overdueFees.push(entry);
-        } else if (inst.dueDate <= in14Days) {
+
+        if (isLate) {
+          lateFees.push(entry);
+        } else if (isDueSoon) {
+          pendingFees.push(entry);
+        } else {
           upcomingFees.push(entry);
         }
       }
     }
+
+    lateFees.sort((a, b) => a.daysDiff - b.daysDiff);
+    pendingFees.sort((a, b) => a.daysDiff - b.daysDiff);
+    upcomingFees.sort((a, b) => a.daysDiff - b.daysDiff);
 
     return {
       children: students.map((s) => ({
@@ -95,8 +135,10 @@ export class GuardianUseCases {
         studentId: a.studentId.toString(),
         status: a.status,
       })),
+      lateFees,
+      pendingFees,
       upcomingFees,
-      overdueFees,
+      overdueFees: lateFees, // backwards compatible
     };
   }
 
@@ -132,6 +174,73 @@ export class GuardianUseCases {
     await this.assertOwnsStudent(guardianUserId, studentId);
     const fees = await FeeModel.find({ studentId }).sort({ createdAt: -1 }).lean();
     return fees;
+  }
+
+  async getChildPaymentConfig(guardianUserId: string, studentId: string) {
+    const student = await this.assertOwnsStudent(guardianUserId, studentId);
+    if (!student.franchiseId) {
+      return {
+        academyName: "Academy",
+        paymentMethod: "qr",
+        feeQrImageUrl: undefined,
+        bankDetails: undefined,
+        currency: "INR",
+      };
+    }
+
+    const franchise = await FranchiseModel.findById(student.franchiseId).select("name academyId").lean();
+    if (!franchise || !franchise.academyId) {
+      return {
+        academyName: franchise?.name || "Academy",
+        paymentMethod: "qr",
+        feeQrImageUrl: undefined,
+        bankDetails: undefined,
+        currency: "INR",
+      };
+    }
+
+    const academy = await AcademyModel.findById(franchise.academyId)
+      .select("name feePaymentMethod feeQrImageUrl bankDetails currency")
+      .lean();
+
+    return {
+      academyName: academy?.name || franchise.name,
+      paymentMethod: (academy?.feePaymentMethod as any) || "qr",
+      feeQrImageUrl: academy?.feeQrImageUrl,
+      bankDetails: academy?.bankDetails,
+      currency: academy?.currency || "INR",
+    };
+  }
+
+  async payChildFee(
+    guardianUserId: string,
+    feeId: string,
+    installmentNumber: number,
+    payload: {
+      amount: number;
+      paymentMethod?: string;
+      transactionId?: string;
+      notes?: string;
+      paymentBreakdown?: any[];
+    },
+  ) {
+    const fee = await FeeModel.findById(feeId);
+    if (!fee) throw new NotFoundError("Fee record not found");
+
+    // Verify ownership of the child
+    await this.assertOwnsStudent(guardianUserId, fee.studentId.toString());
+
+    return this.feesUseCases.recordPayment(
+      feeId,
+      installmentNumber,
+      {
+        amount: payload.amount,
+        paymentMethod: payload.paymentMethod || "upi",
+        transactionId: payload.transactionId,
+        paymentBreakdown: payload.paymentBreakdown,
+      },
+      guardianUserId,
+    );
   }
 
   async getChildPerformance(guardianUserId: string, studentId: string) {

@@ -28,6 +28,18 @@ guardianRouter.get("/children/:studentId/fees", (req, res, next) => {
   req.app.locals.controllers.guardian.getChildFees(req, res, next);
 });
 
+guardianRouter.get("/children/:studentId/payment-config", (req, res, next) => {
+  req.app.locals.controllers.guardian.getChildPaymentConfig(req, res, next);
+});
+
+guardianRouter.post("/fees/:feeId/installments/:installmentNumber/pay", (req, res, next) => {
+  req.app.locals.controllers.guardian.payChildFee(req, res, next);
+});
+
+guardianRouter.post("/children/:studentId/fees/:feeId/installments/:installmentNumber/pay", (req, res, next) => {
+  req.app.locals.controllers.guardian.payChildFee(req, res, next);
+});
+
 guardianRouter.get("/children/:studentId/performance", (req, res, next) => {
   req.app.locals.controllers.guardian.getChildPerformance(req, res, next);
 });

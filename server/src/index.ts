@@ -171,7 +171,10 @@ async function bootstrapDI() {
 const academyUseCases = new AcademyUseCases(academyRepository as any, userRepository as any);
 const academyController = new AcademyController(academyUseCases);
 
-  const guardianUseCases = new GuardianUseCases();
+  const adminFeesUseCases = new AdminFeesUseCases();
+  const feesController = new AdminFeesController(adminFeesUseCases);
+
+  const guardianUseCases = new GuardianUseCases(adminFeesUseCases);
   const guardianController = new GuardianController(guardianUseCases);
 
   const studentPortalUseCases = new StudentPortalUseCases();
@@ -185,9 +188,6 @@ const academyController = new AcademyController(academyUseCases);
 
   const adminAttendanceUseCases = new AdminAttendanceUseCases();
   const attendanceController = new AdminAttendanceController(adminAttendanceUseCases);
-
-  const adminFeesUseCases = new AdminFeesUseCases();
-  const feesController = new AdminFeesController(adminFeesUseCases);
 
   const adminPerformanceUseCases = new AdminPerformanceUseCases();
   const performanceController = new AdminPerformanceController(adminPerformanceUseCases);

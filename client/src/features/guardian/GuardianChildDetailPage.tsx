@@ -18,8 +18,10 @@ import {
   Globe,
   Lock,
   Check,
+  CreditCard,
 } from "lucide-react";
 import QRCode from "react-qr-code";
+import { PayFeeModal } from "./PayFeeModal";
 import {
   useGetChildProfileQuery,
   useGetChildAttendanceQuery,
@@ -138,7 +140,14 @@ const GuardianChildDetailPage: React.FC = () => {
 
       {tab === "attendance" && <AttendanceTab studentId={studentId} />}
       {tab === "schedule" && <ScheduleTab studentId={studentId} />}
-      {tab === "fees" && <FeesTab studentId={studentId} />}
+      {tab === "fees" && (
+        <FeesTab
+          studentId={studentId}
+          studentName={
+            profile ? `${profile.firstName} ${profile.lastName}` : undefined
+          }
+        />
+      )}
       {tab === "performance" && <PerformanceTab studentId={studentId} />}
     </div>
   );
@@ -667,8 +676,18 @@ const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
   );
 };
 
-const FeesTab: React.FC<{ studentId: string }> = ({ studentId }) => {
-  const { data, isLoading } = useGetChildFeesQuery(studentId);
+const FeesTab: React.FC<{ studentId: string; studentName?: string }> = ({
+  studentId,
+  studentName,
+}) => {
+  const { data, isLoading, refetch } = useGetChildFeesQuery(studentId);
+  const [selectedFeeForPayment, setSelectedFeeForPayment] = useState<{
+    feeId: string;
+    installmentNumber: number;
+    amount: number;
+    dueDate: string;
+    feeType: string;
+  } | null>(null);
 
   if (isLoading) return <NoxSkeleton className="h-64" />;
   if (!data || data.length === 0) {
@@ -696,27 +715,69 @@ const FeesTab: React.FC<{ studentId: string }> = ({ studentId }) => {
             <NoxStatusBadge status={fee.overallStatus} />
           </div>
           <div className="space-y-2">
-            {fee.installments.map((inst) => (
-              <div
-                key={inst.installmentNumber}
-                className="flex items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2.5"
-              >
-                <span className="text-nox-mid">
-                  Installment {inst.installmentNumber} · due{" "}
-                  {new Date(inst.dueDate).toLocaleDateString()}
-                </span>
-                <div className="flex items-center gap-3">
-                  <span className="text-nox-high font-mono">
-                    ₹{inst.paidAmount.toLocaleString("en-IN")} / ₹
-                    {inst.amount.toLocaleString("en-IN")}
+            {fee.installments.map((inst) => {
+              const remaining = inst.amount - inst.paidAmount;
+              const canPay =
+                inst.status !== "paid" &&
+                inst.status !== "refunded" &&
+                remaining > 0;
+
+              return (
+                <div
+                  key={inst.installmentNumber}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2.5 gap-2"
+                >
+                  <span className="text-nox-mid">
+                    Installment {inst.installmentNumber} · due{" "}
+                    {new Date(inst.dueDate).toLocaleDateString()}
                   </span>
-                  <NoxStatusBadge status={inst.status} />
+                  <div className="flex items-center justify-between sm:justify-end gap-3">
+                    <span className="text-nox-high font-mono">
+                      ₹{inst.paidAmount.toLocaleString("en-IN")} / ₹
+                      {inst.amount.toLocaleString("en-IN")}
+                    </span>
+                    <NoxStatusBadge status={inst.status} />
+                    {canPay && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedFeeForPayment({
+                            feeId: fee._id,
+                            installmentNumber: inst.installmentNumber,
+                            amount: remaining,
+                            dueDate: inst.dueDate,
+                            feeType: fee.feeType,
+                          })
+                        }
+                        className="nox-btn-primary !py-1 !px-2.5 text-xs flex items-center gap-1 shadow-sm"
+                      >
+                        <CreditCard size={12} />
+                        <span>Pay Fee</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ))}
+
+      {selectedFeeForPayment && (
+        <PayFeeModal
+          feeId={selectedFeeForPayment.feeId}
+          installmentNumber={selectedFeeForPayment.installmentNumber}
+          studentId={studentId}
+          studentName={studentName}
+          feeType={selectedFeeForPayment.feeType}
+          amount={selectedFeeForPayment.amount}
+          dueDate={selectedFeeForPayment.dueDate}
+          onClose={() => setSelectedFeeForPayment(null)}
+          onSuccess={() => {
+            refetch();
+          }}
+        />
+      )}
     </div>
   );
 };
