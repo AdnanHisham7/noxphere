@@ -6,7 +6,9 @@ export type SubscriptionStatus =
   | "active"
   | "past_due"
   | "canceled"
-  | "unpaid";
+  | "unpaid"
+  | "trialing"
+  | "trial_expired";
 
 export type BillingInterval = "month" | "quarter" | "half_year" | "year";
 
@@ -33,25 +35,16 @@ export interface AcademySubscriptionDocument extends Document {
   razorpayPaymentId?: string;
   razorpaySignature?: string;
   billingInterval: BillingInterval;
-  // The ₹/student/day rate actually in effect for this subscription,
-  // captured at checkout time. A later change to the platform default or
-  // this academy's override (see Academy.subscriptionRateOverride) only
-  // affects the *next* subscription created or capacity increase — not
-  // the price already locked into an active Stripe subscription — the
-  // same way most SaaS billing treats existing subscriptions.
+  currency: string;
+  isTrial: boolean;
+  trialEndsAt?: Date;
+  // The per student per day rate in effect for this subscription
   ratePerStudentPerDay: number;
-  // The ₹/staff/month rate actually in effect for this subscription's
-  // staff-seat line, captured at checkout/upgrade time — same snapshot
-  // rationale as ratePerStudentPerDay above.
+  // The per staff per month rate in effect for this subscription's staff line
   staffRatePerStaffPerMonth: number;
-  // The number of student seats this academy has paid for. This is a
-  // deliberately-chosen number the manager sets when subscribing or
-  // upgrading — not a live mirror of actual headcount — so
-  // "add player" can enforce a hard cap against it (see
-  // StudentUseCases.createStudent).
+  // The number of student seats this academy has paid or trialed for
   provisionedCapacity: number;
-  // Same idea, for "staff" (system-access, software-managing) employees
-  // — see Employee.employeeType. External employees never count here.
+  // Same idea, for staff employees
   provisionedStaffCapacity: number;
   status: SubscriptionStatus;
   currentPeriodEnd?: Date;
@@ -79,14 +72,18 @@ const AcademySubscriptionSchema = new Schema<AcademySubscriptionDocument>(
       type: String,
       enum: ["month", "quarter", "half_year", "year"],
       required: true,
+      default: "month",
     },
+    currency: { type: String, default: "INR", uppercase: true },
+    isTrial: { type: Boolean, default: false },
+    trialEndsAt: Date,
     ratePerStudentPerDay: { type: Number, required: true, min: 0 },
     staffRatePerStaffPerMonth: { type: Number, required: true, min: 0, default: 10 },
     provisionedCapacity: { type: Number, required: true, min: 1 },
     provisionedStaffCapacity: { type: Number, required: true, min: 0, default: 0 },
     status: {
       type: String,
-      enum: ["incomplete", "active", "past_due", "canceled", "unpaid"],
+      enum: ["incomplete", "active", "past_due", "canceled", "unpaid", "trialing", "trial_expired"],
       default: "incomplete",
       index: true,
     },

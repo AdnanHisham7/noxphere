@@ -11,6 +11,7 @@ import {
   CreateAcademyDto,
   UpdateAcademyDto,
   AcademyConfigDto,
+  UpdateTrialDto,
 } from "../../dtos/academy.dto";
 import {
   AppError,
@@ -23,6 +24,9 @@ import bcrypt from "bcryptjs";
 import { logger } from "../../../shared/utils/logger";
 import { ensureWhatsAppCompatibleImageUrl } from "../../../infrastructure/services/WhatsAppService";
 import { schedulerService } from "../../../infrastructure/services/SchedulerService";
+import { AcademySubscriptionModel } from "../../../infrastructure/database/models/AcademySubscription.model";
+import { PlatformSettingsModel } from "../../../infrastructure/database/models/PlatformSettings.model";
+import { geoLocationService, SUPPORTED_CURRENCY_MAP } from "../../../infrastructure/services/GeoLocationService";
 
 function toFranchiseEntity(doc: FranchiseDocument): FranchiseEntity {
   const json = doc.toJSON() as any;
@@ -98,11 +102,16 @@ export class AcademyUseCases {
       academyCode = await this.generateUniqueCode(dto.name);
     }
 
-    // 5. Create academy. maxStudents is no longer collected here — player
-    // capacity is now set when the manager subscribes (see
-    // AcademySubscriptionUseCases), not at academy signup, since a new
-    // academy has no students yet and shouldn't need to guess a cap
-    // before it has ever added one.
+    // 5. Create academy with currency, country, and trial parameters
+    const currency = (dto.currency || "INR").toUpperCase();
+    const country = (dto.country || geoLocationService.getCountryForCurrency(currency)).toUpperCase();
+    const isTrial = Boolean(dto.isTrial);
+    const trialDays = dto.trialDays ?? 14;
+    const trialCapacity = dto.trialCapacity ?? 50;
+    const trialStaffCapacity = dto.trialStaffCapacity ?? 5;
+    const trialStartsAt = isTrial ? new Date() : undefined;
+    const trialEndsAt = isTrial ? new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000) : undefined;
+
     const academy = await this.academyRepository.create({
       name: dto.name,
       academyCode,
@@ -117,7 +126,41 @@ export class AcademyUseCases {
       absentAlertDays: dto.absentAlertDays,
       dueDateAlertDays: dto.dueDateAlertDays,
       skillParameters: dto.skillParameters,
+      currency,
+      country,
+      isTrial,
+      trialDays,
+      trialStartsAt,
+      trialEndsAt,
+      trialCapacity,
+      trialStaffCapacity,
     });
+
+    // If trial is granted, automatically provision an active trial subscription
+    if (isTrial && trialEndsAt) {
+      const platformSettings = await PlatformSettingsModel.findOne().lean();
+      const customRate = platformSettings?.currencyPricing?.find(c => c.currency.toUpperCase() === currency);
+      const ratePerStudentPerDay = customRate?.ratePerStudentPerDay ?? (SUPPORTED_CURRENCY_MAP[currency]?.defaultRatePerStudentPerDay ?? 1);
+      const staffRatePerStaffPerMonth = customRate?.staffRatePerStaffPerMonth ?? (SUPPORTED_CURRENCY_MAP[currency]?.defaultStaffRatePerStaffPerMonth ?? 10);
+
+      await AcademySubscriptionModel.findOneAndUpdate(
+        { academyId: academy.id },
+        {
+          academyId: academy.id,
+          billingInterval: "month",
+          currency,
+          isTrial: true,
+          trialEndsAt,
+          ratePerStudentPerDay,
+          staffRatePerStaffPerMonth,
+          provisionedCapacity: trialCapacity,
+          provisionedStaffCapacity: trialStaffCapacity,
+          status: "trialing",
+          currentPeriodEnd: trialEndsAt,
+        },
+        { upsert: true, new: true }
+      );
+    }
 
     // 6. Auto-create a single default franchise under this academy. Every
     // academy needs at least one operational franchise for students, teams,
@@ -299,6 +342,79 @@ export class AcademyUseCases {
 
     const deleted = await this.academyRepository.softDelete(id);
     if (!deleted) throw new BadRequestError("Could not delete academy");
+  }
+
+  async updateTrial(academyId: string, dto: UpdateTrialDto): Promise<AcademyEntity> {
+    const academy = await this.academyRepository.findById(academyId);
+    if (!academy) throw new NotFoundError("Academy");
+
+    const now = new Date();
+    let isTrial = academy.isTrial ?? false;
+    let trialStartsAt = academy.trialStartsAt ? new Date(academy.trialStartsAt) : now;
+    let trialEndsAt = academy.trialEndsAt ? new Date(academy.trialEndsAt) : undefined;
+    let trialCapacity = dto.trialCapacity ?? (academy.trialCapacity || 50);
+    let trialStaffCapacity = dto.trialStaffCapacity ?? (academy.trialStaffCapacity ?? 5);
+    let trialDays = dto.trialDays ?? (academy.trialDays || 14);
+
+    if (dto.endTrial) {
+      isTrial = true;
+      trialEndsAt = new Date(Date.now() - 1000); // Set to past to immediately expire
+    } else if (dto.extendDays && dto.extendDays > 0) {
+      isTrial = true;
+      const baseDate = trialEndsAt && trialEndsAt > now ? trialEndsAt : now;
+      trialEndsAt = new Date(baseDate.getTime() + dto.extendDays * 24 * 60 * 60 * 1000);
+      trialDays = Math.ceil((trialEndsAt.getTime() - trialStartsAt.getTime()) / (24 * 60 * 60 * 1000));
+    } else if (dto.isTrial) {
+      isTrial = true;
+      trialStartsAt = now;
+      trialEndsAt = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
+    } else if (dto.isTrial === false) {
+      isTrial = false;
+    }
+
+    const updatedAcademy = await this.academyRepository.update(academyId, {
+      isTrial,
+      trialDays,
+      trialStartsAt,
+      trialEndsAt,
+      trialCapacity,
+      trialStaffCapacity,
+    });
+
+    const isTrialActive = Boolean(isTrial && trialEndsAt && now <= trialEndsAt);
+    const isTrialExpired = Boolean(isTrial && trialEndsAt && now > trialEndsAt);
+
+    const subscription = await AcademySubscriptionModel.findOne({ academyId });
+    if (subscription) {
+      subscription.isTrial = isTrial;
+      subscription.trialEndsAt = trialEndsAt;
+      if (isTrialActive) {
+        subscription.status = "trialing";
+        subscription.currentPeriodEnd = trialEndsAt;
+        subscription.provisionedCapacity = trialCapacity;
+        subscription.provisionedStaffCapacity = trialStaffCapacity;
+      } else if (isTrialExpired) {
+        subscription.status = "trial_expired";
+      }
+      await subscription.save();
+    } else if (isTrial && trialEndsAt) {
+      const currency = (academy.currency || "INR").toUpperCase();
+      await AcademySubscriptionModel.create({
+        academyId,
+        billingInterval: "month",
+        currency,
+        isTrial,
+        trialEndsAt,
+        ratePerStudentPerDay: 1,
+        staffRatePerStaffPerMonth: 10,
+        provisionedCapacity: trialCapacity,
+        provisionedStaffCapacity: trialStaffCapacity,
+        status: isTrialActive ? "trialing" : "trial_expired",
+        currentPeriodEnd: trialEndsAt,
+      });
+    }
+
+    return updatedAcademy || academy;
   }
 
   private async generateUniqueFranchiseCode(baseName: string): Promise<string> {

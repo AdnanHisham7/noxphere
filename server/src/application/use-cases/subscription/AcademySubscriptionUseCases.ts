@@ -5,7 +5,7 @@ import {
   SubscriptionStatus,
   BillingInterval,
 } from "../../../infrastructure/database/models/AcademySubscription.model";
-import { PlatformSettingsModel } from "../../../infrastructure/database/models/PlatformSettings.model";
+import { PlatformSettingsModel, CurrencyPricing } from "../../../infrastructure/database/models/PlatformSettings.model";
 import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
 import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { StudentModel } from "../../../infrastructure/database/models/Student.model";
@@ -16,6 +16,7 @@ import { FranchiseModel } from "../../../infrastructure/database/models/Franchis
 import { stripeService } from "../../../infrastructure/services/StripeService";
 import { razorpayService } from "../../../infrastructure/services/RazorpayService";
 import { notificationService } from "../../../infrastructure/services/NotificationService";
+import { geoLocationService, SUPPORTED_CURRENCY_MAP } from "../../../infrastructure/services/GeoLocationService";
 import { config } from "../../../config/app.config";
 import {
   NotFoundError,
@@ -23,6 +24,7 @@ import {
   ForbiddenError,
   SubscriptionRequiredError,
   SubscriptionCapacityExceededError,
+  TrialExpiredError,
 } from "../../../shared/errors/AppError";
 
 const DAYS_IN_PERIOD: Record<BillingInterval, number> = {
@@ -39,16 +41,20 @@ const STAFF_MONTHS_IN_PERIOD: Record<BillingInterval, number> = {
   year: 12,
 };
 
-function studentRupeeAmount(ratePerStudentPerDay: number, capacity: number, interval: BillingInterval): number {
+function studentPeriodAmount(ratePerStudentPerDay: number, capacity: number, interval: BillingInterval): number {
   return ratePerStudentPerDay * capacity * (DAYS_IN_PERIOD[interval] ?? 30);
 }
 
-function staffRupeeAmount(staffRatePerMonth: number, staffCapacity: number, interval: BillingInterval): number {
+function staffPeriodAmount(staffRatePerMonth: number, staffCapacity: number, interval: BillingInterval): number {
   return staffRatePerMonth * staffCapacity * (STAFF_MONTHS_IN_PERIOD[interval] ?? 1);
 }
 
-function toPaise(rupees: number): number {
-  return Math.round(rupees * 100);
+// Backward-compatibility aliases
+const studentRupeeAmount = studentPeriodAmount;
+const staffRupeeAmount = staffPeriodAmount;
+
+function toPaise(amount: number): number {
+  return Math.round(amount * 100);
 }
 
 export class AcademySubscriptionUseCases {
@@ -70,25 +76,46 @@ export class AcademySubscriptionUseCases {
   }
 
   async getEffectiveRate(academyId: string): Promise<number> {
-    const academy = await AcademyModel.findById(academyId).select("subscriptionRateOverride").lean();
+    const academy = await AcademyModel.findById(academyId).select("subscriptionRateOverride currency").lean();
     if (academy?.subscriptionRateOverride !== undefined && academy.subscriptionRateOverride !== null) {
       return academy.subscriptionRateOverride;
     }
+    const currency = (academy?.currency || "INR").toUpperCase();
     const settings = await PlatformSettingsModel.findOne().lean();
+    const customCurrencySetting = settings?.currencyPricing?.find(
+      (c) => c.currency.toUpperCase() === currency && c.isActive !== false
+    );
+    if (customCurrencySetting) {
+      return customCurrencySetting.ratePerStudentPerDay;
+    }
+    if (SUPPORTED_CURRENCY_MAP[currency]) {
+      return SUPPORTED_CURRENCY_MAP[currency].defaultRatePerStudentPerDay;
+    }
     return settings?.defaultRatePerStudentPerDay ?? 1;
   }
 
   async getEffectiveStaffRate(academyId: string): Promise<number> {
-    const academy = await AcademyModel.findById(academyId).select("staffRateOverride").lean();
+    const academy = await AcademyModel.findById(academyId).select("staffRateOverride currency").lean();
     if (academy?.staffRateOverride !== undefined && academy.staffRateOverride !== null) {
       return academy.staffRateOverride;
     }
+    const currency = (academy?.currency || "INR").toUpperCase();
     const settings = await PlatformSettingsModel.findOne().lean();
+    const customCurrencySetting = settings?.currencyPricing?.find(
+      (c) => c.currency.toUpperCase() === currency && c.isActive !== false
+    );
+    if (customCurrencySetting) {
+      return customCurrencySetting.staffRatePerStaffPerMonth;
+    }
+    if (SUPPORTED_CURRENCY_MAP[currency]) {
+      return SUPPORTED_CURRENCY_MAP[currency].defaultStaffRatePerStaffPerMonth;
+    }
     return settings?.defaultStaffRatePerStaffPerMonth ?? 10;
   }
 
   async getStatus(academyId: string) {
-    const [subscription, rate, staffRate, activeStudentCount, activeStaffCount, pendingInvitationCount] = await Promise.all([
+    const [academy, subscription, rate, staffRate, activeStudentCount, activeStaffCount, pendingInvitationCount] = await Promise.all([
+      AcademyModel.findById(academyId).select("name currency country isTrial trialDays trialStartsAt trialEndsAt trialCapacity trialStaffCapacity").lean(),
       AcademySubscriptionModel.findOne({ academyId }).lean(),
       this.getEffectiveRate(academyId),
       this.getEffectiveStaffRate(academyId),
@@ -100,23 +127,70 @@ export class AcademySubscriptionUseCases {
       }),
     ]);
 
-    const provisionedCapacity = subscription?.provisionedCapacity ?? 0;
+    const now = new Date();
+    const isTrial = Boolean(subscription?.isTrial || academy?.isTrial);
+    const trialEndsAt = subscription?.trialEndsAt || academy?.trialEndsAt;
+    const isTrialActive = Boolean(isTrial && trialEndsAt && now <= new Date(trialEndsAt));
+    const isTrialExpired = Boolean(isTrial && trialEndsAt && now > new Date(trialEndsAt));
+
+    const provisionedCapacity = isTrialActive
+      ? (subscription?.provisionedCapacity || academy?.trialCapacity || 50)
+      : (subscription?.provisionedCapacity ?? 0);
+    const provisionedStaffCapacity = isTrialActive
+      ? (subscription?.provisionedStaffCapacity || academy?.trialStaffCapacity || 5)
+      : (subscription?.provisionedStaffCapacity ?? 0);
+
     const remainingInviteSlots = Math.max(0, provisionedCapacity - (activeStudentCount + pendingInvitationCount));
 
-    const isExpired = Boolean(
+    const isPaidExpired = Boolean(
+      !isTrial &&
       subscription?.currentPeriodEnd &&
-      new Date() > new Date(subscription.currentPeriodEnd)
+      now > new Date(subscription.currentPeriodEnd)
     );
-    const isActive = Boolean(subscription?.status === "active" && !isExpired);
-    const effectiveStatus = isExpired ? ("past_due" as SubscriptionStatus) : (subscription?.status ?? null);
+
+    const isActive = Boolean(
+      isTrialActive ||
+      (subscription?.status === "active" && !isPaidExpired)
+    );
+
+    const isExpired = isTrial ? isTrialExpired : isPaidExpired;
+
+    let effectiveStatus: SubscriptionStatus;
+    if (isTrialActive) {
+      effectiveStatus = "trialing";
+    } else if (isTrialExpired) {
+      effectiveStatus = "trial_expired";
+    } else if (isPaidExpired) {
+      effectiveStatus = "past_due";
+    } else {
+      effectiveStatus = (subscription?.status as SubscriptionStatus) ?? "incomplete";
+    }
+
+    const trialDaysRemaining = isTrialActive && trialEndsAt
+      ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+      : 0;
+
+    const currency = academy?.currency || subscription?.currency || "INR";
+    const currencySymbol = geoLocationService.getCurrencySymbol(currency);
+    const country = academy?.country || geoLocationService.getCountryForCurrency(currency);
+    const countryName = geoLocationService.getCountryName(country);
 
     return {
-      hasSubscription: !!subscription,
+      hasSubscription: Boolean(subscription || isTrial),
       status: effectiveStatus,
+      isTrial,
+      isTrialActive,
+      isTrialExpired,
+      trialDaysRemaining,
+      trialEndsAt: trialEndsAt ?? null,
+      currency,
+      currencySymbol,
+      country,
+      countryName,
       billingInterval: subscription?.billingInterval ?? null,
       provisionedCapacity,
-      provisionedStaffCapacity: subscription?.provisionedStaffCapacity ?? 0,
-      currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
+      provisionedStaffCapacity,
+      currentPeriodEnd: subscription?.currentPeriodEnd ?? trialEndsAt ?? null,
       ratePerStudentPerDay: subscription?.ratePerStudentPerDay ?? rate,
       staffRatePerStaffPerMonth: subscription?.staffRatePerStaffPerMonth ?? staffRate,
       currentDefaultRate: rate,
@@ -132,15 +206,16 @@ export class AcademySubscriptionUseCases {
 
   async getBillingDetails(academyId: string) {
     const [
+      academy,
       subscription,
       rate,
       staffRate,
       activeStudentCount,
       activeStaffCount,
       pendingInvitationCount,
-      academy,
       platformSettings,
     ] = await Promise.all([
+      AcademyModel.findById(academyId).select("name currency country isTrial trialDays trialStartsAt trialEndsAt trialCapacity trialStaffCapacity subscriptionRateOverride staffRateOverride").lean(),
       AcademySubscriptionModel.findOne({ academyId }).lean(),
       this.getEffectiveRate(academyId),
       this.getEffectiveStaffRate(academyId),
@@ -150,12 +225,22 @@ export class AcademySubscriptionUseCases {
         academyId: new mongoose.Types.ObjectId(academyId),
         status: "pending",
       }),
-      AcademyModel.findById(academyId).select("subscriptionRateOverride staffRateOverride").lean(),
       PlatformSettingsModel.findOne().lean(),
     ]);
 
-    const provisionedCapacity = subscription?.provisionedCapacity ?? 0;
-    const provisionedStaffCapacity = subscription?.provisionedStaffCapacity ?? 0;
+    const now = new Date();
+    const isTrial = Boolean(subscription?.isTrial || academy?.isTrial);
+    const trialEndsAt = subscription?.trialEndsAt || academy?.trialEndsAt;
+    const isTrialActive = Boolean(isTrial && trialEndsAt && now <= new Date(trialEndsAt));
+    const isTrialExpired = Boolean(isTrial && trialEndsAt && now > new Date(trialEndsAt));
+
+    const provisionedCapacity = isTrialActive
+      ? (subscription?.provisionedCapacity || academy?.trialCapacity || 50)
+      : (subscription?.provisionedCapacity ?? 0);
+    const provisionedStaffCapacity = isTrialActive
+      ? (subscription?.provisionedStaffCapacity || academy?.trialStaffCapacity || 5)
+      : (subscription?.provisionedStaffCapacity ?? 0);
+
     const studentUtilization = provisionedCapacity > 0 ? Math.round((activeStudentCount / provisionedCapacity) * 100) : 0;
     const staffUtilization = provisionedStaffCapacity > 0 ? Math.round((activeStaffCount / provisionedStaffCapacity) * 100) : 0;
     const remainingInviteSlots = Math.max(0, provisionedCapacity - (activeStudentCount + pendingInvitationCount));
@@ -164,23 +249,67 @@ export class AcademySubscriptionUseCases {
     const currentRate = rate;
     const currentStaffRate = staffRate;
 
-    const estimatedRenewalRupees =
-      studentRupeeAmount(currentRate, provisionedCapacity, interval) +
-      staffRupeeAmount(currentStaffRate, provisionedStaffCapacity, interval);
+    const estimatedRenewalAmount =
+      studentPeriodAmount(currentRate, provisionedCapacity, interval) +
+      staffPeriodAmount(currentStaffRate, provisionedStaffCapacity, interval);
+
+    const isPaidExpired = Boolean(
+      !isTrial &&
+      subscription?.currentPeriodEnd &&
+      now > new Date(subscription.currentPeriodEnd)
+    );
+
+    const isActive = Boolean(
+      isTrialActive ||
+      (subscription?.status === "active" && !isPaidExpired)
+    );
+
+    const isExpired = isTrial ? isTrialExpired : isPaidExpired;
+
+    let effectiveStatus: SubscriptionStatus;
+    if (isTrialActive) {
+      effectiveStatus = "trialing";
+    } else if (isTrialExpired) {
+      effectiveStatus = "trial_expired";
+    } else if (isPaidExpired) {
+      effectiveStatus = "past_due";
+    } else {
+      effectiveStatus = (subscription?.status as SubscriptionStatus) ?? "incomplete";
+    }
 
     let daysRemainingInCycle = 0;
-    if (subscription?.currentPeriodEnd) {
-      const now = new Date();
-      const diffMs = new Date(subscription.currentPeriodEnd).getTime() - now.getTime();
+    const relevantEnd = isTrial ? trialEndsAt : subscription?.currentPeriodEnd;
+    if (relevantEnd) {
+      const diffMs = new Date(relevantEnd).getTime() - now.getTime();
       daysRemainingInCycle = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
     }
 
+    const trialDaysRemaining = isTrialActive && trialEndsAt ? daysRemainingInCycle : 0;
+
+    const currency = academy?.currency || subscription?.currency || "INR";
+    const currencySymbol = geoLocationService.getCurrencySymbol(currency);
+    const country = academy?.country || geoLocationService.getCountryForCurrency(currency);
+    const countryName = geoLocationService.getCountryName(country);
+
     const alerts: Array<{ type: "warning" | "danger" | "info"; title: string; message: string }> = [];
-    if (subscription?.status === "past_due") {
+
+    if (isTrialActive) {
+      alerts.push({
+        type: "info",
+        title: "Free Trial License Active",
+        message: `Your academy is currently operating on a free trial with ${trialDaysRemaining} day(s) remaining. You can test out all operations before purchasing a full software license.`,
+      });
+    } else if (isTrialExpired) {
       alerts.push({
         type: "danger",
-        title: "Payment Past Due",
-        message: "Your latest subscription renewal payment failed. Please update your billing method to avoid service interruption.",
+        title: "Free Trial Expired",
+        message: "Your academy trial period has ended. Management operations and student rosters are restricted until an operational subscription is purchased.",
+      });
+    } else if (subscription?.status === "past_due" || isPaidExpired) {
+      alerts.push({
+        type: "danger",
+        title: "Subscription Expired / Past Due",
+        message: "Your subscription renewal is overdue. Please renew your plan to restore full operations.",
       });
     }
 
@@ -189,13 +318,13 @@ export class AcademySubscriptionUseCases {
         alerts.push({
           type: "danger",
           title: "Student Capacity Limit Reached (100%)",
-          message: `Your academy has reached its maximum limit of ${provisionedCapacity} enrolled students. New enrollments and registrations cannot be approved until you upgrade your plan capacity.`,
+          message: `Your academy has reached its maximum limit of ${provisionedCapacity} enrolled students. Upgrade your plan to expand capacity.`,
         });
       } else if (studentUtilization >= 80) {
         alerts.push({
           type: "warning",
           title: "Student Capacity Warning (>80%)",
-          message: `Student capacity is at ${studentUtilization}% (${activeStudentCount}/${provisionedCapacity} students). We recommend upgrading your plan soon to prevent enrollment blocks.`,
+          message: `Student capacity is at ${studentUtilization}% (${activeStudentCount}/${provisionedCapacity} students).`,
         });
       }
     }
@@ -205,7 +334,7 @@ export class AcademySubscriptionUseCases {
         alerts.push({
           type: "danger",
           title: "Staff Capacity Limit Reached (100%)",
-          message: `Your academy has reached its limit of ${provisionedStaffCapacity} staff members. You must upgrade your staff capacity before adding more staff.`,
+          message: `Your academy has reached its limit of ${provisionedStaffCapacity} staff members.`,
         });
       } else if (staffUtilization >= 80) {
         alerts.push({
@@ -214,21 +343,6 @@ export class AcademySubscriptionUseCases {
           message: `Staff capacity is at ${staffUtilization}% (${activeStaffCount}/${provisionedStaffCapacity} staff members).`,
         });
       }
-    }
-
-    const isExpired = Boolean(
-      subscription?.currentPeriodEnd &&
-      new Date() > new Date(subscription.currentPeriodEnd)
-    );
-    const isActive = Boolean(subscription?.status === "active" && !isExpired);
-    const effectiveStatus = isExpired ? ("past_due" as SubscriptionStatus) : (subscription?.status ?? null);
-
-    if (isExpired) {
-      alerts.unshift({
-        type: "danger",
-        title: "Subscription Expired",
-        message: "Your subscription period has ended. Access to operations is restricted until renewed via Razorpay.",
-      });
     }
 
     let invoices: any[] = [];
@@ -244,6 +358,7 @@ export class AcademySubscriptionUseCases {
       id: p.paymentId || p.orderId || p._id?.toString(),
       number: p.receiptNumber || `INV-${(p.paymentId || p.orderId || "PAY").slice(-8).toUpperCase()}`,
       amountPaid: p.amount,
+      currency: p.currency || currency,
       amountDue: 0,
       status: p.status || "paid",
       created: (p.paidAt ? new Date(p.paidAt) : (subscription as any).createdAt || new Date()).toISOString(),
@@ -253,12 +368,13 @@ export class AcademySubscriptionUseCases {
 
     if (recordedPayments.length === 0 && subscription?.razorpayPaymentId) {
       const legacyAmount =
-        studentRupeeAmount(currentRate, provisionedCapacity, interval) +
-        staffRupeeAmount(currentStaffRate, provisionedStaffCapacity, interval);
+        studentPeriodAmount(currentRate, provisionedCapacity, interval) +
+        staffPeriodAmount(currentStaffRate, provisionedStaffCapacity, interval);
       recordedPayments.push({
         id: subscription.razorpayPaymentId,
         number: `INV-${subscription.razorpayPaymentId.slice(-8).toUpperCase()}`,
         amountPaid: legacyAmount,
+        currency,
         amountDue: 0,
         status: "paid",
         created: ((subscription as any).updatedAt || (subscription as any).createdAt || new Date()).toISOString(),
@@ -272,12 +388,21 @@ export class AcademySubscriptionUseCases {
     );
 
     return {
-      hasSubscription: !!subscription,
+      hasSubscription: Boolean(subscription || isTrial),
       status: effectiveStatus,
+      isTrial,
+      isTrialActive,
+      isTrialExpired,
+      trialDaysRemaining,
+      trialEndsAt: trialEndsAt ?? null,
+      currency,
+      currencySymbol,
+      country,
+      countryName,
       isActive,
       isExpired,
       billingInterval: interval,
-      currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
+      currentPeriodEnd: subscription?.currentPeriodEnd ?? trialEndsAt ?? null,
       daysRemainingInCycle: isExpired ? 0 : daysRemainingInCycle,
       provisionedCapacity,
       activeStudentCount,
@@ -295,62 +420,128 @@ export class AcademySubscriptionUseCases {
       platformDefaultStaffRate: platformSettings?.defaultStaffRatePerStaffPerMonth ?? 10,
       hasCustomRate: academy?.subscriptionRateOverride !== undefined && academy?.subscriptionRateOverride !== null,
       hasCustomStaffRate: academy?.staffRateOverride !== undefined && academy?.staffRateOverride !== null,
-      estimatedRenewalRupees,
+      estimatedRenewalRupees: estimatedRenewalAmount, // kept for backward-compatibility
+      estimatedRenewalAmount,
       alerts,
       transactions: allTransactions,
     };
   }
 
-
-  // The gate every mutating route that adds a player relies on (see
-  // StudentUseCases.createStudent). Kept as its own method so it can be
-  // reused anywhere else that needs the same two checks without
-  // duplicating the query logic.
   async assertCanAddStudent(academyId: string): Promise<void> {
-    const subscription = await AcademySubscriptionModel.findOne({ academyId }).lean();
+    const [academy, subscription, activeStudentCount] = await Promise.all([
+      AcademyModel.findById(academyId).select("name isTrial trialEndsAt trialCapacity").lean(),
+      AcademySubscriptionModel.findOne({ academyId }).lean(),
+      this.countActiveStudents(academyId),
+    ]);
+
+    const now = new Date();
+    const isTrial = Boolean(subscription?.isTrial || academy?.isTrial);
+    const trialEndsAt = subscription?.trialEndsAt || academy?.trialEndsAt;
+
+    if (isTrial) {
+      if (trialEndsAt && now > new Date(trialEndsAt)) {
+        throw new TrialExpiredError("Academy trial period has expired. Please subscribe to continue adding students.");
+      }
+      const capacity = subscription?.provisionedCapacity || academy?.trialCapacity || 50;
+      if (activeStudentCount >= capacity) {
+        throw new SubscriptionCapacityExceededError(
+          `Trial limit reached (${capacity} students). Please upgrade your subscription plan to enroll more students.`
+        );
+      }
+      return;
+    }
+
     if (!subscription || subscription.status !== "active") {
       throw new SubscriptionRequiredError();
     }
-    const activeStudentCount = await this.countActiveStudents(academyId);
+    if (subscription.currentPeriodEnd && now > new Date(subscription.currentPeriodEnd)) {
+      throw new SubscriptionRequiredError("Subscription period has expired. Please renew your subscription.");
+    }
     if (activeStudentCount >= subscription.provisionedCapacity) {
       throw new SubscriptionCapacityExceededError(
-        `This academy is subscribed for ${subscription.provisionedCapacity} students and already has ${activeStudentCount}. Increase your plan to add more.`,
+        `This academy is subscribed for ${subscription.provisionedCapacity} students and already has ${activeStudentCount}. Increase your plan to add more.`
       );
     }
   }
 
-  // Ensures that sending an invitation does not exceed the remaining capacity,
-  // taking into account both currently enrolled students and pending invitations.
   async assertCanInviteStudent(academyId: string): Promise<void> {
-    const subscription = await AcademySubscriptionModel.findOne({ academyId }).lean();
+    const [academy, subscription, activeStudentCount, pendingInvitationCount] = await Promise.all([
+      AcademyModel.findById(academyId).select("name isTrial trialEndsAt trialCapacity").lean(),
+      AcademySubscriptionModel.findOne({ academyId }).lean(),
+      this.countActiveStudents(academyId),
+      SquadInvitationModel.countDocuments({
+        academyId: new mongoose.Types.ObjectId(academyId),
+        status: "pending",
+      }),
+    ]);
+
+    const now = new Date();
+    const isTrial = Boolean(subscription?.isTrial || academy?.isTrial);
+    const trialEndsAt = subscription?.trialEndsAt || academy?.trialEndsAt;
+    const capacity = isTrial
+      ? (subscription?.provisionedCapacity || academy?.trialCapacity || 50)
+      : (subscription?.provisionedCapacity ?? 0);
+
+    if (isTrial) {
+      if (trialEndsAt && now > new Date(trialEndsAt)) {
+        throw new TrialExpiredError("Academy trial period has expired. Please subscribe to invite students.");
+      }
+      if (activeStudentCount + pendingInvitationCount >= capacity) {
+        const allowedNewInvites = Math.max(0, capacity - activeStudentCount);
+        throw new SubscriptionCapacityExceededError(
+          `Trial limit reached (${capacity} players). You currently have ${activeStudentCount} enrolled players and ${pendingInvitationCount} pending invitations. Upgrade to invite more.`
+        );
+      }
+      return;
+    }
+
     if (!subscription || subscription.status !== "active") {
       throw new SubscriptionRequiredError();
     }
-    const activeStudentCount = await this.countActiveStudents(academyId);
-    const pendingInvitationCount = await SquadInvitationModel.countDocuments({
-      academyId: new mongoose.Types.ObjectId(academyId),
-      status: "pending",
-    });
-
+    if (subscription.currentPeriodEnd && now > new Date(subscription.currentPeriodEnd)) {
+      throw new SubscriptionRequiredError("Subscription period has expired. Please renew your subscription.");
+    }
     if (activeStudentCount + pendingInvitationCount >= subscription.provisionedCapacity) {
       const allowedNewInvites = Math.max(0, subscription.provisionedCapacity - activeStudentCount);
       throw new SubscriptionCapacityExceededError(
-        `Player limit reached. Your subscription plan allows up to ${subscription.provisionedCapacity} players. You currently have ${activeStudentCount} enrolled players and ${pendingInvitationCount} pending invitation${pendingInvitationCount === 1 ? "" : "s"}. You can only invite up to ${allowedNewInvites} player${allowedNewInvites === 1 ? "" : "s"} total. Please upgrade your subscription plan or cancel a pending invitation to invite more players.`
+        `Player limit reached. Your subscription plan allows up to ${subscription.provisionedCapacity} players. You currently have ${activeStudentCount} enrolled players and ${pendingInvitationCount} pending invitation${pendingInvitationCount === 1 ? "" : "s"}. You can only invite up to ${allowedNewInvites} player${allowedNewInvites === 1 ? "" : "s"} total.`
       );
     }
   }
 
-  // Same idea as assertCanAddStudent, for a 'staff'-type employee (see
-  // Employee.employeeType) — called from EmployeeUseCases.createEmployee.
   async assertCanAddStaff(academyId: string): Promise<void> {
-    const subscription = await AcademySubscriptionModel.findOne({ academyId }).lean();
+    const [academy, subscription, activeStaffCount] = await Promise.all([
+      AcademyModel.findById(academyId).select("name isTrial trialEndsAt trialStaffCapacity").lean(),
+      AcademySubscriptionModel.findOne({ academyId }).lean(),
+      this.countActiveStaff(academyId),
+    ]);
+
+    const now = new Date();
+    const isTrial = Boolean(subscription?.isTrial || academy?.isTrial);
+    const trialEndsAt = subscription?.trialEndsAt || academy?.trialEndsAt;
+
+    if (isTrial) {
+      if (trialEndsAt && now > new Date(trialEndsAt)) {
+        throw new TrialExpiredError("Academy trial period has expired. Please subscribe to continue adding staff members.");
+      }
+      const capacity = subscription?.provisionedStaffCapacity || academy?.trialStaffCapacity || 5;
+      if (activeStaffCount >= capacity) {
+        throw new SubscriptionCapacityExceededError(
+          `Trial staff quota reached (${capacity} staff). Upgrade your plan to add more staff.`
+        );
+      }
+      return;
+    }
+
     if (!subscription || subscription.status !== "active") {
       throw new SubscriptionRequiredError();
     }
-    const activeStaffCount = await this.countActiveStaff(academyId);
+    if (subscription.currentPeriodEnd && now > new Date(subscription.currentPeriodEnd)) {
+      throw new SubscriptionRequiredError("Subscription period has expired. Please renew your subscription.");
+    }
     if (activeStaffCount >= subscription.provisionedStaffCapacity) {
       throw new SubscriptionCapacityExceededError(
-        `This academy is billed for ${subscription.provisionedStaffCapacity} staff seats and already has ${activeStaffCount}. Increase your staff capacity to add more.`,
+        `This academy is billed for ${subscription.provisionedStaffCapacity} staff seats and already has ${activeStaffCount}. Increase your staff capacity to add more.`
       );
     }
   }
@@ -437,30 +628,34 @@ export class AcademySubscriptionUseCases {
     currency: string;
     keyId: string;
     academyName: string;
+    totalAmount: number;
     totalRupees: number;
+    currencySymbol: string;
   }> {
     const [academy, existing, requester] = await Promise.all([
-      AcademyModel.findById(academyId).select("name").lean(),
+      AcademyModel.findById(academyId).select("name currency country").lean(),
       AcademySubscriptionModel.findOne({ academyId }),
       UserModel.findById(requesterUserId).select("email firstName lastName").lean(),
     ]);
     if (!academy) throw new NotFoundError("Academy");
     if (!requester) throw new NotFoundError("Requester");
 
+    const currency = (academy.currency || "INR").toUpperCase();
     const rate = await this.getEffectiveRate(academyId);
     const staffRate = await this.getEffectiveStaffRate(academyId);
 
-    const totalRupees =
-      studentRupeeAmount(rate, dto.capacity, dto.billingInterval) +
-      staffRupeeAmount(staffRate, dto.staffCapacity, dto.billingInterval);
-    const unitAmountPaise = toPaise(totalRupees);
+    const totalAmount =
+      studentPeriodAmount(rate, dto.capacity, dto.billingInterval) +
+      staffPeriodAmount(staffRate, dto.staffCapacity, dto.billingInterval);
+    const unitAmountPaise = toPaise(totalAmount);
 
     const order = await razorpayService.createOrder({
       amountPaise: unitAmountPaise,
-      currency: "INR",
+      currency,
       receipt: `sub_${academyId.slice(-10)}_${Date.now().toString().slice(-6)}`,
       notes: {
         academyId,
+        currency,
         capacity: dto.capacity,
         staffCapacity: dto.staffCapacity,
         billingInterval: dto.billingInterval,
@@ -472,6 +667,7 @@ export class AcademySubscriptionUseCases {
       { academyId },
       {
         academyId,
+        currency,
         razorpayOrderId: order.id,
         billingInterval: dto.billingInterval,
         ratePerStudentPerDay: rate,
@@ -494,7 +690,9 @@ export class AcademySubscriptionUseCases {
       currency: order.currency,
       keyId: razorpayService.getKeyId(),
       academyName: academy.name,
-      totalRupees,
+      totalAmount,
+      totalRupees: totalAmount, // backward compatibility
+      currencySymbol: geoLocationService.getCurrencySymbol(currency),
     };
   }
 
@@ -514,23 +712,27 @@ export class AcademySubscriptionUseCases {
       throw new BadRequestError("Invalid Razorpay payment signature");
     }
 
-    const subscription = await AcademySubscriptionModel.findOne({ academyId });
+    const [academy, subscription] = await Promise.all([
+      AcademyModel.findById(academyId).select("name currency").lean(),
+      AcademySubscriptionModel.findOne({ academyId }),
+    ]);
+
     if (!subscription) {
       throw new NotFoundError("Academy subscription not found");
     }
 
-    subscription.status = "active";
-    subscription.razorpayOrderId = orderId;
-    subscription.razorpayPaymentId = paymentId;
-    subscription.razorpaySignature = signature;
-
+    const currency = (academy?.currency || subscription.currency || "INR").toUpperCase();
     const rate = await this.getEffectiveRate(academyId);
     const staffRate = await this.getEffectiveStaffRate(academyId);
     const interval = (subscription.billingInterval as BillingInterval) || "month";
 
     const days = DAYS_IN_PERIOD[interval] || 30;
     const now = new Date();
-    const isRenewal = Boolean(subscription.currentPeriodEnd && new Date(subscription.currentPeriodEnd) > now);
+    const isRenewal = Boolean(
+      subscription.currentPeriodEnd &&
+      new Date(subscription.currentPeriodEnd) > now &&
+      !subscription.isTrial
+    );
 
     if (isRenewal) {
       subscription.currentPeriodEnd = new Date(
@@ -541,6 +743,8 @@ export class AcademySubscriptionUseCases {
     }
 
     subscription.status = "active";
+    subscription.isTrial = false; // Transitioned to paid subscription!
+    subscription.currency = currency;
     subscription.razorpayOrderId = orderId;
     subscription.razorpayPaymentId = paymentId;
     subscription.razorpaySignature = signature;
@@ -548,15 +752,15 @@ export class AcademySubscriptionUseCases {
     subscription.staffRatePerStaffPerMonth = staffRate;
 
     const amountPaid =
-      studentRupeeAmount(rate, subscription.provisionedCapacity, interval) +
-      staffRupeeAmount(staffRate, subscription.provisionedStaffCapacity, interval);
+      studentPeriodAmount(rate, subscription.provisionedCapacity, interval) +
+      staffPeriodAmount(staffRate, subscription.provisionedStaffCapacity, interval);
 
     subscription.payments = subscription.payments || [];
     subscription.payments.unshift({
       orderId,
       paymentId,
       amount: amountPaid,
-      currency: "INR",
+      currency,
       status: "paid",
       billingInterval: interval,
       studentCapacity: subscription.provisionedCapacity,
@@ -568,12 +772,15 @@ export class AcademySubscriptionUseCases {
 
     await subscription.save();
 
-    const academy = await AcademyModel.findById(academyId).select("name").lean();
+    // Also update academy isTrial flag
+    await AcademyModel.findByIdAndUpdate(academyId, { isTrial: false });
+
+    const symbol = geoLocationService.getCurrencySymbol(currency);
     await notificationService.notifySuperAdmins({
       type: "payment_received",
-      title: "Academy Subscription Payment Received via Razorpay",
-      body: `${academy?.name || "An academy"} has completed payment via Razorpay for their ${subscription.billingInterval}ly subscription.`,
-      metadata: { academyId, orderId, paymentId },
+      title: "Academy Subscription Payment Received",
+      body: `${academy?.name || "An academy"} has completed payment of ${symbol} ${amountPaid} (${currency}) for their ${subscription.billingInterval}ly subscription.`,
+      metadata: { academyId, orderId, paymentId, currency, amount: String(amountPaid) },
     });
 
     return { status: "active", isActive: true };
@@ -818,5 +1025,145 @@ export class AcademySubscriptionUseCases {
       { upsert: true, new: true },
     );
     return updated.transferWallEnabled;
+  }
+
+  async getPlatformCurrencies(): Promise<CurrencyPricing[]> {
+    const settings = await PlatformSettingsModel.findOne().lean();
+    const existing = settings?.currencyPricing || [];
+    const map = new Map<string, CurrencyPricing>();
+
+    // Seed defaults from SUPPORTED_CURRENCY_MAP
+    Object.values(SUPPORTED_CURRENCY_MAP).forEach((item) => {
+      map.set(item.currency.toUpperCase(), {
+        currency: item.currency,
+        ratePerStudentPerDay: item.defaultRatePerStudentPerDay,
+        staffRatePerStaffPerMonth: item.defaultStaffRatePerStaffPerMonth,
+        symbol: item.symbol,
+        countryCode: item.countryCode,
+        countryName: item.countryName,
+        isActive: true,
+      });
+    });
+
+    // Override with DB values
+    existing.forEach((item) => {
+      map.set(item.currency.toUpperCase(), item);
+    });
+
+    return Array.from(map.values());
+  }
+
+  async setPlatformCurrencyRate(
+    data: {
+      currency: string;
+      ratePerStudentPerDay: number;
+      staffRatePerStaffPerMonth: number;
+      symbol?: string;
+      countryCode?: string;
+      countryName?: string;
+      isActive?: boolean;
+    },
+    updatedBy: string
+  ): Promise<CurrencyPricing[]> {
+    const currency = data.currency.trim().toUpperCase();
+    if (!currency) throw new BadRequestError("Currency code is required");
+    if (data.ratePerStudentPerDay < 0) throw new BadRequestError("Student rate cannot be negative");
+    if (data.staffRatePerStaffPerMonth < 0) throw new BadRequestError("Staff rate cannot be negative");
+
+    const defaultInfo = SUPPORTED_CURRENCY_MAP[currency];
+    const symbol = data.symbol || defaultInfo?.symbol || currency;
+    const countryCode = (data.countryCode || defaultInfo?.countryCode || "IN").toUpperCase();
+    const countryName = data.countryName || defaultInfo?.countryName || countryCode;
+    const isActive = data.isActive ?? true;
+
+    let settings = await PlatformSettingsModel.findOne();
+    if (!settings) {
+      settings = await PlatformSettingsModel.create({
+        defaultRatePerStudentPerDay: 1,
+        defaultStaffRatePerStaffPerMonth: 10,
+        defaultNfcCardPrice: 299,
+        defaultNfcCustomCardPrice: 399,
+        transferWallEnabled: true,
+        defaultTrialDays: 14,
+        defaultTrialCapacity: 50,
+        defaultTrialStaffCapacity: 5,
+        currencyPricing: [],
+      });
+    }
+
+    const pricingList = settings.currencyPricing || [];
+    const idx = pricingList.findIndex((p) => p.currency.toUpperCase() === currency);
+    const newEntry: CurrencyPricing = {
+      currency,
+      ratePerStudentPerDay: data.ratePerStudentPerDay,
+      staffRatePerStaffPerMonth: data.staffRatePerStaffPerMonth,
+      symbol,
+      countryCode,
+      countryName,
+      isActive,
+    };
+
+    if (idx >= 0) {
+      pricingList[idx] = newEntry;
+    } else {
+      pricingList.push(newEntry);
+    }
+
+    settings.currencyPricing = pricingList;
+    settings.updatedBy = new mongoose.Types.ObjectId(updatedBy);
+    await settings.save();
+
+    return this.getPlatformCurrencies();
+  }
+
+  async getPlatformTrialDefaults(): Promise<{
+    defaultTrialDays: number;
+    defaultTrialCapacity: number;
+    defaultTrialStaffCapacity: number;
+  }> {
+    const settings = await PlatformSettingsModel.findOne().lean();
+    return {
+      defaultTrialDays: settings?.defaultTrialDays ?? 14,
+      defaultTrialCapacity: settings?.defaultTrialCapacity ?? 50,
+      defaultTrialStaffCapacity: settings?.defaultTrialStaffCapacity ?? 5,
+    };
+  }
+
+  async setPlatformTrialDefaults(
+    data: {
+      defaultTrialDays?: number;
+      defaultTrialCapacity?: number;
+      defaultTrialStaffCapacity?: number;
+    },
+    updatedBy: string
+  ): Promise<{
+    defaultTrialDays: number;
+    defaultTrialCapacity: number;
+    defaultTrialStaffCapacity: number;
+  }> {
+    const updates: any = { updatedBy };
+    if (data.defaultTrialDays !== undefined) {
+      if (data.defaultTrialDays < 1) throw new BadRequestError("Trial days must be at least 1");
+      updates.defaultTrialDays = data.defaultTrialDays;
+    }
+    if (data.defaultTrialCapacity !== undefined) {
+      if (data.defaultTrialCapacity < 1) throw new BadRequestError("Trial player capacity must be at least 1");
+      updates.defaultTrialCapacity = data.defaultTrialCapacity;
+    }
+    if (data.defaultTrialStaffCapacity !== undefined) {
+      if (data.defaultTrialStaffCapacity < 0) throw new BadRequestError("Trial staff capacity cannot be negative");
+      updates.defaultTrialStaffCapacity = data.defaultTrialStaffCapacity;
+    }
+
+    const updated = await PlatformSettingsModel.findOneAndUpdate({}, updates, {
+      upsert: true,
+      new: true,
+    });
+
+    return {
+      defaultTrialDays: updated.defaultTrialDays,
+      defaultTrialCapacity: updated.defaultTrialCapacity,
+      defaultTrialStaffCapacity: updated.defaultTrialStaffCapacity,
+    };
   }
 }

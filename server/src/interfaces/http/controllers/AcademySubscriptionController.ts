@@ -174,6 +174,65 @@ export class AcademySubscriptionController {
     }
   };
 
+  getPlatformCurrencies = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const currencies = await this.useCases.getPlatformCurrencies();
+      ResponseHandler.success(res, currencies, "Platform currencies retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  setPlatformCurrencyRate = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { currency, ratePerStudentPerDay, staffRatePerStaffPerMonth } = req.body;
+      if (!currency || ratePerStudentPerDay === undefined || staffRatePerStaffPerMonth === undefined) {
+        throw new BadRequestError("currency, ratePerStudentPerDay, and staffRatePerStaffPerMonth are required");
+      }
+      const updated = await this.useCases.setPlatformCurrencyRate(
+        {
+          currency,
+          ratePerStudentPerDay: Number(ratePerStudentPerDay),
+          staffRatePerStaffPerMonth: Number(staffRatePerStaffPerMonth),
+          symbol: req.body.symbol,
+          countryCode: req.body.countryCode,
+          countryName: req.body.countryName,
+          isActive: req.body.isActive !== undefined ? Boolean(req.body.isActive) : undefined,
+        },
+        req.user!.sub
+      );
+      ResponseHandler.success(res, updated, "Platform currency rate updated");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  getPlatformTrialDefaults = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const defaults = await this.useCases.getPlatformTrialDefaults();
+      ResponseHandler.success(res, defaults, "Platform trial defaults retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  setPlatformTrialDefaults = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { defaultTrialDays, defaultTrialCapacity, defaultTrialStaffCapacity } = req.body;
+      const updated = await this.useCases.setPlatformTrialDefaults(
+        {
+          defaultTrialDays: defaultTrialDays !== undefined ? Number(defaultTrialDays) : undefined,
+          defaultTrialCapacity: defaultTrialCapacity !== undefined ? Number(defaultTrialCapacity) : undefined,
+          defaultTrialStaffCapacity: defaultTrialStaffCapacity !== undefined ? Number(defaultTrialStaffCapacity) : undefined,
+        },
+        req.user!.sub
+      );
+      ResponseHandler.success(res, updated, "Platform trial defaults updated");
+    } catch (err) {
+      next(err);
+    }
+  };
+
   verifySession = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { sessionId, academyId } = req.body;

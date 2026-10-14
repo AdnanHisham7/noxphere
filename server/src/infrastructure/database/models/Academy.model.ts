@@ -32,6 +32,14 @@ export interface AcademyDocument extends Document {
   feeQrImageUrl?: string;
   logo?: string;
   skillParameters: string[];
+  currency: string;
+  country: string;
+  isTrial: boolean;
+  trialDays?: number;
+  trialStartsAt?: Date;
+  trialEndsAt?: Date;
+  trialCapacity?: number;
+  trialStaffCapacity?: number;
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -105,6 +113,14 @@ const AcademySchema = new Schema<AcademyDocument>(
         "Attitude",
       ],
     },
+    currency: { type: String, default: "INR", uppercase: true, trim: true },
+    country: { type: String, default: "IN", uppercase: true, trim: true },
+    isTrial: { type: Boolean, default: false },
+    trialDays: { type: Number, default: 14 },
+    trialStartsAt: { type: Date },
+    trialEndsAt: { type: Date },
+    trialCapacity: { type: Number, default: 50 },
+    trialStaffCapacity: { type: Number, default: 5 },
     deletedAt: { type: Date, index: true },
   },
   {

@@ -44,10 +44,38 @@ export const SubscriptionGate: React.FC<{ children: React.ReactNode }> = ({ chil
     return <>{children}</>;
   }
 
-  // A subscription exists and is no longer active (expired, past_due, canceled, unpaid)
-  const isLapsed = status.hasSubscription && !status.isActive;
+  // A subscription exists and is no longer active (expired, past_due, canceled, unpaid, trial_expired)
+  const isTrialExpired = status.isTrial && (!status.isActive || status.status === "trial_expired");
+  const isLapsed = (status.hasSubscription && !status.isActive) || isTrialExpired;
   if (!isLapsed) {
-    return <>{children}</>;
+    return (
+      <>
+        {status.isTrial && status.isActive && (
+          <div className="bg-volt-400/10 border-b border-volt-400/20 px-4 py-2 text-center text-xs flex items-center justify-center gap-2 text-volt-400 font-medium">
+            <span className="w-2 h-2 rounded-full bg-volt-400 animate-pulse" />
+            <span>
+              <strong>Free Trial Active:</strong> You have {status.trialDaysRemaining ?? 0} days remaining ({status.activeStudentCount}/{status.provisionedCapacity} students provisioned).
+            </span>
+            {user?.role === "manager" && (
+              <button
+                onClick={() => setShowModal(true)}
+                className="underline hover:text-white font-bold ml-1 transition-colors"
+              >
+                Upgrade to Full Plan
+              </button>
+            )}
+          </div>
+        )}
+        {children}
+        {showModal && academyId && (
+          <SubscriptionModal
+            academyId={academyId}
+            onClose={() => setShowModal(false)}
+            mode="subscribe"
+          />
+        )}
+      </>
+    );
   }
 
   return (
@@ -57,11 +85,15 @@ export const SubscriptionGate: React.FC<{ children: React.ReactNode }> = ({ chil
           <ShieldAlert size={32} />
         </div>
         <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl uppercase tracking-tight">
-          Academy Subscription Expired
+          {isTrialExpired ? "Academy Free Trial Ended" : "Academy Subscription Expired"}
         </h1>
         <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-          {user?.role === "manager"
-            ? "Your academy's subscription period has ended. Portal operations are currently restricted until renewed. Complete payment via Razorpay to restore full access immediately."
+          {isTrialExpired
+            ? user?.role === "manager"
+              ? "Your academy's free trial period has concluded. To continue adding players, managing coaching sessions, and utilizing the platform, please activate your academy subscription."
+              : "Your academy's free trial period has ended and operations are currently restricted. Please contact your academy manager to activate the full subscription."
+            : user?.role === "manager"
+            ? "Your academy's subscription period has ended. Portal operations are currently restricted until renewed. Complete payment to restore full access immediately."
             : "Your academy's subscription period has ended and operations are currently restricted. Please contact your academy manager to renew the subscription."}
         </p>
 
@@ -72,7 +104,7 @@ export const SubscriptionGate: React.FC<{ children: React.ReactNode }> = ({ chil
               onClick={() => setShowModal(true)}
               className="w-full sm:w-auto font-bold"
             >
-              Renew Subscription via Razorpay
+              {isTrialExpired ? "Activate Academy Subscription" : "Renew Subscription"}
             </Button>
           )}
           <Button
@@ -89,7 +121,7 @@ export const SubscriptionGate: React.FC<{ children: React.ReactNode }> = ({ chil
         <SubscriptionModal
           academyId={academyId}
           onClose={() => setShowModal(false)}
-          mode="renew"
+          mode={isTrialExpired ? "subscribe" : "renew"}
         />
       )}
     </div>

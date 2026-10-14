@@ -55,6 +55,12 @@ export const CreateAcademySchema = z.object({
       'Tactical Awareness',
       'Attitude',
     ]),
+  currency: z.string().trim().toUpperCase().default('INR'),
+  country: z.string().trim().toUpperCase().default('IN'),
+  isTrial: z.boolean().default(false),
+  trialDays: z.number().int().min(1).max(365).default(14),
+  trialCapacity: z.number().int().min(1).default(50),
+  trialStaffCapacity: z.number().int().min(0).default(5),
   manager: ManagerAccountSchema,
 });
 
@@ -66,6 +72,12 @@ export const UpdateAcademySchema = z.object({
   ageGroups: z.array(z.string()).optional(),
   maxStudents: z.number().min(1).optional(),
   isActive: z.boolean().optional(),
+  currency: z.string().trim().toUpperCase().optional(),
+  country: z.string().trim().toUpperCase().optional(),
+  isTrial: z.boolean().optional(),
+  trialDays: z.number().int().min(1).max(365).optional(),
+  trialCapacity: z.number().int().min(1).optional(),
+  trialStaffCapacity: z.number().int().min(0).optional(),
   alertBeforeMinutes: z.number().min(0).optional(),
   notificationAlertAfterMinutes: z.number().min(0).optional(),
   absentAlertDays: z.number().int().min(1).max(30).optional(),
@@ -88,6 +100,12 @@ export const AcademyConfigSchema = z.object({
   maxStudents: z.number().min(1).optional(),
   subscriptionRateOverride: z.number().min(0).optional(),
   staffRateOverride: z.number().min(0).optional(),
+  currency: z.string().trim().toUpperCase().optional(),
+  country: z.string().trim().toUpperCase().optional(),
+  isTrial: z.boolean().optional(),
+  trialDays: z.number().int().min(1).max(365).optional(),
+  trialCapacity: z.number().int().min(1).optional(),
+  trialStaffCapacity: z.number().int().min(0).optional(),
   dataProtectionContactEmail: z.string().email().optional(),
   ageGroups: z.array(z.string()).optional(),
   alertBeforeMinutes: z.number().min(0).optional(),
@@ -99,6 +117,16 @@ export const AcademyConfigSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+export const UpdateTrialSchema = z.object({
+  isTrial: z.boolean().optional(),
+  trialDays: z.number().int().min(1).max(365).optional(),
+  extendDays: z.number().int().min(1).max(365).optional(),
+  trialCapacity: z.number().int().min(1).optional(),
+  trialStaffCapacity: z.number().int().min(0).optional(),
+  endTrial: z.boolean().optional(),
+});
+
 export type CreateAcademyDto = z.infer<typeof CreateAcademySchema>;
 export type UpdateAcademyDto = z.infer<typeof UpdateAcademySchema>;
 export type AcademyConfigDto = z.infer<typeof AcademyConfigSchema>;
+export type UpdateTrialDto = z.infer<typeof UpdateTrialSchema>;

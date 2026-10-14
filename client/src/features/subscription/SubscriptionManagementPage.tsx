@@ -66,6 +66,8 @@ export const SubscriptionManagementPage: React.FC = () => {
     details?.platformDefaultStaffRate ??
     10;
 
+  const sym = details?.currencySymbol || "₹";
+
   const openModal = (mode: "subscribe" | "upgrade") => {
     setModalMode(mode);
     setModalOpen(true);
@@ -215,14 +217,18 @@ export const SubscriptionManagementPage: React.FC = () => {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-xl font-black text-slate-900 dark:text-white capitalize">
-              {details?.billingInterval || "Monthly"}
+              {details?.isTrial ? "Free Trial" : (details?.billingInterval || "Monthly")}
             </span>
-            <span className="text-2xs text-slate-500 dark:text-slate-400">Cadence</span>
+            <span className="text-2xs text-slate-500 dark:text-slate-400">
+              {details?.isTrial ? "Evaluation" : "Cadence"}
+            </span>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-2xs">
-            <span className="text-slate-500 dark:text-slate-400">Renewal in</span>
+            <span className="text-slate-500 dark:text-slate-400">
+              {details?.isTrial ? "Trial ends in" : "Renewal in"}
+            </span>
             <span className="font-mono font-bold text-volt-400">
-              {details?.daysRemainingInCycle ?? 0} days
+              {details?.isTrial ? (details?.trialDaysRemaining ?? 0) : (details?.daysRemainingInCycle ?? 0)} days
             </span>
           </div>
         </Card>
@@ -254,7 +260,7 @@ export const SubscriptionManagementPage: React.FC = () => {
           </div>
           <div className="mt-2 text-2xs text-slate-500 dark:text-slate-400 flex justify-between">
             <span>{details?.remainingStudentSlots ?? 0} slots remaining</span>
-            <span>₹{formatCleanPrice(effectiveStudentRate)}/student/day</span>
+            <span>{sym}{formatCleanPrice(effectiveStudentRate)}/student/day</span>
           </div>
         </Card>
 
@@ -285,19 +291,21 @@ export const SubscriptionManagementPage: React.FC = () => {
           </div>
           <div className="mt-2 text-2xs text-slate-500 dark:text-slate-400 flex justify-between">
             <span>{details?.remainingStaffSlots ?? 0} slots remaining</span>
-            <span>₹{details?.staffRatePerStaffPerMonth ?? 10}/staff/mo</span>
+            <span>{sym}{details?.staffRatePerStaffPerMonth ?? 10}/staff/mo</span>
           </div>
         </Card>
 
         {/* Card 4: Estimated Cycle Renewal */}
         <Card>
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
-            <span className="text-2xs font-bold uppercase tracking-wider">Est. Next Renewal</span>
+            <span className="text-2xs font-bold uppercase tracking-wider">
+              {details?.isTrial ? "Post-Trial Pricing" : "Est. Next Renewal"}
+            </span>
             <Sparkles size={15} className="text-volt-400" />
           </div>
           <div className="flex items-baseline gap-1">
             <span className="text-xl font-black text-volt-400 font-mono">
-              ₹{(details?.estimatedRenewalRupees ?? 0).toLocaleString("en-IN")}
+              {sym}{(details?.estimatedRenewalRupees ?? 0).toLocaleString()}
             </span>
             <span className="text-2xs text-slate-500 dark:text-slate-400">/ cycle</span>
           </div>
@@ -305,7 +313,7 @@ export const SubscriptionManagementPage: React.FC = () => {
             <span>Period End:</span>
             <span className="font-mono text-slate-700 dark:text-slate-200">
               {details?.currentPeriodEnd
-                ? new Date(details.currentPeriodEnd).toLocaleDateString("en-IN", {
+                ? new Date(details.currentPeriodEnd).toLocaleDateString(details?.currency === "INR" ? "en-IN" : "en-US", {
                     day: "numeric",
                     month: "short",
                     year: "numeric",
@@ -323,9 +331,11 @@ export const SubscriptionManagementPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <ShieldCheck size={16} className="text-volt-400" />
-              Capacity & Automated Quota Protection
+              Capacity &amp; Automated Quota Protection
             </h3>
-            <span className="text-2xs text-slate-500 dark:text-slate-400">Razorpay Synchronized</span>
+            <span className="text-2xs text-slate-500 dark:text-slate-400">
+              Currency: {details?.currency || "INR"}
+            </span>
           </div>
 
           <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -339,24 +349,24 @@ export const SubscriptionManagementPage: React.FC = () => {
                   Student Rate Formula
                 </span>
                 <span className="text-xs font-mono font-bold text-volt-500 dark:text-volt-400">
-                  ₹{formatCleanPrice(effectiveStudentRate)} <span className="text-[10px] font-normal text-slate-500">/ day</span>
+                  {sym}{formatCleanPrice(effectiveStudentRate)} <span className="text-[10px] font-normal text-slate-500">/ day</span>
                 </span>
               </div>
               <p className="text-2xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Calculated on provisioned student capacity. Configured by platform administration:
+                Calculated on provisioned student capacity. Configured for {details?.currency || "INR"}:
               </p>
               <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-slate-300">
-                  ₹{formatCleanPrice(effectiveStudentRate * 30)}/mo
+                  {sym}{formatCleanPrice(effectiveStudentRate * 30)}/mo
                 </span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-slate-300">
-                  ₹{formatCleanPrice(effectiveStudentRate * 90)}/3-mo
+                  {sym}{formatCleanPrice(effectiveStudentRate * 90)}/3-mo
                 </span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-slate-300">
-                  ₹{formatCleanPrice(effectiveStudentRate * 180)}/6-mo
+                  {sym}{formatCleanPrice(effectiveStudentRate * 180)}/6-mo
                 </span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-slate-300">
-                  ₹{formatCleanPrice(effectiveStudentRate * 365)}/yr
+                  {sym}{formatCleanPrice(effectiveStudentRate * 365)}/yr
                 </span>
               </div>
             </div>
@@ -367,7 +377,7 @@ export const SubscriptionManagementPage: React.FC = () => {
                   Staff Rate Formula
                 </span>
                 <span className="text-xs font-mono font-bold text-volt-500 dark:text-volt-400">
-                  ₹{formatCleanPrice(effectiveStaffRate)} <span className="text-[10px] font-normal text-slate-500">/ mo</span>
+                  {sym}{formatCleanPrice(effectiveStaffRate)} <span className="text-[10px] font-normal text-slate-500">/ mo</span>
                 </span>
               </div>
               <p className="text-2xs text-slate-500 dark:text-slate-400 leading-relaxed">

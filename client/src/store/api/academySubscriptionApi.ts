@@ -1,8 +1,24 @@
 // src/store/api/academySubscriptionApi.ts
 import { baseApi } from "./baseApi";
 
-export type SubscriptionStatus = "incomplete" | "active" | "past_due" | "canceled" | "unpaid" | null;
+export type SubscriptionStatus = "incomplete" | "active" | "past_due" | "canceled" | "unpaid" | "trialing" | "trial_expired" | null;
 export type BillingInterval = "month" | "quarter" | "half_year" | "year";
+
+export interface CurrencyPricing {
+  currency: string;
+  ratePerStudentPerDay: number;
+  staffRatePerStaffPerMonth: number;
+  symbol: string;
+  countryCode: string;
+  countryName: string;
+  isActive: boolean;
+}
+
+export interface PlatformTrialDefaults {
+  defaultTrialDays: number;
+  defaultTrialCapacity: number;
+  defaultTrialStaffCapacity: number;
+}
 
 export interface AcademySubscriptionStatus {
   hasSubscription: boolean;
@@ -20,6 +36,13 @@ export interface AcademySubscriptionStatus {
   pendingInvitationCount?: number;
   remainingInviteSlots?: number;
   isActive: boolean;
+  currency?: string;
+  currencySymbol?: string;
+  countryCode?: string;
+  countryName?: string;
+  isTrial?: boolean;
+  trialEndsAt?: string | null;
+  trialDaysRemaining?: number;
 }
 
 export const academySubscriptionApi = baseApi.injectEndpoints({
@@ -114,6 +137,45 @@ export const academySubscriptionApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: { enabled: boolean } }) => res.data.enabled,
       invalidatesTags: ["Academy"],
     }),
+    getPlatformCurrencies: builder.query<CurrencyPricing[], void>({
+      query: () => "/academy-subscriptions/platform-currencies",
+      transformResponse: (res: { data: CurrencyPricing[] }) => res.data,
+      providesTags: ["Academy"],
+    }),
+    setPlatformCurrencyRate: builder.mutation<
+      CurrencyPricing[],
+      {
+        currency: string;
+        ratePerStudentPerDay: number;
+        staffRatePerStaffPerMonth: number;
+        symbol?: string;
+        countryCode?: string;
+        countryName?: string;
+        isActive?: boolean;
+      }
+    >({
+      query: (body) => ({
+        url: "/academy-subscriptions/platform-currencies",
+        method: "PUT",
+        body,
+      }),
+      transformResponse: (res: { data: CurrencyPricing[] }) => res.data,
+      invalidatesTags: ["Academy"],
+    }),
+    getPlatformTrialDefaults: builder.query<PlatformTrialDefaults, void>({
+      query: () => "/academy-subscriptions/platform-trial-defaults",
+      transformResponse: (res: { data: PlatformTrialDefaults }) => res.data,
+      providesTags: ["Academy"],
+    }),
+    setPlatformTrialDefaults: builder.mutation<PlatformTrialDefaults, Partial<PlatformTrialDefaults>>({
+      query: (body) => ({
+        url: "/academy-subscriptions/platform-trial-defaults",
+        method: "PUT",
+        body,
+      }),
+      transformResponse: (res: { data: PlatformTrialDefaults }) => res.data,
+      invalidatesTags: ["Academy"],
+    }),
     verifySubscriptionSession: builder.mutation<
       { status: string; isActive: boolean },
       { sessionId: string; academyId?: string }
@@ -170,6 +232,13 @@ export interface AcademyBillingDetails {
   hasCustomRate?: boolean;
   hasCustomStaffRate?: boolean;
   estimatedRenewalRupees: number;
+  currency?: string;
+  currencySymbol?: string;
+  countryCode?: string;
+  countryName?: string;
+  isTrial?: boolean;
+  trialEndsAt?: string | null;
+  trialDaysRemaining?: number;
   alerts: BillingAlert[];
   transactions: BillingTransaction[];
 }
@@ -183,6 +252,10 @@ export const {
   useSetPlatformDefaultRateMutation,
   useGetPlatformDefaultStaffRateQuery,
   useSetPlatformDefaultStaffRateMutation,
+  useGetPlatformCurrenciesQuery,
+  useSetPlatformCurrencyRateMutation,
+  useGetPlatformTrialDefaultsQuery,
+  useSetPlatformTrialDefaultsMutation,
   useGetPlatformTransferWallQuery,
   useSetPlatformTransferWallMutation,
   useCreateRazorpaySubscriptionOrderMutation,

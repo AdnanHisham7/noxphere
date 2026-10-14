@@ -54,6 +54,14 @@ export interface AcademyEntity {
   feeQrImageUrl?: string;
   logo?: string;
   skillParameters: string[];
+  currency?: string;
+  country?: string;
+  isTrial?: boolean;
+  trialDays?: number;
+  trialStartsAt?: Date;
+  trialEndsAt?: Date;
+  trialCapacity?: number;
+  trialStaffCapacity?: number;
   pitches?: AcademyPitch[];
   deletedAt?: Date;
   createdAt: Date;
@@ -76,4 +84,12 @@ export interface CreateAcademyEntity {
   feeQrImageUrl?: string;
   logo?: string;
   skillParameters: string[];
+  currency?: string;
+  country?: string;
+  isTrial?: boolean;
+  trialDays?: number;
+  trialStartsAt?: Date;
+  trialEndsAt?: Date;
+  trialCapacity?: number;
+  trialStaffCapacity?: number;
 }

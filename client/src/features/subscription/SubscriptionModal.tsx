@@ -25,16 +25,18 @@ interface SubscriptionModalProps {
   mode?: "subscribe" | "upgrade" | "renew";
 }
 
-const formatCurrency = (n: number) => {
-  const rounded = Math.round((n + Number.EPSILON) * 100) / 100;
-  return `₹${rounded.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
-};
-
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId, onClose, onSuccess, mode }) => {
   const user = useSelector((s: RootState) => s.auth.user);
   const { data: status, isLoading } = useGetAcademySubscriptionStatusQuery(academyId);
   const { data: platformStudentRate } = useGetPlatformDefaultRateQuery();
   const { data: platformStaffRate } = useGetPlatformDefaultStaffRateQuery();
+
+  const sym = status?.currencySymbol || "₹";
+  const curr = status?.currency || "INR";
+  const formatCurrency = (n: number) => {
+    const rounded = Math.round((n + Number.EPSILON) * 100) / 100;
+    return `${sym} ${rounded.toLocaleString(curr === "INR" ? "en-IN" : "en-US", { maximumFractionDigits: 2 })}`;
+  };
 
   const [createRazorpayOrder, { isLoading: creatingOrder }] = useCreateRazorpaySubscriptionOrderMutation();
   const [verifyRazorpayPayment, { isLoading: verifyingPayment }] = useVerifyRazorpaySubscriptionPaymentMutation();
