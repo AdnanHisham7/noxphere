@@ -28,6 +28,14 @@ academySubscriptionRouter.post("/:academyId/upgrade", authenticate, (req, res, n
   req.app.locals.controllers.academySubscription.upgrade(req, res, next);
 });
 
+academySubscriptionRouter.post("/:academyId/manual-provision", authenticate, (req, res, next) => {
+  if (req.user!.role !== "super_admin") {
+    res.status(403).json({ success: false, message: "Only super_admin can manually provision subscriptions", code: "FORBIDDEN" });
+    return;
+  }
+  req.app.locals.controllers.academySubscription.manualProvision(req, res, next);
+});
+
 // Platform-wide default rate — super_admin only, enforced inside the
 // controller via requirePermission on the mount below.
 academySubscriptionRouter.get("/platform-rate", authenticate, (req, res, next) => {

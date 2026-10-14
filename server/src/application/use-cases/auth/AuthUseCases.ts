@@ -352,7 +352,7 @@ export class AuthUseCases {
           return {
             available: false,
             field: 'email',
-            message: `An account with this email already exists with role: ${userByEmail.role}. Please log in.`,
+            message: 'An account with this email already exists. Please log in.',
           };
         }
       }
@@ -371,7 +371,7 @@ export class AuthUseCases {
           return {
             available: false,
             field: 'phone',
-            message: `An account with this phone number already exists with role: ${userByPhone.role}. Please log in.`,
+            message: 'An account with this phone number already exists. Please log in.',
           };
         }
       }
@@ -392,7 +392,7 @@ export class AuthUseCases {
       return {
         available: false,
         field: 'email',
-        message: `An account with this email already exists with role: ${userByEmail.role}. Please use a different email.`,
+        message: 'An account with this email already exists. Please use a different email.',
       };
     }
 
@@ -400,7 +400,7 @@ export class AuthUseCases {
       return {
         available: false,
         field: 'phone',
-        message: `An account with this phone number already exists with role: ${userByPhone.role}. Please use a different phone number.`,
+        message: 'An account with this phone number already exists. Please use a different phone number.',
       };
     }
 

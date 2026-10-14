@@ -21,11 +21,13 @@ import {
   Clock,
   Globe2,
   CheckCircle2,
+  CreditCard,
 } from "lucide-react";
 import { Button, Input, Modal, Badge, StatCard, ImageUploadField, PageHeader } from "../../components/ui";
 import { PlatformBillingCard } from "./PlatformBillingCard";
 import { baseApi } from "../../store/api/baseApi";
 import { academyApi } from "@/store/api/academyApi";
+import { academySubscriptionApi } from "@/store/api/academySubscriptionApi";
 import { useConfirm } from "../../hooks/useConfirm";
 import { Academy, AcademyConfigPayload, CreateAcademyPayload } from "./types";
 
@@ -37,6 +39,7 @@ const useToggleAcademyStatus = academyApi.useToggleAcademyStatusMutation;
 const useToggleTransferWall = academyApi.useToggleTransferWallMutation;
 const useDeleteAcademy = academyApi.useDeleteAcademyMutation;
 const useUpdateAcademyTrial = academyApi.useUpdateAcademyTrialMutation;
+const useManualProvisionSubscription = academySubscriptionApi.useManualProvisionSubscriptionMutation;
 
 // Helper to get manager full name
 const getManagerName = (academy: Academy): string => {
@@ -200,10 +203,17 @@ const AcademiesManagement: React.FC = () => {
     logo: "",
     currency: "INR",
     country: "IN",
-    isTrial: true,
+    subMode: "trial" as "trial" | "paid_manual" | "none",
     trialDays: 14,
     trialCapacity: 50,
     trialStaffCapacity: 5,
+    paidStudentCapacity: 50,
+    paidStaffCapacity: 5,
+    paidBillingInterval: "month" as "month" | "quarter" | "half_year" | "year",
+    paidDurationDays: 30,
+    paidPaymentMethod: "bank_transfer" as "cash" | "bank_transfer" | "cheque" | "other" | "waived",
+    paidAmount: "",
+    paidReferenceNote: "",
     location: {
       name: "",
       address: "",
@@ -223,6 +233,42 @@ const AcademiesManagement: React.FC = () => {
       password: "",
     },
   });
+
+  // Manual Subscription Provisioning state for existing academies
+  const [manualSubModalAcademy, setManualSubModalAcademy] = useState<Academy | null>(null);
+  const [manualSubForm, setManualSubForm] = useState({
+    studentCapacity: 50,
+    staffCapacity: 5,
+    billingInterval: "month" as "month" | "quarter" | "half_year" | "year",
+    durationDays: 30,
+    paymentMethod: "bank_transfer" as "cash" | "bank_transfer" | "cheque" | "other" | "waived",
+    amountPaid: "",
+    referenceNote: "",
+    actionType: "subscription" as "subscription" | "renewal" | "upgrade",
+  });
+  const [manualProvisionSub, { isLoading: isProvisioningSub }] = useManualProvisionSubscription();
+
+  const handleManualSubSubmit = async () => {
+    if (!manualSubModalAcademy) return;
+    try {
+      await manualProvisionSub({
+        academyId: manualSubModalAcademy.id,
+        studentCapacity: Number(manualSubForm.studentCapacity),
+        staffCapacity: Number(manualSubForm.staffCapacity),
+        billingInterval: manualSubForm.billingInterval,
+        durationDays: manualSubForm.durationDays ? Number(manualSubForm.durationDays) : undefined,
+        paymentMethod: manualSubForm.paymentMethod,
+        amountPaid: manualSubForm.amountPaid !== "" ? Number(manualSubForm.amountPaid) : undefined,
+        referenceNote: manualSubForm.referenceNote || undefined,
+        actionType: manualSubForm.actionType === "subscription" ? "new" : manualSubForm.actionType,
+      }).unwrap();
+      toast.success(`Subscription provisioned successfully for ${manualSubModalAcademy.name}!`);
+      setManualSubModalAcademy(null);
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to provision subscription");
+    }
+  };
 
   const handleAddSubmit = async () => {
     const parsedSkills = newAcademyForm.skillParameters
@@ -249,10 +295,30 @@ const AcademiesManagement: React.FC = () => {
       logo: newAcademyForm.logo || undefined,
       currency: newAcademyForm.currency,
       country: newAcademyForm.country,
-      isTrial: newAcademyForm.isTrial,
+      isTrial: newAcademyForm.subMode === "trial",
       trialDays: Number(newAcademyForm.trialDays),
       trialCapacity: Number(newAcademyForm.trialCapacity),
       trialStaffCapacity: Number(newAcademyForm.trialStaffCapacity),
+      subscriptionPlan: {
+        mode: newAcademyForm.subMode,
+        studentCapacity:
+          newAcademyForm.subMode === "paid_manual"
+            ? Number(newAcademyForm.paidStudentCapacity)
+            : Number(newAcademyForm.trialCapacity),
+        staffCapacity:
+          newAcademyForm.subMode === "paid_manual"
+            ? Number(newAcademyForm.paidStaffCapacity)
+            : Number(newAcademyForm.trialStaffCapacity),
+        billingInterval: newAcademyForm.paidBillingInterval,
+        durationDays:
+          newAcademyForm.subMode === "paid_manual" && newAcademyForm.paidDurationDays
+            ? Number(newAcademyForm.paidDurationDays)
+            : undefined,
+        paymentMethod: newAcademyForm.paidPaymentMethod,
+        amountPaid:
+          newAcademyForm.paidAmount !== "" ? Number(newAcademyForm.paidAmount) : undefined,
+        referenceNote: newAcademyForm.paidReferenceNote || undefined,
+      },
       location: {
         ...newAcademyForm.location,
         latitude: Number(newAcademyForm.location.latitude),
@@ -278,10 +344,17 @@ const AcademiesManagement: React.FC = () => {
         logo: "",
         currency: "INR",
         country: "IN",
-        isTrial: true,
+        subMode: "trial",
         trialDays: 14,
         trialCapacity: 50,
         trialStaffCapacity: 5,
+        paidStudentCapacity: 50,
+        paidStaffCapacity: 5,
+        paidBillingInterval: "month",
+        paidDurationDays: 30,
+        paidPaymentMethod: "bank_transfer",
+        paidAmount: "",
+        paidReferenceNote: "",
         location: {
           name: "",
           address: "",
@@ -591,6 +664,25 @@ const AcademiesManagement: React.FC = () => {
                       </button>
                       <button
                         onClick={() => {
+                          setManualSubModalAcademy(academy);
+                          setManualSubForm({
+                            studentCapacity: academy.trialCapacity || 50,
+                            staffCapacity: academy.trialStaffCapacity || 5,
+                            billingInterval: "month",
+                            durationDays: 30,
+                            paymentMethod: "bank_transfer",
+                            amountPaid: "",
+                            referenceNote: "",
+                            actionType: academy.isTrial ? "subscription" : "renewal",
+                          });
+                        }}
+                        className="p-2 rounded border border-emerald-400/20 text-emerald-400 bg-emerald-400/5 hover:bg-emerald-400/15 transition-all"
+                        title="Record Offline Payment / Provision Subscription"
+                      >
+                        <CreditCard size={14} />
+                      </button>
+                      <button
+                        onClick={() => {
                           setSelectedAcademy(academy);
                           setConfigModalOpen(true);
                         }}
@@ -696,6 +788,27 @@ const AcademiesManagement: React.FC = () => {
                   icon={<Clock size={14} className="text-amber-400" />}
                 >
                   Trial
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="text-xs"
+                  size="sm"
+                  onClick={() => {
+                    setManualSubModalAcademy(academy);
+                    setManualSubForm({
+                      studentCapacity: academy.trialCapacity || 50,
+                      staffCapacity: academy.trialStaffCapacity || 5,
+                      billingInterval: "month",
+                      durationDays: 30,
+                      paymentMethod: "bank_transfer",
+                      amountPaid: "",
+                      referenceNote: "",
+                      actionType: academy.isTrial ? "subscription" : "renewal",
+                    });
+                  }}
+                  icon={<CreditCard size={14} className="text-emerald-400" />}
+                >
+                  Pay Offline
                 </Button>
                 <Button
                   variant="secondary"
@@ -826,22 +939,63 @@ const AcademiesManagement: React.FC = () => {
               </p>
             </div>
 
-            <div className="pt-2 border-t border-white/5 space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-semibold text-white block">Start in Free Trial Mode</span>
-                  <span className="text-[10px] text-slate-400">Allow academy to test the platform before paid purchase</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={newAcademyForm.isTrial}
-                  onChange={(e) => setNewAcademyForm({ ...newAcademyForm, isTrial: e.target.checked })}
-                  className="w-4 h-4 rounded text-volt-400 focus:ring-volt-400 cursor-pointer"
-                />
+            <div className="pt-2 border-t border-white/5 space-y-3">
+              <label className="text-xs font-semibold text-slate-300 block mb-1">
+                Initial Operating License / Subscription Plan *
+              </label>
+
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewAcademyForm({ ...newAcademyForm, subMode: "trial" })}
+                  className={clsx(
+                    "p-2.5 rounded-lg border text-left transition-all",
+                    newAcademyForm.subMode === "trial"
+                      ? "border-volt-400 bg-volt-400/10 text-white"
+                      : "border-white/10 bg-pitch-900/60 text-slate-400 hover:border-white/20"
+                  )}
+                >
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-volt-400 mb-0.5">
+                    <Clock size={13} /> Free Trial
+                  </div>
+                  <p className="text-[10px] text-slate-400">Temporary evaluation</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setNewAcademyForm({ ...newAcademyForm, subMode: "paid_manual" })}
+                  className={clsx(
+                    "p-2.5 rounded-lg border text-left transition-all",
+                    newAcademyForm.subMode === "paid_manual"
+                      ? "border-emerald-400 bg-emerald-400/10 text-white"
+                      : "border-white/10 bg-pitch-900/60 text-slate-400 hover:border-white/20"
+                  )}
+                >
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 mb-0.5">
+                    <CheckCircle2 size={13} /> Paid Offline
+                  </div>
+                  <p className="text-[10px] text-slate-400">Cash / Wire / Cheque</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setNewAcademyForm({ ...newAcademyForm, subMode: "none" })}
+                  className={clsx(
+                    "p-2.5 rounded-lg border text-left transition-all",
+                    newAcademyForm.subMode === "none"
+                      ? "border-amber-400 bg-amber-400/10 text-white"
+                      : "border-white/10 bg-pitch-900/60 text-slate-400 hover:border-white/20"
+                  )}
+                >
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 mb-0.5">
+                    <Ban size={13} /> Later
+                  </div>
+                  <p className="text-[10px] text-slate-400">Configure anytime</p>
+                </button>
               </div>
 
-              {newAcademyForm.isTrial && (
-                <div className="grid grid-cols-3 gap-2 pt-1">
+              {newAcademyForm.subMode === "trial" && (
+                <div className="grid grid-cols-3 gap-2 pt-1 border-t border-white/5">
                   <Input
                     label="Trial Days"
                     type="number"
@@ -864,6 +1018,96 @@ const AcademiesManagement: React.FC = () => {
                     onChange={(e) => setNewAcademyForm({ ...newAcademyForm, trialStaffCapacity: parseInt(e.target.value) || 5 })}
                   />
                 </div>
+              )}
+
+              {newAcademyForm.subMode === "paid_manual" && (
+                <div className="space-y-2.5 pt-1 border-t border-white/5">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      label="Player Capacity"
+                      type="number"
+                      min="1"
+                      value={newAcademyForm.paidStudentCapacity}
+                      onChange={(e) => setNewAcademyForm({ ...newAcademyForm, paidStudentCapacity: parseInt(e.target.value) || 50 })}
+                    />
+                    <Input
+                      label="Staff Capacity"
+                      type="number"
+                      min="0"
+                      value={newAcademyForm.paidStaffCapacity}
+                      onChange={(e) => setNewAcademyForm({ ...newAcademyForm, paidStaffCapacity: parseInt(e.target.value) || 5 })}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-2xs font-semibold text-slate-300 block mb-1">Billing Cycle</label>
+                      <select
+                        className="input w-full bg-pitch-900 border border-white/10 rounded-lg p-2 text-xs text-white"
+                        value={newAcademyForm.paidBillingInterval}
+                        onChange={(e) => {
+                          const interval = e.target.value as any;
+                          const daysMap: Record<string, number> = { month: 30, quarter: 90, half_year: 180, year: 365 };
+                          setNewAcademyForm({
+                            ...newAcademyForm,
+                            paidBillingInterval: interval,
+                            paidDurationDays: daysMap[interval] || 30,
+                          });
+                        }}
+                      >
+                        <option value="month">Monthly</option>
+                        <option value="quarter">Quarterly</option>
+                        <option value="half_year">Half-Yearly</option>
+                        <option value="year">Annual</option>
+                      </select>
+                    </div>
+
+                    <Input
+                      label="Duration (Days)"
+                      type="number"
+                      min="1"
+                      value={newAcademyForm.paidDurationDays}
+                      onChange={(e) => setNewAcademyForm({ ...newAcademyForm, paidDurationDays: parseInt(e.target.value) || 30 })}
+                    />
+
+                    <div>
+                      <label className="text-2xs font-semibold text-slate-300 block mb-1">Payment Method</label>
+                      <select
+                        className="input w-full bg-pitch-900 border border-white/10 rounded-lg p-2 text-xs text-white"
+                        value={newAcademyForm.paidPaymentMethod}
+                        onChange={(e) => setNewAcademyForm({ ...newAcademyForm, paidPaymentMethod: e.target.value as any })}
+                      >
+                        <option value="bank_transfer">Bank Wire / IBAN</option>
+                        <option value="cash">In-Hand Cash</option>
+                        <option value="cheque">Cheque</option>
+                        <option value="waived">Waived</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      label={`Amount Paid (${newAcademyForm.currency}) — Optional`}
+                      type="number"
+                      placeholder="Auto-calculated if blank"
+                      value={newAcademyForm.paidAmount}
+                      onChange={(e) => setNewAcademyForm({ ...newAcademyForm, paidAmount: e.target.value })}
+                    />
+                    <Input
+                      label="Payment Reference Note"
+                      placeholder="e.g. Wire Ref #99281, Cash receipt"
+                      value={newAcademyForm.paidReferenceNote}
+                      onChange={(e) => setNewAcademyForm({ ...newAcademyForm, paidReferenceNote: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {newAcademyForm.subMode === "none" && (
+                <p className="text-2xs text-amber-300/80 bg-amber-500/10 p-2 rounded border border-amber-500/20">
+                  Academy will be registered without an active operational subscription. Super admin can grant trial or record offline payment anytime later.
+                </p>
               )}
             </div>
           </div>
@@ -1438,6 +1682,171 @@ const AcademiesManagement: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        </Modal>
+      )}
+
+      {/* Manual Subscription Provisioning Modal */}
+      {manualSubModalAcademy && (
+        <Modal
+          isOpen={Boolean(manualSubModalAcademy)}
+          onClose={() => setManualSubModalAcademy(null)}
+          title={`Offline Subscription Provisioning: ${manualSubModalAcademy.name}`}
+          size="md"
+        >
+          <div className="space-y-4">
+            {/* Academy & Currency Context */}
+            <div className="p-3 bg-pitch-900/80 rounded-lg border border-white/10 flex items-center justify-between">
+              <div>
+                <p className="text-2xs text-slate-400 font-mono">Operating Territory</p>
+                <p className="text-xs font-bold text-white flex items-center gap-1.5 mt-0.5">
+                  <Globe2 size={13} className="text-volt-400" />
+                  {manualSubModalAcademy.currency || "INR"} — {manualSubModalAcademy.country || "IN"}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xs text-slate-400 font-mono">Current Status</p>
+                <span
+                  className={clsx(
+                    "text-3xs px-2 py-0.5 rounded font-bold uppercase",
+                    manualSubModalAcademy.isTrial
+                      ? "bg-amber-400/10 text-amber-400 border border-amber-400/20"
+                      : "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20"
+                  )}
+                >
+                  {manualSubModalAcademy.isTrial ? "Free Trial" : "Active / Standard"}
+                </span>
+              </div>
+            </div>
+
+            {/* Action Type */}
+            <div>
+              <label className="text-xs font-semibold text-slate-300 block mb-1">Provisioning Type</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: "subscription", label: "Initial License" },
+                  { id: "renewal", label: "Renewal (Extend)" },
+                  { id: "upgrade", label: "Upgrade Capacity" },
+                ].map((act) => (
+                  <button
+                    key={act.id}
+                    type="button"
+                    onClick={() => setManualSubForm({ ...manualSubForm, actionType: act.id as any })}
+                    className={clsx(
+                      "py-2 px-1 text-center rounded-lg border text-xs font-bold transition-all",
+                      manualSubForm.actionType === act.id
+                        ? "border-emerald-400 bg-emerald-400/10 text-emerald-300"
+                        : "border-white/10 bg-pitch-900/40 text-slate-400 hover:border-white/20"
+                    )}
+                  >
+                    {act.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Capacities */}
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Student Capacity"
+                type="number"
+                min="1"
+                value={manualSubForm.studentCapacity}
+                onChange={(e) => setManualSubForm({ ...manualSubForm, studentCapacity: parseInt(e.target.value) || 50 })}
+                required
+              />
+              <Input
+                label="Staff Capacity"
+                type="number"
+                min="0"
+                value={manualSubForm.staffCapacity}
+                onChange={(e) => setManualSubForm({ ...manualSubForm, staffCapacity: parseInt(e.target.value) || 5 })}
+                required
+              />
+            </div>
+
+            {/* Billing Cycle, Duration & Method */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-2xs font-semibold text-slate-300 block mb-1">Billing Interval</label>
+                <select
+                  className="input w-full bg-pitch-900 border border-white/10 rounded-lg p-2 text-xs text-white"
+                  value={manualSubForm.billingInterval}
+                  onChange={(e) => {
+                    const interval = e.target.value as any;
+                    const daysMap: Record<string, number> = { month: 30, quarter: 90, half_year: 180, year: 365 };
+                    setManualSubForm({
+                      ...manualSubForm,
+                      billingInterval: interval,
+                      durationDays: daysMap[interval] || 30,
+                    });
+                  }}
+                >
+                  <option value="month">Monthly</option>
+                  <option value="quarter">Quarterly</option>
+                  <option value="half_year">Half-Yearly</option>
+                  <option value="year">Annual</option>
+                </select>
+              </div>
+
+              <Input
+                label="Duration (Days)"
+                type="number"
+                min="1"
+                value={manualSubForm.durationDays}
+                onChange={(e) => setManualSubForm({ ...manualSubForm, durationDays: parseInt(e.target.value) || 30 })}
+              />
+
+              <div>
+                <label className="text-2xs font-semibold text-slate-300 block mb-1">Payment Method</label>
+                <select
+                  className="input w-full bg-pitch-900 border border-white/10 rounded-lg p-2 text-xs text-white"
+                  value={manualSubForm.paymentMethod}
+                  onChange={(e) => setManualSubForm({ ...manualSubForm, paymentMethod: e.target.value as any })}
+                >
+                  <option value="bank_transfer">Bank Wire / IBAN</option>
+                  <option value="cash">In-Hand Cash</option>
+                  <option value="cheque">Cheque</option>
+                  <option value="waived">Waived / Free Deal</option>
+                  <option value="other">Other Offline</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Amount & Reference */}
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label={`Amount Paid (${manualSubModalAcademy.currency || "INR"})`}
+                type="number"
+                placeholder="Auto-calculated if blank"
+                value={manualSubForm.amountPaid}
+                onChange={(e) => setManualSubForm({ ...manualSubForm, amountPaid: e.target.value })}
+              />
+              <Input
+                label="Reference / Invoice Note"
+                placeholder="e.g. Wire transfer ref #1234, cash receipt"
+                value={manualSubForm.referenceNote}
+                onChange={(e) => setManualSubForm({ ...manualSubForm, referenceNote: e.target.value })}
+              />
+            </div>
+
+            <div className="pt-3 border-t border-white/5 flex gap-3">
+              <Button
+                variant="primary"
+                className="flex-1 font-bold bg-emerald-500 hover:bg-emerald-600 text-black border-none"
+                onClick={handleManualSubSubmit}
+                loading={isProvisioningSub}
+                icon={<CheckCircle2 size={16} />}
+              >
+                Record Payment &amp; Activate License
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setManualSubModalAcademy(null)}
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </Modal>
       )}

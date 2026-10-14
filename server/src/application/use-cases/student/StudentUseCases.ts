@@ -143,13 +143,13 @@ export class StudentUseCases {
 
     if (existingUserByEmail && existingUserByEmail.role !== "guardian") {
       throw new ConflictError(
-        `An account with this email already exists with role: ${existingUserByEmail.role}.`,
+        "An account with this email already exists. Please use a different email.",
       );
     }
 
     if (existingUserByPhone && existingUserByPhone.role !== "guardian") {
       throw new ConflictError(
-        `An account with this phone number already exists with role: ${existingUserByPhone.role}.`,
+        "An account with this phone number already exists. Please use a different phone number.",
       );
     }
 
@@ -805,7 +805,7 @@ export class StudentUseCases {
         }
       } else {
         throw new ConflictError(
-          `An account with this email already exists with role: ${existingEmailUser.role}. Please log in with your credentials.`,
+          "An account with this email already exists. Please log in with your credentials.",
         );
       }
     }
@@ -829,7 +829,7 @@ export class StudentUseCases {
           }
         } else {
           throw new ConflictError(
-            `An account with this phone number already exists with role: ${existingPhoneUser.role}. Please log in with your credentials.`,
+            "An account with this phone number already exists. Please log in with your credentials.",
           );
         }
       }
