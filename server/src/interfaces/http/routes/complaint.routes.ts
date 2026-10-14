@@ -14,10 +14,23 @@ complaintRouter.get("/mine", authenticate, (req, res, next) => {
   req.app.locals.controllers.complaint.listMine(req, res, next);
 });
 
-// The manager's inbox for their academy.
+// The manager's/coach's inbox for their academy.
 complaintRouter.get("/:academyId", authenticate, (req, res, next) => {
   req.app.locals.controllers.complaint.listForAcademy(req, res, next);
 });
+
+complaintRouter.get("/:academyId/:complaintId/candidate-coaches", authenticate, (req, res, next) => {
+  req.app.locals.controllers.complaint.getCandidateCoaches(req, res, next);
+});
+
+complaintRouter.post("/:academyId/:complaintId/forward", authenticate, (req, res, next) => {
+  req.app.locals.controllers.complaint.forward(req, res, next);
+});
+
+complaintRouter.post("/:academyId/:complaintId/coach-respond", authenticate, (req, res, next) => {
+  req.app.locals.controllers.complaint.coachRespond(req, res, next);
+});
+
 complaintRouter.post("/:academyId/:complaintId/respond", authenticate, (req, res, next) => {
   req.app.locals.controllers.complaint.respond(req, res, next);
 });
