@@ -99,6 +99,7 @@ const TeamManagePage: React.FC = () => {
         onEditColors={() => navigate("/teams")}
         onGenerateReport={() => setIsReportOpen(true)}
         initialFormationPresets={(team.formationPresets ?? []) as any}
+        initialTeamFormat={(team.teamFormat as any) || "11s"}
       />
 
       {isReportOpen && id && (

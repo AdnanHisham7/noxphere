@@ -5,7 +5,10 @@ import { ArrowLeft, ArrowLeftRight, Sparkles, X, Palette, ChevronDown, ChevronUp
 import {
   Player,
   FormationType,
+  TeamFormat,
   FORMATION_PRESETS,
+  FORMATIONS_BY_FORMAT,
+  getFormatForFormation,
   SavedFormation,
   autopickSquad,
   getAptitudeMultiplier,
@@ -30,6 +33,7 @@ interface ManageTeamViewProps {
   onEditColors: () => void;
   onGenerateReport?: () => void;
   initialFormationPresets?: SavedFormation[];
+  initialTeamFormat?: TeamFormat;
 }
 
 export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
@@ -43,10 +47,17 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
   onEditColors,
   onGenerateReport,
   initialFormationPresets = [],
+  initialTeamFormat = "11s",
 }) => {
-  const [formation, setFormation] = useState<FormationType>("4-2-3-1");
+  const [teamFormat, setTeamFormat] = useState<TeamFormat>(initialTeamFormat);
+  const [formation, setFormation] = useState<FormationType>(() => {
+    return FORMATIONS_BY_FORMAT[initialTeamFormat]?.defaultFormation || "4-2-3-1";
+  });
   const [squad, setSquad] = useState<Record<string, string>>(() =>
-    autopickSquad("4-2-3-1", players),
+    autopickSquad(
+      FORMATIONS_BY_FORMAT[initialTeamFormat]?.defaultFormation || "4-2-3-1",
+      players,
+    ),
   );
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [savedFormations, setSavedFormations] = useState<SavedFormation[]>(initialFormationPresets);
@@ -69,7 +80,7 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
   const collectiveStrength = Math.round(
     Object.entries(squad).reduce((sum, [slotId, playerId]) => {
       const player = players.find((p) => p.id === playerId);
-      const slot = FORMATION_PRESETS[formation].find((s) => s.id === slotId);
+      const slot = (FORMATION_PRESETS[formation] || []).find((s) => s.id === slotId);
       if (!player || !slot) return sum;
       return (
         sum + player.rating * getAptitudeMultiplier(player.position, slot.role)
@@ -111,17 +122,26 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
     }
   };
 
+  const handleFormatChange = (fmt: TeamFormat) => {
+    setTeamFormat(fmt);
+    const defaultFmt = FORMATIONS_BY_FORMAT[fmt]?.defaultFormation || "4-2-3-1";
+    setFormation(defaultFmt);
+    setSquad(autopickSquad(defaultFmt, players));
+    toast.success(`Switched to ${FORMATIONS_BY_FORMAT[fmt]?.label || fmt}`);
+  };
+
   const saveFormationPreset = async () => {
     const preset: SavedFormation = {
       id: Date.now().toString(),
       label: labelInput,
       formationType: formation,
+      teamFormat: teamFormat,
       squad: { ...squad },
     };
     try {
-      await savePresetToDb({ teamId, preset }).unwrap();
+      await savePresetToDb({ teamId, preset: preset as any }).unwrap();
       setSavedFormations((prev) => [...prev, preset]);
-      toast.success(`Saved: ${labelInput}`);
+      toast.success(`Saved: ${labelInput} (${teamFormat} ${formation})`);
     } catch {
       toast.error("Couldn't save formation — try again");
     }
@@ -138,14 +158,16 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
   };
 
   const applyPreset = (preset: SavedFormation) => {
+    const fmt = preset.teamFormat || getFormatForFormation(preset.formationType);
+    setTeamFormat(fmt);
     setFormation(preset.formationType);
     setSquad(preset.squad);
-    toast.success(`Loaded: ${preset.label}`);
+    toast.success(`Loaded: ${preset.label} (${fmt} ${preset.formationType})`);
   };
 
   const applyFormationReset = (type: FormationType) => {
     setFormation(type);
-    const layoutSlots = FORMATION_PRESETS[type];
+    const layoutSlots = FORMATION_PRESETS[type] || [];
     const updatedSquad: Record<string, string> = {};
     layoutSlots.forEach((slot, index) => {
       updatedSquad[slot.id] =
@@ -217,11 +239,43 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
           className={`lg:col-span-3 flex-col gap-4 ${isSidebarOpen ? "flex" : "hidden lg:flex"}`}
         >
           <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-4 flex flex-col gap-4">
+            {/* Team Format Switcher */}
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                  Format
+                </label>
+                <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-mono font-bold">
+                  {FORMATIONS_BY_FORMAT[teamFormat]?.playerCount} Players
+                </span>
+              </div>
+              <div className="grid grid-cols-4 sm:grid-cols-7 gap-1">
+                {(["5s", "6s", "7s", "8s", "9s", "10s", "11s"] as TeamFormat[]).map((fmt) => (
+                  <button
+                    key={fmt}
+                    type="button"
+                    onClick={() => handleFormatChange(fmt)}
+                    className={`py-1 px-1 rounded text-2xs font-bold font-mono transition-all text-center ${
+                      teamFormat === fmt
+                        ? "bg-volt-400 text-pitch-950 shadow-sm ring-1 ring-volt-300"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                    title={FORMATIONS_BY_FORMAT[fmt].label}
+                  >
+                    {fmt}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 font-medium mt-1 truncate">
+                {FORMATIONS_BY_FORMAT[teamFormat]?.pitchName}
+              </p>
+            </div>
+
             {/* Formation selector */}
             <div>
               <div className="flex justify-between items-end mb-1.5">
                 <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
-                  Formation
+                  Formation ({teamFormat})
                 </label>
                 <button
                   onClick={handleAutopick}
@@ -233,9 +287,9 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
               <select
                 value={formation}
                 onChange={(e) => applyFormationReset(e.target.value as FormationType)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:ring-1 focus:ring-cyan-500 outline-none"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:ring-1 focus:ring-cyan-500 outline-none font-mono"
               >
-                {Object.keys(FORMATION_PRESETS).map((f) => (
+                {FORMATIONS_BY_FORMAT[teamFormat]?.formations.map((f) => (
                   <option key={f} value={f}>{f}</option>
                 ))}
               </select>
@@ -256,6 +310,7 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                   <option value="Tournament Run">Tournament Run</option>
                   <option value="Local Derby">Local Derby</option>
                   <option value="Championship Final">Championship Final</option>
+                  <option value="Training Match">Training Match</option>
                 </select>
                 <button
                   onClick={saveFormationPreset}
@@ -278,10 +333,17 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                     className="flex justify-between items-center bg-slate-50 dark:bg-slate-950 p-2 rounded border border-slate-200 dark:border-slate-800 text-2xs"
                   >
                     <div>
-                      <p className="font-bold text-slate-900 dark:text-white leading-tight">
-                        {sf.label}
-                      </p>
-                      <p className="text-[10px] text-slate-400">{sf.formationType}</p>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-slate-900 dark:text-white leading-tight">
+                          {sf.label}
+                        </span>
+                        {sf.teamFormat && (
+                          <span className="px-1 py-0.2 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded text-[9px] font-mono font-bold">
+                            {sf.teamFormat}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-mono">{sf.formationType}</p>
                     </div>
                     <div className="flex items-center gap-1">
                       <button
@@ -327,7 +389,20 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
         </div>
 
         {/* ── Pitch ── */}
-        <div className="lg:col-span-6 flex justify-center items-start lg:items-center">
+        <div className="lg:col-span-6 flex flex-col items-center justify-start lg:justify-center gap-2">
+          {/* Tactical Pitch Header Badge */}
+          <div className="flex items-center gap-2 bg-slate-900/80 backdrop-blur-sm text-white border border-white/10 px-3.5 py-1 rounded-full text-xs shadow-md">
+            <span className="font-bold text-volt-400 uppercase tracking-wider font-mono">
+              {teamFormat}
+            </span>
+            <span className="text-white/30">·</span>
+            <span className="text-slate-200 font-medium">
+              {FORMATIONS_BY_FORMAT[teamFormat]?.pitchName}
+            </span>
+            <span className="text-white/30">·</span>
+            <span className="font-mono text-cyan-300 font-bold">{formation}</span>
+          </div>
+
           <div className="relative w-full max-w-xs sm:max-w-sm aspect-[4/5] bg-emerald-900 border-[3px] border-white/20 rounded-lg shadow-2xl overflow-hidden bg-gradient-to-b from-emerald-800 via-emerald-900 to-emerald-950">
             <div className="absolute inset-x-0 top-0 h-1/2 border-b border-white/10" />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 border border-white/10 rounded-full" />
@@ -335,7 +410,7 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-44 h-16 border-t border-x border-white/10" />
             <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-24 h-2.5 bg-slate-950/60 border-t border-x border-white/30 z-10" />
 
-            {FORMATION_PRESETS[formation].map((slot) => {
+            {(FORMATION_PRESETS[formation] || []).map((slot) => {
               const assignedPlayerId = squad[slot.id];
               const playerObj = players.find((p) => p.id === assignedPlayerId);
               return (
