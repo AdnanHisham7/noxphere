@@ -14,6 +14,8 @@ import {
   CreditCard,
   LayoutGrid,
   List,
+  Archive,
+  RotateCcw,
 } from "lucide-react";
 import {
   Button,
@@ -47,6 +49,7 @@ import {
   useGetStudentsQuery,
   useCreateStudentMutation,
   useDeleteStudentMutation,
+  useRestoreStudentMutation,
   useGetRegistrationRequestsQuery,
   type Student,
   type SelectionStatus,
@@ -259,6 +262,7 @@ const StudentsPage: React.FC = () => {
 
   const [createStudent, { isLoading: creating }] = useCreateStudentMutation();
   const [deleteStudent] = useDeleteStudentMutation();
+  const [restoreStudent, { isLoading: restoring }] = useRestoreStudentMutation();
   const { confirm, ConfirmDialog } = useConfirm();
   const academyId = useCurrentAcademyId();
   const { data: franchises } = useGetFranchisesQuery(
@@ -275,7 +279,7 @@ const StudentsPage: React.FC = () => {
     "subscribe" | "upgrade" | null
   >(null);
 
-  const [activeTab, setActiveTab] = useState<"squad" | "requests">("squad");
+  const [activeTab, setActiveTab] = useState<"squad" | "requests" | "archived">("squad");
   const [showShareLinkModal, setShowShareLinkModal] = useState(false);
   const [showClaimModal, setShowClaimModal] = useState(false);
 
@@ -285,6 +289,20 @@ const StudentsPage: React.FC = () => {
       { skip: !academyId || isCoach || !canManageSquad },
     );
   const pendingRequestsCount = pendingRequestsData?.requests?.length ?? 0;
+
+  const {
+    data: archivedData,
+    isLoading: archivedLoading,
+  } = useGetStudentsQuery(
+    {
+      franchiseId: franchiseId ?? "",
+      deleted: true,
+      search: search || undefined,
+      limit: 100,
+    },
+    { skip: !franchiseId || activeTab !== "archived" },
+  );
+  const archivedStudents = archivedData?.items ?? [];
 
   useEffect(() => {
     if ((isCoach || !canManageSquad) && activeTab !== "squad") {
@@ -332,17 +350,36 @@ const StudentsPage: React.FC = () => {
 
   const handleDelete = async (id: string, name: string) => {
     const ok = await confirm({
-      title: "Remove player",
-      message: `Remove ${name} from the franchise? This cannot be undone.`,
-      confirmLabel: "Remove",
+      title: "Remove player from squad",
+      message: `Remove ${name} from the active franchise squad? This will release 1 student subscription slot immediately. The player's profile and historical stats are safely archived and can be restored anytime from the Archived tab.`,
+      confirmLabel: "Archive Player",
       danger: true,
     });
     if (!ok) return;
     try {
       await deleteStudent(id).unwrap();
-      toast.success("Player removed");
+      toast.success("Player archived and slot released");
     } catch {
       toast.error("Couldn't remove player — try again");
+    }
+  };
+
+  const handleRestore = async (id: string, name: string) => {
+    const ok = await confirm({
+      title: "Restore player to squad",
+      message: `Restore ${name} back to the active squad? This will occupy 1 student capacity slot in your subscription plan.`,
+      confirmLabel: "Restore Player",
+    });
+    if (!ok) return;
+    try {
+      await restoreStudent(id).unwrap();
+      toast.success(`${name} restored to active squad!`);
+    } catch (err: any) {
+      const msg = err?.data?.message || "Failed to restore player. Check subscription capacity.";
+      toast.error(msg);
+      if (err?.data?.code === "SUBSCRIPTION_CAPACITY_EXCEEDED" || err?.data?.code === "SUBSCRIPTION_REQUIRED") {
+        setSubscriptionModalMode("upgrade");
+      }
     }
   };
 
@@ -457,6 +494,24 @@ const StudentsPage: React.FC = () => {
               </span>
             )}
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("archived")}
+            className={clsx(
+              "px-3.5 sm:px-4 py-2 text-xs font-display uppercase tracking-wider font-bold rounded-t-lg transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0",
+              activeTab === "archived"
+                ? "bg-slate-200 dark:bg-pitch-800 text-slate-900 dark:text-volt-400 border-b-2 border-volt-400"
+                : "text-slate-500 hover:text-slate-900 dark:hover:text-white",
+            )}
+          >
+            <Archive size={13} />
+            <span>Archived Players</span>
+            {archivedData?.total !== undefined && archivedData.total > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-slate-500/20 text-slate-700 dark:text-slate-300 font-mono text-2xs">
+                {archivedData.total}
+              </span>
+            )}
+          </button>
         </div>
       )}
 
@@ -469,6 +524,116 @@ const StudentsPage: React.FC = () => {
             refetchRequests();
           }}
         />
+      ) : canManageSquad && activeTab === "archived" ? (
+        <div className="space-y-4">
+          <div className="card p-3.5 sm:p-4 bg-slate-50 dark:bg-pitch-900/40 border border-slate-200 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <Archive size={16} className="text-volt-400" />
+                Archived & Soft-Deleted Players
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Archived players do not occupy student slots in your subscription plan. Their profiles and match records are preserved and can be restored back to the active squad whenever capacity allows.
+              </p>
+            </div>
+            <div className="w-full sm:w-64">
+              <Input
+                placeholder="Search archived..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                icon={<Search className="h-4 w-4 text-muted-foreground" />}
+              />
+            </div>
+          </div>
+
+          {archivedLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="card p-4 flex items-center gap-4">
+                  <Skeleton className="w-12 h-12 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                  <Skeleton className="h-8 w-24 rounded-lg" />
+                </div>
+              ))}
+            </div>
+          ) : archivedStudents.length === 0 ? (
+            <EmptyState
+              icon={<Archive size={28} />}
+              title="No archived players"
+              description="No deleted or archived players found for this franchise."
+            />
+          ) : (
+            <div className="card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-white/10 text-2xs uppercase tracking-wider text-slate-400">
+                      <th className="px-4 py-3">Player</th>
+                      <th className="px-4 py-3 hidden sm:table-cell">Position</th>
+                      <th className="px-4 py-3 hidden md:table-cell">Age Group</th>
+                      <th className="px-4 py-3 hidden lg:table-cell">Guardian Contact</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                    {archivedStudents.map((student) => (
+                      <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-pitch-800/50 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <Avatar
+                              name={`${student.firstName} ${student.lastName}`}
+                              src={student.photo}
+                              size="sm"
+                            />
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                {student.firstName} {student.lastName}
+                              </p>
+                              <p className="text-2xs text-slate-500">
+                                #{student.jerseyNumber ?? "—"} · Status: {student.status}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 hidden sm:table-cell">
+                          {student.position ?? "—"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 hidden md:table-cell">
+                          <Badge variant="gray">{student.ageGroup}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-500 hidden lg:table-cell">
+                          {student.guardian?.name ? (
+                            <div>
+                              <p className="font-medium text-slate-700 dark:text-slate-300">{student.guardian.name}</p>
+                              <p className="text-2xs">{student.guardian.phone || student.guardian.email || "No phone"}</p>
+                            </div>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            icon={<RotateCcw size={13} className="text-volt-400" />}
+                            onClick={() => handleRestore(student.id, `${student.firstName} ${student.lastName}`)}
+                            disabled={restoring}
+                            className="text-xs"
+                          >
+                            Restore to Squad
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
         <>
           {/* Filters + view toggle */}

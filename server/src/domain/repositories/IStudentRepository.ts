@@ -7,9 +7,16 @@ export interface IStudentRepository {
   // Student CRUD
   create(data: Partial<StudentEntity>): Promise<StudentEntity>;
   findById(id: string): Promise<StudentEntity | null>;
-  findAll(filter: any, page: number, limit: number): Promise<{ items: StudentEntity[]; total: number }>;
+  findAll(
+    filter: any,
+    page: number,
+    limit: number,
+    options?: { includeDeleted?: boolean },
+  ): Promise<{ items: StudentEntity[]; total: number }>;
   update(id: string, data: Partial<StudentEntity>): Promise<StudentEntity | null>;
   delete(id: string): Promise<boolean>;
+  findDeletedById(id: string): Promise<StudentEntity | null>;
+  restore(id: string): Promise<StudentEntity | null>;
   
   // Performance
   addPerformance(data: Partial<PerformanceDocument>): Promise<PerformanceDocument>;

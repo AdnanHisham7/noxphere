@@ -342,7 +342,28 @@ export class StudentUseCases {
     limit = 20,
     restrictToCoachId?: string,
   ): Promise<{ items: StudentEntity[]; total: number }> {
-    const filter: any = { franchiseId, isActive: true };
+    const isDeletedRequested =
+      filters.deleted === true ||
+      filters.deleted === "true" ||
+      filters.status === "deleted" ||
+      filters.status === "archived";
+
+    const filter: any = { franchiseId };
+
+    if (isDeletedRequested) {
+      filter.deletedAt = { $exists: true };
+    } else {
+      filter.deletedAt = { $exists: false };
+      if (filters.status) {
+        filter.status = filters.status;
+      }
+      if (filters.isActive !== undefined) {
+        filter.isActive =
+          filters.isActive === true || filters.isActive === "true";
+      } else if (!filters.status) {
+        filter.isActive = true;
+      }
+    }
 
     // A coach only ever sees students on a team assigned to them, or a
     // student explicitly assigned to them directly (e.g. trial players not
@@ -387,7 +408,9 @@ export class StudentUseCases {
         filter.$or = searchOr;
       }
     }
-    return await this.studentRepo.findAll(filter, page, limit);
+    return await this.studentRepo.findAll(filter, page, limit, {
+      includeDeleted: isDeletedRequested,
+    });
   }
 
   async getStudentById(id: string): Promise<StudentEntity> {
@@ -490,18 +513,135 @@ export class StudentUseCases {
       });
   }
 
-  async deleteStudent(id: string): Promise<void> {
+  async deleteStudent(
+    id: string,
+    requester?: { userId: string; academyId?: string; isSuperAdmin: boolean },
+  ): Promise<void> {
+    const student = await this.studentRepo.findById(id);
+    if (!student) throw new NotFoundError("Student");
+
+    if (
+      requester &&
+      !requester.isSuperAdmin &&
+      requester.academyId &&
+      student.franchiseId
+    ) {
+      const franchise = await FranchiseModel.findById(student.franchiseId)
+        .select("academyId")
+        .lean();
+      if (franchise && franchise.academyId.toString() !== requester.academyId) {
+        throw new ForbiddenError(
+          "You can only delete students belonging to your academy",
+        );
+      }
+    }
+
     const success = await this.studentRepo.delete(id);
     if (!success) throw new NotFoundError("Student");
+
+    if (student.userId) {
+      await UserModel.findByIdAndUpdate(student.userId, {
+        isActive: false,
+      }).catch(() => undefined);
+    }
   }
 
   async updateStudentStatus(
     id: string,
     status: StudentEntity["status"],
+    requester?: { userId: string; academyId?: string; isSuperAdmin: boolean },
   ): Promise<StudentEntity> {
-    const student = await this.studentRepo.update(id, { status });
+    const currentStudent = await this.studentRepo.findById(id);
+    if (!currentStudent) throw new NotFoundError("Student");
+
+    if (
+      requester &&
+      !requester.isSuperAdmin &&
+      requester.academyId &&
+      currentStudent.franchiseId
+    ) {
+      const franchise = await FranchiseModel.findById(
+        currentStudent.franchiseId,
+      )
+        .select("academyId")
+        .lean();
+      if (franchise && franchise.academyId.toString() !== requester.academyId) {
+        throw new ForbiddenError(
+          "You can only update students belonging to your academy",
+        );
+      }
+    }
+
+    // A student is active on the roster if status is 'active' or 'on_leave'.
+    // Marking them 'inactive', 'graduated', or 'dropped_out' releases their subscription slot.
+    const willBeActive = status === "active" || status === "on_leave";
+
+    // If student was inactive and is being reactivated, enforce subscription quota!
+    if (willBeActive && !currentStudent.isActive && currentStudent.franchiseId) {
+      const franchise = await FranchiseModel.findById(
+        currentStudent.franchiseId,
+      )
+        .select("academyId")
+        .lean();
+      if (franchise) {
+        await this.academySubscriptionUseCases.assertCanAddStudent(
+          franchise.academyId.toString(),
+        );
+      }
+    }
+
+    const student = await this.studentRepo.update(id, {
+      status,
+      isActive: willBeActive,
+    });
     if (!student) throw new NotFoundError("Student");
     return student;
+  }
+
+  async restoreStudent(
+    id: string,
+    requester: { userId: string; academyId?: string; isSuperAdmin: boolean },
+  ): Promise<StudentEntity> {
+    const deletedStudent = await this.studentRepo.findDeletedById(id);
+    if (!deletedStudent) {
+      throw new NotFoundError("Deleted student not found or already active");
+    }
+
+    if (!deletedStudent.franchiseId) {
+      throw new BadRequestError("Student does not have an assigned franchise");
+    }
+
+    const franchise = await FranchiseModel.findById(deletedStudent.franchiseId)
+      .select("academyId name")
+      .lean();
+    if (!franchise) throw new NotFoundError("Franchise not found");
+
+    const academyId = franchise.academyId.toString();
+
+    if (
+      !requester.isSuperAdmin &&
+      requester.academyId &&
+      requester.academyId !== academyId
+    ) {
+      throw new ForbiddenError(
+        "You can only restore students belonging to your academy",
+      );
+    }
+
+    // Enforce subscription quota before restoring player
+    await this.academySubscriptionUseCases.assertCanAddStudent(academyId);
+
+    const restored = await this.studentRepo.restore(id);
+    if (!restored) throw new NotFoundError("Student");
+
+    if (restored.userId) {
+      await UserModel.findByIdAndUpdate(restored.userId, {
+        isActive: true,
+        $unset: { deletedAt: 1 },
+      }).catch(() => undefined);
+    }
+
+    return restored;
   }
 
   // Moves a player from their current franchise to another franchise

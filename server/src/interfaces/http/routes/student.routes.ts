@@ -32,6 +32,9 @@ studentRouter.patch('/:id/photo', authenticate, requirePermission('canManagePerf
 studentRouter.delete('/:id', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
   req.app.locals.controllers.student.delete(req, res, next);
 });
+studentRouter.post('/:id/restore', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
+  req.app.locals.controllers.student.restore(req, res, next);
+});
 studentRouter.patch('/:id/status', authenticate, requirePermission('canManageFranchises'), (req, res, next) => {
   req.app.locals.controllers.student.updateStatus(req, res, next);
 });

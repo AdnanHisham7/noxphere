@@ -29,14 +29,23 @@ export class StudentController {
     try {
       const { franchiseId } = req.query;
       if (!franchiseId) throw new Error('franchiseId is required');
-      const { page = 1, limit = 20, search, teamId, ageGroup, selectionStatus } = req.query;
+      const {
+        page = 1,
+        limit = 20,
+        search,
+        teamId,
+        ageGroup,
+        selectionStatus,
+        status,
+        deleted,
+      } = req.query;
       // A coach only ever sees players on a team assigned to them (or
       // explicitly assigned to them directly), regardless of what else
       // is requested.
       const restrictToCoachId = req.user!.role === 'coach' ? req.user!.sub : undefined;
       const result = await this.studentUseCases.getStudents(
         franchiseId as string,
-        { search, teamId, ageGroup, selectionStatus },
+        { search, teamId, ageGroup, selectionStatus, status, deleted },
         Number(page),
         Number(limit),
         restrictToCoachId,
@@ -81,7 +90,11 @@ export class StudentController {
 
   delete = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await this.studentUseCases.deleteStudent(req.params.id);
+      await this.studentUseCases.deleteStudent(req.params.id, {
+        userId: req.user!.sub,
+        academyId: req.user!.academyId,
+        isSuperAdmin: req.user!.role === 'super_admin',
+      });
       ResponseHandler.noContent(res, 'Student deleted');
     } catch (err) { next(err); }
   };
@@ -122,8 +135,27 @@ export class StudentController {
   updateStatus = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dto = UpdateStudentStatusSchema.parse(req.body);
-      const student = await this.studentUseCases.updateStudentStatus(req.params.id, dto.status);
+      const student = await this.studentUseCases.updateStudentStatus(
+        req.params.id,
+        dto.status,
+        {
+          userId: req.user!.sub,
+          academyId: req.user!.academyId,
+          isSuperAdmin: req.user!.role === 'super_admin',
+        },
+      );
       ResponseHandler.success(res, student, 'Player status updated');
+    } catch (err) { next(err); }
+  };
+
+  restore = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const student = await this.studentUseCases.restoreStudent(req.params.id, {
+        userId: req.user!.sub,
+        academyId: req.user!.academyId,
+        isSuperAdmin: req.user!.role === 'super_admin',
+      });
+      ResponseHandler.success(res, student, 'Student restored successfully');
     } catch (err) { next(err); }
   };
 

@@ -64,7 +64,11 @@ export class AcademySubscriptionUseCases {
   private async countActiveStudents(academyId: string): Promise<number> {
     const franchiseIds = await FranchiseModel.find({ academyId }).distinct("_id");
     if (franchiseIds.length === 0) return 0;
-    return StudentModel.countDocuments({ franchiseId: { $in: franchiseIds }, isActive: true });
+    return StudentModel.countDocuments({
+      franchiseId: { $in: franchiseIds },
+      isActive: true,
+      deletedAt: { $exists: false },
+    });
   }
 
   private async countActiveStaff(academyId: string): Promise<number> {

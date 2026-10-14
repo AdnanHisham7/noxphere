@@ -31,14 +31,17 @@ export class StudentRepository implements IStudentRepository {
     filter: any,
     page: number,
     limit: number,
+    options?: { includeDeleted?: boolean },
   ): Promise<{ items: StudentEntity[]; total: number }> {
     const query: FilterQuery<StudentDocument> = { ...filter };
+    const queryOptions = options?.includeDeleted ? { includeDeleted: true } : {};
     const [items, total] = await Promise.all([
       StudentModel.find(query)
+        .setOptions(queryOptions)
         .skip((page - 1) * limit)
         .limit(limit)
         .lean(),
-      StudentModel.countDocuments(query),
+      StudentModel.countDocuments(query).setOptions(queryOptions),
     ]);
     return { items: items.map((doc) => this.toEntity(doc)), total };
   }
@@ -56,8 +59,33 @@ export class StudentRepository implements IStudentRepository {
   async delete(id: string): Promise<boolean> {
     const result = await StudentModel.findByIdAndUpdate(id, {
       deletedAt: new Date(),
+      isActive: false,
     });
     return !!result;
+  }
+
+  async findDeletedById(id: string): Promise<StudentEntity | null> {
+    const doc = await StudentModel.findOne({
+      _id: id,
+      deletedAt: { $exists: true },
+    })
+      .setOptions({ includeDeleted: true })
+      .lean();
+    return doc ? this.toEntity(doc) : null;
+  }
+
+  async restore(id: string): Promise<StudentEntity | null> {
+    const doc = await StudentModel.findOneAndUpdate(
+      { _id: id, deletedAt: { $exists: true } },
+      {
+        $unset: { deletedAt: 1 },
+        $set: { isActive: true, status: "active" },
+      },
+      { new: true },
+    )
+      .setOptions({ includeDeleted: true })
+      .lean();
+    return doc ? this.toEntity(doc) : null;
   }
 
   // Performance
