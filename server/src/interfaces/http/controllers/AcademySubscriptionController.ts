@@ -17,6 +17,17 @@ const UpgradeSchema = z.object({
   staffCapacity: z.number().int().min(0),
 });
 
+const ManualProvisionSchema = z.object({
+  studentCapacity: z.number().int().min(1).default(50),
+  staffCapacity: z.number().int().min(0).default(5),
+  billingInterval: z.enum(["month", "quarter", "half_year", "year"]).default("month"),
+  durationDays: z.number().int().min(1).max(3650).optional(),
+  paymentMethod: z.enum(["cash", "bank_transfer", "cheque", "other", "waived"]).default("bank_transfer"),
+  amountPaid: z.number().min(0).optional(),
+  referenceNote: z.string().optional(),
+  actionType: z.enum(["new", "renewal", "upgrade"]).optional(),
+});
+
 const RateSchema = z.object({
   rate: z.number().min(0),
 });
@@ -112,6 +123,21 @@ export class AcademySubscriptionController {
       const dto = UpgradeSchema.parse(req.body);
       const result = await this.useCases.upgradeCapacity(academyId, dto);
       ResponseHandler.success(res, result, "Capacity upgraded");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  manualProvision = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const academyId = req.params.academyId;
+      const dto = ManualProvisionSchema.parse(req.body);
+      const result = await this.useCases.manualProvisionSubscription(
+        academyId,
+        dto,
+        req.user!.sub
+      );
+      ResponseHandler.success(res, result, "Subscription provisioned successfully via offline payment record");
     } catch (err) {
       next(err);
     }

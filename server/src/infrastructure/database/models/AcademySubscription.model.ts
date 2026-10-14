@@ -24,6 +24,8 @@ export interface SubscriptionPaymentRecord {
   type: "subscription" | "renewal" | "upgrade";
   paidAt: Date;
   receiptNumber?: string;
+  paymentMethod?: string;
+  notes?: string;
 }
 
 export interface AcademySubscriptionDocument extends Document {
@@ -101,6 +103,8 @@ const AcademySubscriptionSchema = new Schema<AcademySubscriptionDocument>(
         type: { type: String, enum: ["subscription", "renewal", "upgrade"], default: "subscription" },
         paidAt: { type: Date, default: Date.now },
         receiptNumber: String,
+        paymentMethod: String,
+        notes: String,
       },
     ],
   },

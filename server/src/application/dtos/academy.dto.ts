@@ -61,6 +61,18 @@ export const CreateAcademySchema = z.object({
   trialDays: z.number().int().min(1).max(365).default(14),
   trialCapacity: z.number().int().min(1).default(50),
   trialStaffCapacity: z.number().int().min(0).default(5),
+  subscriptionPlan: z
+    .object({
+      mode: z.enum(["trial", "paid_manual", "none"]).default("trial"),
+      studentCapacity: z.number().int().min(1).default(50),
+      staffCapacity: z.number().int().min(0).default(5),
+      billingInterval: z.enum(["month", "quarter", "half_year", "year"]).default("month"),
+      durationDays: z.number().int().min(1).max(3650).optional(),
+      paymentMethod: z.enum(["cash", "bank_transfer", "cheque", "other", "waived"]).default("bank_transfer"),
+      amountPaid: z.number().min(0).optional(),
+      referenceNote: z.string().optional(),
+    })
+    .optional(),
   manager: ManagerAccountSchema,
 });
 

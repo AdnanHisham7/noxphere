@@ -98,6 +98,28 @@ export const academySubscriptionApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: { provisionedCapacity: number; provisionedStaffCapacity: number } }) => res.data,
       invalidatesTags: ["Academy"],
     }),
+    manualProvisionSubscription: builder.mutation<
+      { status: string; isActive: boolean; subscription: any },
+      {
+        academyId: string;
+        studentCapacity: number;
+        staffCapacity: number;
+        billingInterval: BillingInterval;
+        durationDays?: number;
+        paymentMethod: "cash" | "bank_transfer" | "cheque" | "other" | "waived";
+        amountPaid?: number;
+        referenceNote?: string;
+        actionType?: "new" | "renewal" | "upgrade";
+      }
+    >({
+      query: ({ academyId, ...body }) => ({
+        url: `/academy-subscriptions/${academyId}/manual-provision`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (res: { data: { status: string; isActive: boolean; subscription: any } }) => res.data,
+      invalidatesTags: ["Academy"],
+    }),
     getPlatformDefaultRate: builder.query<number, void>({
       query: () => "/academy-subscriptions/platform-rate",
       transformResponse: (res: { data: { rate: number } }) => res.data.rate,

@@ -102,13 +102,15 @@ export class AcademyUseCases {
       academyCode = await this.generateUniqueCode(dto.name);
     }
 
-    // 5. Create academy with currency, country, and trial parameters
+    // 5. Create academy with currency, country, and subscription parameters
     const currency = (dto.currency || "INR").toUpperCase();
     const country = (dto.country || geoLocationService.getCountryForCurrency(currency)).toUpperCase();
-    const isTrial = Boolean(dto.isTrial);
+
+    const planMode = dto.subscriptionPlan?.mode ?? (dto.isTrial ? "trial" : "trial");
+    const isTrial = planMode === "trial";
     const trialDays = dto.trialDays ?? 14;
-    const trialCapacity = dto.trialCapacity ?? 50;
-    const trialStaffCapacity = dto.trialStaffCapacity ?? 5;
+    const trialCapacity = dto.subscriptionPlan?.studentCapacity ?? dto.trialCapacity ?? 50;
+    const trialStaffCapacity = dto.subscriptionPlan?.staffCapacity ?? dto.trialStaffCapacity ?? 5;
     const trialStartsAt = isTrial ? new Date() : undefined;
     const trialEndsAt = isTrial ? new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000) : undefined;
 
@@ -136,13 +138,13 @@ export class AcademyUseCases {
       trialStaffCapacity,
     });
 
-    // If trial is granted, automatically provision an active trial subscription
-    if (isTrial && trialEndsAt) {
-      const platformSettings = await PlatformSettingsModel.findOne().lean();
-      const customRate = platformSettings?.currencyPricing?.find(c => c.currency.toUpperCase() === currency);
-      const ratePerStudentPerDay = customRate?.ratePerStudentPerDay ?? (SUPPORTED_CURRENCY_MAP[currency]?.defaultRatePerStudentPerDay ?? 1);
-      const staffRatePerStaffPerMonth = customRate?.staffRatePerStaffPerMonth ?? (SUPPORTED_CURRENCY_MAP[currency]?.defaultStaffRatePerStaffPerMonth ?? 10);
+    const platformSettings = await PlatformSettingsModel.findOne().lean();
+    const customRate = platformSettings?.currencyPricing?.find(c => c.currency.toUpperCase() === currency);
+    const ratePerStudentPerDay = customRate?.ratePerStudentPerDay ?? (SUPPORTED_CURRENCY_MAP[currency]?.defaultRatePerStudentPerDay ?? 1);
+    const staffRatePerStaffPerMonth = customRate?.staffRatePerStaffPerMonth ?? (SUPPORTED_CURRENCY_MAP[currency]?.defaultStaffRatePerStaffPerMonth ?? 10);
 
+    // 5a. If trial mode is selected, provision an active trial subscription
+    if (isTrial && trialEndsAt) {
       await AcademySubscriptionModel.findOneAndUpdate(
         { academyId: academy.id },
         {
@@ -157,6 +159,57 @@ export class AcademyUseCases {
           provisionedStaffCapacity: trialStaffCapacity,
           status: "trialing",
           currentPeriodEnd: trialEndsAt,
+        },
+        { upsert: true, new: true }
+      );
+    } else if (planMode === "paid_manual" && dto.subscriptionPlan) {
+      // 5b. If super admin marks subscription as paid upfront (offline / manual)
+      const sub = dto.subscriptionPlan;
+      const interval = sub.billingInterval || "month";
+      const intervalDaysMap: Record<string, number> = { month: 30, quarter: 90, half_year: 180, year: 365 };
+      const intervalStaffMonthsMap: Record<string, number> = { month: 1, quarter: 3, half_year: 6, year: 12 };
+      const durationDays = sub.durationDays ?? intervalDaysMap[interval] ?? 30;
+      const staffMonths = intervalStaffMonthsMap[interval] ?? 1;
+
+      const calcAmount =
+        ratePerStudentPerDay * (sub.studentCapacity || 50) * durationDays +
+        staffRatePerStaffPerMonth * (sub.staffCapacity || 5) * staffMonths;
+      const amountPaid = sub.amountPaid !== undefined && sub.amountPaid !== null ? sub.amountPaid : calcAmount;
+
+      const now = new Date();
+      const currentPeriodEnd = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+      const paymentRef = `OFFLINE-${(sub.paymentMethod || "MANUAL").toUpperCase()}-${Date.now()}`;
+
+      await AcademySubscriptionModel.findOneAndUpdate(
+        { academyId: academy.id },
+        {
+          academyId: academy.id,
+          billingInterval: interval,
+          currency,
+          isTrial: false,
+          ratePerStudentPerDay,
+          staffRatePerStaffPerMonth,
+          provisionedCapacity: sub.studentCapacity || 50,
+          provisionedStaffCapacity: sub.staffCapacity || 5,
+          status: "active",
+          currentPeriodEnd,
+          payments: [
+            {
+              orderId: `MANUAL-${Date.now()}`,
+              paymentId: paymentRef,
+              amount: amountPaid,
+              currency,
+              status: "paid",
+              billingInterval: interval,
+              studentCapacity: sub.studentCapacity || 50,
+              staffCapacity: sub.staffCapacity || 5,
+              type: "subscription",
+              paidAt: now,
+              receiptNumber: `REC-${Date.now().toString().slice(-6)}`,
+              paymentMethod: sub.paymentMethod || "bank_transfer",
+              notes: sub.referenceNote || "Super admin manual subscription provisioned at creation",
+            },
+          ],
         },
         { upsert: true, new: true }
       );

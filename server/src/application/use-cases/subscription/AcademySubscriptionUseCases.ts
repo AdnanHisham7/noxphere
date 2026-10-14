@@ -1166,4 +1166,104 @@ export class AcademySubscriptionUseCases {
       defaultTrialStaffCapacity: updated.defaultTrialStaffCapacity,
     };
   }
+
+  async manualProvisionSubscription(
+    academyId: string,
+    dto: {
+      studentCapacity: number;
+      staffCapacity: number;
+      billingInterval: BillingInterval;
+      durationDays?: number;
+      paymentMethod: "cash" | "bank_transfer" | "cheque" | "other" | "waived";
+      amountPaid?: number;
+      referenceNote?: string;
+      actionType?: "new" | "renewal" | "upgrade";
+    },
+    superAdminUserId: string
+  ): Promise<{ status: string; isActive: boolean; subscription: any }> {
+    const academy = await AcademyModel.findById(academyId);
+    if (!academy) {
+      throw new NotFoundError("Academy not found");
+    }
+
+    const currency = (academy.currency || "INR").toUpperCase();
+    const rate = await this.getEffectiveRate(academyId);
+    const staffRate = await this.getEffectiveStaffRate(academyId);
+    const interval = dto.billingInterval || "month";
+    const durationDays = dto.durationDays || DAYS_IN_PERIOD[interval] || 30;
+
+    let subscription = await AcademySubscriptionModel.findOne({ academyId });
+    if (!subscription) {
+      subscription = new AcademySubscriptionModel({
+        academyId,
+        currency,
+        ratePerStudentPerDay: rate,
+        staffRatePerStaffPerMonth: staffRate,
+        provisionedCapacity: dto.studentCapacity,
+        provisionedStaffCapacity: dto.staffCapacity,
+        billingInterval: interval,
+        status: "active",
+        isTrial: false,
+      });
+    }
+
+    const now = new Date();
+    const isRenewal = Boolean(
+      dto.actionType === "renewal" ||
+      (subscription.currentPeriodEnd &&
+        new Date(subscription.currentPeriodEnd) > now &&
+        !subscription.isTrial)
+    );
+
+    let newPeriodEnd: Date;
+    if (isRenewal && subscription.currentPeriodEnd) {
+      newPeriodEnd = new Date(
+        new Date(subscription.currentPeriodEnd).getTime() + durationDays * 24 * 60 * 60 * 1000
+      );
+    } else {
+      newPeriodEnd = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+    }
+
+    const staffMonths = STAFF_MONTHS_IN_PERIOD[interval] ?? 1;
+    const calcAmount =
+      rate * dto.studentCapacity * durationDays +
+      staffRate * dto.staffCapacity * staffMonths;
+    const amountPaid = dto.amountPaid !== undefined && dto.amountPaid !== null ? dto.amountPaid : calcAmount;
+
+    subscription.status = "active";
+    subscription.isTrial = false;
+    subscription.currency = currency;
+    subscription.billingInterval = interval;
+    subscription.provisionedCapacity = dto.studentCapacity;
+    subscription.provisionedStaffCapacity = dto.staffCapacity;
+    subscription.ratePerStudentPerDay = rate;
+    subscription.staffRatePerStaffPerMonth = staffRate;
+    subscription.currentPeriodEnd = newPeriodEnd;
+
+    subscription.payments = subscription.payments || [];
+    subscription.payments.unshift({
+      orderId: `MANUAL-${Date.now()}`,
+      paymentId: `OFFLINE-${dto.paymentMethod.toUpperCase()}-${Date.now()}`,
+      amount: amountPaid,
+      currency,
+      status: "paid",
+      billingInterval: interval,
+      studentCapacity: dto.studentCapacity,
+      staffCapacity: dto.staffCapacity,
+      type: dto.actionType === "new" ? "subscription" : (dto.actionType || (isRenewal ? "renewal" : "subscription")),
+      paidAt: now,
+      receiptNumber: `REC-${Date.now().toString().slice(-6)}`,
+      paymentMethod: dto.paymentMethod,
+      notes: dto.referenceNote || "Super Admin manual subscription provisioned",
+    });
+
+    await subscription.save();
+    await AcademyModel.findByIdAndUpdate(academyId, { isTrial: false });
+
+    return {
+      status: "active",
+      isActive: true,
+      subscription: subscription.toJSON(),
+    };
+  }
 }

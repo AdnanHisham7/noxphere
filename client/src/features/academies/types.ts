@@ -85,6 +85,16 @@ export interface CreateAcademyPayload {
   trialDays?: number;
   trialCapacity?: number;
   trialStaffCapacity?: number;
+  subscriptionPlan?: {
+    mode: "trial" | "paid_manual" | "none";
+    studentCapacity?: number;
+    staffCapacity?: number;
+    billingInterval?: "month" | "quarter" | "half_year" | "year";
+    durationDays?: number;
+    paymentMethod?: "cash" | "bank_transfer" | "cheque" | "other" | "waived";
+    amountPaid?: number;
+    referenceNote?: string;
+  };
   manager: {
     firstName: string;
     lastName: string;
