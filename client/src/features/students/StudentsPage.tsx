@@ -25,6 +25,7 @@ import {
   Skeleton,
   ImageUploadField,
   DocumentUploadField,
+  PageHeader,
 } from "../../components/ui";
 import { toast } from "react-hot-toast";
 import mannequinPng from "../../assets/players/mannequin.png";
@@ -374,59 +375,55 @@ const StudentsPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <p className="section-title mb-1">Management</p>
-          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
-            Squad &amp; Players
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            {isLoading ? "Loading…" : `${data?.total ?? 0} players enrolled`}
-          </p>
-        </div>
-        {canManageSquad && (
-          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-            {academyId && (
+      <PageHeader
+        eyebrow="Management"
+        title="Squad & Players"
+        subtitle={isLoading ? "Loading…" : `${data?.total ?? 0} players enrolled`}
+        actions={
+          canManageSquad ? (
+            <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+              {academyId && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={<Link2 size={14} />}
+                  onClick={() => setShowShareLinkModal(true)}
+                  className="text-xs flex-1 sm:flex-none justify-center"
+                >
+                  Registration Link
+                </Button>
+              )}
+              <Link to="/nfc-cards" className="flex-1 sm:flex-none">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={<CreditCard size={14} />}
+                  className="text-xs w-full justify-center"
+                >
+                  NFC Cards
+                </Button>
+              </Link>
               <Button
                 size="sm"
                 variant="secondary"
-                icon={<Link2 size={14} />}
-                onClick={() => setShowShareLinkModal(true)}
+                icon={<UserPlus size={14} />}
+                onClick={() => setShowClaimModal(true)}
                 className="text-xs flex-1 sm:flex-none justify-center"
               >
-                Registration Link
+                Free Agents
               </Button>
-            )}
-            <Link to="/nfc-cards" className="flex-1 sm:flex-none">
               <Button
                 size="sm"
-                variant="secondary"
-                icon={<CreditCard size={14} />}
-                className="text-xs w-full justify-center"
+                icon={<span>+</span>}
+                onClick={() => setShowAddModal(true)}
+                className="text-xs flex-1 sm:flex-none justify-center"
               >
-                NFC Cards
+                Add Player
               </Button>
-            </Link>
-            <Button
-              size="sm"
-              variant="secondary"
-              icon={<UserPlus size={14} />}
-              onClick={() => setShowClaimModal(true)}
-              className="text-xs flex-1 sm:flex-none justify-center"
-            >
-              Free Agents
-            </Button>
-            <Button
-              size="sm"
-              icon={<span>+</span>}
-              onClick={() => setShowAddModal(true)}
-              className="text-xs flex-1 sm:flex-none justify-center"
-            >
-              Add Player
-            </Button>
-          </div>
-        )}
-      </div>
+            </div>
+          ) : undefined
+        }
+      />
 
       {/* Navigation Tabs */}
       {canManageSquad && (

@@ -11,6 +11,7 @@ import {
   VerifyForgotPasswordOtpSchema,
   ResetForgotPasswordSchema,
 } from '../../../application/dtos/auth.dto';
+import { geoLocationService } from '../../../infrastructure/services/GeoLocationService';
 
 export class AuthController {
   constructor(private readonly authUseCases: AuthUseCases) {}
@@ -29,6 +30,11 @@ export class AuthController {
     try {
       const dto = LoginSchema.parse(req.body);
       const result = await this.authUseCases.login(dto);
+
+      if (result.user.academyId && result.user.role !== 'super_admin') {
+        await geoLocationService.assertAcademyGeoAccess(req, result.user.academyId, result.user.role);
+      }
+
       ResponseHandler.success(res, result, 'Login successful');
     } catch (err) {
       console.log('Error in login controller:', err);

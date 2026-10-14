@@ -10,6 +10,7 @@ export interface ReceiptData {
   currency: string;
   paymentMethod?: string;
   transactionId?: string;
+  paymentBreakdown?: { method: string; amount: number; transactionId?: string }[];
   paidAt: Date;
   receiptNumber: string;
 }
@@ -55,6 +56,15 @@ export function generateReceiptPdf(data: ReceiptData): Promise<Buffer> {
     row("Installment Total:", `${data.currency} ${data.totalInstallmentAmount.toLocaleString("en-IN")}`);
     if (data.paymentMethod) row("Payment Method:", data.paymentMethod);
     if (data.transactionId) row("Transaction ID:", data.transactionId);
+
+    if (data.paymentBreakdown && data.paymentBreakdown.length > 0) {
+      doc.moveDown(0.5);
+      doc.font("Helvetica-Bold").fontSize(10).text("Payment Breakdown:", 50, doc.y);
+      data.paymentBreakdown.forEach((item) => {
+        const itemLine = `• ${item.method.toUpperCase()}: ${data.currency} ${item.amount.toLocaleString("en-IN")}${item.transactionId ? ` (Ref: ${item.transactionId})` : ""}`;
+        doc.font("Helvetica").fontSize(9).text(itemLine, 65, doc.y);
+      });
+    }
 
     doc.moveDown(2);
     doc

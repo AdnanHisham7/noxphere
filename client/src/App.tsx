@@ -33,6 +33,9 @@ const TransferWallPage = lazy(
   () => import("./features/transfer-wall/TransferWallPage"),
 );
 const FeesPage = lazy(() => import("./features/fees/FeesPage"));
+const ExpenseManagementPage = lazy(
+  () => import("./features/expenses/ExpenseManagementPage"),
+);
 const TeamsPage = lazy(() => import("./features/teams/TeamsPage"));
 const TeamManagePage = lazy(() => import("./features/teams/TeamManagePage"));
 const ResourcesPage = lazy(() => import("./features/resources/ResourcesPage"));
@@ -247,6 +250,12 @@ const App: React.FC = () => (
                 <Route path="/coaches" element={<CoachesManagementPage />} />
                 <Route path="/settings" element={<AcademySettingsPage />} />
                 <Route path="/employees" element={<EmployeesManagementPage />} />
+              </Route>
+
+              {/* Manager + Coach Complaints Inbox */}
+              <Route
+                element={<RoleProtectedRoute allowedRoles={["manager", "coach"]} />}
+              >
                 <Route path="/complaints" element={<ComplaintsInboxPage />} />
               </Route>
 
@@ -260,6 +269,15 @@ const App: React.FC = () => (
                 <Route path="/franchises/:franchiseId" element={<FranchiseDashboardPage />} />
                 <Route path="/subscription" element={<SubscriptionManagementPage />} />
                 <Route path="/nfc-cards" element={<NfcCardsRouter />} />
+              </Route>
+
+              {/* Finance Management (Manager, Super Admin, Employee) */}
+              <Route
+                element={
+                  <RoleProtectedRoute allowedRoles={["manager", "super_admin", "employee"]} />
+                }
+              >
+                <Route path="/expenses" element={<ExpenseManagementPage />} />
               </Route>
 
               {/* Super Admin only */}

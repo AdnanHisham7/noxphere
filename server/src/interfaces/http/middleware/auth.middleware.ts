@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { config } from '../../../config/app.config';
 import { UnauthorizedError, ForbiddenError } from '../../../shared/errors/AppError';
 import { UserRole } from '../../../domain/entities/User.entity';
+import { geoLocationService } from '../../../infrastructure/services/GeoLocationService';
 
 export interface JwtPayload {
   sub: string;
@@ -22,7 +23,7 @@ declare global {
   }
 }
 
-export const authenticate = (req: Request, _res: Response, next: NextFunction): void => {
+export const authenticate = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -32,6 +33,11 @@ export const authenticate = (req: Request, _res: Response, next: NextFunction): 
     const token = authHeader.split(' ')[1];
     const payload = jwt.verify(token, config.jwt.accessSecret) as JwtPayload;
     req.user = payload;
+
+    if (req.user && req.user.role !== 'super_admin' && req.user.academyId) {
+      await geoLocationService.assertAcademyGeoAccess(req, req.user.academyId, req.user.role);
+    }
+
     next();
   } catch (err) {
     if (err instanceof jwt.TokenExpiredError) {

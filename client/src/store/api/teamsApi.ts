@@ -5,6 +5,7 @@ export interface Team {
   id: string;
   name: string;
   ageGroup: string;
+  teamFormat?: string;
   coach?: { _id: string; firstName: string; lastName: string };
   description?: string;
   logoUrl?: string;
@@ -20,6 +21,7 @@ export interface FormationPreset {
   id: string;
   label: string;
   formationType: string;
+  teamFormat?: string;
   squad: Record<string, string>;
 }
 
@@ -41,6 +43,7 @@ export interface TeamDetail extends Omit<Team, "coach"> {
 export interface CreateTeamBody {
   name: string;
   ageGroup: string;
+  teamFormat?: string;
   franchiseId?: string;
   academyId?: string;
   coachId?: string;

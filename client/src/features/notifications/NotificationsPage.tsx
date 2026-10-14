@@ -35,6 +35,8 @@ import {
   EmptyState,
   ImageUploadField,
   DocumentUploadField,
+  PageHeader,
+  Tabs,
 } from "../../components/ui";
 import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
@@ -209,73 +211,61 @@ const NotificationsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/5 pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white uppercase tracking-wide">
-              Notifications & Alerts
-            </h1>
-            {unreadAlertsCount > 0 && (
-              <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-ember-500 text-white animate-pulse">
-                {unreadAlertsCount} unread
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            System operational alerts and community-wide broadcasts
-          </p>
-        </div>
-
-        {/* Tab navigation + Action */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-slate-100 dark:bg-pitch-800 p-1 rounded-lg border border-slate-200 dark:border-white/5">
-            <button
-              onClick={() => setActiveTab("system")}
-              className={clsx(
-                "flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors",
-                activeTab === "system"
-                  ? "bg-white text-slate-900 shadow-sm dark:bg-pitch-900 dark:text-volt-400"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              )}
-            >
-              <Bell size={14} />
-              <span>System Alerts</span>
-              {unreadAlertsCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-ember-500 text-white">
-                  {unreadAlertsCount}
-                </span>
-              )}
-            </button>
-
-            {canManageBroadcasts && (
-              <button
-                onClick={() => setActiveTab("broadcasts")}
-                className={clsx(
-                  "flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors",
-                  activeTab === "broadcasts"
-                    ? "bg-white text-slate-900 shadow-sm dark:bg-pitch-900 dark:text-volt-400"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                )}
-              >
-                <Radio size={14} />
-                <span>Sent Broadcasts</span>
-              </button>
-            )}
-          </div>
-
-          {activeTab === "broadcasts" && franchiseId && (
+      <PageHeader
+        eyebrow="Comms & Dispatch"
+        title="Notifications & Alerts"
+        badge={
+          unreadAlertsCount > 0 ? (
+            <Badge variant="red" size="sm" className="animate-pulse">
+              {unreadAlertsCount} unread
+            </Badge>
+          ) : undefined
+        }
+        subtitle="System operational alerts and community-wide broadcasts"
+        actions={
+          activeTab === "broadcasts" && franchiseId ? (
             <Button
+              variant="primary"
               icon={<Plus size={16} />}
               onClick={() => setShowCompose(true)}
-              className="bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold"
+              className="font-bold justify-center"
             >
-              Compose
+              Compose Broadcast
             </Button>
-          )}
-        </div>
-      </div>
+          ) : undefined
+        }
+      />
+
+      {/* Tabs */}
+      <Tabs
+        variant="pills"
+        activeTab={activeTab}
+        onChange={(tabId) => setActiveTab(tabId as "system" | "broadcasts")}
+        tabs={[
+          {
+            id: "system",
+            label: "System Alerts",
+            icon: <Bell size={14} />,
+            badge:
+              unreadAlertsCount > 0 ? (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-ember-500 text-white font-mono">
+                  {unreadAlertsCount}
+                </span>
+              ) : undefined,
+          },
+          ...(canManageBroadcasts
+            ? [
+                {
+                  id: "broadcasts",
+                  label: "Sent Broadcasts",
+                  icon: <Radio size={14} />,
+                },
+              ]
+            : []),
+        ]}
+      />
 
       {/* TAB 1: SYSTEM ALERTS */}
       {activeTab === "system" && (

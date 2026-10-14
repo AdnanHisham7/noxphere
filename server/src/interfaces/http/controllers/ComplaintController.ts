@@ -12,6 +12,7 @@ import { StudentModel } from "../../../infrastructure/database/models/Student.mo
 const CreateComplaintSchema = z.object({
   subject: z.string().min(1).max(150),
   message: z.string().min(1).max(3000),
+  studentId: z.string().optional(),
 });
 
 const RespondSchema = z.object({
@@ -19,10 +20,20 @@ const RespondSchema = z.object({
   status: z.enum(["in_progress", "resolved"]),
 });
 
+const ForwardSchema = z.object({
+  coachIds: z.array(z.string()).min(1, "Select at least one coach"),
+  notes: z.string().max(2000).optional(),
+});
+
+const CoachRespondSchema = z.object({
+  response: z.string().min(1).max(3000),
+});
+
 function assertAcademyAccess(req: Request, academyId: string): void {
   if (req.user!.role === "super_admin") return;
   if (req.user!.role === "manager" && req.user!.academyId === academyId) return;
-  throw new ForbiddenError("You can only manage your own academy's complaints");
+  if (req.user!.role === "coach") return;
+  throw new ForbiddenError("You can only access your own academy's complaints");
 }
 
 export class ComplaintController {
@@ -82,6 +93,7 @@ export class ComplaintController {
         raisedBy: req.user!.sub,
         subject: dto.subject,
         message: dto.message,
+        studentId: dto.studentId,
       });
       ResponseHandler.created(res, complaint, "Complaint submitted");
     } catch (err) {
@@ -94,8 +106,59 @@ export class ComplaintController {
       const academyId = req.params.academyId;
       assertAcademyAccess(req, academyId);
       const status = req.query.status as "open" | "in_progress" | "resolved" | undefined;
-      const complaints = await this.useCases.listForAcademy(academyId, status);
+      const complaints = await this.useCases.listForAcademy(
+        academyId,
+        status,
+        req.user!.sub,
+        req.user!.role,
+      );
       ResponseHandler.success(res, complaints, "Complaints retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  getCandidateCoaches = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { academyId, complaintId } = req.params;
+      assertAcademyAccess(req, academyId);
+      const result = await this.useCases.getCandidateCoachesForComplaint(academyId, complaintId);
+      ResponseHandler.success(res, result, "Candidate coaches retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  forward = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { academyId, complaintId } = req.params;
+      assertAcademyAccess(req, academyId);
+      const dto = ForwardSchema.parse(req.body);
+      const complaint = await this.useCases.forwardToCoaches(
+        complaintId,
+        academyId,
+        req.user!.sub,
+        dto.coachIds,
+        dto.notes,
+      );
+      ResponseHandler.success(res, complaint, "Complaint forwarded to coaches");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  coachRespond = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { academyId, complaintId } = req.params;
+      assertAcademyAccess(req, academyId);
+      const dto = CoachRespondSchema.parse(req.body);
+      const complaint = await this.useCases.coachRespond(
+        complaintId,
+        academyId,
+        req.user!.sub,
+        dto.response,
+      );
+      ResponseHandler.success(res, complaint, "Feedback submitted");
     } catch (err) {
       next(err);
     }

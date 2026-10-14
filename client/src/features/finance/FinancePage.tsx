@@ -32,6 +32,7 @@ import {
   EmptyState,
   Badge,
   Button,
+  PageHeader,
 } from "../../components/ui";
 import { academyApi } from "../../store/api/academyApi";
 import {
@@ -143,38 +144,25 @@ const FinancePage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="pill pill-green font-mono text-2xs uppercase">
-              Platform Operator
-            </span>
-            <span className="text-2xs text-slate-500">
-              Super Admin Finances
-            </span>
-          </div>
-          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
-            Platform Financial Ledger
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5 max-w-2xl">
-            Super Admin revenue derived strictly from Academy SaaS Subscriptions
-            and Smart NFC Card sales.
-          </p>
-        </div>
-
-        <select
-          className="input w-full sm:!w-auto text-xs"
-          value={academyId}
-          onChange={(e) => setAcademyId(e.target.value)}
-        >
-          <option value="">All Academies (Platform-Wide)</option>
-          {academies.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <PageHeader
+        eyebrow="Platform Operator • Super Admin Finances"
+        title="Platform Financial Ledger"
+        subtitle="Super Admin revenue derived strictly from Academy SaaS Subscriptions and Smart NFC Card sales."
+        actions={
+          <select
+            className="input w-full sm:!w-auto text-xs"
+            value={academyId}
+            onChange={(e) => setAcademyId(e.target.value)}
+          >
+            <option value="">All Academies (Platform-Wide)</option>
+            {academies.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        }
+      />
 
       {/* Domain Separation Notice */}
       <div className="card p-3.5 bg-slate-100/70 dark:bg-pitch-800/40 border border-slate-200/80 dark:border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">

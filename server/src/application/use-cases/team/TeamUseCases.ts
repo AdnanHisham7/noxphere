@@ -6,6 +6,7 @@ import { NotFoundError, BadRequestError } from "../../../shared/errors/AppError"
 export interface CreateTeamInput {
   name: string;
   ageGroup: string;
+  teamFormat?: string;
   franchiseId?: string;
   academyId?: string;
   coachId?: string;
@@ -19,6 +20,7 @@ export interface CreateTeamInput {
 export interface UpdateTeamInput {
   name?: string;
   ageGroup?: string;
+  teamFormat?: string;
   coachId?: string;
   description?: string;
   logoUrl?: string;
@@ -31,6 +33,7 @@ export interface FormationPresetInput {
   id: string;
   label: string;
   formationType: string;
+  teamFormat?: string;
   squad: Record<string, string>;
 }
 
@@ -83,6 +86,7 @@ export class TeamUseCases {
       id: t._id.toString(),
       name: t.name,
       ageGroup: t.ageGroup,
+      teamFormat: t.teamFormat || "11s",
       franchiseId: t.franchiseId?._id?.toString() || t.franchiseId?.toString(),
       franchise: t.franchiseId && typeof t.franchiseId === 'object' ? {
         id: t.franchiseId._id.toString(),
@@ -112,12 +116,13 @@ export class TeamUseCases {
       id: fp.id,
       label: fp.label,
       formationType: fp.formationType,
+      teamFormat: fp.teamFormat || "11s",
       squad: fp.squad instanceof Map
         ? Object.fromEntries(fp.squad)
         : (fp.squad && typeof fp.squad === "object" ? { ...fp.squad } : {}),
     }));
 
-    return { ...team, id: team._id.toString(), students, formationPresets };
+    return { ...team, id: team._id.toString(), teamFormat: (team as any).teamFormat || "11s", students, formationPresets };
   }
 
   async updateTeam(id: string, input: UpdateTeamInput) {

@@ -9,6 +9,8 @@ import {
   Avatar,
   Skeleton,
   EmptyState,
+  PageHeader,
+  Tabs,
 } from "../../components/ui";
 import { toast } from "react-hot-toast";
 import { RootState } from "../../store";
@@ -151,67 +153,45 @@ const SelectionPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <p className="section-title mb-1">Process</p>
-          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-2xl uppercase tracking-tight">
-            Selection Tracker
-          </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            {list.length} players in evaluation
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {canBroadcast && (
+      <PageHeader
+        eyebrow="Process"
+        title="Selection Tracker"
+        subtitle={`${list.length} players in evaluation`}
+        actions={
+          <div className="flex items-center gap-2">
+            {canBroadcast && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Send size={14} />}
+                loading={notifying}
+                onClick={handleNotifyAll}
+              >
+                Notify All
+              </Button>
+            )}
             <Button
-              variant="secondary"
               size="sm"
-              icon={<Send size={14} />}
-              loading={notifying}
-              onClick={handleNotifyAll}
+              icon={<Download size={14} />}
+              disabled={list.length === 0}
+              onClick={() => exportCsv(list)}
             >
-              Notify All
+              Export List
             </Button>
-          )}
-          <Button
-            size="sm"
-            icon={<Download size={14} />}
-            disabled={list.length === 0}
-            onClick={() => exportCsv(list)}
-          >
-            Export List
-          </Button>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {/* Phase tabs */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {phases.map((phase, i) => (
-          <button
-            key={phase.id}
-            onClick={() => setActivePhase(i)}
-            className={clsx(
-              "flex items-center gap-2 px-4 py-2 rounded border text-xs font-display font-bold uppercase tracking-wide transition-all",
-              activePhase === i
-                ? "bg-volt-400 text-pitch-900 border-volt-400"
-                : "bg-transparent border-slate-300 dark:border-white/10 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:border-slate-400 dark:hover:border-white/20",
-            )}
-          >
-            <span
-              className={clsx(
-                "w-4 h-4 rounded-full border text-2xs flex items-center justify-center font-900",
-                activePhase === i
-                  ? "border-pitch-900 text-pitch-900"
-                  : "border-slate-600 text-slate-600",
-              )}
-            >
-              {i + 1}
-            </span>
-            <span className="hidden sm:inline">{phase.label}</span>
-            <span className="sm:hidden">Phase {i + 1}</span>
-          </button>
-        ))}
-      </div>
+      <Tabs
+        variant="pills"
+        activeTab={String(activePhase)}
+        onChange={(id) => setActivePhase(Number(id))}
+        tabs={phases.map((p, i) => ({
+          id: String(i),
+          label: p.label,
+        }))}
+      />
 
       {/* Status summary strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">

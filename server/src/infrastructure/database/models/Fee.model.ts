@@ -1,12 +1,19 @@
 // src/infrastructure/database/models/Fee.model.ts
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface PaymentBreakdownItem {
+  method: string;
+  amount: number;
+  transactionId?: string;
+}
+
 export interface FeeAuditLog {
   action: string;
   amount: number;
   installmentNumber: number;
   paymentMethod?: string;
   transactionId?: string;
+  paymentBreakdown?: PaymentBreakdownItem[];
   timestamp: Date;
   performedBy: mongoose.Types.ObjectId;
   performedByName: string;
@@ -31,6 +38,7 @@ export interface FeeDocument extends Document {
     status: string;
     transactionId?: string;
     paymentMethod?: string;
+    paymentBreakdown?: PaymentBreakdownItem[];
     gateway?: string;
     receiptUrl?: string;
     reminderSentCount: number;
@@ -57,6 +65,15 @@ const InstallmentSchema = new Schema({
   },
   transactionId: String,
   paymentMethod: String,
+  paymentBreakdown: {
+    type: [{
+      method: { type: String, required: true },
+      amount: { type: Number, required: true },
+      transactionId: String,
+      _id: false,
+    }],
+    default: undefined,
+  },
   gateway: String,
   receiptUrl: String,
   reminderSentCount: { type: Number, default: 0 },
@@ -69,6 +86,15 @@ const AuditLogSchema = new Schema({
   installmentNumber: { type: Number, required: true },
   paymentMethod: String,
   transactionId: String,
+  paymentBreakdown: {
+    type: [{
+      method: { type: String, required: true },
+      amount: { type: Number, required: true },
+      transactionId: String,
+      _id: false,
+    }],
+    default: undefined,
+  },
   timestamp: { type: Date, default: Date.now },
   performedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   performedByName: { type: String, required: true },

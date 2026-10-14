@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   Clock,
   QrCode,
+  Landmark,
   Layers,
   Table as TableIcon,
   ShieldAlert,
@@ -36,6 +37,7 @@ import {
   EmptyState,
   Avatar,
   ImageUploadField,
+  PageHeader,
 } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
@@ -51,6 +53,7 @@ import {
   type CreateFeeBody,
   type AdminFeeRecord,
   type FeeInstallment,
+  type PaymentBreakdownItem,
 } from "../../store/api/adminFeesApi";
 import { useGetStudentsQuery } from "../../store/api/studentsApi";
 
@@ -76,8 +79,41 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
 
   const qrImageUrl =
     academy?.feeQrImageUrl ?? (academy as any)?.data?.feeQrImageUrl;
+  const paymentMethod =
+    academy?.feePaymentMethod ?? (academy as any)?.data?.feePaymentMethod ?? "qr";
+  const existingBank =
+    academy?.bankDetails ?? (academy as any)?.data?.bankDetails ?? {};
 
-  const handleChange = async (url: string | undefined) => {
+  const [method, setMethod] = useState<"qr" | "bank_transfer" | "both">(paymentMethod);
+  const [bankForm, setBankForm] = useState({
+    beneficiaryName: existingBank.beneficiaryName || "",
+    accountNumber: existingBank.accountNumber || "",
+    ifscCode: existingBank.ifscCode || "",
+    bankName: existingBank.bankName || "",
+    branchName: existingBank.branchName || "",
+    upiId: existingBank.upiId || "",
+  });
+
+  // Keep in sync when academy data loads
+  React.useEffect(() => {
+    if (academy) {
+      const pm = academy.feePaymentMethod ?? (academy as any)?.data?.feePaymentMethod;
+      if (pm) setMethod(pm);
+      const b = academy.bankDetails ?? (academy as any)?.data?.bankDetails;
+      if (b) {
+        setBankForm({
+          beneficiaryName: b.beneficiaryName || "",
+          accountNumber: b.accountNumber || "",
+          ifscCode: b.ifscCode || "",
+          bankName: b.bankName || "",
+          branchName: b.branchName || "",
+          upiId: b.upiId || "",
+        });
+      }
+    }
+  }, [academy]);
+
+  const handleQrChange = async (url: string | undefined) => {
     if (!academyId) {
       toast.error("Academy identification pending. Please try again.");
       return;
@@ -89,11 +125,50 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
       }).unwrap();
       toast.success(url ? "QR code updated" : "QR code removed");
     } catch (err: any) {
-      toast.error(
-        err?.data?.message || "Couldn't save the QR code — try again",
-      );
+      toast.error(err?.data?.message || "Couldn't save the QR code — try again");
     }
   };
+
+  const handleMethodChange = async (newMethod: "qr" | "bank_transfer" | "both") => {
+    setMethod(newMethod);
+    if (!academyId) return;
+    try {
+      await updateConfig({
+        id: academyId,
+        config: { feePaymentMethod: newMethod },
+      }).unwrap();
+      toast.success(`Fee collection method updated to: ${newMethod === "qr" ? "QR Code" : newMethod === "bank_transfer" ? "Bank Transfer" : "Both (QR + Bank)"}`);
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to update payment method");
+    }
+  };
+
+  const handleSaveBankDetails = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!academyId) {
+      toast.error("Academy identification pending. Please try again.");
+      return;
+    }
+    try {
+      await updateConfig({
+        id: academyId,
+        config: {
+          feePaymentMethod: method,
+          bankDetails: bankForm,
+        },
+      }).unwrap();
+      toast.success("Academy bank account details saved successfully");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Couldn't save bank details — try again");
+    }
+  };
+
+  const isConfigured =
+    method === "qr"
+      ? !!qrImageUrl
+      : method === "bank_transfer"
+      ? !!(bankForm.accountNumber && bankForm.ifscCode)
+      : !!qrImageUrl || !!(bankForm.accountNumber && bankForm.ifscCode);
 
   return (
     <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/60 overflow-hidden mb-6 transition-all shadow-xs">
@@ -104,57 +179,198 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
       >
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
-            <QrCode size={16} />
+            {method === "bank_transfer" ? <Landmark size={16} /> : <QrCode size={16} />}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                WhatsApp Payment QR Code
+                Fee Collection &amp; Payment Options
               </span>
               <span
                 className={clsx(
                   "text-[10px] px-1.5 py-0.5 rounded font-semibold",
-                  qrImageUrl
+                  isConfigured
                     ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400",
                 )}
               >
-                {qrImageUrl ? "Configured" : "Not Set"}
+                {method === "qr"
+                  ? "UPI QR Code"
+                  : method === "bank_transfer"
+                  ? "Bank Account"
+                  : "Both (QR + Bank)"}
               </span>
             </div>
             <p className="text-2xs text-slate-400">
-              Attached to WhatsApp due-date reminders sent to guardians.
+              Payment info sent in WhatsApp due-date reminders and displayed in the Guardian Portal.
             </p>
           </div>
         </div>
         <div className="flex items-center gap-1 text-xs text-slate-400">
-          <span>{isOpen ? "Hide settings" : "Configure QR"}</span>
+          <span>{isOpen ? "Hide settings" : "Configure options"}</span>
           {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
         </div>
       </button>
 
       {isOpen && (
-        <div className="p-4 pt-2 border-t border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-pitch-950/40">
-          <div className="max-w-xs">
-            {isLoading && !qrImageUrl ? (
-              <div className="w-[180px] aspect-square rounded-lg bg-slate-900 animate-pulse border border-dashed border-white/10 flex items-center justify-center text-2xs text-slate-400">
-                Loading QR Code…
+        <div className="p-4 pt-3 border-t border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-pitch-950/40 space-y-4">
+          {/* Method selector */}
+          <div>
+            <label className="block text-2xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+              Preferred Payment Method to Share with Guardians
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {[
+                {
+                  id: "qr" as const,
+                  label: "UPI QR Code Only",
+                  desc: "WhatsApp alerts include QR image; Guardians scan to pay",
+                  icon: QrCode,
+                },
+                {
+                  id: "bank_transfer" as const,
+                  label: "Bank Account Only",
+                  desc: "WhatsApp alerts include A/C No, IFSC & Beneficiary details",
+                  icon: Landmark,
+                },
+                {
+                  id: "both" as const,
+                  label: "Both (QR + Bank)",
+                  desc: "Share QR code and Bank transfer info together",
+                  icon: Wallet,
+                },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => handleMethodChange(opt.id)}
+                  className={clsx(
+                    "p-3 rounded-lg border text-left transition-all",
+                    method === opt.id
+                      ? "border-volt-400 bg-volt-400/10 dark:bg-volt-400/5 text-slate-900 dark:text-white ring-1 ring-volt-400/50"
+                      : "border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/10",
+                  )}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <opt.icon size={15} className={method === opt.id ? "text-volt-400" : "text-slate-400"} />
+                    <span className="text-xs font-bold">{opt.label}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                    {opt.desc}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+            {/* QR Code Section */}
+            {(method === "qr" || method === "both") && (
+              <div className="p-3.5 rounded-lg border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 space-y-3">
+                <div className="flex items-center gap-2">
+                  <QrCode size={16} className="text-sky-400" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-white">
+                    UPI Payment QR Code
+                  </span>
+                </div>
+                <div className="max-w-xs">
+                  {isLoading && !qrImageUrl ? (
+                    <div className="w-[180px] aspect-square rounded-lg bg-slate-900 animate-pulse border border-dashed border-white/10 flex items-center justify-center text-2xs text-slate-400">
+                      Loading QR Code…
+                    </div>
+                  ) : (
+                    <ImageUploadField
+                      label="Payment QR code image"
+                      category="fee_qr"
+                      value={qrImageUrl}
+                      onChange={handleQrChange}
+                      shape="square"
+                    />
+                  )}
+                </div>
               </div>
-            ) : (
-              <ImageUploadField
-                label="Payment QR code image"
-                category="fee_qr"
-                value={qrImageUrl}
-                onChange={handleChange}
-                shape="square"
-              />
+            )}
+
+            {/* Bank Account Section */}
+            {(method === "bank_transfer" || method === "both") && (
+              <form
+                onSubmit={handleSaveBankDetails}
+                className="p-3.5 rounded-lg border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Landmark size={16} className="text-emerald-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-white">
+                      Academy Bank Details
+                    </span>
+                  </div>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    loading={saving}
+                    className="text-xs bg-volt-400 hover:bg-volt-300 text-pitch-950 font-bold"
+                  >
+                    Save Details
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <Input
+                    label="Beneficiary / Account Name"
+                    value={bankForm.beneficiaryName}
+                    onChange={(e) =>
+                      setBankForm((prev) => ({ ...prev, beneficiaryName: e.target.value }))
+                    }
+                    placeholder="e.g. Apex Football Academy"
+                    required
+                  />
+                  <Input
+                    label="Bank Name"
+                    value={bankForm.bankName}
+                    onChange={(e) =>
+                      setBankForm((prev) => ({ ...prev, bankName: e.target.value }))
+                    }
+                    placeholder="e.g. HDFC Bank"
+                    required
+                  />
+                  <Input
+                    label="Account Number"
+                    value={bankForm.accountNumber}
+                    onChange={(e) =>
+                      setBankForm((prev) => ({ ...prev, accountNumber: e.target.value }))
+                    }
+                    placeholder="Enter bank account number"
+                    required
+                  />
+                  <Input
+                    label="IFSC Code"
+                    value={bankForm.ifscCode}
+                    onChange={(e) =>
+                      setBankForm((prev) => ({ ...prev, ifscCode: e.target.value.toUpperCase() }))
+                    }
+                    placeholder="e.g. HDFC0001234"
+                    required
+                  />
+                  <Input
+                    label="Branch Name (optional)"
+                    value={bankForm.branchName}
+                    onChange={(e) =>
+                      setBankForm((prev) => ({ ...prev, branchName: e.target.value }))
+                    }
+                    placeholder="e.g. Koramangala Branch"
+                  />
+                  <Input
+                    label="Academy UPI ID (optional)"
+                    value={bankForm.upiId}
+                    onChange={(e) =>
+                      setBankForm((prev) => ({ ...prev, upiId: e.target.value }))
+                    }
+                    placeholder="e.g. academy@hdfcbank"
+                  />
+                </div>
+              </form>
             )}
           </div>
-          {saving && (
-            <p className="text-2xs text-volt-400 mt-2">
-              Saving payment QR code…
-            </p>
-          )}
         </div>
       )}
     </div>
@@ -184,6 +400,7 @@ const FeesPage: React.FC = () => {
     amount: number;
     paymentMethod?: string;
     transactionId?: string;
+    paymentBreakdown?: PaymentBreakdownItem[];
   } | null>(null);
 
   // Accordion expansion tracking
@@ -455,19 +672,11 @@ const FeesPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div>
-          <p className="section-title mb-1">Financial Management</p>
-          <h1 className="font-display text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white uppercase tracking-tight">
-            Player Fees
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Track schedules, collection milestones, and due-date alerts across
-            every enrolled player.
-          </p>
-        </div>
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+      <PageHeader
+        eyebrow="Financial Management"
+        title="Player Fees"
+        subtitle="Track schedules, collection milestones, and due-date alerts across every enrolled player."
+        actions={
           <Button
             icon={<Plus size={15} />}
             onClick={() => {
@@ -478,8 +687,8 @@ const FeesPage: React.FC = () => {
           >
             Schedule fee
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* KPI Overview Metrics Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1108,6 +1317,7 @@ interface FeePlanDetailBlockProps {
     amount: number;
     paymentMethod?: string;
     transactionId?: string;
+    paymentBreakdown?: PaymentBreakdownItem[];
   }) => void;
   isAuditExpanded: boolean;
   onToggleAudit: () => void;
@@ -1194,18 +1404,38 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                   </span>
                 </div>
                 {inst.paidAt && (
-                  <span className="text-[10px] text-slate-400 mt-0.5">
-                    Paid via{" "}
-                    <span className="uppercase font-semibold text-slate-700 dark:text-slate-300">
-                      {inst.paymentMethod || "cash"}
-                    </span>{" "}
-                    on{" "}
-                    {new Date(inst.paidAt).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                    })}
-                    {inst.transactionId && ` (Txn: ${inst.transactionId})`}
-                  </span>
+                  <div className="flex flex-col gap-1 mt-0.5">
+                    <span className="text-[10px] text-slate-400">
+                      Paid via{" "}
+                      <span className="uppercase font-semibold text-slate-700 dark:text-slate-300">
+                        {inst.paymentBreakdown && inst.paymentBreakdown.length > 1
+                          ? "Split Payment"
+                          : inst.paymentMethod || "cash"}
+                      </span>{" "}
+                      on{" "}
+                      {new Date(inst.paidAt).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                      {inst.transactionId && ` (Txn: ${inst.transactionId})`}
+                    </span>
+                    {inst.paymentBreakdown && inst.paymentBreakdown.length > 1 && (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                        {inst.paymentBreakdown.map((item, bIdx) => (
+                          <span
+                            key={bIdx}
+                            className="inline-flex items-center gap-1 text-[9px] font-mono font-medium px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                          >
+                            <span className="uppercase font-bold">{item.method}:</span>
+                            <span>₹{item.amount.toLocaleString("en-IN")}</span>
+                            {item.transactionId && (
+                              <span className="text-slate-400">({item.transactionId})</span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
                 {inst.status !== "paid" &&
                   (inst.reminderSentCount ?? 0) > 0 && (
@@ -1253,6 +1483,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                             amount: inst.paidAmount,
                             paymentMethod: inst.paymentMethod || "cash",
                             transactionId: inst.transactionId || "",
+                            paymentBreakdown: inst.paymentBreakdown,
                           })
                         }
                         className="text-[10px] text-slate-600 dark:text-slate-400 hover:text-volt-600 dark:hover:text-volt-400 font-semibold border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-white/5 rounded px-2 py-1 transition-colors"
@@ -1786,21 +2017,88 @@ const RecordPaymentModal: React.FC<{
   onClose: () => void;
 }> = ({ target, onClose }) => {
   const [recordPayment, { isLoading }] = useRecordPaymentMutation();
-  const [amount, setAmount] = useState(String(target.amount));
-  const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [transactionId, setTransactionId] = useState("");
+  const [isMixed, setIsMixed] = useState(false);
+  const [singleAmount, setSingleAmount] = useState(String(target.amount));
+  const [singleMethod, setSingleMethod] = useState("cash");
+  const [singleTxnId, setSingleTxnId] = useState("");
+
+  const [splitRows, setSplitRows] = useState<
+    { method: string; amount: string; transactionId: string }[]
+  >([
+    { method: "cash", amount: String(Math.floor(target.amount / 2)), transactionId: "" },
+    { method: "upi", amount: String(target.amount - Math.floor(target.amount / 2)), transactionId: "" },
+  ]);
+
+  const totalSplit = useMemo(() => {
+    return splitRows.reduce((acc, row) => acc + (Number(row.amount) || 0), 0);
+  }, [splitRows]);
+
+  const addSplitRow = () => {
+    const diff = Math.max(0, target.amount - totalSplit);
+    setSplitRows((prev) => [
+      ...prev,
+      { method: "upi", amount: diff > 0 ? String(diff) : "", transactionId: "" },
+    ]);
+  };
+
+  const removeSplitRow = (idx: number) => {
+    setSplitRows((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateSplitRow = (
+    idx: number,
+    field: "method" | "amount" | "transactionId",
+    value: string,
+  ) => {
+    setSplitRows((prev) =>
+      prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row)),
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await recordPayment({
-        feeId: target.feeId,
-        installmentNumber: target.installmentNumber,
-        amount: Number(amount),
-        paymentMethod,
-        transactionId: transactionId || undefined,
-      }).unwrap();
-      toast.success("Payment recorded");
+      if (isMixed) {
+        const validBreakdown = splitRows
+          .filter((r) => Number(r.amount) > 0)
+          .map((r) => ({
+            method: r.method,
+            amount: Number(r.amount),
+            transactionId: r.transactionId.trim() || undefined,
+          }));
+
+        if (validBreakdown.length === 0) {
+          toast.error("Please enter valid amounts for the split payment rows");
+          return;
+        }
+
+        const totalAmt = validBreakdown.reduce((sum, r) => sum + r.amount, 0);
+
+        await recordPayment({
+          feeId: target.feeId,
+          installmentNumber: target.installmentNumber,
+          amount: totalAmt,
+          paymentMethod: validBreakdown.length > 1 ? "mixed" : validBreakdown[0].method,
+          transactionId: validBreakdown.map((r) => r.transactionId).filter(Boolean).join(", ") || undefined,
+          paymentBreakdown: validBreakdown,
+        }).unwrap();
+      } else {
+        await recordPayment({
+          feeId: target.feeId,
+          installmentNumber: target.installmentNumber,
+          amount: Number(singleAmount),
+          paymentMethod: singleMethod,
+          transactionId: singleTxnId.trim() || undefined,
+          paymentBreakdown: [
+            {
+              method: singleMethod,
+              amount: Number(singleAmount),
+              transactionId: singleTxnId.trim() || undefined,
+            },
+          ],
+        }).unwrap();
+      }
+      toast.success("Payment recorded successfully");
       onClose();
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't record payment — try again");
@@ -1808,39 +2106,178 @@ const RecordPaymentModal: React.FC<{
   };
 
   return (
-    <Modal isOpen onClose={onClose} title="Record payment" size="sm">
+    <Modal isOpen onClose={onClose} title="Record Payment" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Amount (₹)"
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          required
-        />
-        <div>
-          <label className="label text-xs">Payment method</label>
-          <select
-            className="input text-xs !w-full"
-            value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
+        {/* Toggle Mode: Single vs Mixed */}
+        <div className="flex p-1 bg-slate-100 dark:bg-pitch-950 rounded-lg border border-slate-200 dark:border-white/5">
+          <button
+            type="button"
+            onClick={() => setIsMixed(false)}
+            className={clsx(
+              "flex-1 py-1.5 text-xs font-semibold rounded-md transition-all text-center",
+              !isMixed
+                ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200",
+            )}
           >
-            <option value="cash">Cash</option>
-            <option value="card">Card</option>
-            <option value="upi">UPI</option>
-            <option value="bank_transfer">Bank transfer</option>
-          </select>
+            Single Method
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsMixed(true)}
+            className={clsx(
+              "flex-1 py-1.5 text-xs font-semibold rounded-md transition-all text-center flex items-center justify-center gap-1.5",
+              isMixed
+                ? "bg-volt-400 text-pitch-950 shadow-sm font-bold"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200",
+            )}
+          >
+            <span>Mixed / Split Payment</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-pitch-900/20 font-mono">
+              Cash + UPI
+            </span>
+          </button>
         </div>
-        <Input
-          label="Transaction ID (optional)"
-          value={transactionId}
-          onChange={(e) => setTransactionId(e.target.value)}
-        />
+
+        {!isMixed ? (
+          <div className="space-y-4">
+            <Input
+              label="Amount (₹)"
+              type="number"
+              value={singleAmount}
+              onChange={(e) => setSingleAmount(e.target.value)}
+              required
+            />
+            <div>
+              <label className="label text-xs">Payment Method</label>
+              <select
+                className="input text-xs !w-full"
+                value={singleMethod}
+                onChange={(e) => setSingleMethod(e.target.value)}
+              >
+                <option value="cash">Cash</option>
+                <option value="upi">UPI / GPay / PhonePe</option>
+                <option value="card">Credit / Debit Card</option>
+                <option value="bank_transfer">Bank Transfer / NEFT</option>
+                <option value="cheque">Cheque</option>
+              </select>
+            </div>
+            <Input
+              label="Transaction ID / Ref (optional)"
+              value={singleTxnId}
+              onChange={(e) => setSingleTxnId(e.target.value)}
+              placeholder="e.g. UPI Ref / Bank Txn ID"
+            />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Split Breakdown Rows
+              </span>
+              <button
+                type="button"
+                onClick={addSplitRow}
+                className="text-xs font-semibold text-volt-400 hover:text-volt-300 flex items-center gap-1 transition-colors"
+              >
+                <Plus size={13} />
+                <span>Add Method</span>
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+              {splitRows.map((row, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5"
+                >
+                  <select
+                    className="input text-xs !w-32 shrink-0"
+                    value={row.method}
+                    onChange={(e) => updateSplitRow(idx, "method", e.target.value)}
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="card">Card</option>
+                    <option value="bank_transfer">Bank Txn</option>
+                    <option value="cheque">Cheque</option>
+                  </select>
+
+                  <div className="flex-1 relative">
+                    <input
+                      type="number"
+                      placeholder="Amount (₹)"
+                      value={row.amount}
+                      onChange={(e) => updateSplitRow(idx, "amount", e.target.value)}
+                      className="input text-xs !w-full font-mono font-semibold"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      placeholder="Txn ID (optional)"
+                      value={row.transactionId}
+                      onChange={(e) =>
+                        updateSplitRow(idx, "transactionId", e.target.value)
+                      }
+                      className="input text-xs !w-full"
+                    />
+                  </div>
+
+                  {splitRows.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeSplitRow(idx)}
+                      className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
+                      title="Remove method"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Allocation summary banner */}
+            <div className="p-2.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-pitch-900 flex items-center justify-between text-xs">
+              <div>
+                <span className="text-slate-500 dark:text-slate-400">Total Allocated: </span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">
+                  ₹{totalSplit.toLocaleString("en-IN")}
+                </span>
+                <span className="text-slate-500 mx-1">/</span>
+                <span className="text-slate-500 font-mono">
+                  Due: ₹{target.amount.toLocaleString("en-IN")}
+                </span>
+              </div>
+              <div>
+                {totalSplit === target.amount ? (
+                  <span className="text-emerald-400 font-semibold flex items-center gap-1 font-mono text-[11px]">
+                    <CheckCircle2 size={13} />
+                    Balanced
+                  </span>
+                ) : totalSplit < target.amount ? (
+                  <span className="text-amber-400 font-mono text-[11px]">
+                    Remaining: ₹{(target.amount - totalSplit).toLocaleString("en-IN")}
+                  </span>
+                ) : (
+                  <span className="text-rose-400 font-mono text-[11px]">
+                    Over by ₹{(totalSplit - target.amount).toLocaleString("en-IN")}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <Button
           type="submit"
           loading={isLoading}
-          className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2"
+          className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2 mt-2"
         >
-          Record payment
+          {isMixed ? `Record Split Payment (₹${totalSplit})` : `Record Payment (₹${singleAmount})`}
         </Button>
       </form>
     </Modal>
@@ -1854,29 +2291,112 @@ const EditPaymentModal: React.FC<{
     amount: number;
     paymentMethod?: string;
     transactionId?: string;
+    paymentBreakdown?: PaymentBreakdownItem[];
   };
   onClose: () => void;
 }> = ({ target, onClose }) => {
   const [updatePayment, { isLoading }] = useUpdatePaymentMutation();
-  const [amount, setAmount] = useState(String(target.amount));
-  const [paymentMethod, setPaymentMethod] = useState(
-    target.paymentMethod || "cash",
+  const hasExistingBreakdown = !!(
+    target.paymentBreakdown && target.paymentBreakdown.length > 1
   );
-  const [transactionId, setTransactionId] = useState(
-    target.transactionId || "",
+
+  const [isMixed, setIsMixed] = useState(hasExistingBreakdown);
+  const [singleAmount, setSingleAmount] = useState(String(target.amount));
+  const [singleMethod, setSingleMethod] = useState(
+    target.paymentMethod && target.paymentMethod !== "mixed"
+      ? target.paymentMethod
+      : "cash",
   );
+  const [singleTxnId, setSingleTxnId] = useState(target.transactionId || "");
+
+  const [splitRows, setSplitRows] = useState<
+    { method: string; amount: string; transactionId: string }[]
+  >(() => {
+    if (target.paymentBreakdown && target.paymentBreakdown.length > 0) {
+      return target.paymentBreakdown.map((b) => ({
+        method: b.method,
+        amount: String(b.amount),
+        transactionId: b.transactionId || "",
+      }));
+    }
+    return [
+      {
+        method: target.paymentMethod || "cash",
+        amount: String(target.amount),
+        transactionId: target.transactionId || "",
+      },
+    ];
+  });
+
+  const totalSplit = useMemo(() => {
+    return splitRows.reduce((acc, row) => acc + (Number(row.amount) || 0), 0);
+  }, [splitRows]);
+
+  const addSplitRow = () => {
+    setSplitRows((prev) => [
+      ...prev,
+      { method: "upi", amount: "", transactionId: "" },
+    ]);
+  };
+
+  const removeSplitRow = (idx: number) => {
+    setSplitRows((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateSplitRow = (
+    idx: number,
+    field: "method" | "amount" | "transactionId",
+    value: string,
+  ) => {
+    setSplitRows((prev) =>
+      prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row)),
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await updatePayment({
-        feeId: target.feeId,
-        installmentNumber: target.installmentNumber,
-        amount: Number(amount),
-        paymentMethod,
-        transactionId: transactionId || undefined,
-      }).unwrap();
-      toast.success("Payment details updated");
+      if (isMixed) {
+        const validBreakdown = splitRows
+          .filter((r) => Number(r.amount) > 0)
+          .map((r) => ({
+            method: r.method,
+            amount: Number(r.amount),
+            transactionId: r.transactionId.trim() || undefined,
+          }));
+
+        if (validBreakdown.length === 0) {
+          toast.error("Please provide valid split breakdown amounts");
+          return;
+        }
+
+        const totalAmt = validBreakdown.reduce((sum, r) => sum + r.amount, 0);
+
+        await updatePayment({
+          feeId: target.feeId,
+          installmentNumber: target.installmentNumber,
+          amount: totalAmt,
+          paymentMethod: validBreakdown.length > 1 ? "mixed" : validBreakdown[0].method,
+          transactionId: validBreakdown.map((r) => r.transactionId).filter(Boolean).join(", ") || undefined,
+          paymentBreakdown: validBreakdown,
+        }).unwrap();
+      } else {
+        await updatePayment({
+          feeId: target.feeId,
+          installmentNumber: target.installmentNumber,
+          amount: Number(singleAmount),
+          paymentMethod: singleMethod,
+          transactionId: singleTxnId.trim() || undefined,
+          paymentBreakdown: [
+            {
+              method: singleMethod,
+              amount: Number(singleAmount),
+              transactionId: singleTxnId.trim() || undefined,
+            },
+          ],
+        }).unwrap();
+      }
+      toast.success("Payment details updated successfully");
       onClose();
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't update payment — try again");
@@ -1884,39 +2404,158 @@ const EditPaymentModal: React.FC<{
   };
 
   return (
-    <Modal isOpen onClose={onClose} title="Edit payment details" size="sm">
+    <Modal isOpen onClose={onClose} title="Edit Payment Details" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Amount (₹)"
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          required
-        />
-        <div>
-          <label className="label text-xs">Payment method</label>
-          <select
-            className="input text-xs !w-full"
-            value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
+        {/* Toggle Mode */}
+        <div className="flex p-1 bg-slate-100 dark:bg-pitch-950 rounded-lg border border-slate-200 dark:border-white/5">
+          <button
+            type="button"
+            onClick={() => setIsMixed(false)}
+            className={clsx(
+              "flex-1 py-1.5 text-xs font-semibold rounded-md transition-all text-center",
+              !isMixed
+                ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200",
+            )}
           >
-            <option value="cash">Cash</option>
-            <option value="card">Card</option>
-            <option value="upi">UPI</option>
-            <option value="bank_transfer">Bank transfer</option>
-          </select>
+            Single Method
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsMixed(true)}
+            className={clsx(
+              "flex-1 py-1.5 text-xs font-semibold rounded-md transition-all text-center flex items-center justify-center gap-1.5",
+              isMixed
+                ? "bg-volt-400 text-pitch-950 shadow-sm font-bold"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200",
+            )}
+          >
+            <span>Mixed / Split Payment</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-pitch-900/20 font-mono">
+              Cash + UPI
+            </span>
+          </button>
         </div>
-        <Input
-          label="Transaction ID (optional)"
-          value={transactionId}
-          onChange={(e) => setTransactionId(e.target.value)}
-        />
+
+        {!isMixed ? (
+          <div className="space-y-4">
+            <Input
+              label="Amount (₹)"
+              type="number"
+              value={singleAmount}
+              onChange={(e) => setSingleAmount(e.target.value)}
+              required
+            />
+            <div>
+              <label className="label text-xs">Payment Method</label>
+              <select
+                className="input text-xs !w-full"
+                value={singleMethod}
+                onChange={(e) => setSingleMethod(e.target.value)}
+              >
+                <option value="cash">Cash</option>
+                <option value="upi">UPI / GPay / PhonePe</option>
+                <option value="card">Credit / Debit Card</option>
+                <option value="bank_transfer">Bank Transfer / NEFT</option>
+                <option value="cheque">Cheque</option>
+              </select>
+            </div>
+            <Input
+              label="Transaction ID / Ref (optional)"
+              value={singleTxnId}
+              onChange={(e) => setSingleTxnId(e.target.value)}
+              placeholder="e.g. UPI Ref / Bank Txn ID"
+            />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Split Breakdown Rows
+              </span>
+              <button
+                type="button"
+                onClick={addSplitRow}
+                className="text-xs font-semibold text-volt-400 hover:text-volt-300 flex items-center gap-1 transition-colors"
+              >
+                <Plus size={13} />
+                <span>Add Method</span>
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+              {splitRows.map((row, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5"
+                >
+                  <select
+                    className="input text-xs !w-32 shrink-0"
+                    value={row.method}
+                    onChange={(e) => updateSplitRow(idx, "method", e.target.value)}
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="card">Card</option>
+                    <option value="bank_transfer">Bank Txn</option>
+                    <option value="cheque">Cheque</option>
+                  </select>
+
+                  <div className="flex-1">
+                    <input
+                      type="number"
+                      placeholder="Amount (₹)"
+                      value={row.amount}
+                      onChange={(e) => updateSplitRow(idx, "amount", e.target.value)}
+                      className="input text-xs !w-full font-mono font-semibold"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      placeholder="Txn ID (optional)"
+                      value={row.transactionId}
+                      onChange={(e) =>
+                        updateSplitRow(idx, "transactionId", e.target.value)
+                      }
+                      className="input text-xs !w-full"
+                    />
+                  </div>
+
+                  {splitRows.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeSplitRow(idx)}
+                      className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
+                      title="Remove method"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Allocation summary banner */}
+            <div className="p-2.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-pitch-900 flex items-center justify-between text-xs">
+              <div>
+                <span className="text-slate-500 dark:text-slate-400">Total Updated Amount: </span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">
+                  ₹{totalSplit.toLocaleString("en-IN")}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <Button
           type="submit"
           loading={isLoading}
-          className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2"
+          className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2 mt-2"
         >
-          Save Changes
+          {isMixed ? `Save Changes (₹${totalSplit})` : `Save Changes (₹${singleAmount})`}
         </Button>
       </form>
     </Modal>

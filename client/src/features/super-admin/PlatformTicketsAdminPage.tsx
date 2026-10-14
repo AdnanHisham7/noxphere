@@ -23,7 +23,7 @@ import {
   ShieldAlert,
   type LucideIcon,
 } from "lucide-react";
-import { Badge, Button, Skeleton, EmptyState } from "../../components/ui";
+import { Badge, Button, Skeleton, EmptyState, PageHeader, Card } from "../../components/ui";
 import {
   useListAllPlatformTicketsQuery,
   useReplyPlatformTicketMutation,
@@ -91,47 +91,42 @@ export const PlatformTicketsAdminPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div>
-        <p className="section-title mb-1">Super Administration</p>
-        <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight flex items-center gap-2.5">
-          <LifeBuoy className="text-volt-400" size={26} />
-          Platform Issues & Support Tickets
-        </h1>
-        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-          Review issues, questions, and bug reports submitted by Academy Owners, and reply directly back.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Super Administration"
+        title="Platform Issues & Support Tickets"
+        subtitle="Review issues, questions, and bug reports submitted by Academy Owners, and reply directly back."
+      />
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
-        <div className="card p-3.5 bg-white dark:bg-pitch-900/60 border-slate-200 dark:border-white/10 space-y-1 shadow-sm">
+        <Card className="p-3.5 space-y-1">
           <p className="text-3xs uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">Total Filed</p>
           <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">{stats.total}</p>
-        </div>
-        <div className="card p-3.5 bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/20 space-y-1 shadow-sm">
+        </Card>
+        <Card className="p-3.5 bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/20 space-y-1">
           <p className="text-3xs uppercase font-bold text-amber-600 dark:text-amber-400 tracking-wider flex items-center gap-1">
             <Clock size={11} /> Open
           </p>
           <p className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-300">{stats.open}</p>
-        </div>
-        <div className="card p-3.5 bg-blue-500/5 dark:bg-blue-500/10 border-blue-500/20 space-y-1 shadow-sm">
+        </Card>
+        <Card className="p-3.5 bg-blue-500/5 dark:bg-blue-500/10 border-blue-500/20 space-y-1">
           <p className="text-3xs uppercase font-bold text-blue-600 dark:text-blue-400 tracking-wider flex items-center gap-1">
             <Clock size={11} /> In Progress
           </p>
           <p className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-300">{stats.inProgress}</p>
-        </div>
-        <div className="card p-3.5 bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/20 space-y-1 shadow-sm">
+        </Card>
+        <Card className="p-3.5 bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/20 space-y-1">
           <p className="text-3xs uppercase font-bold text-emerald-600 dark:text-emerald-400 tracking-wider flex items-center gap-1">
             <CheckCircle2 size={11} /> Resolved
           </p>
           <p className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-300">{stats.resolved}</p>
-        </div>
-        <div className="card p-3.5 bg-red-500/5 dark:bg-red-500/10 border-red-500/20 space-y-1 col-span-2 sm:col-span-1 shadow-sm">
+        </Card>
+        <Card className="p-3.5 bg-red-500/5 dark:bg-red-500/10 border-red-500/20 space-y-1 col-span-2 sm:col-span-1">
           <p className="text-3xs uppercase font-bold text-red-600 dark:text-red-400 tracking-wider flex items-center gap-1">
             <Flame size={11} /> Urgent / High
           </p>
           <p className="text-xl sm:text-2xl font-black text-red-600 dark:text-red-300">{stats.urgent}</p>
-        </div>
+        </Card>
       </div>
 
       {/* Filter / Search Bar */}

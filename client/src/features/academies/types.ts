@@ -15,6 +15,16 @@ export interface AcademyPitch {
   isActive?: boolean;
 }
 
+export interface AcademyBankDetails {
+  beneficiaryName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  bankName?: string;
+  branchName?: string;
+  upiId?: string;
+  swiftCode?: string;
+}
+
 export interface Manager {
   id: string;
   firstName: string;
@@ -42,8 +52,18 @@ export interface Academy {
   absentAlertDays: number;
   dueDateAlertDays: number;
   feeQrImageUrl?: string;
+  feePaymentMethod?: "qr" | "bank_transfer" | "both";
+  bankDetails?: AcademyBankDetails;
   logo?: string;
   skillParameters: string[];
+  currency?: string;
+  country?: string;
+  isTrial?: boolean;
+  trialDays?: number;
+  trialStartsAt?: string;
+  trialEndsAt?: string;
+  trialCapacity?: number;
+  trialStaffCapacity?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -59,6 +79,12 @@ export interface CreateAcademyPayload {
   absentAlertDays?: number;
   dueDateAlertDays?: number;
   skillParameters: string[];
+  currency?: string;
+  country?: string;
+  isTrial?: boolean;
+  trialDays?: number;
+  trialCapacity?: number;
+  trialStaffCapacity?: number;
   manager: {
     firstName: string;
     lastName: string;
@@ -66,6 +92,15 @@ export interface CreateAcademyPayload {
     phone: string;
     password: string;
   };
+}
+
+export interface UpdateTrialPayload {
+  isTrial?: boolean;
+  trialDays?: number;
+  extendDays?: number;
+  trialEndsAt?: string;
+  trialCapacity?: number;
+  trialStaffCapacity?: number;
 }
 
 export interface AcademyConfigPayload {
@@ -82,6 +117,8 @@ export interface AcademyConfigPayload {
   absentAlertDays?: number;
   dueDateAlertDays?: number;
   feeQrImageUrl?: string;
+  feePaymentMethod?: "qr" | "bank_transfer" | "both";
+  bankDetails?: AcademyBankDetails;
   logo?: string;
   isActive?: boolean;
 }

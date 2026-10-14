@@ -6,7 +6,7 @@ import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { setActiveFranchise } from "../../store/slices/uiSlice";
-import { Button, Input, Badge, Modal, Skeleton, EmptyState } from "../../components/ui";
+import { Button, Input, Badge, Modal, Skeleton, EmptyState, PageHeader } from "../../components/ui";
 import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useConfirm } from "../../hooks/useConfirm";
@@ -99,20 +99,20 @@ const FranchiseManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <p className="section-title mb-1">Structure</p>
-          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">Franchises</h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            {isSuperAdmin
-              ? "Manage the operational franchises under any academy"
-              : "Manage the franchises under your academy"}
-          </p>
-        </div>
-        {activeAcademyId && canCreateFranchise && (
-          <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)} className="w-full sm:w-auto">New franchise</Button>
-        )}
-      </div>
+      <PageHeader
+        eyebrow="Structure"
+        title="Franchises"
+        subtitle={
+          isSuperAdmin
+            ? "Manage the operational franchises under any academy"
+            : "Manage the franchises under your academy"
+        }
+        actions={
+          activeAcademyId && canCreateFranchise ? (
+            <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)} className="w-full sm:w-auto">New franchise</Button>
+          ) : undefined
+        }
+      />
 
       {isSuperAdmin && (
         <div className="card p-4 flex items-end gap-3">

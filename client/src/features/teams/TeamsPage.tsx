@@ -15,6 +15,7 @@ import {
   Skeleton,
   EmptyState,
   ImageUploadField,
+  PageHeader,
 } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
@@ -79,6 +80,7 @@ const TeamsPage: React.FC = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
   const [ageGroup, setAgeGroup] = useState("");
+  const [teamFormat, setTeamFormat] = useState("11s");
   const [coachId, setCoachId] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
   const [bannerUrl, setBannerUrl] = useState<string | undefined>(undefined);
@@ -91,6 +93,7 @@ const TeamsPage: React.FC = () => {
   const resetCreateForm = () => {
     setName("");
     setAgeGroup("");
+    setTeamFormat("11s");
     setCoachId("");
     setLogoUrl(undefined);
     setBannerUrl(undefined);
@@ -105,6 +108,7 @@ const TeamsPage: React.FC = () => {
       await createTeam({
         name,
         ageGroup,
+        teamFormat,
         franchiseId: isHeadOffice ? undefined : (franchiseId ?? undefined),
         academyId: isHeadOffice ? (academyId ?? undefined) : undefined,
         coachId: coachId || undefined,
@@ -163,28 +167,27 @@ const TeamsPage: React.FC = () => {
   }
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <div>
-          <h1 className="font-display text-xl sm:text-2xl font-bold text-slate-900 dark:text-white uppercase tracking-wide">
-            {isHeadOffice ? "Academy Teams" : "Teams"}
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            {isHeadOffice
-              ? "All squads across all franchises of the academy"
-              : "Batches and squads for this franchise"}
-          </p>
-        </div>
-        {!isHeadOffice && (
-          <Button
-            icon={<Plus size={16} />}
-            onClick={() => setShowCreate(true)}
-            className="w-full sm:w-auto justify-center"
-          >
-            New team
-          </Button>
-        )}
-      </div>
+    <div className="space-y-6 animate-fade-in">
+      <PageHeader
+        eyebrow="Squad Management"
+        title={isHeadOffice ? "Academy Teams" : "Teams"}
+        subtitle={
+          isHeadOffice
+            ? "All squads across all franchises of the academy"
+            : "Batches and squads for this franchise"
+        }
+        actions={
+          !isHeadOffice && (
+            <Button
+              icon={<Plus size={16} />}
+              onClick={() => setShowCreate(true)}
+              className="w-full sm:w-auto justify-center"
+            >
+              New team
+            </Button>
+          )
+        }
+      />
 
       {isLoading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -263,6 +266,9 @@ const TeamsPage: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                         <Badge variant="blue">{team.ageGroup}</Badge>
+                        <Badge variant="yellow" size="sm" className="font-mono font-bold">
+                          {team.teamFormat || "11s"}
+                        </Badge>
                         {team.franchise && (
                           <Badge variant="gray" size="sm">
                             {team.franchise.name}
@@ -383,6 +389,24 @@ const TeamsPage: React.FC = () => {
                 Add categories from Settings first.
               </p>
             )}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+              Squad / Match Format
+            </label>
+            <select
+              value={teamFormat}
+              onChange={(e) => setTeamFormat(e.target.value)}
+              className="input !w-full font-mono text-xs"
+            >
+              <option value="5s">5s — 5-a-side (Futsal / Turf / 5 on Pitch)</option>
+              <option value="6s">6s — 6-a-side (Turf / 6 on Pitch)</option>
+              <option value="7s">7s — 7-a-side (Mini Football / 7 on Pitch)</option>
+              <option value="8s">8s — 8-a-side (8 on Pitch)</option>
+              <option value="9s">9s — 9-a-side (Youth Academy / 9 on Pitch)</option>
+              <option value="10s">10s — 10-a-side (10 on Pitch)</option>
+              <option value="11s">11s — 11-a-side (Full Regulation / 11 on Pitch)</option>
+            </select>
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">

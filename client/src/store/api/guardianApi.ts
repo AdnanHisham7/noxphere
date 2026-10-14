@@ -19,6 +19,50 @@ export interface GuardianChild {
   publicProfileSettings?: PublicProfileSettings;
 }
 
+export interface GuardianFeeUrgencyItem {
+  feeId: string;
+  studentId: string;
+  studentName: string;
+  studentPhoto?: string;
+  feeType: string;
+  installmentNumber: number;
+  amount: number;
+  totalAmount: number;
+  paidAmount: number;
+  dueDate: string;
+  status: string;
+  urgency: "late" | "due_soon" | "upcoming";
+  daysDiff: number;
+  currency: string;
+}
+
+export interface AcademyBankDetails {
+  accountName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  bankName?: string;
+  branchName?: string;
+  upiId?: string;
+}
+
+export interface AcademyPaymentConfig {
+  academyName: string;
+  paymentMethod: "qr" | "bank_transfer" | "both";
+  feeQrImageUrl?: string;
+  bankDetails?: AcademyBankDetails;
+  currency: string;
+}
+
+export interface PayFeePayload {
+  feeId: string;
+  installmentNumber: number;
+  amount: number;
+  paymentMethod?: string;
+  transactionId?: string;
+  notes?: string;
+  paymentBreakdown?: { method: string; amount: number; transactionId?: string }[];
+}
+
 export interface GuardianDashboard {
   children: {
     id: string;
@@ -29,8 +73,10 @@ export interface GuardianDashboard {
     overallRating: number;
   }[];
   todayAttendance: { studentId: string; status: string }[];
-  upcomingFees: { studentId: string; installmentNumber: number; amount: number; dueDate: string }[];
-  overdueFees: { studentId: string; installmentNumber: number; amount: number; dueDate: string }[];
+  lateFees: GuardianFeeUrgencyItem[];
+  pendingFees: GuardianFeeUrgencyItem[];
+  upcomingFees: GuardianFeeUrgencyItem[];
+  overdueFees?: GuardianFeeUrgencyItem[];
 }
 
 export interface AttendanceRecord {
@@ -148,6 +194,19 @@ export const guardianApi = baseApi.injectEndpoints({
         Array.isArray(res) ? res : (res as any).data ?? [],
       providesTags: (_r, _e, studentId) => [{ type: "Schedule", id: `child-${studentId}` }],
     }),
+    getChildPaymentConfig: builder.query<AcademyPaymentConfig, string>({
+      query: (studentId) => `/guardian/children/${studentId}/payment-config`,
+      transformResponse: (res: { data: AcademyPaymentConfig }) => res.data,
+      providesTags: (_r, _e, id) => [{ type: "Fee", id: `config-${id}` }],
+    }),
+    payChildFee: builder.mutation<any, PayFeePayload>({
+      query: ({ feeId, installmentNumber, ...body }) => ({
+        url: `/guardian/fees/${feeId}/installments/${installmentNumber}/pay`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Fee", "Student"],
+    }),
   }),
 });
 
@@ -160,4 +219,6 @@ export const {
   useGetChildPerformanceQuery,
   useGetChildRemarksQuery,
   useGetChildSessionsQuery,
+  useGetChildPaymentConfigQuery,
+  usePayChildFeeMutation,
 } = guardianApi;

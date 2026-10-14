@@ -47,6 +47,33 @@ export class GuardianController {
     }
   };
 
+  getChildPaymentConfig = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const config = await this.guardianUseCases.getChildPaymentConfig(
+        req.user!.sub,
+        req.params.studentId,
+      );
+      ResponseHandler.success(res, config, "Payment configuration retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  payChildFee = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { feeId, installmentNumber } = req.params;
+      const result = await this.guardianUseCases.payChildFee(
+        req.user!.sub,
+        feeId,
+        Number(installmentNumber),
+        req.body,
+      );
+      ResponseHandler.success(res, result, "Payment recorded successfully");
+    } catch (err) {
+      next(err);
+    }
+  };
+
   getChildPerformance = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const performance = await this.guardianUseCases.getChildPerformance(

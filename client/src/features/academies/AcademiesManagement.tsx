@@ -18,8 +18,11 @@ import {
   Ban,
   LayoutDashboard,
   AlertTriangle,
+  Clock,
+  Globe2,
+  CheckCircle2,
 } from "lucide-react";
-import { Button, Input, Modal, Badge, StatCard, ImageUploadField } from "../../components/ui";
+import { Button, Input, Modal, Badge, StatCard, ImageUploadField, PageHeader } from "../../components/ui";
 import { PlatformBillingCard } from "./PlatformBillingCard";
 import { baseApi } from "../../store/api/baseApi";
 import { academyApi } from "@/store/api/academyApi";
@@ -33,6 +36,7 @@ const useUpdateAcademyConfig = academyApi.useUpdateAcademyConfigMutation;
 const useToggleAcademyStatus = academyApi.useToggleAcademyStatusMutation;
 const useToggleTransferWall = academyApi.useToggleTransferWallMutation;
 const useDeleteAcademy = academyApi.useDeleteAcademyMutation;
+const useUpdateAcademyTrial = academyApi.useUpdateAcademyTrialMutation;
 
 // Helper to get manager full name
 const getManagerName = (academy: Academy): string => {
@@ -113,11 +117,93 @@ const AcademiesManagement: React.FC = () => {
     }
   };
 
+  const CURRENCY_OPTIONS = [
+    { currency: "INR", country: "IN", countryName: "India", symbol: "₹" },
+    { currency: "SAR", country: "SA", countryName: "Saudi Arabia", symbol: "SAR" },
+    { currency: "OMR", country: "OM", countryName: "Oman", symbol: "OMR" },
+    { currency: "USD", country: "US", countryName: "United States", symbol: "$" },
+    { currency: "AED", country: "AE", countryName: "UAE", symbol: "AED" },
+    { currency: "EUR", country: "EU", countryName: "European Union", symbol: "€" },
+    { currency: "GBP", country: "GB", countryName: "United Kingdom", symbol: "£" },
+  ];
+
+  // Trial Management Modal State
+  const [updateAcademyTrial, { isLoading: isUpdatingTrial }] = useUpdateAcademyTrial();
+  const [trialModalAcademy, setTrialModalAcademy] = useState<Academy | null>(null);
+  const [trialCapacityInput, setTrialCapacityInput] = useState("50");
+  const [trialStaffCapacityInput, setTrialStaffCapacityInput] = useState("5");
+
+  const handleExtendTrial = async (days: number) => {
+    if (!trialModalAcademy) return;
+    try {
+      await updateAcademyTrial({
+        id: trialModalAcademy.id,
+        data: {
+          extendDays: days,
+          isTrial: true,
+          trialCapacity: trialCapacityInput ? parseInt(trialCapacityInput) : undefined,
+          trialStaffCapacity: trialStaffCapacityInput ? parseInt(trialStaffCapacityInput) : undefined,
+        },
+      }).unwrap();
+      toast.success(`Trial extended by ${days} days!`);
+      setTrialModalAcademy(null);
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to extend trial");
+    }
+  };
+
+  const handleEndTrial = async () => {
+    if (!trialModalAcademy) return;
+    const ok = await confirm({
+      title: "End Trial Immediately?",
+      message: `Are you sure you want to conclude the free trial for "${trialModalAcademy.name}"? This academy will immediately require a paid subscription to continue operations.`,
+      confirmLabel: "End Trial",
+      danger: true,
+    });
+    if (!ok) return;
+
+    try {
+      await updateAcademyTrial({
+        id: trialModalAcademy.id,
+        data: { isTrial: false },
+      }).unwrap();
+      toast.success("Trial concluded for this academy");
+      setTrialModalAcademy(null);
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to end trial");
+    }
+  };
+
+  const handleStartNewTrial = async (days: number = 14) => {
+    if (!trialModalAcademy) return;
+    try {
+      await updateAcademyTrial({
+        id: trialModalAcademy.id,
+        data: {
+          isTrial: true,
+          trialDays: days,
+          trialCapacity: trialCapacityInput ? parseInt(trialCapacityInput) : undefined,
+          trialStaffCapacity: trialStaffCapacityInput ? parseInt(trialStaffCapacityInput) : undefined,
+        },
+      }).unwrap();
+      toast.success(`Started new ${days}-day trial!`);
+      setTrialModalAcademy(null);
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to start trial");
+    }
+  };
+
   // Add Academy form state
   const [newAcademyForm, setNewAcademyForm] = useState({
     name: "",
     academyCode: "",
     logo: "",
+    currency: "INR",
+    country: "IN",
+    isTrial: true,
+    trialDays: 14,
+    trialCapacity: 50,
+    trialStaffCapacity: 5,
     location: {
       name: "",
       address: "",
@@ -161,6 +247,12 @@ const AcademiesManagement: React.FC = () => {
       name: newAcademyForm.name,
       academyCode: newAcademyForm.academyCode || undefined,
       logo: newAcademyForm.logo || undefined,
+      currency: newAcademyForm.currency,
+      country: newAcademyForm.country,
+      isTrial: newAcademyForm.isTrial,
+      trialDays: Number(newAcademyForm.trialDays),
+      trialCapacity: Number(newAcademyForm.trialCapacity),
+      trialStaffCapacity: Number(newAcademyForm.trialStaffCapacity),
       location: {
         ...newAcademyForm.location,
         latitude: Number(newAcademyForm.location.latitude),
@@ -184,6 +276,12 @@ const AcademiesManagement: React.FC = () => {
         name: "",
         academyCode: "",
         logo: "",
+        currency: "INR",
+        country: "IN",
+        isTrial: true,
+        trialDays: 14,
+        trialCapacity: 50,
+        trialStaffCapacity: 5,
         location: {
           name: "",
           address: "",
@@ -254,77 +352,73 @@ const AcademiesManagement: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-        <div>
-          <p className="section-title mb-1">Infrastructure</p>
-          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
-            Academies Management
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            {academies.length} total branches
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          {/* Search & Filter */}
-          <Input
-            placeholder="Search by name or code..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full sm:w-48"
-          />
-          <select
-            className="bg-white dark:bg-pitch-700 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-white rounded px-2 py-1 text-sm flex-1 sm:flex-initial"
-            value={
-              activeFilter === undefined
-                ? "all"
-                : activeFilter
-                  ? "active"
-                  : "inactive"
-            }
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === "all") setActiveFilter(undefined);
-              else if (val === "active") setActiveFilter(true);
-              else setActiveFilter(false);
-            }}
-          >
-            <option value="all">All</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-          <div className="flex bg-slate-100 dark:bg-pitch-700 p-1 rounded border border-slate-200 dark:border-white/5">
-            <button
-              onClick={() => setViewMode("table")}
-              className={clsx(
-                "p-1.5 rounded transition-all",
-                viewMode === "table"
-                  ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
-              )}
+      <PageHeader
+        eyebrow="Infrastructure"
+        title="Academies Management"
+        subtitle={`${academies.length} total branches`}
+        actions={
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            {/* Search & Filter */}
+            <Input
+              placeholder="Search by name or code..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full sm:w-48"
+            />
+            <select
+              className="bg-white dark:bg-pitch-700 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-white rounded px-2 py-1 text-sm flex-1 sm:flex-initial"
+              value={
+                activeFilter === undefined
+                  ? "all"
+                  : activeFilter
+                    ? "active"
+                    : "inactive"
+              }
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "all") setActiveFilter(undefined);
+                else if (val === "active") setActiveFilter(true);
+                else setActiveFilter(false);
+              }}
             >
-              <List size={16} />
-            </button>
-            <button
-              onClick={() => setViewMode("card")}
-              className={clsx(
-                "p-1.5 rounded transition-all",
-                viewMode === "card"
-                  ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
-              )}
+              <option value="all">All</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <div className="flex bg-slate-100 dark:bg-pitch-700 p-1 rounded border border-slate-200 dark:border-white/5">
+              <button
+                onClick={() => setViewMode("table")}
+                className={clsx(
+                  "p-1.5 rounded transition-all",
+                  viewMode === "table"
+                    ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
+                )}
+              >
+                <List size={16} />
+              </button>
+              <button
+                onClick={() => setViewMode("card")}
+                className={clsx(
+                  "p-1.5 rounded transition-all",
+                  viewMode === "card"
+                    ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
+                )}
+              >
+                <LayoutGrid size={16} />
+              </button>
+            </div>
+            <Button
+              onClick={() => setIsAddModalOpen(true)}
+              icon={<Plus size={18} />}
+              className="w-full sm:w-auto justify-center"
             >
-              <LayoutGrid size={16} />
-            </button>
+              New Academy
+            </Button>
           </div>
-          <Button
-            onClick={() => setIsAddModalOpen(true)}
-            icon={<Plus size={18} />}
-            className="w-full sm:w-auto justify-center"
-          >
-            New Academy
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       <PlatformBillingCard />
 
@@ -361,6 +455,8 @@ const AcademiesManagement: React.FC = () => {
               <tr className="border-b border-white/5 bg-pitch-700/50">
                 <th className="text-left px-5 py-3 section-title">Academy</th>
                 <th className="text-left px-5 py-3 section-title">Code</th>
+                <th className="text-left px-5 py-3 section-title">Currency &amp; Country</th>
+                <th className="text-left px-5 py-3 section-title">Plan / Trial</th>
                 <th className="text-left px-5 py-3 section-title">Manager</th>
                 <th className="text-center px-5 py-3 section-title">Status</th>
                 <th className="text-right px-5 py-3 section-title">Actions</th>
@@ -393,6 +489,37 @@ const AcademiesManagement: React.FC = () => {
                   </td>
                   <td className="px-5 py-4 text-sm font-mono text-slate-400">
                     {academy.academyCode}
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className="font-mono font-bold text-xs text-white block">
+                      {academy.currency || "INR"}
+                    </span>
+                    <span className="text-2xs text-slate-400 flex items-center gap-1">
+                      <Globe2 size={11} className="text-volt-400" /> {academy.country || "IN"}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4">
+                    {academy.isTrial ? (
+                      (() => {
+                        const isExpired = academy.trialEndsAt && new Date(academy.trialEndsAt) < new Date();
+                        const daysLeft = academy.trialEndsAt
+                          ? Math.max(0, Math.ceil((new Date(academy.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                          : 0;
+                        return isExpired ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                            Trial Expired
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                            <Clock size={11} /> Trial ({daysLeft}d left)
+                          </span>
+                        );
+                      })()
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        Paid Plan
+                      </span>
+                    )}
                   </td>
                   <td className="px-5 py-4 text-sm text-slate-300">
                     {getManagerName(academy)}
@@ -453,6 +580,17 @@ const AcademiesManagement: React.FC = () => {
                       </button>
                       <button
                         onClick={() => {
+                          setTrialModalAcademy(academy);
+                          setTrialCapacityInput(String(academy.trialCapacity || 50));
+                          setTrialStaffCapacityInput(String(academy.trialStaffCapacity || 5));
+                        }}
+                        className="p-2 rounded border border-amber-400/20 text-amber-400 bg-amber-400/5 hover:bg-amber-400/15 transition-all"
+                        title="Manage Academy Free Trial"
+                      >
+                        <Clock size={14} />
+                      </button>
+                      <button
+                        onClick={() => {
                           setSelectedAcademy(academy);
                           setConfigModalOpen(true);
                         }}
@@ -467,7 +605,7 @@ const AcademiesManagement: React.FC = () => {
               ))}
               {academies.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="text-center py-8 text-slate-500">
+                  <td colSpan={7} className="text-center py-8 text-slate-500">
                     No academies found.
                   </td>
                 </tr>
@@ -496,14 +634,42 @@ const AcademiesManagement: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-white font-bold group-hover:text-volt-400 transition-colors">{academy.name}</h3>
-                    <p className="text-2xs text-slate-500 uppercase tracking-widest">
-                      {academy.academyCode}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-2xs text-slate-500 uppercase tracking-widest font-mono">
+                        {academy.academyCode}
+                      </p>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 font-mono text-slate-300 border border-white/10 flex items-center gap-1">
+                        <Globe2 size={10} className="text-volt-400" /> {academy.currency || "INR"} ({academy.country || "IN"})
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <Badge variant={academy.isActive ? "green" : "red"}>
-                  {academy.isActive ? "Active" : "Offline"}
-                </Badge>
+                <div className="flex flex-col items-end gap-1.5">
+                  <Badge variant={academy.isActive ? "green" : "red"}>
+                    {academy.isActive ? "Active" : "Offline"}
+                  </Badge>
+                  {academy.isTrial ? (
+                    (() => {
+                      const isExpired = academy.trialEndsAt && new Date(academy.trialEndsAt) < new Date();
+                      const daysLeft = academy.trialEndsAt
+                        ? Math.max(0, Math.ceil((new Date(academy.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                        : 0;
+                      return isExpired ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                          Trial Expired
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                          <Clock size={10} /> {daysLeft}d left
+                        </span>
+                      );
+                    })()
+                  ) : (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      Paid Plan
+                    </span>
+                  )}
+                </div>
               </div>
               {!academy.transferWallEnabled && (
                 <Badge variant="gray" className="mt-2">Transfer Wall Disabled</Badge>
@@ -517,6 +683,19 @@ const AcademiesManagement: React.FC = () => {
                   icon={<LayoutDashboard size={14} />}
                 >
                   Dashboard
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="text-xs"
+                  size="sm"
+                  onClick={() => {
+                    setTrialModalAcademy(academy);
+                    setTrialCapacityInput(String(academy.trialCapacity || 50));
+                    setTrialStaffCapacityInput(String(academy.trialStaffCapacity || 5));
+                  }}
+                  icon={<Clock size={14} className="text-amber-400" />}
+                >
+                  Trial
                 </Button>
                 <Button
                   variant="secondary"
@@ -613,6 +792,80 @@ const AcademiesManagement: React.FC = () => {
                 })
               }
             />
+          </div>
+
+          {/* Currency, Jurisdiction & Free Trial Setup */}
+          <div className="bg-slate-50 dark:bg-pitch-800/60 p-3.5 rounded-lg border border-slate-200 dark:border-white/5 space-y-3">
+            <p className="text-xs font-bold text-volt-500 dark:text-volt-400 uppercase tracking-tight flex items-center gap-1.5">
+              <Globe2 size={14} /> Currency, Country &amp; Free Trial Policy
+            </p>
+            <div>
+              <label className="text-xs font-semibold text-slate-300 block mb-1">
+                Operating Currency &amp; Country Jurisdiction *
+              </label>
+              <select
+                className="input w-full bg-pitch-900 border border-white/10 rounded-lg p-2 text-xs text-white"
+                value={newAcademyForm.currency}
+                onChange={(e) => {
+                  const opt = CURRENCY_OPTIONS.find((c) => c.currency === e.target.value);
+                  setNewAcademyForm({
+                    ...newAcademyForm,
+                    currency: e.target.value,
+                    country: opt?.country || "IN",
+                  });
+                }}
+              >
+                {CURRENCY_OPTIONS.map((c) => (
+                  <option key={c.currency} value={c.currency}>
+                    {c.currency} ({c.symbol}) — {c.countryName}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-emerald-400 mt-1 font-mono">
+                Geo-Fencing: Operations and logins under this academy will be strictly restricted to {newAcademyForm.country}.
+              </p>
+            </div>
+
+            <div className="pt-2 border-t border-white/5 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-white block">Start in Free Trial Mode</span>
+                  <span className="text-[10px] text-slate-400">Allow academy to test the platform before paid purchase</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={newAcademyForm.isTrial}
+                  onChange={(e) => setNewAcademyForm({ ...newAcademyForm, isTrial: e.target.checked })}
+                  className="w-4 h-4 rounded text-volt-400 focus:ring-volt-400 cursor-pointer"
+                />
+              </div>
+
+              {newAcademyForm.isTrial && (
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  <Input
+                    label="Trial Days"
+                    type="number"
+                    min="1"
+                    value={newAcademyForm.trialDays}
+                    onChange={(e) => setNewAcademyForm({ ...newAcademyForm, trialDays: parseInt(e.target.value) || 14 })}
+                  />
+                  <Input
+                    label="Player Capacity"
+                    type="number"
+                    min="1"
+                    value={newAcademyForm.trialCapacity}
+                    onChange={(e) => setNewAcademyForm({ ...newAcademyForm, trialCapacity: parseInt(e.target.value) || 50 })}
+                  />
+                  <Input
+                    label="Staff Capacity"
+                    type="number"
+                    min="0"
+                    value={newAcademyForm.trialStaffCapacity}
+                    onChange={(e) => setNewAcademyForm({ ...newAcademyForm, trialStaffCapacity: parseInt(e.target.value) || 5 })}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-lg border border-slate-200 dark:border-white/5 space-y-3">
@@ -1007,6 +1260,184 @@ const AcademiesManagement: React.FC = () => {
                 Discard
               </Button>
             </div>
+          </div>
+        </Modal>
+      )}
+      {/* Manage Trial Modal */}
+      {trialModalAcademy && (
+        <Modal
+          isOpen={true}
+          onClose={() => setTrialModalAcademy(null)}
+          title={`Trial Engine: ${trialModalAcademy.name}`}
+          size="md"
+        >
+          <div className="space-y-5">
+            {/* Status Card */}
+            <div className="p-4 rounded-xl bg-pitch-950/70 border border-white/5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                  Current Trial Status
+                </span>
+                {trialModalAcademy.isTrial ? (
+                  (() => {
+                    const isExpired = trialModalAcademy.trialEndsAt && new Date(trialModalAcademy.trialEndsAt) < new Date();
+                    const daysLeft = trialModalAcademy.trialEndsAt
+                      ? Math.max(0, Math.ceil((new Date(trialModalAcademy.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                      : 0;
+                    return isExpired ? (
+                      <span className="px-2.5 py-1 rounded-full text-2xs font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                        Trial Expired
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-full text-2xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1.5">
+                        <Clock size={12} /> Trial Active ({daysLeft} days remaining)
+                      </span>
+                    );
+                  })()
+                ) : (
+                  <span className="px-2.5 py-1 rounded-full text-2xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    Paid / Regular Plan
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs pt-1 border-t border-white/5">
+                <div>
+                  <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider block">
+                    Operating Currency
+                  </span>
+                  <span className="font-bold text-white mt-0.5 block">
+                    {trialModalAcademy.currency || "INR"} ({trialModalAcademy.country || "IN"})
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider block">
+                    Trial Expiration Date
+                  </span>
+                  <span className="font-mono text-volt-400 font-bold mt-0.5 block">
+                    {trialModalAcademy.trialEndsAt
+                      ? new Date(trialModalAcademy.trialEndsAt).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "No Expiration Set"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Capacity Controls */}
+            <div className="space-y-3">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
+                Trial Capacity Quotas
+              </span>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Player Capacity"
+                  type="number"
+                  min="1"
+                  value={trialCapacityInput}
+                  onChange={(e) => setTrialCapacityInput(e.target.value)}
+                />
+                <Input
+                  label="Staff Capacity"
+                  type="number"
+                  min="0"
+                  value={trialStaffCapacityInput}
+                  onChange={(e) => setTrialStaffCapacityInput(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            {trialModalAcademy.isTrial ? (
+              <div className="space-y-3 pt-2 border-t border-white/5">
+                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
+                  Extend Trial Duration
+                </span>
+                <p className="text-2xs text-slate-400">
+                  Instantly grant additional testing days to this academy:
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    loading={isUpdatingTrial}
+                    onClick={() => handleExtendTrial(7)}
+                    className="font-bold"
+                  >
+                    +7 Days
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    loading={isUpdatingTrial}
+                    onClick={() => handleExtendTrial(14)}
+                    className="font-bold"
+                  >
+                    +14 Days
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    loading={isUpdatingTrial}
+                    onClick={() => handleExtendTrial(30)}
+                    className="font-bold"
+                  >
+                    +30 Days
+                  </Button>
+                </div>
+
+                <div className="pt-3 flex justify-between items-center">
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    loading={isUpdatingTrial}
+                    onClick={handleEndTrial}
+                    className="text-2xs"
+                  >
+                    End Trial Immediately
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setTrialModalAcademy(null)}
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3 pt-2 border-t border-white/5">
+                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
+                  Activate New Trial
+                </span>
+                <p className="text-2xs text-slate-400">
+                  Place this academy into a free trial period to test features before subscribing:
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    loading={isUpdatingTrial}
+                    onClick={() => handleStartNewTrial(14)}
+                    className="flex-1 font-bold"
+                  >
+                    Start 14-Day Free Trial
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    loading={isUpdatingTrial}
+                    onClick={() => handleStartNewTrial(30)}
+                    className="flex-1 font-bold"
+                  >
+                    Start 30-Day Free Trial
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
       )}

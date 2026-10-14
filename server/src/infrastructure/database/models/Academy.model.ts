@@ -30,8 +30,26 @@ export interface AcademyDocument extends Document {
   // WhatsApp alert (see NotificationService.sendFeeDueAlert). Uploaded by
   // the manager from the Fees page.
   feeQrImageUrl?: string;
+  feePaymentMethod?: "qr" | "bank_transfer" | "both";
+  bankDetails?: {
+    beneficiaryName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
+    bankName?: string;
+    branchName?: string;
+    upiId?: string;
+    swiftCode?: string;
+  };
   logo?: string;
   skillParameters: string[];
+  currency: string;
+  country: string;
+  isTrial: boolean;
+  trialDays?: number;
+  trialStartsAt?: Date;
+  trialEndsAt?: Date;
+  trialCapacity?: number;
+  trialStaffCapacity?: number;
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -87,6 +105,20 @@ const AcademySchema = new Schema<AcademyDocument>(
     absentAlertDays: { type: Number, default: 5, min: 1 },
     dueDateAlertDays: { type: Number, default: 3, min: 0 },
     feeQrImageUrl: { type: String },
+    feePaymentMethod: {
+      type: String,
+      enum: ["qr", "bank_transfer", "both"],
+      default: "qr",
+    },
+    bankDetails: {
+      beneficiaryName: { type: String, trim: true },
+      accountNumber: { type: String, trim: true },
+      ifscCode: { type: String, trim: true },
+      bankName: { type: String, trim: true },
+      branchName: { type: String, trim: true },
+      upiId: { type: String, trim: true },
+      swiftCode: { type: String, trim: true },
+    },
     logo: { type: String, trim: true },
     skillParameters: {
       type: [String],
@@ -105,6 +137,14 @@ const AcademySchema = new Schema<AcademyDocument>(
         "Attitude",
       ],
     },
+    currency: { type: String, default: "INR", uppercase: true, trim: true },
+    country: { type: String, default: "IN", uppercase: true, trim: true },
+    isTrial: { type: Boolean, default: false },
+    trialDays: { type: Number, default: 14 },
+    trialStartsAt: { type: Date },
+    trialEndsAt: { type: Date },
+    trialCapacity: { type: Number, default: 50 },
+    trialStaffCapacity: { type: Number, default: 5 },
     deletedAt: { type: Date, index: true },
   },
   {

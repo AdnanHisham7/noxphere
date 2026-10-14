@@ -97,7 +97,11 @@ feeReminderQueue.process(async (job) => {
     }
 
     const franchise = await FranchiseModel.findById(fee.franchiseId).select('academyId').lean();
-    const academy = franchise ? await AcademyModel.findById(franchise.academyId).select('dueDateAlertDays feeQrImageUrl').lean() : null;
+    const academy = franchise
+      ? await AcademyModel.findById(franchise.academyId)
+          .select('dueDateAlertDays feeQrImageUrl feePaymentMethod bankDetails')
+          .lean()
+      : null;
 
     const instDueDate = new Date(installment.dueDate);
     const daysUntilDue = Math.ceil((instDueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -110,6 +114,8 @@ feeReminderQueue.process(async (job) => {
       daysUntilDue,
       fee.franchiseId.toString(),
       academy?.feeQrImageUrl,
+      academy?.bankDetails,
+      (academy?.feePaymentMethod as any) || 'qr',
     );
 
     installment.reminderSentCount = (installment.reminderSentCount || 0) + 1;
@@ -225,7 +231,7 @@ export class SchedulerService {
       if (activeFranchises.length === 0) return 0;
 
       const academyIds = [...new Set(activeFranchises.map((f) => f.academyId?.toString()).filter(Boolean))];
-      const academies = await AcademyModel.find({ _id: { $in: academyIds } }).select('_id dueDateAlertDays feeQrImageUrl').lean();
+      const academies = await AcademyModel.find({ _id: { $in: academyIds } }).select('_id dueDateAlertDays feeQrImageUrl feePaymentMethod bankDetails').lean();
       const academyMap = new Map(academies.map((a) => [a._id.toString(), a]));
 
       for (const franchise of activeFranchises) {
@@ -233,6 +239,8 @@ export class SchedulerService {
         const academy = academyMap.get(franchise.academyId.toString());
         const daysBefore = academy?.dueDateAlertDays ?? 3;
         const qrImageUrl = academy?.feeQrImageUrl;
+        const bankDetails = academy?.bankDetails;
+        const feePaymentMethod = (academy?.feePaymentMethod as any) || 'qr';
 
         // Window threshold: today + daysBefore days at end of day
         const thresholdDate = new Date(todayStart.getTime() + (daysBefore + 1) * 24 * 60 * 60_000);
@@ -280,6 +288,8 @@ export class SchedulerService {
                 daysUntilDue,
                 franchise._id.toString(),
                 qrImageUrl,
+                bankDetails,
+                feePaymentMethod,
               );
 
               inst.reminderSentCount = (inst.reminderSentCount || 0) + 1;

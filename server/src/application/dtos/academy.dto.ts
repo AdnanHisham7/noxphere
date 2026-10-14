@@ -55,7 +55,23 @@ export const CreateAcademySchema = z.object({
       'Tactical Awareness',
       'Attitude',
     ]),
+  currency: z.string().trim().toUpperCase().default('INR'),
+  country: z.string().trim().toUpperCase().default('IN'),
+  isTrial: z.boolean().default(false),
+  trialDays: z.number().int().min(1).max(365).default(14),
+  trialCapacity: z.number().int().min(1).default(50),
+  trialStaffCapacity: z.number().int().min(0).default(5),
   manager: ManagerAccountSchema,
+});
+
+export const BankDetailsSchema = z.object({
+  beneficiaryName: z.string().trim().optional(),
+  accountNumber: z.string().trim().optional(),
+  ifscCode: z.string().trim().optional(),
+  bankName: z.string().trim().optional(),
+  branchName: z.string().trim().optional(),
+  upiId: z.string().trim().optional(),
+  swiftCode: z.string().trim().optional(),
 });
 
 // Update Academy DTO (partial, without manager)
@@ -66,10 +82,19 @@ export const UpdateAcademySchema = z.object({
   ageGroups: z.array(z.string()).optional(),
   maxStudents: z.number().min(1).optional(),
   isActive: z.boolean().optional(),
+  currency: z.string().trim().toUpperCase().optional(),
+  country: z.string().trim().toUpperCase().optional(),
+  isTrial: z.boolean().optional(),
+  trialDays: z.number().int().min(1).max(365).optional(),
+  trialCapacity: z.number().int().min(1).optional(),
+  trialStaffCapacity: z.number().int().min(0).optional(),
   alertBeforeMinutes: z.number().min(0).optional(),
   notificationAlertAfterMinutes: z.number().min(0).optional(),
   absentAlertDays: z.number().int().min(1).max(30).optional(),
   dueDateAlertDays: z.number().int().min(0).max(30).optional(),
+  feeQrImageUrl: z.string().url().nullable().optional().or(z.literal("")).transform(v => (v === "" || v === null) ? null : v),
+  feePaymentMethod: z.enum(["qr", "bank_transfer", "both"]).optional(),
+  bankDetails: BankDetailsSchema.optional().nullable(),
   logo: z.string().optional(),
 });
 
@@ -88,6 +113,12 @@ export const AcademyConfigSchema = z.object({
   maxStudents: z.number().min(1).optional(),
   subscriptionRateOverride: z.number().min(0).optional(),
   staffRateOverride: z.number().min(0).optional(),
+  currency: z.string().trim().toUpperCase().optional(),
+  country: z.string().trim().toUpperCase().optional(),
+  isTrial: z.boolean().optional(),
+  trialDays: z.number().int().min(1).max(365).optional(),
+  trialCapacity: z.number().int().min(1).optional(),
+  trialStaffCapacity: z.number().int().min(0).optional(),
   dataProtectionContactEmail: z.string().email().optional(),
   ageGroups: z.array(z.string()).optional(),
   alertBeforeMinutes: z.number().min(0).optional(),
@@ -95,10 +126,22 @@ export const AcademyConfigSchema = z.object({
   absentAlertDays: z.number().int().min(1).max(30).optional(),
   dueDateAlertDays: z.number().int().min(0).max(30).optional(),
   feeQrImageUrl: z.string().url().nullable().optional().or(z.literal("")).transform(v => (v === "" || v === null) ? null : v),
+  feePaymentMethod: z.enum(["qr", "bank_transfer", "both"]).optional(),
+  bankDetails: BankDetailsSchema.optional().nullable(),
   logo: z.string().nullable().optional().or(z.literal("")).transform(v => (v === "" || v === null) ? null : v),
   isActive: z.boolean().optional(),
+});
+
+export const UpdateTrialSchema = z.object({
+  isTrial: z.boolean().optional(),
+  trialDays: z.number().int().min(1).max(365).optional(),
+  extendDays: z.number().int().min(1).max(365).optional(),
+  trialCapacity: z.number().int().min(1).optional(),
+  trialStaffCapacity: z.number().int().min(0).optional(),
+  endTrial: z.boolean().optional(),
 });
 
 export type CreateAcademyDto = z.infer<typeof CreateAcademySchema>;
 export type UpdateAcademyDto = z.infer<typeof UpdateAcademySchema>;
 export type AcademyConfigDto = z.infer<typeof AcademyConfigSchema>;
+export type UpdateTrialDto = z.infer<typeof UpdateTrialSchema>;

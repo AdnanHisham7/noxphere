@@ -79,6 +79,8 @@ import { SquadInvitationController } from "./interfaces/http/controllers/SquadIn
 import { SquadInvitationUseCases } from "./application/use-cases/student/SquadInvitationUseCases";
 import { PlatformTicketController } from "./interfaces/http/controllers/PlatformTicketController";
 import { PlatformTicketUseCases } from "./application/use-cases/platformTicket/PlatformTicketUseCases";
+import { ExpenseController } from "./interfaces/http/controllers/ExpenseController";
+import { ExpenseUseCases } from "./application/use-cases/expense/ExpenseUseCases";
 
 const app = express();
 
@@ -169,7 +171,10 @@ async function bootstrapDI() {
 const academyUseCases = new AcademyUseCases(academyRepository as any, userRepository as any);
 const academyController = new AcademyController(academyUseCases);
 
-  const guardianUseCases = new GuardianUseCases();
+  const adminFeesUseCases = new AdminFeesUseCases();
+  const feesController = new AdminFeesController(adminFeesUseCases);
+
+  const guardianUseCases = new GuardianUseCases(adminFeesUseCases);
   const guardianController = new GuardianController(guardianUseCases);
 
   const studentPortalUseCases = new StudentPortalUseCases();
@@ -183,9 +188,6 @@ const academyController = new AcademyController(academyUseCases);
 
   const adminAttendanceUseCases = new AdminAttendanceUseCases();
   const attendanceController = new AdminAttendanceController(adminAttendanceUseCases);
-
-  const adminFeesUseCases = new AdminFeesUseCases();
-  const feesController = new AdminFeesController(adminFeesUseCases);
 
   const adminPerformanceUseCases = new AdminPerformanceUseCases();
   const performanceController = new AdminPerformanceController(adminPerformanceUseCases);
@@ -234,6 +236,8 @@ const academyController = new AcademyController(academyUseCases);
   const squadInvitationController = new SquadInvitationController(squadInvitationUseCases);
   const platformTicketUseCases = new PlatformTicketUseCases();
   const platformTicketController = new PlatformTicketController(platformTicketUseCases);
+  const expenseUseCases = new ExpenseUseCases();
+  const expenseController = new ExpenseController(expenseUseCases);
 
   app.locals.controllers = {
     auth: authController,
@@ -246,6 +250,7 @@ const academyController = new AcademyController(academyUseCases);
     team: teamController,
     attendance: attendanceController,
     fees: feesController,
+    expense: expenseController,
     performance: performanceController,
     notification: notificationController,
     userNotification: userNotificationController,

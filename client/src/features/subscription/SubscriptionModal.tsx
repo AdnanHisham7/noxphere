@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { toast } from "react-hot-toast";
-import { Modal, Button } from "../../components/ui";
+import { Modal, Button, Input, Card } from "../../components/ui";
 import {
   useGetAcademySubscriptionStatusQuery,
   useGetPlatformDefaultRateQuery,
@@ -25,16 +25,18 @@ interface SubscriptionModalProps {
   mode?: "subscribe" | "upgrade" | "renew";
 }
 
-const formatCurrency = (n: number) => {
-  const rounded = Math.round((n + Number.EPSILON) * 100) / 100;
-  return `₹${rounded.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
-};
-
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId, onClose, onSuccess, mode }) => {
   const user = useSelector((s: RootState) => s.auth.user);
   const { data: status, isLoading } = useGetAcademySubscriptionStatusQuery(academyId);
   const { data: platformStudentRate } = useGetPlatformDefaultRateQuery();
   const { data: platformStaffRate } = useGetPlatformDefaultStaffRateQuery();
+
+  const sym = status?.currencySymbol || "₹";
+  const curr = status?.currency || "INR";
+  const formatCurrency = (n: number) => {
+    const rounded = Math.round((n + Number.EPSILON) * 100) / 100;
+    return `${sym} ${rounded.toLocaleString(curr === "INR" ? "en-IN" : "en-US", { maximumFractionDigits: 2 })}`;
+  };
 
   const [createRazorpayOrder, { isLoading: creatingOrder }] = useCreateRazorpaySubscriptionOrderMutation();
   const [verifyRazorpayPayment, { isLoading: verifyingPayment }] = useVerifyRazorpaySubscriptionPaymentMutation();
@@ -162,46 +164,40 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId,
       ) : (
         <div className="space-y-5">
           {isRenewal ? (
-            <p className="text-sm text-slate-300">
-              Your subscription has expired. Confirm your desired student & staff capacity and renew securely via Razorpay.
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Your subscription has expired. Confirm your desired student &amp; staff capacity and renew securely via Razorpay.
             </p>
           ) : isUpgrade ? (
-            <p className="text-sm text-slate-300">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
               You're subscribed for <strong>{status?.provisionedCapacity}</strong> students (
               {status?.activeStudentCount} active) and <strong>{status?.provisionedStaffCapacity}</strong> staff
               seats ({status?.activeStaffCount} active). Choose new capacity for either.
             </p>
           ) : (
-            <p className="text-sm text-slate-300">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
               Adding a player or a staff account requires an active subscription. Choose capacity for each and your
               billing cycle — you'll complete payment securely via Razorpay.
             </p>
           )}
 
-          <div>
-            <label className="label">Student capacity</label>
-            <input
-              type="number"
-              min={isUpgrade ? status?.provisionedCapacity ?? 1 : 1}
-              value={capacity}
-              onChange={(e) => setCapacity(Math.max(1, Number(e.target.value) || 1))}
-              className="input !w-full"
-            />
-          </div>
+          <Input
+            label="Student capacity"
+            type="number"
+            min={isUpgrade ? status?.provisionedCapacity ?? 1 : 1}
+            value={capacity}
+            onChange={(e) => setCapacity(Math.max(1, Number(e.target.value) || 1))}
+          />
 
-          <div>
-            <label className="label">Staff capacity (software-managing employees)</label>
-            <input
-              type="number"
-              min={isUpgrade ? status?.provisionedStaffCapacity ?? 0 : 0}
-              value={staffCapacity}
-              onChange={(e) => setStaffCapacity(Math.max(0, Number(e.target.value) || 0))}
-              className="input !w-full"
-            />
-          </div>
+          <Input
+            label="Staff capacity (software-managing employees)"
+            type="number"
+            min={isUpgrade ? status?.provisionedStaffCapacity ?? 0 : 0}
+            value={staffCapacity}
+            onChange={(e) => setStaffCapacity(Math.max(0, Number(e.target.value) || 0))}
+          />
 
           {!isUpgrade && (
-            <div>
+            <div className="space-y-1.5">
               <label className="label">Billing cycle</label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {([
@@ -214,37 +210,38 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId,
                     key={cycle.id}
                     type="button"
                     onClick={() => setBillingInterval(cycle.id)}
-                    className={`rounded px-2.5 py-2 text-xs font-semibold border transition-all text-center ${
+                    className={`rounded-lg px-2.5 py-2 text-xs font-semibold border transition-all text-center ${
                       billingInterval === cycle.id
                         ? "bg-volt-400 border-volt-400 text-pitch-900 shadow-sm"
                         : "bg-slate-100 dark:bg-pitch-800 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/20"
                     }`}
                   >
                     <div>{cycle.label}</div>
-                    <div className={`text-[10px] ${billingInterval === cycle.id ? "text-pitch-900/80" : "text-slate-400 dark:text-slate-500"}`}>{cycle.sub}</div>
+                    <div className={`text-[10px] ${billingInterval === cycle.id ? "text-pitch-900/80 font-medium" : "text-slate-400 dark:text-slate-500"}`}>{cycle.sub}</div>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="p-3 bg-slate-50 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded space-y-1">
-            <div className="flex justify-between text-xs text-slate-500">
+          <Card className="p-3.5 bg-slate-50 dark:bg-pitch-900/60 border-slate-200/80 dark:border-white/5 space-y-1.5">
+            <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
               <span>Students ({capacity} × {formatCurrency(rate)}/day × {days}d)</span>
-              <span>{formatCurrency(studentTotal)}</span>
+              <span className="font-mono text-slate-700 dark:text-slate-200">{formatCurrency(studentTotal)}</span>
             </div>
-            <div className="flex justify-between text-xs text-slate-500">
+            <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
               <span>Staff ({staffCapacity} × {formatCurrency(staffRate)}/mo × {staffMonths}mo)</span>
-              <span>{formatCurrency(staffTotal)}</span>
+              <span className="font-mono text-slate-700 dark:text-slate-200">{formatCurrency(staffTotal)}</span>
             </div>
-            <div className="flex justify-between text-sm font-bold text-slate-900 dark:text-white pt-1 border-t border-slate-200 dark:border-white/10 mt-1">
+            <div className="flex justify-between text-sm font-bold text-slate-900 dark:text-white pt-2 border-t border-slate-200 dark:border-white/10 mt-1">
               <span>{isUpgrade ? "New total (prorated this cycle)" : "Total due now"}</span>
-              <span className="text-volt-500 dark:text-volt-400">{formatCurrency(total)}</span>
+              <span className="text-volt-500 dark:text-volt-400 font-mono font-black">{formatCurrency(total)}</span>
             </div>
-          </div>
+          </Card>
 
           <Button
-            className="w-full"
+            variant="primary"
+            className="w-full font-bold uppercase tracking-wide justify-center"
             loading={creatingOrder || verifyingPayment || upgrading}
             onClick={isUpgrade ? handleUpgrade : handleRazorpayPayment}
           >

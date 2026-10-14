@@ -47,6 +47,7 @@ import {
   StatCard,
   EmptyState,
   Skeleton,
+  PageHeader,
 } from "../../components/ui";
 
 export const AcademyNfcManagementPage: React.FC = () => {
@@ -290,27 +291,23 @@ export const AcademyNfcManagementPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <p className="section-title mb-1">Squad Gear &amp; Tech</p>
-          <h1 className="font-display font-black text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
-            NFC Smart Cards
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Order physical contactless NFC player cards for your academy squad
-          </p>
-        </div>
-
-        <Button
-          onClick={() => {
-            setIsWizardOpen(true);
-            setStep(1);
-          }}
-          className="!bg-volt-400 hover:!bg-volt-300 !text-pitch-950 font-bold w-full sm:w-auto justify-center"
-        >
-          <Plus size={16} className="mr-1.5" /> Order NFC Cards
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Squad Gear & Tech"
+        title="NFC Smart Cards"
+        subtitle="Order physical contactless NFC player cards for your academy squad"
+        actions={
+          <Button
+            variant="primary"
+            onClick={() => {
+              setIsWizardOpen(true);
+              setStep(1);
+            }}
+            className="w-full sm:w-auto font-bold justify-center"
+          >
+            <Plus size={16} className="mr-1.5" /> Order NFC Cards
+          </Button>
+        }
+      />
 
       {/* Overview Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

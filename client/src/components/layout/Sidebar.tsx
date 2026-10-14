@@ -25,6 +25,7 @@ import {
   MessageSquareWarning,
   LifeBuoy,
   X,
+  Receipt,
   type LucideIcon,
 } from 'lucide-react';
 import { RootState } from '../../store';
@@ -73,6 +74,7 @@ const EMPLOYEE_NAV: NavItem[] = [
   { path: '/schedule', label: 'Sessions', icon: CalendarClock, requiredPermission: 'canManageSessions' },
   { path: '/coaches', label: 'Coaches', icon: UserCog, requiredPermission: 'canManageUsers' },
   { path: '/fees', label: 'Fees', icon: CreditCard, requiredPermission: 'canManageFinance' },
+  { path: '/expenses', label: 'Expenses & Stocks', icon: Receipt, requiredPermission: 'canManageFinance' },
   { path: '/notifications', label: 'Alerts', icon: Bell, requiredPermission: 'canSendNotifications' },
   { path: '/resources', label: 'Resources', icon: FolderOpen },
 ];
@@ -84,6 +86,7 @@ const navConfig: Record<string, NavItem[]> = {
     { path: '/franchises', label: 'Franchises', icon: Building2 },
     { path: '/users', label: 'Users', icon: Users },
     { path: '/finance', label: 'Finance', icon: Wallet },
+    { path: '/expenses', label: 'Expenses & Stocks', icon: Receipt },
     { path: '/nfc-cards', label: 'NFC Cards', icon: CreditCard },
     { path: '/admin/support', label: 'Platform Issues', icon: LifeBuoy },
   ],
@@ -96,6 +99,7 @@ const navConfig: Record<string, NavItem[]> = {
     { path: '/coaches', label: 'Coaches', icon: UserCog },
     { path: '/employees', label: 'Employees', icon: Users },
     { path: '/fees', label: 'Fees', icon: CreditCard },
+    { path: '/expenses', label: 'Expenses & Stocks', icon: Receipt },
     { path: '/nfc-cards', label: 'NFC Cards', icon: CreditCard },
     { path: '/notifications', label: 'Alerts', icon: Bell },
     { path: '/complaints', label: 'Complaints', icon: MessageSquareWarning },
@@ -107,6 +111,7 @@ const navConfig: Record<string, NavItem[]> = {
     { path: '/coach/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/students', label: 'Squad', icon: Shirt },
     { path: '/schedule', label: 'Sessions', icon: CalendarClock },
+    { path: '/complaints', label: 'Complaints', icon: MessageSquareWarning },
     { path: '/resources', label: 'Resources', icon: FolderOpen },
     { path: '/notifications', label: 'Alerts', icon: Bell },
   ],

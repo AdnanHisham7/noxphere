@@ -1,5 +1,5 @@
 // src/store/api/academyApi.ts
-import { Academy, AcademyConfigPayload, CreateAcademyPayload } from '@/features/academies/types';
+import { Academy, AcademyConfigPayload, CreateAcademyPayload, UpdateTrialPayload } from '@/features/academies/types';
 import { baseApi } from './baseApi';
 
 interface AcademyListResponse {
@@ -81,6 +81,21 @@ export const academyApi = baseApi.injectEndpoints({
       query: (id) => ({ url: `/academies/${id}`, method: "DELETE" }),
       invalidatesTags: [{ type: "Academy", id: "LIST" }],
     }),
+    updateAcademyTrial: builder.mutation<
+      Academy,
+      { id: string; data: UpdateTrialPayload }
+    >({
+      query: ({ id, data }) => ({
+        url: `/academies/${id}/trial`,
+        method: "PUT",
+        body: data,
+      }),
+      transformResponse: (res: any) => res?.data ?? res,
+      invalidatesTags: (_, __, { id }) => [
+        { type: "Academy", id },
+        { type: "Academy", id: "LIST" },
+      ],
+    }),
   }),
 });
 
@@ -93,4 +108,5 @@ export const {
   useToggleAcademyStatusMutation,
   useToggleTransferWallMutation,
   useDeleteAcademyMutation,
+  useUpdateAcademyTrialMutation,
 } = academyApi;

@@ -5,6 +5,7 @@ import {
   CreateAcademySchema,
   UpdateAcademySchema,
   AcademyConfigSchema,
+  UpdateTrialSchema,
 } from '../../../application/dtos/academy.dto';
 import { NotFoundError } from '../../../shared/errors/AppError';
 
@@ -91,6 +92,17 @@ export class AcademyController {
         academy,
         `Transfer wall ${academy.transferWallEnabled ? 'enabled' : 'disabled'}`,
       );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  updateTrial = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const dto = UpdateTrialSchema.parse(req.body);
+      const academy = await this.academyUseCases.updateTrial(id, dto);
+      ResponseHandler.success(res, academy, 'Academy trial updated successfully');
     } catch (err) {
       next(err);
     }

@@ -12,6 +12,7 @@
     "seed:admin": "ts-node --transpile-only src/scripts/seedSuperAdmin.ts"
   },
   "dependencies": {
+    "@types/geoip-lite": "^1.4.4",
     "@types/pdfkit": "^0.17.6",
     "bcryptjs": "^2.4.3",
     "bull": "^4.12.2",
@@ -25,6 +26,7 @@
     "express-rate-limit": "^7.1.5",
     "express-validator": "^7.0.1",
     "firebase-admin": "^12.0.0",
+    "geoip-lite": "^2.0.3",
     "helmet": "^7.1.0",
     "hpp": "^0.2.3",
     "jsonwebtoken": "^9.0.2",

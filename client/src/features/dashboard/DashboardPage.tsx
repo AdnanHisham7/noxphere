@@ -41,6 +41,7 @@ import {
   Avatar,
   EmptyState,
   Button,
+  PageHeader,
 } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useTransferWallEnabled } from "../../hooks/useTransferWallEnabled";
@@ -153,32 +154,28 @@ const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <p className="section-title mb-1">
-            {isSuperAdmin
-              ? "System Overview"
-              : isConsolidated
-                ? "Academy Overview"
-                : "Overview"}
-          </p>
-          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
-            {isSuperAdmin
-              ? "Super Admin Dashboard"
-              : isConsolidated
-                ? "Academy Dashboard"
-                : "Dashboard"}
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            {new Date().toLocaleDateString("en-IN", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+      <PageHeader
+        eyebrow={
+          isSuperAdmin
+            ? "System Overview"
+            : isConsolidated
+              ? "Academy Overview"
+              : "Overview"
+        }
+        title={
+          isSuperAdmin
+            ? "Super Admin Dashboard"
+            : isConsolidated
+              ? "Academy Dashboard"
+              : "Dashboard"
+        }
+        subtitle={new Date().toLocaleDateString("en-IN", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })}
+        actions={
           <span className="flex items-center gap-1.5 text-xs text-volt-400 bg-volt-400/10 border border-volt-400/20 rounded px-2.5 sm:px-3 py-1.5 font-bold font-mono">
             <span className="w-1.5 h-1.5 rounded-full bg-volt-400 animate-pulse-volt shrink-0" />
             {isSuperAdmin
@@ -187,8 +184,8 @@ const DashboardPage: React.FC = () => {
                 ? "Academy-wide"
                 : "Franchise Active"}
           </span>
-        </div>
-      </div>
+        }
+      />
 
       {/* KPI Stats Row */}
       {statsLoading ? (

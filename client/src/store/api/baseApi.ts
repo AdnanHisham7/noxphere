@@ -19,6 +19,10 @@ const rawBaseQuery = fetchBaseQuery({
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);
     }
+    const simulatedCountry = localStorage.getItem("nox_simulated_country");
+    if (simulatedCountry) {
+      headers.set("x-simulated-country", simulatedCountry);
+    }
     return headers;
   },
 });
@@ -77,6 +81,18 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
     if (typeof errorData.message === "string") {
       errorData.message = cleanRawMessage(errorData.message) || errorData.message;
     }
+    if (errorData.code === "GEO_RESTRICTION_ERROR") {
+      window.dispatchEvent(
+        new CustomEvent("nox_geo_restriction", {
+          detail: {
+            message: errorData.message,
+            detectedCountry: errorData.detectedCountry,
+            requiredCountry: errorData.requiredCountry,
+            currency: errorData.currency,
+          },
+        })
+      );
+    }
   }
 
   return result;
@@ -111,7 +127,9 @@ export const baseApi = createApi({
     "NfcRequest",
     "PlatformSettings",
     "PlatformTicket",
+    "Expense",
+    "StockItem",
+    "Income",
   ],
   endpoints: () => ({}),
-
 });

@@ -5,6 +5,7 @@ import {
   CreateAcademySchema,
   UpdateAcademySchema,
   AcademyConfigSchema,
+  UpdateTrialSchema,
 } from "../../../application/dtos/academy.dto";
 
 export const academyRouter = Router();
@@ -36,6 +37,15 @@ academyRouter.put(
   validate(UpdateAcademySchema),
   (req, res, next) => {
     req.app.locals.controllers.academy.update(req, res, next);
+  },
+);
+
+academyRouter.put(
+  "/:id/trial",
+  authorize("super_admin"),
+  validate(UpdateTrialSchema),
+  (req, res, next) => {
+    req.app.locals.controllers.academy.updateTrial(req, res, next);
   },
 );
 

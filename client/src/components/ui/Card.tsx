@@ -1,5 +1,9 @@
-// src/components/ui/Card.tsx
-import { clsx } from "clsx";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface CardProps {
   children: React.ReactNode;
@@ -15,9 +19,10 @@ export const Card: React.FC<CardProps> = ({
   onClick,
 }) => (
   <div
-    className={clsx(hover ? "card-hover cursor-pointer" : "card p-4", className)}
+    className={cn(hover ? "card-hover cursor-pointer" : "card p-4", className)}
     onClick={onClick}
   >
     {children}
   </div>
 );
+

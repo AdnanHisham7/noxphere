@@ -52,6 +52,28 @@ academySubscriptionRouter.put("/platform-staff-rate", authenticate, (req, res, n
   req.app.locals.controllers.academySubscription.setPlatformStaffRate(req, res, next);
 });
 
+academySubscriptionRouter.get("/platform-currencies", authenticate, (req, res, next) => {
+  req.app.locals.controllers.academySubscription.getPlatformCurrencies(req, res, next);
+});
+academySubscriptionRouter.put("/platform-currencies", authenticate, (req, res, next) => {
+  if (req.user!.role !== "super_admin") {
+    res.status(403).json({ success: false, message: "Only super_admin can configure platform currency rates", code: "FORBIDDEN" });
+    return;
+  }
+  req.app.locals.controllers.academySubscription.setPlatformCurrencyRate(req, res, next);
+});
+
+academySubscriptionRouter.get("/platform-trial-defaults", authenticate, (req, res, next) => {
+  req.app.locals.controllers.academySubscription.getPlatformTrialDefaults(req, res, next);
+});
+academySubscriptionRouter.put("/platform-trial-defaults", authenticate, (req, res, next) => {
+  if (req.user!.role !== "super_admin") {
+    res.status(403).json({ success: false, message: "Only super_admin can configure platform trial defaults", code: "FORBIDDEN" });
+    return;
+  }
+  req.app.locals.controllers.academySubscription.setPlatformTrialDefaults(req, res, next);
+});
+
 academySubscriptionRouter.get("/platform-transfer-wall", (req, res, next) => {
   req.app.locals.controllers.academySubscription.getPlatformTransferWall(req, res, next);
 });

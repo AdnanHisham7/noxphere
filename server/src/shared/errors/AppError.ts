@@ -69,3 +69,27 @@ export class SubscriptionCapacityExceededError extends AppError {
     super(message, 402, 'SUBSCRIPTION_CAPACITY_EXCEEDED');
   }
 }
+
+export class GeoRestrictionError extends AppError {
+  public readonly detectedCountry?: string;
+  public readonly requiredCountry?: string;
+  public readonly currency?: string;
+
+  constructor(
+    message = 'Access restricted: operations for this academy are only permitted within its registered country',
+    detectedCountry?: string,
+    requiredCountry?: string,
+    currency?: string
+  ) {
+    super(message, 403, 'GEO_RESTRICTION_ERROR');
+    this.detectedCountry = detectedCountry;
+    this.requiredCountry = requiredCountry;
+    this.currency = currency;
+  }
+}
+
+export class TrialExpiredError extends AppError {
+  constructor(message = 'Academy trial period has expired. Please subscribe to continue.') {
+    super(message, 402, 'TRIAL_EXPIRED');
+  }
+}

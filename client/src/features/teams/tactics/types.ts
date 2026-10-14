@@ -14,10 +14,27 @@ export interface Player {
   photo?: string;
 }
 
-export type FormationType =
+export type TeamFormat = "5s" | "6s" | "7s" | "8s" | "9s" | "10s" | "11s";
+
+export type Formation5s = "1-2-1" | "2-2" | "1-1-2" | "2-1-1" | "3-1";
+export type Formation6s = "2-2-1" | "2-1-2" | "3-1-1" | "1-3-1";
+export type Formation7s = "2-3-1" | "3-2-1" | "2-1-2-1" | "3-1-2" | "1-4-1";
+export type Formation8s = "3-3-1" | "2-4-1" | "3-2-2" | "2-3-2";
+export type Formation9s = "3-3-2" | "3-4-1" | "4-3-1" | "3-2-3" | "2-4-2";
+export type Formation10s = "4-4-1" | "4-3-2" | "3-4-2" | "3-3-3" | "4-2-3";
+export type Formation11s =
   | "4-2-3-1" | "4-4-2" | "4-3-3" | "4-3-2-1" | "4-3-1-2"
   | "4-2-1-3" | "4-1-4-1" | "4-1-2-3" | "3-4-3" | "3-2-4-1"
   | "3-2-3-2" | "3-1-4-2" | "5-3-2" | "5-2-2-1" | "5-2-1-2";
+
+export type FormationType =
+  | Formation5s
+  | Formation6s
+  | Formation7s
+  | Formation8s
+  | Formation9s
+  | Formation10s
+  | Formation11s;
 
 export interface TacticalSlot {
   id: string;
@@ -30,11 +47,373 @@ export interface SavedFormation {
   id: string;
   label: string;
   formationType: FormationType;
+  teamFormat?: TeamFormat;
   squad: Record<string, string>;
 }
 
+export interface FormatMeta {
+  format: TeamFormat;
+  label: string;
+  pitchName: string;
+  playerCount: number;
+  formations: FormationType[];
+  defaultFormation: FormationType;
+}
+
+export const FORMATIONS_BY_FORMAT: Record<TeamFormat, FormatMeta> = {
+  "5s": {
+    format: "5s",
+    label: "5s Futsal / Turf",
+    pitchName: "5-a-Side Pitch",
+    playerCount: 5,
+    formations: ["1-2-1", "2-2", "1-1-2", "2-1-1", "3-1"],
+    defaultFormation: "1-2-1",
+  },
+  "6s": {
+    format: "6s",
+    label: "6s Turf",
+    pitchName: "6-a-Side Pitch",
+    playerCount: 6,
+    formations: ["2-2-1", "2-1-2", "3-1-1", "1-3-1"],
+    defaultFormation: "2-2-1",
+  },
+  "7s": {
+    format: "7s",
+    label: "7s Mini Football",
+    pitchName: "7-a-Side Arena",
+    playerCount: 7,
+    formations: ["2-3-1", "3-2-1", "2-1-2-1", "3-1-2", "1-4-1"],
+    defaultFormation: "2-3-1",
+  },
+  "8s": {
+    format: "8s",
+    label: "8s Intermediate",
+    pitchName: "8-a-Side Pitch",
+    playerCount: 8,
+    formations: ["3-3-1", "2-4-1", "3-2-2", "2-3-2"],
+    defaultFormation: "3-3-1",
+  },
+  "9s": {
+    format: "9s",
+    label: "9s Youth Academy",
+    pitchName: "9-a-Side Ground",
+    playerCount: 9,
+    formations: ["3-3-2", "3-4-1", "4-3-1", "3-2-3", "2-4-2"],
+    defaultFormation: "3-3-2",
+  },
+  "10s": {
+    format: "10s",
+    label: "10s Pitch",
+    pitchName: "10-a-Side Pitch",
+    playerCount: 10,
+    formations: ["4-4-1", "4-3-2", "3-4-2", "3-3-3", "4-2-3"],
+    defaultFormation: "4-4-1",
+  },
+  "11s": {
+    format: "11s",
+    label: "11s Full Regulation",
+    pitchName: "11-a-Side Stadium",
+    playerCount: 11,
+    formations: [
+      "4-2-3-1", "4-4-2", "4-3-3", "4-3-2-1", "4-3-1-2",
+      "4-2-1-3", "4-1-4-1", "4-1-2-3", "3-4-3", "3-2-4-1",
+      "3-2-3-2", "3-1-4-2", "5-3-2", "5-2-2-1", "5-2-1-2",
+    ],
+    defaultFormation: "4-2-3-1",
+  },
+};
+
+export const getFormatForFormation = (formation: FormationType): TeamFormat => {
+  for (const [fmt, meta] of Object.entries(FORMATIONS_BY_FORMAT)) {
+    if ((meta.formations as string[]).includes(formation)) {
+      return fmt as TeamFormat;
+    }
+  }
+  return "11s";
+};
+
 // Coordinates: own goal (GK) at the bottom, attacking third at the top.
 export const FORMATION_PRESETS: Record<FormationType, TacticalSlot[]> = {
+  // ─── 5-A-SIDE (5 players) ───────────────────────────────────────────────────
+  "1-2-1": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "cb", role: "CB", top: 68, left: 50 },
+    { id: "lmf", role: "LMF", top: 44, left: 24 },
+    { id: "rmf", role: "RMF", top: 44, left: 76 },
+    { id: "cf", role: "CF", top: 18, left: 50 },
+  ],
+  "2-2": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lcb", role: "CB", top: 68, left: 34 },
+    { id: "rcb", role: "CB", top: 68, left: 66 },
+    { id: "lcf", role: "CF", top: 22, left: 34 },
+    { id: "rcf", role: "CF", top: 22, left: 66 },
+  ],
+  "1-1-2": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "cb", role: "CB", top: 70, left: 50 },
+    { id: "cmf", role: "CMF", top: 46, left: 50 },
+    { id: "lcf", role: "CF", top: 20, left: 34 },
+    { id: "rcf", role: "CF", top: 20, left: 66 },
+  ],
+  "2-1-1": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lcb", role: "CB", top: 68, left: 34 },
+    { id: "rcb", role: "CB", top: 68, left: 66 },
+    { id: "cmf", role: "CMF", top: 44, left: 50 },
+    { id: "cf", role: "CF", top: 18, left: 50 },
+  ],
+  "3-1": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lb", role: "LB", top: 66, left: 22 },
+    { id: "cb", role: "CB", top: 70, left: 50 },
+    { id: "rb", role: "RB", top: 66, left: 78 },
+    { id: "cf", role: "CF", top: 20, left: 50 },
+  ],
+
+  // ─── 6-A-SIDE (6 players) ───────────────────────────────────────────────────
+  "2-2-1": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lcb", role: "CB", top: 68, left: 34 },
+    { id: "rcb", role: "CB", top: 68, left: 66 },
+    { id: "lmf", role: "LMF", top: 44, left: 28 },
+    { id: "rmf", role: "RMF", top: 44, left: 72 },
+    { id: "cf", role: "CF", top: 18, left: 50 },
+  ],
+  "2-1-2": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lcb", role: "CB", top: 68, left: 34 },
+    { id: "rcb", role: "CB", top: 68, left: 66 },
+    { id: "cmf", role: "CMF", top: 46, left: 50 },
+    { id: "lcf", role: "CF", top: 20, left: 34 },
+    { id: "rcf", role: "CF", top: 20, left: 66 },
+  ],
+  "3-1-1": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lb", role: "LB", top: 66, left: 20 },
+    { id: "cb", role: "CB", top: 70, left: 50 },
+    { id: "rb", role: "RB", top: 66, left: 80 },
+    { id: "cmf", role: "CMF", top: 44, left: 50 },
+    { id: "cf", role: "CF", top: 18, left: 50 },
+  ],
+  "1-3-1": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "cb", role: "CB", top: 70, left: 50 },
+    { id: "lmf", role: "LMF", top: 44, left: 22 },
+    { id: "cmf", role: "CMF", top: 46, left: 50 },
+    { id: "rmf", role: "RMF", top: 44, left: 78 },
+    { id: "cf", role: "CF", top: 18, left: 50 },
+  ],
+
+  // ─── 7-A-SIDE (7 players) ───────────────────────────────────────────────────
+  "2-3-1": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lcb", role: "CB", top: 68, left: 34 },
+    { id: "rcb", role: "CB", top: 68, left: 66 },
+    { id: "lmf", role: "LMF", top: 44, left: 20 },
+    { id: "cmf", role: "CMF", top: 46, left: 50 },
+    { id: "rmf", role: "RMF", top: 44, left: 80 },
+    { id: "cf", role: "CF", top: 18, left: 50 },
+  ],
+  "3-2-1": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lb", role: "LB", top: 66, left: 20 },
+    { id: "cb", role: "CB", top: 70, left: 50 },
+    { id: "rb", role: "RB", top: 66, left: 80 },
+    { id: "cmf1", role: "CMF", top: 46, left: 35 },
+    { id: "cmf2", role: "CMF", top: 46, left: 65 },
+    { id: "cf", role: "CF", top: 18, left: 50 },
+  ],
+  "2-1-2-1": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lcb", role: "CB", top: 70, left: 34 },
+    { id: "rcb", role: "CB", top: 70, left: 66 },
+    { id: "dmf", role: "DMF", top: 54, left: 50 },
+    { id: "amf1", role: "AMF", top: 34, left: 32 },
+    { id: "amf2", role: "AMF", top: 34, left: 68 },
+    { id: "cf", role: "CF", top: 16, left: 50 },
+  ],
+  "3-1-2": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lb", role: "LB", top: 66, left: 20 },
+    { id: "cb", role: "CB", top: 70, left: 50 },
+    { id: "rb", role: "RB", top: 66, left: 80 },
+    { id: "cmf", role: "CMF", top: 46, left: 50 },
+    { id: "lcf", role: "CF", top: 18, left: 35 },
+    { id: "rcf", role: "CF", top: 18, left: 65 },
+  ],
+  "1-4-1": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "cb", role: "CB", top: 70, left: 50 },
+    { id: "lmf", role: "LMF", top: 44, left: 16 },
+    { id: "cmf1", role: "CMF", top: 46, left: 38 },
+    { id: "cmf2", role: "CMF", top: 46, left: 62 },
+    { id: "rmf", role: "RMF", top: 44, left: 84 },
+    { id: "cf", role: "CF", top: 18, left: 50 },
+  ],
+
+  // ─── 8-A-SIDE (8 players) ───────────────────────────────────────────────────
+  "3-3-1": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lb", role: "LB", top: 68, left: 18 },
+    { id: "cb", role: "CB", top: 70, left: 50 },
+    { id: "rb", role: "RB", top: 68, left: 82 },
+    { id: "lmf", role: "LMF", top: 44, left: 20 },
+    { id: "cmf", role: "CMF", top: 46, left: 50 },
+    { id: "rmf", role: "RMF", top: 44, left: 80 },
+    { id: "cf", role: "CF", top: 18, left: 50 },
+  ],
+  "2-4-1": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lcb", role: "CB", top: 70, left: 34 },
+    { id: "rcb", role: "CB", top: 70, left: 66 },
+    { id: "lmf", role: "LMF", top: 44, left: 16 },
+    { id: "cmf1", role: "CMF", top: 46, left: 38 },
+    { id: "cmf2", role: "CMF", top: 46, left: 62 },
+    { id: "rmf", role: "RMF", top: 44, left: 84 },
+    { id: "cf", role: "CF", top: 18, left: 50 },
+  ],
+  "3-2-2": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lb", role: "LB", top: 68, left: 18 },
+    { id: "cb", role: "CB", top: 70, left: 50 },
+    { id: "rb", role: "RB", top: 68, left: 82 },
+    { id: "cmf1", role: "CMF", top: 46, left: 34 },
+    { id: "cmf2", role: "CMF", top: 46, left: 66 },
+    { id: "lcf", role: "CF", top: 18, left: 34 },
+    { id: "rcf", role: "CF", top: 18, left: 66 },
+  ],
+  "2-3-2": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lcb", role: "CB", top: 70, left: 34 },
+    { id: "rcb", role: "CB", top: 70, left: 66 },
+    { id: "lmf", role: "LMF", top: 44, left: 20 },
+    { id: "cmf", role: "CMF", top: 46, left: 50 },
+    { id: "rmf", role: "RMF", top: 44, left: 80 },
+    { id: "lcf", role: "CF", top: 18, left: 34 },
+    { id: "rcf", role: "CF", top: 18, left: 66 },
+  ],
+
+  // ─── 9-A-SIDE (9 players) ───────────────────────────────────────────────────
+  "3-3-2": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lb", role: "LB", top: 68, left: 18 },
+    { id: "cb", role: "CB", top: 70, left: 50 },
+    { id: "rb", role: "RB", top: 68, left: 82 },
+    { id: "lmf", role: "LMF", top: 44, left: 20 },
+    { id: "cmf", role: "CMF", top: 46, left: 50 },
+    { id: "rmf", role: "RMF", top: 44, left: 80 },
+    { id: "lcf", role: "CF", top: 18, left: 34 },
+    { id: "rcf", role: "CF", top: 18, left: 66 },
+  ],
+  "3-4-1": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lb", role: "LB", top: 68, left: 18 },
+    { id: "cb", role: "CB", top: 70, left: 50 },
+    { id: "rb", role: "RB", top: 68, left: 82 },
+    { id: "lmf", role: "LMF", top: 44, left: 16 },
+    { id: "cmf1", role: "CMF", top: 46, left: 38 },
+    { id: "cmf2", role: "CMF", top: 46, left: 62 },
+    { id: "rmf", role: "RMF", top: 44, left: 84 },
+    { id: "cf", role: "CF", top: 18, left: 50 },
+  ],
+  "4-3-1": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lb", role: "LB", top: 68, left: 15 },
+    { id: "cb1", role: "CB", top: 70, left: 38 },
+    { id: "cb2", role: "CB", top: 70, left: 62 },
+    { id: "rb", role: "RB", top: 68, left: 85 },
+    { id: "lmf", role: "LMF", top: 44, left: 22 },
+    { id: "cmf", role: "CMF", top: 46, left: 50 },
+    { id: "rmf", role: "RMF", top: 44, left: 78 },
+    { id: "cf", role: "CF", top: 18, left: 50 },
+  ],
+  "3-2-3": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lb", role: "LB", top: 68, left: 18 },
+    { id: "cb", role: "CB", top: 70, left: 50 },
+    { id: "rb", role: "RB", top: 68, left: 82 },
+    { id: "cmf1", role: "CMF", top: 48, left: 35 },
+    { id: "cmf2", role: "CMF", top: 48, left: 65 },
+    { id: "lwf", role: "LWF", top: 18, left: 20 },
+    { id: "cf", role: "CF", top: 16, left: 50 },
+    { id: "rwf", role: "RWF", top: 18, left: 80 },
+  ],
+  "2-4-2": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lcb", role: "CB", top: 70, left: 34 },
+    { id: "rcb", role: "CB", top: 70, left: 66 },
+    { id: "lmf", role: "LMF", top: 44, left: 16 },
+    { id: "cmf1", role: "CMF", top: 46, left: 38 },
+    { id: "cmf2", role: "CMF", top: 46, left: 62 },
+    { id: "rmf", role: "RMF", top: 44, left: 84 },
+    { id: "lcf", role: "CF", top: 18, left: 34 },
+    { id: "rcf", role: "CF", top: 18, left: 66 },
+  ],
+
+  // ─── 10-A-SIDE (10 players) ─────────────────────────────────────────────────
+  "4-4-1": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lb", role: "LB", top: 68, left: 15 },
+    { id: "cb1", role: "CB", top: 70, left: 38 },
+    { id: "cb2", role: "CB", top: 70, left: 62 },
+    { id: "rb", role: "RB", top: 68, left: 85 },
+    { id: "lmf", role: "LMF", top: 44, left: 16 },
+    { id: "cmf1", role: "CMF", top: 46, left: 38 },
+    { id: "cmf2", role: "CMF", top: 46, left: 62 },
+    { id: "rmf", role: "RMF", top: 44, left: 84 },
+    { id: "cf", role: "CF", top: 18, left: 50 },
+  ],
+  "4-3-2": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lb", role: "LB", top: 68, left: 15 },
+    { id: "cb1", role: "CB", top: 70, left: 38 },
+    { id: "cb2", role: "CB", top: 70, left: 62 },
+    { id: "rb", role: "RB", top: 68, left: 85 },
+    { id: "lmf", role: "LMF", top: 46, left: 22 },
+    { id: "cmf", role: "CMF", top: 48, left: 50 },
+    { id: "rmf", role: "RMF", top: 46, left: 78 },
+    { id: "lcf", role: "CF", top: 18, left: 35 },
+    { id: "rcf", role: "CF", top: 18, left: 65 },
+  ],
+  "3-4-2": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lb", role: "LB", top: 68, left: 18 },
+    { id: "cb", role: "CB", top: 70, left: 50 },
+    { id: "rb", role: "RB", top: 68, left: 82 },
+    { id: "lmf", role: "LMF", top: 44, left: 16 },
+    { id: "cmf1", role: "CMF", top: 46, left: 38 },
+    { id: "cmf2", role: "CMF", top: 46, left: 62 },
+    { id: "rmf", role: "RMF", top: 44, left: 84 },
+    { id: "lcf", role: "CF", top: 18, left: 35 },
+    { id: "rcf", role: "CF", top: 18, left: 65 },
+  ],
+  "3-3-3": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lb", role: "LB", top: 68, left: 18 },
+    { id: "cb", role: "CB", top: 70, left: 50 },
+    { id: "rb", role: "RB", top: 68, left: 82 },
+    { id: "lmf", role: "LMF", top: 46, left: 22 },
+    { id: "cmf", role: "CMF", top: 48, left: 50 },
+    { id: "rmf", role: "RMF", top: 46, left: 78 },
+    { id: "lwf", role: "LWF", top: 18, left: 20 },
+    { id: "cf", role: "CF", top: 16, left: 50 },
+    { id: "rwf", role: "RWF", top: 18, left: 80 },
+  ],
+  "4-2-3": [
+    { id: "gk", role: "GK", top: 88, left: 50 },
+    { id: "lb", role: "LB", top: 68, left: 15 },
+    { id: "cb1", role: "CB", top: 70, left: 38 },
+    { id: "cb2", role: "CB", top: 70, left: 62 },
+    { id: "rb", role: "RB", top: 68, left: 85 },
+    { id: "cmf1", role: "CMF", top: 48, left: 35 },
+    { id: "cmf2", role: "CMF", top: 48, left: 65 },
+    { id: "lwf", role: "LWF", top: 18, left: 20 },
+    { id: "cf", role: "CF", top: 16, left: 50 },
+    { id: "rwf", role: "RWF", top: 18, left: 80 },
+  ],
+
+  // ─── 11-A-SIDE (11 players) ─────────────────────────────────────────────────
   "4-2-3-1": [
     { id: "gk", role: "GK", top: 88, left: 50 },
     { id: "lb", role: "LB", top: 68, left: 15 },
@@ -250,7 +629,7 @@ export const getAptitudeMultiplier = (playerPos: Position, slotRole: Position): 
 };
 
 export const autopickSquad = (formation: FormationType, players: Player[]): Record<string, string> => {
-  const slots = FORMATION_PRESETS[formation];
+  const slots = FORMATION_PRESETS[formation] || FORMATION_PRESETS["4-2-3-1"];
   const sortedPlayers = [...players].sort((a, b) => b.rating - a.rating);
   const selectedIds = new Set<string>();
   const newSquad: Record<string, string> = {};

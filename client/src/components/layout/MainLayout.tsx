@@ -7,6 +7,7 @@ import { TopBar } from './TopBar';
 import { RootState } from '../../store';
 import { useSocket } from '../../hooks/useSocket';
 import { SubscriptionGate } from './SubscriptionGate';
+import { GeoRestrictionGate } from './GeoRestrictionGate';
 import { closeMobileSidebar } from '../../store/slices/uiSlice';
 
 export const MainLayout: React.FC = () => {
@@ -37,21 +38,23 @@ export const MainLayout: React.FC = () => {
   const showSidebar = !!activeFranchiseId || user?.role === 'super_admin' || user?.role === 'manager' || user?.role === 'employee';
 
   return (
-    <SubscriptionGate>
-      <div className="h-screen bg-slate-50 dark:bg-pitch-950 text-slate-900 dark:text-slate-100 flex overflow-hidden transition-colors duration-200">
-        {showSidebar && <Sidebar />}
-        <div
-          className={clsx(
-            'flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0',
-            showSidebar ? (collapsed ? 'ml-0 md:ml-16' : 'ml-0 md:ml-60') : 'ml-0'
-          )}
-        >
-          <TopBar />
-          <main ref={mainRef} className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-5 md:p-6">
-            <Outlet />
-          </main>
+    <GeoRestrictionGate>
+      <SubscriptionGate>
+        <div className="h-screen bg-slate-50 dark:bg-pitch-950 text-slate-900 dark:text-slate-100 flex overflow-hidden transition-colors duration-200">
+          {showSidebar && <Sidebar />}
+          <div
+            className={clsx(
+              'flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0',
+              showSidebar ? (collapsed ? 'ml-0 md:ml-16' : 'ml-0 md:ml-60') : 'ml-0'
+            )}
+          >
+            <TopBar />
+            <main ref={mainRef} className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-5 md:p-6">
+              <Outlet />
+            </main>
+          </div>
         </div>
-      </div>
-    </SubscriptionGate>
+      </SubscriptionGate>
+    </GeoRestrictionGate>
   );
 };

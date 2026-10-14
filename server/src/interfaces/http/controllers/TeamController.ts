@@ -8,13 +8,14 @@ export class TeamController {
 
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { name, ageGroup, franchiseId, academyId, coachId, description, logoUrl, bannerUrl, primaryColor, secondaryColor } = req.body;
+      const { name, ageGroup, teamFormat, franchiseId, academyId, coachId, description, logoUrl, bannerUrl, primaryColor, secondaryColor } = req.body;
       if (!name || !ageGroup || (!franchiseId && !academyId)) {
         throw new BadRequestError("name, ageGroup and either franchiseId or academyId are required");
       }
       const team = await this.teamUseCases.createTeam({
         name,
         ageGroup,
+        teamFormat,
         franchiseId,
         academyId,
         coachId,

@@ -4,12 +4,14 @@ export interface FormationPreset {
   id: string;
   label: string;
   formationType: string;
+  teamFormat?: string;
   squad: Record<string, string>;
 }
 
 export interface TeamDocument extends Document {
   name: string;
   ageGroup: string;
+  teamFormat?: string;
   franchiseId?: mongoose.Types.ObjectId;
   academyId?: mongoose.Types.ObjectId;
   coachId?: mongoose.Types.ObjectId;
@@ -30,6 +32,11 @@ const TeamSchema = new Schema<TeamDocument>(
   {
     name: { type: String, required: true, trim: true },
     ageGroup: { type: String, required: true, trim: true },
+    teamFormat: {
+      type: String,
+      enum: ["5s", "6s", "7s", "8s", "9s", "10s", "11s"],
+      default: "11s",
+    },
     franchiseId: { type: Schema.Types.ObjectId, ref: "Franchise", index: true },
     academyId: { type: Schema.Types.ObjectId, ref: "Academy", index: true },
     coachId: { type: Schema.Types.ObjectId, ref: "User", index: true },
@@ -43,6 +50,7 @@ const TeamSchema = new Schema<TeamDocument>(
         id: { type: String, required: true },
         label: { type: String, required: true },
         formationType: { type: String, required: true },
+        teamFormat: { type: String, default: "11s" },
         squad: { type: Map, of: String, required: true },
       }],
       default: [],

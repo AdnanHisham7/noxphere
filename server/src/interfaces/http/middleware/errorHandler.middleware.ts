@@ -81,10 +81,22 @@ export const errorHandler = (
     if (!err.isOperational) {
       logger.error('Non-operational error:', err);
     }
+    const extraData: Record<string, any> = {};
+    if ('detectedCountry' in err && (err as any).detectedCountry) {
+      extraData.detectedCountry = (err as any).detectedCountry;
+    }
+    if ('requiredCountry' in err && (err as any).requiredCountry) {
+      extraData.requiredCountry = (err as any).requiredCountry;
+    }
+    if ('currency' in err && (err as any).currency) {
+      extraData.currency = (err as any).currency;
+    }
+
     res.status(err.statusCode).json({
       success: false,
       message: sanitizeErrorMessage(err.message),
       code: err.code,
+      ...extraData,
       timestamp: new Date().toISOString(),
     });
     return;
