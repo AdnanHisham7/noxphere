@@ -36,6 +36,7 @@ import {
   EmptyState,
   Avatar,
   ImageUploadField,
+  PageHeader,
 } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
@@ -455,19 +456,11 @@ const FeesPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div>
-          <p className="section-title mb-1">Financial Management</p>
-          <h1 className="font-display text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white uppercase tracking-tight">
-            Player Fees
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Track schedules, collection milestones, and due-date alerts across
-            every enrolled player.
-          </p>
-        </div>
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+      <PageHeader
+        eyebrow="Financial Management"
+        title="Player Fees"
+        subtitle="Track schedules, collection milestones, and due-date alerts across every enrolled player."
+        actions={
           <Button
             icon={<Plus size={15} />}
             onClick={() => {
@@ -478,8 +471,8 @@ const FeesPage: React.FC = () => {
           >
             Schedule fee
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* KPI Overview Metrics Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

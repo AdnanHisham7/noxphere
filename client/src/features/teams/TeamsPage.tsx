@@ -15,6 +15,7 @@ import {
   Skeleton,
   EmptyState,
   ImageUploadField,
+  PageHeader,
 } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
@@ -163,28 +164,27 @@ const TeamsPage: React.FC = () => {
   }
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <div>
-          <h1 className="font-display text-xl sm:text-2xl font-bold text-slate-900 dark:text-white uppercase tracking-wide">
-            {isHeadOffice ? "Academy Teams" : "Teams"}
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            {isHeadOffice
-              ? "All squads across all franchises of the academy"
-              : "Batches and squads for this franchise"}
-          </p>
-        </div>
-        {!isHeadOffice && (
-          <Button
-            icon={<Plus size={16} />}
-            onClick={() => setShowCreate(true)}
-            className="w-full sm:w-auto justify-center"
-          >
-            New team
-          </Button>
-        )}
-      </div>
+    <div className="space-y-6 animate-fade-in">
+      <PageHeader
+        eyebrow="Squad Management"
+        title={isHeadOffice ? "Academy Teams" : "Teams"}
+        subtitle={
+          isHeadOffice
+            ? "All squads across all franchises of the academy"
+            : "Batches and squads for this franchise"
+        }
+        actions={
+          !isHeadOffice && (
+            <Button
+              icon={<Plus size={16} />}
+              onClick={() => setShowCreate(true)}
+              className="w-full sm:w-auto justify-center"
+            >
+              New team
+            </Button>
+          )
+        }
+      />
 
       {isLoading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

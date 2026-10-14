@@ -19,7 +19,7 @@ import {
   LayoutDashboard,
   AlertTriangle,
 } from "lucide-react";
-import { Button, Input, Modal, Badge, StatCard, ImageUploadField } from "../../components/ui";
+import { Button, Input, Modal, Badge, StatCard, ImageUploadField, PageHeader } from "../../components/ui";
 import { PlatformBillingCard } from "./PlatformBillingCard";
 import { baseApi } from "../../store/api/baseApi";
 import { academyApi } from "@/store/api/academyApi";
@@ -254,77 +254,73 @@ const AcademiesManagement: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-        <div>
-          <p className="section-title mb-1">Infrastructure</p>
-          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
-            Academies Management
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            {academies.length} total branches
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          {/* Search & Filter */}
-          <Input
-            placeholder="Search by name or code..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full sm:w-48"
-          />
-          <select
-            className="bg-white dark:bg-pitch-700 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-white rounded px-2 py-1 text-sm flex-1 sm:flex-initial"
-            value={
-              activeFilter === undefined
-                ? "all"
-                : activeFilter
-                  ? "active"
-                  : "inactive"
-            }
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === "all") setActiveFilter(undefined);
-              else if (val === "active") setActiveFilter(true);
-              else setActiveFilter(false);
-            }}
-          >
-            <option value="all">All</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-          <div className="flex bg-slate-100 dark:bg-pitch-700 p-1 rounded border border-slate-200 dark:border-white/5">
-            <button
-              onClick={() => setViewMode("table")}
-              className={clsx(
-                "p-1.5 rounded transition-all",
-                viewMode === "table"
-                  ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
-              )}
+      <PageHeader
+        eyebrow="Infrastructure"
+        title="Academies Management"
+        subtitle={`${academies.length} total branches`}
+        actions={
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            {/* Search & Filter */}
+            <Input
+              placeholder="Search by name or code..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full sm:w-48"
+            />
+            <select
+              className="bg-white dark:bg-pitch-700 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-white rounded px-2 py-1 text-sm flex-1 sm:flex-initial"
+              value={
+                activeFilter === undefined
+                  ? "all"
+                  : activeFilter
+                    ? "active"
+                    : "inactive"
+              }
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "all") setActiveFilter(undefined);
+                else if (val === "active") setActiveFilter(true);
+                else setActiveFilter(false);
+              }}
             >
-              <List size={16} />
-            </button>
-            <button
-              onClick={() => setViewMode("card")}
-              className={clsx(
-                "p-1.5 rounded transition-all",
-                viewMode === "card"
-                  ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
-              )}
+              <option value="all">All</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <div className="flex bg-slate-100 dark:bg-pitch-700 p-1 rounded border border-slate-200 dark:border-white/5">
+              <button
+                onClick={() => setViewMode("table")}
+                className={clsx(
+                  "p-1.5 rounded transition-all",
+                  viewMode === "table"
+                    ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
+                )}
+              >
+                <List size={16} />
+              </button>
+              <button
+                onClick={() => setViewMode("card")}
+                className={clsx(
+                  "p-1.5 rounded transition-all",
+                  viewMode === "card"
+                    ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
+                )}
+              >
+                <LayoutGrid size={16} />
+              </button>
+            </div>
+            <Button
+              onClick={() => setIsAddModalOpen(true)}
+              icon={<Plus size={18} />}
+              className="w-full sm:w-auto justify-center"
             >
-              <LayoutGrid size={16} />
-            </button>
+              New Academy
+            </Button>
           </div>
-          <Button
-            onClick={() => setIsAddModalOpen(true)}
-            icon={<Plus size={18} />}
-            className="w-full sm:w-auto justify-center"
-          >
-            New Academy
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       <PlatformBillingCard />
 

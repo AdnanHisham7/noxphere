@@ -14,7 +14,7 @@ import {
   Layers,
   Sparkles,
 } from "lucide-react";
-import { Button, Input, Card, Badge, Skeleton, EmptyState, Modal, ConfirmModal, ImageUploadField } from "../../components/ui";
+import { Button, Input, Card, Badge, Skeleton, EmptyState, Modal, ConfirmModal, ImageUploadField, PageHeader } from "../../components/ui";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import { academyApi } from "../../store/api/academyApi";
 import type { Location, AcademyPitch } from "../academies/types";
@@ -278,17 +278,16 @@ const AcademySettingsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div>
-          <h1 className="font-display text-lg sm:text-xl font-bold text-slate-900 dark:text-white uppercase tracking-wide">Academy settings</h1>
-          <p className="text-xs text-slate-400 mt-1">
-            These apply academy-wide, across every franchise of {academy.name}.
-          </p>
-        </div>
-        <Button icon={<Save size={15} />} loading={saving} onClick={handleSave} className="w-full sm:w-auto justify-center">
-          Save changes
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Configuration"
+        title="Academy settings"
+        subtitle={`These apply academy-wide, across every franchise of ${academy.name}.`}
+        actions={
+          <Button icon={<Save size={15} />} loading={saving} onClick={handleSave} className="w-full sm:w-auto justify-center">
+            Save changes
+          </Button>
+        }
+      />
 
       <Card>
         <div className="flex items-center gap-2 mb-4">

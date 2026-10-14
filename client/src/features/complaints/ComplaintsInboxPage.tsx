@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { clsx } from "clsx";
 import { toast } from "react-hot-toast";
 import { MessageSquareWarning, Send, LifeBuoy } from "lucide-react";
-import { Badge, Button, Skeleton, EmptyState } from "../../components/ui";
+import { Badge, Button, Skeleton, EmptyState, PageHeader, Tabs } from "../../components/ui";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import {
   useListAcademyComplaintsQuery,
@@ -30,42 +30,34 @@ const ComplaintsInboxPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Tab Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-4">
-        <div>
-          <p className="section-title mb-1">Support & Helpdesk</p>
-          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
-            {activeTab === "academy_inquiries" ? "Academy Complaints" : "Platform Support"}
-          </h1>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-2 bg-slate-100 dark:bg-pitch-900/80 p-1 rounded-xl border border-slate-200 dark:border-white/10 w-full sm:w-auto">
-          <button
-            onClick={() => setActiveTab("academy_inquiries")}
-            className={clsx(
-              "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2",
-              activeTab === "academy_inquiries"
-                ? "bg-volt-400 text-pitch-900 shadow-sm"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-            )}
-          >
-            <MessageSquareWarning size={14} />
-            <span>Academy Complaints</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("platform_support")}
-            className={clsx(
-              "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2",
-              activeTab === "platform_support"
-                ? "bg-volt-400 text-pitch-900 shadow-sm"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-            )}
-          >
-            <LifeBuoy size={14} />
-            <span>Platform Support <span className="hidden sm:inline">(To Super Admin)</span></span>
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Support & Helpdesk"
+        title={activeTab === "academy_inquiries" ? "Academy Complaints" : "Platform Support"}
+        subtitle="Review complaints submitted by students or guardians, and manage support tickets."
+        actions={
+          <Tabs
+            variant="pills"
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            tabs={[
+              {
+                id: "academy_inquiries",
+                label: "Academy Complaints",
+                icon: <MessageSquareWarning size={14} />,
+              },
+              {
+                id: "platform_support",
+                label: (
+                  <span>
+                    Platform Support <span className="hidden sm:inline">(To Super Admin)</span>
+                  </span>
+                ),
+                icon: <LifeBuoy size={14} />,
+              },
+            ]}
+          />
+        }
+      />
 
       {activeTab === "platform_support" ? (
         <PlatformSupportTab />

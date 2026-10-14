@@ -19,7 +19,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { Button, Badge, Modal, Input, Skeleton, EmptyState, DocumentUploadField } from "../../components/ui";
+import { Button, Badge, Modal, Input, Skeleton, EmptyState, DocumentUploadField, PageHeader, Card } from "../../components/ui";
 import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
@@ -219,52 +219,49 @@ const SchedulePage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 text-slate-900 dark:text-slate-100">
+    <div className="space-y-6 animate-fade-in">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-5">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white tracking-wide uppercase flex items-center gap-2">
-            <CalendarDays className="text-volt-500 dark:text-volt-400" size={24} /> Schedule Command Center
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Operational session dispatcher, field utilization, and roster attendance tracking.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-          {canBroadcast && (
-            <Button
-              variant="secondary"
-              icon={<Bell size={15} />}
-              onClick={() => setConfirmBroadcastModal(true)}
-              className="text-xs font-semibold flex-1 sm:flex-initial justify-center"
-            >
-              Broadcast Alert
+      <PageHeader
+        eyebrow="Training & Operations"
+        title="Schedule Command Center"
+        subtitle="Operational session dispatcher, field utilization, and roster attendance tracking."
+        actions={
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+            {canBroadcast && (
+              <Button
+                variant="secondary"
+                icon={<Bell size={15} />}
+                onClick={() => setConfirmBroadcastModal(true)}
+                className="text-xs font-semibold flex-1 sm:flex-initial justify-center"
+              >
+                Broadcast Alert
+              </Button>
+            )}
+            <Button icon={<Plus size={15} />} onClick={() => setShowCreate(true)} className="text-xs font-semibold flex-1 sm:flex-initial justify-center">
+              New Session
             </Button>
-          )}
-          <Button icon={<Plus size={15} />} onClick={() => setShowCreate(true)} className="text-xs font-semibold flex-1 sm:flex-initial justify-center">
-            New Session
-          </Button>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {/* Metric Cards Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3.5 rounded-xl bg-white dark:bg-pitch-800/80 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
+        <Card className="p-3.5 space-y-1">
           <span className="text-2xs font-mono uppercase text-slate-500 dark:text-slate-400">{selectedDate ? "Total for Day" : "Total Sessions"}</span>
-          <p className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-0.5">{kpis.total}</p>
-        </div>
-        <div className="p-3.5 rounded-xl bg-white dark:bg-pitch-800/80 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
+          <p className="text-xl font-bold font-mono text-slate-900 dark:text-white">{kpis.total}</p>
+        </Card>
+        <Card className="p-3.5 space-y-1">
           <span className="text-2xs font-mono uppercase text-emerald-600 dark:text-emerald-400">Ongoing</span>
-          <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-0.5">{kpis.ongoing}</p>
-        </div>
-        <div className="p-3.5 rounded-xl bg-white dark:bg-pitch-800/80 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
+          <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">{kpis.ongoing}</p>
+        </Card>
+        <Card className="p-3.5 space-y-1">
           <span className="text-2xs font-mono uppercase text-volt-600 dark:text-volt-400">Upcoming</span>
-          <p className="text-xl font-bold font-mono text-volt-600 dark:text-volt-400 mt-0.5">{kpis.upcoming}</p>
-        </div>
-        <div className="p-3.5 rounded-xl bg-white dark:bg-pitch-800/80 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
+          <p className="text-xl font-bold font-mono text-volt-600 dark:text-volt-400">{kpis.upcoming}</p>
+        </Card>
+        <Card className="p-3.5 space-y-1">
           <span className="text-2xs font-mono uppercase text-slate-500 dark:text-slate-400">Completed</span>
-          <p className="text-xl font-bold font-mono text-slate-700 dark:text-slate-300 mt-0.5">{kpis.completed}</p>
-        </div>
+          <p className="text-xl font-bold font-mono text-slate-700 dark:text-slate-300">{kpis.completed}</p>
+        </Card>
       </div>
 
       {/* Operational Search & Filter Bar */}

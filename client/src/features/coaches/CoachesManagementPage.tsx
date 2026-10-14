@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { clsx } from "clsx";
 import { UserCog, Plus, KeyRound, Power, Search, Pencil, Clock, Trash2, Wallet } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { Button, Input, Badge, Avatar, Modal, Skeleton, EmptyState } from "../../components/ui";
+import { Button, Input, Badge, Avatar, Modal, Skeleton, EmptyState, PageHeader } from "../../components/ui";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
 import { useGetFranchisesQuery } from "../../store/api/franchiseApi";
@@ -75,16 +75,14 @@ const CoachesManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div>
-          <p className="section-title mb-1">Staff</p>
-          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">Coaches</h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            {isLoading ? "Loading…" : `${coachesResult?.total ?? 0} coaches in this academy`}
-          </p>
-        </div>
-        <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)} className="w-full sm:w-auto justify-center">New coach</Button>
-      </div>
+      <PageHeader
+        eyebrow="Staff"
+        title="Coaches"
+        subtitle={isLoading ? "Loading…" : `${coachesResult?.total ?? 0} coaches in this academy`}
+        actions={
+          <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)} className="w-full sm:w-auto justify-center">New coach</Button>
+        }
+      />
 
       <div className="card p-4">
         <Input

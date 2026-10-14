@@ -39,6 +39,8 @@ import {
   StatCard,
   EmptyState,
   Skeleton,
+  PageHeader,
+  Card,
 } from "../../components/ui";
 
 export const SuperAdminNfcManagementPage: React.FC = () => {
@@ -213,16 +215,11 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div>
-        <p className="section-title mb-1">Global Platform Operations</p>
-        <h1 className="font-display font-black text-slate-900 dark:text-white text-2xl uppercase tracking-tight">
-          NFC Card Management
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-          Configure dynamic pricing, review incoming card requests, and oversee
-          order fulfillment
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Global Platform Operations"
+        title="NFC Card Management"
+        subtitle="Configure dynamic pricing, review incoming card requests, and oversee order fulfillment"
+      />
 
       {/* Dynamic Pricing Configuration Card */}
       <div className="card p-5 border-slate-200 dark:border-volt-400/20 bg-gradient-to-r from-slate-50 via-white to-slate-50 dark:from-pitch-900 dark:via-pitch-950 dark:to-pitch-900 shadow-xl">

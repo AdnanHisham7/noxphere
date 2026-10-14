@@ -3,7 +3,7 @@ import React, { useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { toast } from "react-hot-toast";
 import { FileText, Image as ImageIcon, Upload, CheckCircle2, Clock, Trash2, ExternalLink, HardDrive } from "lucide-react";
-import { Button, Card, Badge, Skeleton, EmptyState } from "../../components/ui";
+import { Button, Card, Badge, Skeleton, EmptyState, PageHeader } from "../../components/ui";
 import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import {
@@ -105,29 +105,36 @@ const ResourcesPage: React.FC = () => {
   const storageNearFull = storagePercent >= 90;
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="font-display font-black text-2xl text-slate-900 dark:text-white uppercase tracking-wide">Resources</h1>
-          <p className="text-sm text-slate-400 mt-1">
-            {isManager
-              ? "Every document and image uploaded by your coaches, for review and verification."
-              : "Your uploads, plus anything a manager has verified for the whole coaching staff."}
-          </p>
-        </div>
-        <div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={ALLOWED_TYPES.join(",")}
-            className="hidden"
-            onChange={(e) => handleFileSelected(e.target.files?.[0])}
-          />
-          <Button icon={<Upload size={15} />} loading={uploading} onClick={() => fileInputRef.current?.click()}>
-            Upload resource
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6 animate-fade-in">
+      <PageHeader
+        eyebrow="Media & Documents"
+        title="Resources"
+        subtitle={
+          isManager
+            ? "Every document and image uploaded by your coaches, for review and verification."
+            : "Your uploads, plus anything a manager has verified for the whole coaching staff."
+        }
+        actions={
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ALLOWED_TYPES.join(",")}
+              className="hidden"
+              onChange={(e) => handleFileSelected(e.target.files?.[0])}
+            />
+            <Button
+              icon={<Upload size={16} />}
+              loading={uploading}
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full sm:w-auto"
+            >
+              Upload resource
+            </Button>
+          </div>
+        }
+      />
+
 
       {/* Storage bar — manager/super_admin only */}
       {isManager && data?.storage && (

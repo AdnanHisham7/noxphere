@@ -1,7 +1,7 @@
 // src/components/ui/index.ts
 export { Button } from "./Button";
 export { Input } from "./Input";
-export { Card } from "./Card";
+export { Card, cn } from "./Card";
 export { Badge } from "./Badge";
 export { Skeleton } from "./Skeleton";
 export { Modal } from "./Modal";
@@ -12,3 +12,5 @@ export { Spinner } from "./Spinner";
 export { ImageUploadField } from "./ImageUploadField";
 export { DocumentUploadField } from "./DocumentUploadField";
 export { ConfirmModal } from "./ConfirmModal";
+export { PageHeader } from "./PageHeader";
+export { Tabs } from "./Tabs";

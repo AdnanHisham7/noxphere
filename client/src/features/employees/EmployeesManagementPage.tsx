@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { clsx } from "clsx";
 import { toast } from "react-hot-toast";
 import { UserPlus, Users, Shield, Wallet, Pencil, Power, Trash2, ShieldPlus } from "lucide-react";
-import { Button, Input, Badge, Modal, Skeleton, EmptyState } from "../../components/ui";
+import { Button, Input, Badge, Modal, Skeleton, EmptyState, PageHeader, Tabs } from "../../components/ui";
 import { useConfirm } from "../../hooks/useConfirm";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import {
@@ -101,33 +101,24 @@ const EmployeesManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div>
-          <p className="section-title mb-1">Academy Staff</p>
-          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">Employees</h1>
-        </div>
-        <Button icon={<UserPlus size={15} />} onClick={() => setShowAddEmployee(true)} className="w-full sm:w-auto justify-center">Add Employee</Button>
-      </div>
+      <PageHeader
+        eyebrow="Academy Staff"
+        title="Employees"
+        subtitle="Manage academy staff, custom permission roles, and salary tracking."
+        actions={
+          <Button icon={<UserPlus size={15} />} onClick={() => setShowAddEmployee(true)} className="w-full sm:w-auto justify-center">Add Employee</Button>
+        }
+      />
 
-      <div className="flex gap-2 border-b border-white/5 overflow-x-auto no-scrollbar flex-nowrap -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
-        {[
-          { id: "employees" as const, label: "Employees", icon: Users },
-          { id: "roles" as const, label: "Roles", icon: Shield },
-          { id: "salary" as const, label: "Salary", icon: Wallet },
-        ].map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={clsx(
-              "flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap shrink-0",
-              tab === t.id ? "border-volt-400 text-volt-400" : "border-transparent text-slate-500 hover:text-slate-300"
-            )}
-          >
-            <t.icon size={13} />
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        activeTab={tab}
+        onChange={setTab}
+        tabs={[
+          { id: "employees", label: "Employees", icon: <Users size={14} /> },
+          { id: "roles", label: "Roles", icon: <Shield size={14} /> },
+          { id: "salary", label: "Salary", icon: <Wallet size={14} /> },
+        ]}
+      />
 
       {tab === "employees" && (
         employeesLoading ? (

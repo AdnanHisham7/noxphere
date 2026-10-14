@@ -11,6 +11,7 @@ import {
   Modal,
   Skeleton,
   EmptyState,
+  PageHeader,
 } from "../../components/ui";
 import { useConfirm } from "../../hooks/useConfirm";
 import {
@@ -92,26 +93,24 @@ const UsersManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div>
-          <p className="section-title mb-1">Platform</p>
-          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
-            User Management
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            {isLoading
-              ? "Loading…"
-              : `${data?.total ?? 0} accounts across all academies`}
-          </p>
-        </div>
-        <Button
-          icon={<Plus size={16} />}
-          onClick={() => setShowCreate(true)}
-          className="w-full sm:w-auto justify-center"
-        >
-          New user
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Platform"
+        title="User Management"
+        subtitle={
+          isLoading
+            ? "Loading…"
+            : `${data?.total ?? 0} accounts across all academies`
+        }
+        actions={
+          <Button
+            icon={<Plus size={16} />}
+            onClick={() => setShowCreate(true)}
+            className="w-full sm:w-auto justify-center"
+          >
+            New user
+          </Button>
+        }
+      />
 
       {/* Filters */}
       <div className="card p-3.5 sm:p-4 flex flex-col sm:flex-row flex-wrap gap-3 sm:items-end">
