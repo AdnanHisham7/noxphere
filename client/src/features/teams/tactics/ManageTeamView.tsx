@@ -1,7 +1,7 @@
 // src/features/teams/tactics/ManageTeamView.tsx
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { ArrowLeft, ArrowLeftRight, Sparkles, X, Palette, ChevronDown, ChevronUp, FileSpreadsheet, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, Sparkles, X, Palette, ChevronDown, ChevronUp, FileSpreadsheet, Trash2, UserMinus } from "lucide-react";
 import {
   Player,
   FormationType,
@@ -79,6 +79,7 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
 
   const collectiveStrength = Math.round(
     Object.entries(squad).reduce((sum, [slotId, playerId]) => {
+      if (!playerId) return sum;
       const player = players.find((p) => p.id === playerId);
       const slot = (FORMATION_PRESETS[formation] || []).find((s) => s.id === slotId);
       if (!player || !slot) return sum;
@@ -88,7 +89,7 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
     }, 0),
   );
 
-  const activePitchIds = Object.values(squad);
+  const activePitchIds = Object.values(squad).filter(Boolean);
   const reservePlayers = players.filter((p) => !activePitchIds.includes(p.id));
 
   const handleDragStart = (
@@ -126,7 +127,15 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
     setTeamFormat(fmt);
     const defaultFmt = FORMATIONS_BY_FORMAT[fmt]?.defaultFormation || "4-2-3-1";
     setFormation(defaultFmt);
-    setSquad(autopickSquad(defaultFmt, players));
+    const layoutSlots = FORMATION_PRESETS[defaultFmt] || [];
+    const currentlyAssignedPlayers = Object.values(squad).filter(Boolean);
+    const updatedSquad: Record<string, string> = {};
+    layoutSlots.forEach((slot, index) => {
+      if (currentlyAssignedPlayers[index]) {
+        updatedSquad[slot.id] = currentlyAssignedPlayers[index];
+      }
+    });
+    setSquad(updatedSquad);
     toast.success(`Switched to ${FORMATIONS_BY_FORMAT[fmt]?.label || fmt}`);
   };
 
@@ -168,12 +177,37 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
   const applyFormationReset = (type: FormationType) => {
     setFormation(type);
     const layoutSlots = FORMATION_PRESETS[type] || [];
+    const currentlyAssignedPlayers = Object.values(squad).filter(Boolean);
     const updatedSquad: Record<string, string> = {};
+
     layoutSlots.forEach((slot, index) => {
-      updatedSquad[slot.id] =
-        activePitchIds[index] || reservePlayers[index]?.id || players[0]?.id;
+      // Only carry over players already on the pitch; keep remaining slots completely empty
+      if (currentlyAssignedPlayers[index]) {
+        updatedSquad[slot.id] = currentlyAssignedPlayers[index];
+      }
     });
     setSquad(updatedSquad);
+  };
+
+  const handleClearPitch = () => {
+    setSquad({});
+    setSelectedPlayer(null);
+    toast.success("Pitch cleared — all slots are now empty");
+  };
+
+  const handleDropOnBench = (e: React.DragEvent) => {
+    e.preventDefault();
+    const sourceType = e.dataTransfer.getData("sourceType");
+    const payloadValue = e.dataTransfer.getData("payloadValue");
+    if (sourceType === "pitch") {
+      const originSlotId = payloadValue;
+      setSquad((prev) => {
+        const next = { ...prev };
+        delete next[originSlotId];
+        return next;
+      });
+      toast.success("Player moved to bench (slot emptied)");
+    }
   };
 
   const handleAutopick = () => {
@@ -277,12 +311,24 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                 <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                   Formation ({teamFormat})
                 </label>
-                <button
-                  onClick={handleAutopick}
-                  className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 transition-colors bg-cyan-50 dark:bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-200 dark:border-cyan-400/20"
-                >
-                  Autopick
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleClearPitch}
+                    className="text-[10px] font-bold text-slate-500 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded border border-slate-200 dark:border-white/10"
+                    title="Clear all players to make all slots empty"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAutopick}
+                    className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 transition-colors bg-cyan-50 dark:bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-200 dark:border-cyan-400/20"
+                    title="Auto-fill slots with best players"
+                  >
+                    Autopick
+                  </button>
+                </div>
               </div>
               <select
                 value={formation}
@@ -495,6 +541,28 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                     Role: {selectedPlayer.position} specialist <br />
                     Squad number: {selectedPlayer.squadNumber}
                   </p>
+                  {(() => {
+                    const selectedSlot = Object.entries(squad).find(([_, id]) => id === selectedPlayer.id)?.[0];
+                    if (!selectedSlot) return null;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSquad((prev) => {
+                            const next = { ...prev };
+                            delete next[selectedSlot];
+                            return next;
+                          });
+                          setSelectedPlayer(null);
+                          toast.success(`${selectedPlayer.name} moved to bench (slot emptied)`);
+                        }}
+                        className="w-full mt-2.5 text-2xs font-bold text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded py-1.5 transition flex items-center justify-center gap-1 uppercase"
+                      >
+                        <UserMinus size={12} />
+                        <span>Bench Player (Empty Slot)</span>
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             ) : (
@@ -517,6 +585,8 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
         />
       )}
       <div
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleDropOnBench}
         className={`fixed inset-y-0 right-0 w-72 sm:w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-50 transform ${isDrawerOpen ? "translate-x-0" : "translate-x-full"} transition-transform duration-300 ease-in-out p-4 flex flex-col`}
       >
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 mb-4">
