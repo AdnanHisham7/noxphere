@@ -1,12 +1,19 @@
 // src/store/api/adminFeesApi.ts
 import { baseApi } from "./baseApi";
 
+export interface PaymentBreakdownItem {
+  method: string;
+  amount: number;
+  transactionId?: string;
+}
+
 export interface FeeAuditLog {
   action: string;
   amount: number;
   installmentNumber: number;
   paymentMethod?: string;
   transactionId?: string;
+  paymentBreakdown?: PaymentBreakdownItem[];
   timestamp: string;
   performedByName: string;
   details?: string;
@@ -21,6 +28,7 @@ export interface FeeInstallment {
   status: string;
   paymentMethod?: string;
   transactionId?: string;
+  paymentBreakdown?: PaymentBreakdownItem[];
   reminderSentCount?: number;
   lastReminderAt?: string;
 }
@@ -61,7 +69,14 @@ export const adminFeesApi = baseApi.injectEndpoints({
     }),
     recordPayment: builder.mutation<
       AdminFeeRecord,
-      { feeId: string; installmentNumber: number; amount: number; paymentMethod?: string; transactionId?: string }
+      {
+        feeId: string;
+        installmentNumber: number;
+        amount: number;
+        paymentMethod?: string;
+        transactionId?: string;
+        paymentBreakdown?: PaymentBreakdownItem[];
+      }
     >({
       query: ({ feeId, installmentNumber, ...body }) => ({
         url: `/fees/${feeId}/installments/${installmentNumber}/pay`,
@@ -73,7 +88,14 @@ export const adminFeesApi = baseApi.injectEndpoints({
     }),
     updatePayment: builder.mutation<
       AdminFeeRecord,
-      { feeId: string; installmentNumber: number; amount: number; paymentMethod?: string; transactionId?: string }
+      {
+        feeId: string;
+        installmentNumber: number;
+        amount: number;
+        paymentMethod?: string;
+        transactionId?: string;
+        paymentBreakdown?: PaymentBreakdownItem[];
+      }
     >({
       query: ({ feeId, installmentNumber, ...body }) => ({
         url: `/fees/${feeId}/installments/${installmentNumber}/pay`,

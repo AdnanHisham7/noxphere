@@ -52,6 +52,7 @@ import {
   type CreateFeeBody,
   type AdminFeeRecord,
   type FeeInstallment,
+  type PaymentBreakdownItem,
 } from "../../store/api/adminFeesApi";
 import { useGetStudentsQuery } from "../../store/api/studentsApi";
 
@@ -185,6 +186,7 @@ const FeesPage: React.FC = () => {
     amount: number;
     paymentMethod?: string;
     transactionId?: string;
+    paymentBreakdown?: PaymentBreakdownItem[];
   } | null>(null);
 
   // Accordion expansion tracking
@@ -1101,6 +1103,7 @@ interface FeePlanDetailBlockProps {
     amount: number;
     paymentMethod?: string;
     transactionId?: string;
+    paymentBreakdown?: PaymentBreakdownItem[];
   }) => void;
   isAuditExpanded: boolean;
   onToggleAudit: () => void;
@@ -1187,18 +1190,38 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                   </span>
                 </div>
                 {inst.paidAt && (
-                  <span className="text-[10px] text-slate-400 mt-0.5">
-                    Paid via{" "}
-                    <span className="uppercase font-semibold text-slate-700 dark:text-slate-300">
-                      {inst.paymentMethod || "cash"}
-                    </span>{" "}
-                    on{" "}
-                    {new Date(inst.paidAt).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                    })}
-                    {inst.transactionId && ` (Txn: ${inst.transactionId})`}
-                  </span>
+                  <div className="flex flex-col gap-1 mt-0.5">
+                    <span className="text-[10px] text-slate-400">
+                      Paid via{" "}
+                      <span className="uppercase font-semibold text-slate-700 dark:text-slate-300">
+                        {inst.paymentBreakdown && inst.paymentBreakdown.length > 1
+                          ? "Split Payment"
+                          : inst.paymentMethod || "cash"}
+                      </span>{" "}
+                      on{" "}
+                      {new Date(inst.paidAt).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                      {inst.transactionId && ` (Txn: ${inst.transactionId})`}
+                    </span>
+                    {inst.paymentBreakdown && inst.paymentBreakdown.length > 1 && (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                        {inst.paymentBreakdown.map((item, bIdx) => (
+                          <span
+                            key={bIdx}
+                            className="inline-flex items-center gap-1 text-[9px] font-mono font-medium px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                          >
+                            <span className="uppercase font-bold">{item.method}:</span>
+                            <span>₹{item.amount.toLocaleString("en-IN")}</span>
+                            {item.transactionId && (
+                              <span className="text-slate-400">({item.transactionId})</span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
                 {inst.status !== "paid" &&
                   (inst.reminderSentCount ?? 0) > 0 && (
@@ -1246,6 +1269,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                             amount: inst.paidAmount,
                             paymentMethod: inst.paymentMethod || "cash",
                             transactionId: inst.transactionId || "",
+                            paymentBreakdown: inst.paymentBreakdown,
                           })
                         }
                         className="text-[10px] text-slate-600 dark:text-slate-400 hover:text-volt-600 dark:hover:text-volt-400 font-semibold border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-white/5 rounded px-2 py-1 transition-colors"
@@ -1779,21 +1803,88 @@ const RecordPaymentModal: React.FC<{
   onClose: () => void;
 }> = ({ target, onClose }) => {
   const [recordPayment, { isLoading }] = useRecordPaymentMutation();
-  const [amount, setAmount] = useState(String(target.amount));
-  const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [transactionId, setTransactionId] = useState("");
+  const [isMixed, setIsMixed] = useState(false);
+  const [singleAmount, setSingleAmount] = useState(String(target.amount));
+  const [singleMethod, setSingleMethod] = useState("cash");
+  const [singleTxnId, setSingleTxnId] = useState("");
+
+  const [splitRows, setSplitRows] = useState<
+    { method: string; amount: string; transactionId: string }[]
+  >([
+    { method: "cash", amount: String(Math.floor(target.amount / 2)), transactionId: "" },
+    { method: "upi", amount: String(target.amount - Math.floor(target.amount / 2)), transactionId: "" },
+  ]);
+
+  const totalSplit = useMemo(() => {
+    return splitRows.reduce((acc, row) => acc + (Number(row.amount) || 0), 0);
+  }, [splitRows]);
+
+  const addSplitRow = () => {
+    const diff = Math.max(0, target.amount - totalSplit);
+    setSplitRows((prev) => [
+      ...prev,
+      { method: "upi", amount: diff > 0 ? String(diff) : "", transactionId: "" },
+    ]);
+  };
+
+  const removeSplitRow = (idx: number) => {
+    setSplitRows((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateSplitRow = (
+    idx: number,
+    field: "method" | "amount" | "transactionId",
+    value: string,
+  ) => {
+    setSplitRows((prev) =>
+      prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row)),
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await recordPayment({
-        feeId: target.feeId,
-        installmentNumber: target.installmentNumber,
-        amount: Number(amount),
-        paymentMethod,
-        transactionId: transactionId || undefined,
-      }).unwrap();
-      toast.success("Payment recorded");
+      if (isMixed) {
+        const validBreakdown = splitRows
+          .filter((r) => Number(r.amount) > 0)
+          .map((r) => ({
+            method: r.method,
+            amount: Number(r.amount),
+            transactionId: r.transactionId.trim() || undefined,
+          }));
+
+        if (validBreakdown.length === 0) {
+          toast.error("Please enter valid amounts for the split payment rows");
+          return;
+        }
+
+        const totalAmt = validBreakdown.reduce((sum, r) => sum + r.amount, 0);
+
+        await recordPayment({
+          feeId: target.feeId,
+          installmentNumber: target.installmentNumber,
+          amount: totalAmt,
+          paymentMethod: validBreakdown.length > 1 ? "mixed" : validBreakdown[0].method,
+          transactionId: validBreakdown.map((r) => r.transactionId).filter(Boolean).join(", ") || undefined,
+          paymentBreakdown: validBreakdown,
+        }).unwrap();
+      } else {
+        await recordPayment({
+          feeId: target.feeId,
+          installmentNumber: target.installmentNumber,
+          amount: Number(singleAmount),
+          paymentMethod: singleMethod,
+          transactionId: singleTxnId.trim() || undefined,
+          paymentBreakdown: [
+            {
+              method: singleMethod,
+              amount: Number(singleAmount),
+              transactionId: singleTxnId.trim() || undefined,
+            },
+          ],
+        }).unwrap();
+      }
+      toast.success("Payment recorded successfully");
       onClose();
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't record payment — try again");
@@ -1801,39 +1892,178 @@ const RecordPaymentModal: React.FC<{
   };
 
   return (
-    <Modal isOpen onClose={onClose} title="Record payment" size="sm">
+    <Modal isOpen onClose={onClose} title="Record Payment" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Amount (₹)"
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          required
-        />
-        <div>
-          <label className="label text-xs">Payment method</label>
-          <select
-            className="input text-xs !w-full"
-            value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
+        {/* Toggle Mode: Single vs Mixed */}
+        <div className="flex p-1 bg-slate-100 dark:bg-pitch-950 rounded-lg border border-slate-200 dark:border-white/5">
+          <button
+            type="button"
+            onClick={() => setIsMixed(false)}
+            className={clsx(
+              "flex-1 py-1.5 text-xs font-semibold rounded-md transition-all text-center",
+              !isMixed
+                ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200",
+            )}
           >
-            <option value="cash">Cash</option>
-            <option value="card">Card</option>
-            <option value="upi">UPI</option>
-            <option value="bank_transfer">Bank transfer</option>
-          </select>
+            Single Method
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsMixed(true)}
+            className={clsx(
+              "flex-1 py-1.5 text-xs font-semibold rounded-md transition-all text-center flex items-center justify-center gap-1.5",
+              isMixed
+                ? "bg-volt-400 text-pitch-950 shadow-sm font-bold"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200",
+            )}
+          >
+            <span>Mixed / Split Payment</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-pitch-900/20 font-mono">
+              Cash + UPI
+            </span>
+          </button>
         </div>
-        <Input
-          label="Transaction ID (optional)"
-          value={transactionId}
-          onChange={(e) => setTransactionId(e.target.value)}
-        />
+
+        {!isMixed ? (
+          <div className="space-y-4">
+            <Input
+              label="Amount (₹)"
+              type="number"
+              value={singleAmount}
+              onChange={(e) => setSingleAmount(e.target.value)}
+              required
+            />
+            <div>
+              <label className="label text-xs">Payment Method</label>
+              <select
+                className="input text-xs !w-full"
+                value={singleMethod}
+                onChange={(e) => setSingleMethod(e.target.value)}
+              >
+                <option value="cash">Cash</option>
+                <option value="upi">UPI / GPay / PhonePe</option>
+                <option value="card">Credit / Debit Card</option>
+                <option value="bank_transfer">Bank Transfer / NEFT</option>
+                <option value="cheque">Cheque</option>
+              </select>
+            </div>
+            <Input
+              label="Transaction ID / Ref (optional)"
+              value={singleTxnId}
+              onChange={(e) => setSingleTxnId(e.target.value)}
+              placeholder="e.g. UPI Ref / Bank Txn ID"
+            />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Split Breakdown Rows
+              </span>
+              <button
+                type="button"
+                onClick={addSplitRow}
+                className="text-xs font-semibold text-volt-400 hover:text-volt-300 flex items-center gap-1 transition-colors"
+              >
+                <Plus size={13} />
+                <span>Add Method</span>
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+              {splitRows.map((row, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5"
+                >
+                  <select
+                    className="input text-xs !w-32 shrink-0"
+                    value={row.method}
+                    onChange={(e) => updateSplitRow(idx, "method", e.target.value)}
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="card">Card</option>
+                    <option value="bank_transfer">Bank Txn</option>
+                    <option value="cheque">Cheque</option>
+                  </select>
+
+                  <div className="flex-1 relative">
+                    <input
+                      type="number"
+                      placeholder="Amount (₹)"
+                      value={row.amount}
+                      onChange={(e) => updateSplitRow(idx, "amount", e.target.value)}
+                      className="input text-xs !w-full font-mono font-semibold"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      placeholder="Txn ID (optional)"
+                      value={row.transactionId}
+                      onChange={(e) =>
+                        updateSplitRow(idx, "transactionId", e.target.value)
+                      }
+                      className="input text-xs !w-full"
+                    />
+                  </div>
+
+                  {splitRows.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeSplitRow(idx)}
+                      className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
+                      title="Remove method"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Allocation summary banner */}
+            <div className="p-2.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-pitch-900 flex items-center justify-between text-xs">
+              <div>
+                <span className="text-slate-500 dark:text-slate-400">Total Allocated: </span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">
+                  ₹{totalSplit.toLocaleString("en-IN")}
+                </span>
+                <span className="text-slate-500 mx-1">/</span>
+                <span className="text-slate-500 font-mono">
+                  Due: ₹{target.amount.toLocaleString("en-IN")}
+                </span>
+              </div>
+              <div>
+                {totalSplit === target.amount ? (
+                  <span className="text-emerald-400 font-semibold flex items-center gap-1 font-mono text-[11px]">
+                    <CheckCircle2 size={13} />
+                    Balanced
+                  </span>
+                ) : totalSplit < target.amount ? (
+                  <span className="text-amber-400 font-mono text-[11px]">
+                    Remaining: ₹{(target.amount - totalSplit).toLocaleString("en-IN")}
+                  </span>
+                ) : (
+                  <span className="text-rose-400 font-mono text-[11px]">
+                    Over by ₹{(totalSplit - target.amount).toLocaleString("en-IN")}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <Button
           type="submit"
           loading={isLoading}
-          className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2"
+          className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2 mt-2"
         >
-          Record payment
+          {isMixed ? `Record Split Payment (₹${totalSplit})` : `Record Payment (₹${singleAmount})`}
         </Button>
       </form>
     </Modal>
@@ -1847,29 +2077,112 @@ const EditPaymentModal: React.FC<{
     amount: number;
     paymentMethod?: string;
     transactionId?: string;
+    paymentBreakdown?: PaymentBreakdownItem[];
   };
   onClose: () => void;
 }> = ({ target, onClose }) => {
   const [updatePayment, { isLoading }] = useUpdatePaymentMutation();
-  const [amount, setAmount] = useState(String(target.amount));
-  const [paymentMethod, setPaymentMethod] = useState(
-    target.paymentMethod || "cash",
+  const hasExistingBreakdown = !!(
+    target.paymentBreakdown && target.paymentBreakdown.length > 1
   );
-  const [transactionId, setTransactionId] = useState(
-    target.transactionId || "",
+
+  const [isMixed, setIsMixed] = useState(hasExistingBreakdown);
+  const [singleAmount, setSingleAmount] = useState(String(target.amount));
+  const [singleMethod, setSingleMethod] = useState(
+    target.paymentMethod && target.paymentMethod !== "mixed"
+      ? target.paymentMethod
+      : "cash",
   );
+  const [singleTxnId, setSingleTxnId] = useState(target.transactionId || "");
+
+  const [splitRows, setSplitRows] = useState<
+    { method: string; amount: string; transactionId: string }[]
+  >(() => {
+    if (target.paymentBreakdown && target.paymentBreakdown.length > 0) {
+      return target.paymentBreakdown.map((b) => ({
+        method: b.method,
+        amount: String(b.amount),
+        transactionId: b.transactionId || "",
+      }));
+    }
+    return [
+      {
+        method: target.paymentMethod || "cash",
+        amount: String(target.amount),
+        transactionId: target.transactionId || "",
+      },
+    ];
+  });
+
+  const totalSplit = useMemo(() => {
+    return splitRows.reduce((acc, row) => acc + (Number(row.amount) || 0), 0);
+  }, [splitRows]);
+
+  const addSplitRow = () => {
+    setSplitRows((prev) => [
+      ...prev,
+      { method: "upi", amount: "", transactionId: "" },
+    ]);
+  };
+
+  const removeSplitRow = (idx: number) => {
+    setSplitRows((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateSplitRow = (
+    idx: number,
+    field: "method" | "amount" | "transactionId",
+    value: string,
+  ) => {
+    setSplitRows((prev) =>
+      prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row)),
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await updatePayment({
-        feeId: target.feeId,
-        installmentNumber: target.installmentNumber,
-        amount: Number(amount),
-        paymentMethod,
-        transactionId: transactionId || undefined,
-      }).unwrap();
-      toast.success("Payment details updated");
+      if (isMixed) {
+        const validBreakdown = splitRows
+          .filter((r) => Number(r.amount) > 0)
+          .map((r) => ({
+            method: r.method,
+            amount: Number(r.amount),
+            transactionId: r.transactionId.trim() || undefined,
+          }));
+
+        if (validBreakdown.length === 0) {
+          toast.error("Please provide valid split breakdown amounts");
+          return;
+        }
+
+        const totalAmt = validBreakdown.reduce((sum, r) => sum + r.amount, 0);
+
+        await updatePayment({
+          feeId: target.feeId,
+          installmentNumber: target.installmentNumber,
+          amount: totalAmt,
+          paymentMethod: validBreakdown.length > 1 ? "mixed" : validBreakdown[0].method,
+          transactionId: validBreakdown.map((r) => r.transactionId).filter(Boolean).join(", ") || undefined,
+          paymentBreakdown: validBreakdown,
+        }).unwrap();
+      } else {
+        await updatePayment({
+          feeId: target.feeId,
+          installmentNumber: target.installmentNumber,
+          amount: Number(singleAmount),
+          paymentMethod: singleMethod,
+          transactionId: singleTxnId.trim() || undefined,
+          paymentBreakdown: [
+            {
+              method: singleMethod,
+              amount: Number(singleAmount),
+              transactionId: singleTxnId.trim() || undefined,
+            },
+          ],
+        }).unwrap();
+      }
+      toast.success("Payment details updated successfully");
       onClose();
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't update payment — try again");
@@ -1877,39 +2190,158 @@ const EditPaymentModal: React.FC<{
   };
 
   return (
-    <Modal isOpen onClose={onClose} title="Edit payment details" size="sm">
+    <Modal isOpen onClose={onClose} title="Edit Payment Details" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Amount (₹)"
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          required
-        />
-        <div>
-          <label className="label text-xs">Payment method</label>
-          <select
-            className="input text-xs !w-full"
-            value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
+        {/* Toggle Mode */}
+        <div className="flex p-1 bg-slate-100 dark:bg-pitch-950 rounded-lg border border-slate-200 dark:border-white/5">
+          <button
+            type="button"
+            onClick={() => setIsMixed(false)}
+            className={clsx(
+              "flex-1 py-1.5 text-xs font-semibold rounded-md transition-all text-center",
+              !isMixed
+                ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200",
+            )}
           >
-            <option value="cash">Cash</option>
-            <option value="card">Card</option>
-            <option value="upi">UPI</option>
-            <option value="bank_transfer">Bank transfer</option>
-          </select>
+            Single Method
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsMixed(true)}
+            className={clsx(
+              "flex-1 py-1.5 text-xs font-semibold rounded-md transition-all text-center flex items-center justify-center gap-1.5",
+              isMixed
+                ? "bg-volt-400 text-pitch-950 shadow-sm font-bold"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200",
+            )}
+          >
+            <span>Mixed / Split Payment</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-pitch-900/20 font-mono">
+              Cash + UPI
+            </span>
+          </button>
         </div>
-        <Input
-          label="Transaction ID (optional)"
-          value={transactionId}
-          onChange={(e) => setTransactionId(e.target.value)}
-        />
+
+        {!isMixed ? (
+          <div className="space-y-4">
+            <Input
+              label="Amount (₹)"
+              type="number"
+              value={singleAmount}
+              onChange={(e) => setSingleAmount(e.target.value)}
+              required
+            />
+            <div>
+              <label className="label text-xs">Payment Method</label>
+              <select
+                className="input text-xs !w-full"
+                value={singleMethod}
+                onChange={(e) => setSingleMethod(e.target.value)}
+              >
+                <option value="cash">Cash</option>
+                <option value="upi">UPI / GPay / PhonePe</option>
+                <option value="card">Credit / Debit Card</option>
+                <option value="bank_transfer">Bank Transfer / NEFT</option>
+                <option value="cheque">Cheque</option>
+              </select>
+            </div>
+            <Input
+              label="Transaction ID / Ref (optional)"
+              value={singleTxnId}
+              onChange={(e) => setSingleTxnId(e.target.value)}
+              placeholder="e.g. UPI Ref / Bank Txn ID"
+            />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Split Breakdown Rows
+              </span>
+              <button
+                type="button"
+                onClick={addSplitRow}
+                className="text-xs font-semibold text-volt-400 hover:text-volt-300 flex items-center gap-1 transition-colors"
+              >
+                <Plus size={13} />
+                <span>Add Method</span>
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+              {splitRows.map((row, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5"
+                >
+                  <select
+                    className="input text-xs !w-32 shrink-0"
+                    value={row.method}
+                    onChange={(e) => updateSplitRow(idx, "method", e.target.value)}
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="card">Card</option>
+                    <option value="bank_transfer">Bank Txn</option>
+                    <option value="cheque">Cheque</option>
+                  </select>
+
+                  <div className="flex-1">
+                    <input
+                      type="number"
+                      placeholder="Amount (₹)"
+                      value={row.amount}
+                      onChange={(e) => updateSplitRow(idx, "amount", e.target.value)}
+                      className="input text-xs !w-full font-mono font-semibold"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      placeholder="Txn ID (optional)"
+                      value={row.transactionId}
+                      onChange={(e) =>
+                        updateSplitRow(idx, "transactionId", e.target.value)
+                      }
+                      className="input text-xs !w-full"
+                    />
+                  </div>
+
+                  {splitRows.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeSplitRow(idx)}
+                      className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
+                      title="Remove method"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Allocation summary banner */}
+            <div className="p-2.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-pitch-900 flex items-center justify-between text-xs">
+              <div>
+                <span className="text-slate-500 dark:text-slate-400">Total Updated Amount: </span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">
+                  ₹{totalSplit.toLocaleString("en-IN")}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <Button
           type="submit"
           loading={isLoading}
-          className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2"
+          className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2 mt-2"
         >
-          Save Changes
+          {isMixed ? `Save Changes (₹${totalSplit})` : `Save Changes (₹${singleAmount})`}
         </Button>
       </form>
     </Modal>

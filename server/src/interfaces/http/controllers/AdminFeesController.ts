@@ -47,12 +47,15 @@ export class AdminFeesController {
 
   recordPayment = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { amount, paymentMethod, transactionId } = req.body;
-      if (!amount) throw new BadRequestError("amount is required");
+      const { amount, paymentMethod, transactionId, paymentBreakdown } = req.body;
+      const numAmount = Number(amount);
+      if (!numAmount && (!Array.isArray(paymentBreakdown) || paymentBreakdown.length === 0)) {
+        throw new BadRequestError("amount or paymentBreakdown is required");
+      }
       const fee = await this.feesUseCases.recordPayment(
         req.params.id,
         Number(req.params.installmentNumber),
-        { amount, paymentMethod, transactionId },
+        { amount: numAmount, paymentMethod, transactionId, paymentBreakdown },
         req.user!.sub,
       );
       ResponseHandler.success(res, fee, "Payment recorded");
@@ -63,12 +66,15 @@ export class AdminFeesController {
 
   updatePayment = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { amount, paymentMethod, transactionId } = req.body;
-      if (amount === undefined) throw new BadRequestError("amount is required");
+      const { amount, paymentMethod, transactionId, paymentBreakdown } = req.body;
+      const numAmount = amount !== undefined ? Number(amount) : 0;
+      if (amount === undefined && (!Array.isArray(paymentBreakdown) || paymentBreakdown.length === 0)) {
+        throw new BadRequestError("amount or paymentBreakdown is required");
+      }
       const fee = await this.feesUseCases.updatePayment(
         req.params.id,
         Number(req.params.installmentNumber),
-        { amount, paymentMethod, transactionId },
+        { amount: numAmount, paymentMethod, transactionId, paymentBreakdown },
         req.user!.sub,
       );
       ResponseHandler.success(res, fee, "Payment updated");

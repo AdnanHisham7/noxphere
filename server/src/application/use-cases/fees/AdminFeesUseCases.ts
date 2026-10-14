@@ -21,10 +21,17 @@ export interface CreateFeeInput {
   notes?: string;
 }
 
+export interface PaymentBreakdownItem {
+  method: string;
+  amount: number;
+  transactionId?: string;
+}
+
 export interface RecordPaymentInput {
   amount: number;
   paymentMethod?: string;
   transactionId?: string;
+  paymentBreakdown?: PaymentBreakdownItem[];
 }
 
 function computeOverallStatus(installments: { status: string }[]): string {
@@ -85,7 +92,19 @@ export class AdminFeesUseCases {
   }
 
   async recordPayment(feeId: string, installmentNumber: number, input: RecordPaymentInput, performedBy: string) {
-    if (input.amount <= 0) throw new BadRequestError("Payment amount must be greater than zero");
+    // If a paymentBreakdown array is supplied, validate it and recalculate total
+    let effectiveAmount = input.amount;
+    let paymentBreakdown = input.paymentBreakdown;
+
+    if (paymentBreakdown && Array.isArray(paymentBreakdown) && paymentBreakdown.length > 0) {
+      const breakdownSum = paymentBreakdown.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      if (breakdownSum <= 0) {
+        throw new BadRequestError("Sum of payment breakdown amounts must be greater than zero");
+      }
+      effectiveAmount = breakdownSum;
+    }
+
+    if (effectiveAmount <= 0) throw new BadRequestError("Payment amount must be greater than zero");
 
     const fee = await FeeModel.findById(feeId);
     if (!fee) throw new NotFoundError("Fee record not found");
@@ -93,10 +112,25 @@ export class AdminFeesUseCases {
     const installment = fee.installments.find((i) => i.installmentNumber === installmentNumber);
     if (!installment) throw new NotFoundError("Installment not found");
 
-    installment.paidAmount = Math.min(installment.amount, installment.paidAmount + input.amount);
+    installment.paidAmount = Math.min(installment.amount, installment.paidAmount + effectiveAmount);
     installment.paidAt = new Date();
-    installment.paymentMethod = input.paymentMethod;
-    installment.transactionId = input.transactionId;
+
+    // Determine paymentMethod description
+    if (paymentBreakdown && paymentBreakdown.length > 1) {
+      installment.paymentMethod = input.paymentMethod || "mixed";
+      installment.paymentBreakdown = paymentBreakdown;
+      // Synthesize transaction IDs if available
+      const txnIds = paymentBreakdown.map((b) => b.transactionId).filter(Boolean);
+      installment.transactionId = input.transactionId || (txnIds.length > 0 ? txnIds.join(", ") : undefined);
+    } else if (paymentBreakdown && paymentBreakdown.length === 1) {
+      installment.paymentMethod = paymentBreakdown[0].method || input.paymentMethod || "cash";
+      installment.paymentBreakdown = paymentBreakdown;
+      installment.transactionId = paymentBreakdown[0].transactionId || input.transactionId;
+    } else {
+      installment.paymentMethod = input.paymentMethod;
+      installment.transactionId = input.transactionId;
+    }
+
     installment.status = installment.paidAmount >= installment.amount ? "paid" : "partial";
 
     // mark any past-due, still-unpaid installments as overdue
@@ -108,22 +142,27 @@ export class AdminFeesUseCases {
     const user = await UserModel.findById(performedBy).select("firstName lastName").lean();
     const performedByName = user ? `${user.firstName} ${user.lastName}` : "System";
 
+    const breakdownText = paymentBreakdown && paymentBreakdown.length > 1
+      ? ` (Mixed: ${paymentBreakdown.map((b) => `${b.method.toUpperCase()} ${fee.currency || 'INR'} ${b.amount}${b.transactionId ? ` [${b.transactionId}]` : ''}`).join(', ')})`
+      : '';
+
     fee.auditLog.push({
       action: "record_payment",
-      amount: input.amount,
+      amount: effectiveAmount,
       installmentNumber,
-      paymentMethod: input.paymentMethod,
-      transactionId: input.transactionId,
+      paymentMethod: installment.paymentMethod,
+      transactionId: installment.transactionId,
+      paymentBreakdown: paymentBreakdown,
       timestamp: new Date(),
       performedBy: performedBy as any,
       performedByName,
-      details: `Recorded payment of INR ${input.amount} for installment #${installmentNumber}.`
+      details: `Recorded payment of ${fee.currency || 'INR'} ${effectiveAmount}${breakdownText} for installment #${installmentNumber}.`
     });
 
     fee.overallStatus = computeOverallStatus(fee.installments) as typeof fee.overallStatus;
     await fee.save();
 
-    await this.sendPaymentReceipt(fee, installmentNumber, input.amount);
+    await this.sendPaymentReceipt(fee, installmentNumber, effectiveAmount);
 
     return fee.toJSON ? fee.toJSON() : fee;
   }
@@ -131,10 +170,18 @@ export class AdminFeesUseCases {
   async updatePayment(
     feeId: string,
     installmentNumber: number,
-    input: { amount: number; paymentMethod?: string; transactionId?: string },
+    input: { amount: number; paymentMethod?: string; transactionId?: string; paymentBreakdown?: PaymentBreakdownItem[] },
     performedBy: string
   ) {
-    if (input.amount < 0) throw new BadRequestError("Payment amount cannot be negative");
+    let effectiveAmount = input.amount;
+    let paymentBreakdown = input.paymentBreakdown;
+
+    if (paymentBreakdown && Array.isArray(paymentBreakdown) && paymentBreakdown.length > 0) {
+      const breakdownSum = paymentBreakdown.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      effectiveAmount = breakdownSum;
+    }
+
+    if (effectiveAmount < 0) throw new BadRequestError("Payment amount cannot be negative");
 
     const fee = await FeeModel.findById(feeId);
     if (!fee) throw new NotFoundError("Fee record not found");
@@ -146,24 +193,43 @@ export class AdminFeesUseCases {
     const performedByName = user ? `${user.firstName} ${user.lastName}` : "System";
 
     const oldAmount = installment.paidAmount;
-    installment.paidAmount = Math.min(installment.amount, input.amount);
-    installment.paymentMethod = input.paymentMethod;
-    installment.transactionId = input.transactionId;
+    installment.paidAmount = Math.min(installment.amount, effectiveAmount);
+
+    if (paymentBreakdown && paymentBreakdown.length > 1) {
+      installment.paymentMethod = input.paymentMethod || "mixed";
+      installment.paymentBreakdown = paymentBreakdown;
+      const txnIds = paymentBreakdown.map((b) => b.transactionId).filter(Boolean);
+      installment.transactionId = input.transactionId || (txnIds.length > 0 ? txnIds.join(", ") : undefined);
+    } else if (paymentBreakdown && paymentBreakdown.length === 1) {
+      installment.paymentMethod = paymentBreakdown[0].method || input.paymentMethod || "cash";
+      installment.paymentBreakdown = paymentBreakdown;
+      installment.transactionId = paymentBreakdown[0].transactionId || input.transactionId;
+    } else {
+      installment.paymentMethod = input.paymentMethod;
+      installment.transactionId = input.transactionId;
+      installment.paymentBreakdown = undefined;
+    }
+
     installment.status = installment.paidAmount >= installment.amount ? "paid" : installment.paidAmount > 0 ? "partial" : "pending";
     if (installment.paidAmount > 0 && !installment.paidAt) {
       installment.paidAt = new Date();
     }
 
+    const breakdownText = paymentBreakdown && paymentBreakdown.length > 1
+      ? ` (Mixed: ${paymentBreakdown.map((b) => `${b.method.toUpperCase()} ${fee.currency || 'INR'} ${b.amount}${b.transactionId ? ` [${b.transactionId}]` : ''}`).join(', ')})`
+      : '';
+
     fee.auditLog.push({
       action: "update_payment",
-      amount: input.amount,
+      amount: effectiveAmount,
       installmentNumber,
-      paymentMethod: input.paymentMethod,
-      transactionId: input.transactionId,
+      paymentMethod: installment.paymentMethod,
+      transactionId: installment.transactionId,
+      paymentBreakdown: paymentBreakdown,
       timestamp: new Date(),
       performedBy: performedBy as any,
       performedByName,
-      details: `Updated installment #${installmentNumber} payment from INR ${oldAmount} to INR ${input.amount}.`
+      details: `Updated installment #${installmentNumber} payment from ${fee.currency || 'INR'} ${oldAmount} to ${fee.currency || 'INR'} ${effectiveAmount}${breakdownText}.`
     });
 
     fee.overallStatus = computeOverallStatus(fee.installments) as any;
@@ -310,6 +376,7 @@ export class AdminFeesUseCases {
         currency: fee.currency,
         paymentMethod: installment.paymentMethod,
         transactionId: installment.transactionId,
+        paymentBreakdown: installment.paymentBreakdown,
         paidAt: installment.paidAt ?? new Date(),
         receiptNumber,
       });
