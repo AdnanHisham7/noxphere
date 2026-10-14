@@ -79,6 +79,8 @@ import { SquadInvitationController } from "./interfaces/http/controllers/SquadIn
 import { SquadInvitationUseCases } from "./application/use-cases/student/SquadInvitationUseCases";
 import { PlatformTicketController } from "./interfaces/http/controllers/PlatformTicketController";
 import { PlatformTicketUseCases } from "./application/use-cases/platformTicket/PlatformTicketUseCases";
+import { ExpenseController } from "./interfaces/http/controllers/ExpenseController";
+import { ExpenseUseCases } from "./application/use-cases/expense/ExpenseUseCases";
 
 const app = express();
 
@@ -234,6 +236,8 @@ const academyController = new AcademyController(academyUseCases);
   const squadInvitationController = new SquadInvitationController(squadInvitationUseCases);
   const platformTicketUseCases = new PlatformTicketUseCases();
   const platformTicketController = new PlatformTicketController(platformTicketUseCases);
+  const expenseUseCases = new ExpenseUseCases();
+  const expenseController = new ExpenseController(expenseUseCases);
 
   app.locals.controllers = {
     auth: authController,
@@ -246,6 +250,7 @@ const academyController = new AcademyController(academyUseCases);
     team: teamController,
     attendance: attendanceController,
     fees: feesController,
+    expense: expenseController,
     performance: performanceController,
     notification: notificationController,
     userNotification: userNotificationController,
