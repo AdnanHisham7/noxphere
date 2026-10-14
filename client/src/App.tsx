@@ -250,6 +250,12 @@ const App: React.FC = () => (
                 <Route path="/coaches" element={<CoachesManagementPage />} />
                 <Route path="/settings" element={<AcademySettingsPage />} />
                 <Route path="/employees" element={<EmployeesManagementPage />} />
+              </Route>
+
+              {/* Manager + Coach Complaints Inbox */}
+              <Route
+                element={<RoleProtectedRoute allowedRoles={["manager", "coach"]} />}
+              >
                 <Route path="/complaints" element={<ComplaintsInboxPage />} />
               </Route>
 
