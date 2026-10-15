@@ -24,6 +24,7 @@ export interface PlatformSettingsDocument extends Document {
   defaultTrialCapacity: number;
   defaultTrialStaffCapacity: number;
   currencyPricing?: CurrencyPricing[];
+  playerAiPromptTemplate?: string;
   updatedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -53,6 +54,7 @@ const PlatformSettingsSchema = new Schema<PlatformSettingsDocument>(
     defaultTrialCapacity: { type: Number, required: true, default: 50, min: 1 },
     defaultTrialStaffCapacity: { type: Number, required: true, default: 5, min: 0 },
     currencyPricing: { type: [CurrencyPricingSchema], default: [] },
+    playerAiPromptTemplate: { type: String, default: "" },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true },

@@ -17,6 +17,8 @@ import {
   Archive,
   RotateCcw,
   Eye,
+  AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 import {
   Button,
@@ -47,6 +49,7 @@ import { useGetFranchiseConsentStatusQuery } from "../../store/api/consentApi";
 import { ShareRegistrationLinkModal } from "./ShareRegistrationLinkModal";
 import { RegistrationRequestsTab } from "./RegistrationRequestsTab";
 import { InviteUnattachedStudentModal } from "./ClaimUnattachedStudentModal";
+import { PlayerAiPromptModal } from "./PlayerAiPromptModal";
 import {
   useGetStudentsQuery,
   useCreateStudentMutation,
@@ -85,9 +88,16 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
 
       <div className="absolute top-2.5 left-2.5 right-2.5 z-20 flex items-start justify-between">
         <div>
-          <p className="text-[9px] uppercase tracking-[0.5px] text-slate-500 dark:text-white/50 font-bold">
-            {student.position ?? "—"}
-          </p>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[9px] uppercase tracking-[0.5px] text-slate-500 dark:text-white/50 font-bold">
+              {student.position ?? "—"}
+            </span>
+            {student.transferStatus === "listed" && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-sky-500 text-white shadow-xs drop-shadow-xs">
+                ↔ LISTED
+              </span>
+            )}
+          </div>
           <h3 className="font-display font-black uppercase leading-none text-slate-900 dark:text-white text-base mt-1 drop-shadow-xs">
             {student.firstName}
             <br />
@@ -109,12 +119,6 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
           </div>
         </div>
       </div>
-
-      {/* <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
-        <span className="font-display font-black text-[64px] sm:text-[100px] leading-none text-slate-900/[0.04] dark:text-white/[0.06] select-none">
-          {student.jerseyNumber ?? "—"}
-        </span>
-      </div> */}
 
       <div className="absolute bottom-0 left-0 right-0 z-20 p-2.5">
         <div className="mb-2">
@@ -151,7 +155,7 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
         </div>
 
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <Badge
               variant={selectionBadge[student.selectionStatus]?.variant}
               size="sm"
@@ -164,9 +168,13 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
               </Badge>
             )}
             {hasConsent === false && (
-              <Badge variant="yellow" size="sm">
-                Consent pending
-              </Badge>
+              <span
+                title="Guardian consent pending"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-tight bg-amber-400/20 text-amber-800 dark:text-amber-300 border border-amber-400/30 shrink-0"
+              >
+                <AlertTriangle size={9} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>Consent</span>
+              </span>
             )}
           </div>
 
@@ -180,12 +188,6 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
           </div>
         </div>
       </div>
-
-      {student.transferStatus === "listed" && (
-        <div className="absolute top-2.5 right-2.5 z-30">
-          <span className="pill-blue text-2xs font-bold">↔ LISTED</span>
-        </div>
-      )}
     </>
   );
 };
@@ -432,12 +434,13 @@ const StudentsPage: React.FC = () => {
                   Registration Link
                 </Button>
               )}
-              <Link to="/nfc-cards" className="flex-1 sm:flex-none">
+              {/* NFC Cards button - desktop only */}
+              <Link to="/nfc-cards" className="hidden md:inline-flex">
                 <Button
                   size="sm"
                   variant="secondary"
                   icon={<CreditCard size={14} />}
-                  className="text-xs w-full justify-center"
+                  className="text-xs justify-center"
                 >
                   NFC Cards
                 </Button>
@@ -659,7 +662,7 @@ const StudentsPage: React.FC = () => {
       ) : (
         <>
           {/* Filters + view toggle */}
-          <div className="card p-3.5 sm:p-4 flex flex-col sm:flex-row flex-wrap gap-2.5 sm:gap-3 sm:items-end">
+          <div className="card p-3 sm:p-4 space-y-2 sm:space-y-0 sm:flex sm:flex-row sm:flex-wrap sm:gap-3 sm:items-end">
             <div className="w-full sm:flex-1 sm:min-w-48">
               <Input
                 placeholder="Search players..."
@@ -668,45 +671,52 @@ const StudentsPage: React.FC = () => {
                 icon={<Search className="h-4 w-4 text-muted-foreground" />}
               />
             </div>
-            <div className="w-full sm:w-auto sm:min-w-32">
-              <Select
-                value={filterTeam}
-                onChange={(e) => setFilterTeam(e.target.value)}
-              >
-                <option value="">All Teams</option>
-                {(teams ?? []).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="w-full sm:w-auto sm:min-w-32">
-              <Select
-                value={filterAge}
-                onChange={(e) => setFilterAge(e.target.value)}
-              >
-                <option value="">All Ages</option>
-                {categoriesList.map((a) => (
-                  <option key={a}>{a}</option>
-                ))}
-              </Select>
-            </div>
-            <div className="w-full sm:w-auto sm:min-w-40">
-              <Select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <option value="">All Statuses</option>
-                <option value="selected">Selected</option>
-                <option value="shortlisted">Shortlisted</option>
-                <option value="pending">Pending</option>
-                <option value="on_hold">On Hold</option>
-                <option value="not_selected">Not Selected</option>
-              </Select>
+
+            {/* Mobile 3-column filter grid / desktop flex row */}
+            <div className="grid grid-cols-3 gap-1.5 sm:flex sm:w-auto sm:gap-3 w-full sm:w-auto">
+              <div className="w-full sm:w-auto sm:min-w-32">
+                <Select
+                  value={filterTeam}
+                  onChange={(e) => setFilterTeam(e.target.value)}
+                  className="!text-xs !py-2 !px-2 truncate"
+                >
+                  <option value="">All Teams</option>
+                  {(teams ?? []).map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="w-full sm:w-auto sm:min-w-28">
+                <Select
+                  value={filterAge}
+                  onChange={(e) => setFilterAge(e.target.value)}
+                  className="!text-xs !py-2 !px-2 truncate"
+                >
+                  <option value="">All Ages</option>
+                  {categoriesList.map((a) => (
+                    <option key={a}>{a}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="w-full sm:w-auto sm:min-w-36">
+                <Select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="!text-xs !py-2 !px-2 truncate"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="selected">Selected</option>
+                  <option value="shortlisted">Shortlisted</option>
+                  <option value="pending">Pending</option>
+                  <option value="on_hold">On Hold</option>
+                  <option value="not_selected">Not Selected</option>
+                </Select>
+              </div>
             </div>
 
-            <div className="w-full sm:w-auto sm:ml-auto flex items-center justify-between sm:justify-start gap-2 pt-1 sm:pt-0">
+            <div className="w-full sm:w-auto sm:ml-auto flex items-center justify-between sm:justify-start gap-2 pt-0.5 sm:pt-0">
               <button
                 onClick={() => setShowPhotoCards((prev) => !prev)}
                 className="h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-volt-500 dark:hover:border-volt-400/30 hover:bg-slate-50 dark:hover:bg-pitch-600 transition-all duration-300 shadow-xs"
@@ -1177,6 +1187,7 @@ const AddPlayerModal: React.FC<{
   const [guardian, setGuardian] = useState(emptyGuardian);
   const [medical, setMedical] = useState(emptyMedical);
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [showAiPrompt, setShowAiPrompt] = useState(false);
   const [checkAvailability, { isFetching: checkingAvailability }] =
     useLazyCheckAvailabilityQuery();
 
@@ -1382,14 +1393,29 @@ const AddPlayerModal: React.FC<{
         {/* STEP 1: Player Profile */}
         {step === 1 && (
           <div className="space-y-4 animate-fade-in">
-            <ImageUploadField
-              label="Player photo (optional)"
-              category="player_photo"
-              value={photo}
-              onChange={setPhoto}
-              shape="circle"
-              helperText="Shown on the player's card throughout the app. Can be added later too."
-            />
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-400 uppercase tracking-wide">
+                  Player Photo (optional)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAiPrompt(true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-volt-600 dark:text-volt-400 bg-volt-400/10 hover:bg-volt-400/20 border border-volt-400/25 transition-all self-start sm:self-auto cursor-pointer"
+                >
+                  <Sparkles size={12} />
+                  <span>AI Photo Prompt Helper</span>
+                </button>
+              </div>
+              <ImageUploadField
+                label=""
+                category="player_photo"
+                value={photo}
+                onChange={setPhoto}
+                shape="circle"
+                helperText="Shown on the player's card throughout the app. Can be added later too."
+              />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="First Name"
@@ -1707,6 +1733,16 @@ const AddPlayerModal: React.FC<{
           </form>
         )}
       </div>
+
+      <PlayerAiPromptModal
+        isOpen={showAiPrompt}
+        onClose={() => setShowAiPrompt(false)}
+        playerName={`${firstName} ${lastName}`}
+        ageGroup={ageGroup}
+        position={positions.join(", ") || "Player"}
+        teamName={teams.find((t) => t.id === teamId)?.name}
+        jerseyNumber={jerseyNumber}
+      />
     </Modal>
   );
 };

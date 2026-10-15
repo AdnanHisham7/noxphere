@@ -200,6 +200,25 @@ export class AcademySubscriptionController {
     }
   };
 
+  getPlatformAiPrompt = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const prompt = await this.useCases.getPlatformAiPromptTemplate();
+      ResponseHandler.success(res, { prompt }, "Platform AI prompt template retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  setPlatformAiPrompt = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const prompt = String(req.body.prompt ?? "");
+      const updated = await this.useCases.setPlatformAiPromptTemplate(prompt, req.user!.sub);
+      ResponseHandler.success(res, { prompt: updated }, "Platform AI prompt template updated");
+    } catch (err) {
+      next(err);
+    }
+  };
+
   getPlatformCurrencies = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const currencies = await this.useCases.getPlatformCurrencies();

@@ -93,6 +93,17 @@ academySubscriptionRouter.put("/platform-transfer-wall", authenticate, (req, res
   req.app.locals.controllers.academySubscription.setPlatformTransferWall(req, res, next);
 });
 
+academySubscriptionRouter.get("/platform-ai-prompt", authenticate, (req, res, next) => {
+  req.app.locals.controllers.academySubscription.getPlatformAiPrompt(req, res, next);
+});
+academySubscriptionRouter.put("/platform-ai-prompt", authenticate, (req, res, next) => {
+  if (req.user!.role !== "super_admin") {
+    res.status(403).json({ success: false, message: "Only super_admin can configure platform AI prompt template", code: "FORBIDDEN" });
+    return;
+  }
+  req.app.locals.controllers.academySubscription.setPlatformAiPrompt(req, res, next);
+});
+
 // NOTE: the webhook route itself is mounted separately in index.ts, with
 // express.raw() instead of express.json(), because Stripe's signature
 // verification needs the exact raw request bytes — parsing it as JSON

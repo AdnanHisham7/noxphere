@@ -210,6 +210,20 @@ export const academySubscriptionApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: { status: string; isActive: boolean } }) => res.data,
       invalidatesTags: ["Academy"],
     }),
+    getPlatformAiPrompt: builder.query<string, void>({
+      query: () => "/academy-subscriptions/platform-ai-prompt",
+      transformResponse: (res: { data: { prompt: string } }) => res.data.prompt,
+      providesTags: ["PlatformSettings"],
+    }),
+    setPlatformAiPrompt: builder.mutation<string, { prompt: string }>({
+      query: (body) => ({
+        url: "/academy-subscriptions/platform-ai-prompt",
+        method: "PUT",
+        body,
+      }),
+      transformResponse: (res: { data: { prompt: string } }) => res.data.prompt,
+      invalidatesTags: ["PlatformSettings"],
+    }),
   }),
 });
 
@@ -280,6 +294,8 @@ export const {
   useSetPlatformTrialDefaultsMutation,
   useGetPlatformTransferWallQuery,
   useSetPlatformTransferWallMutation,
+  useGetPlatformAiPromptQuery,
+  useSetPlatformAiPromptMutation,
   useCreateRazorpaySubscriptionOrderMutation,
   useVerifyRazorpaySubscriptionPaymentMutation,
   useVerifySubscriptionSessionMutation,

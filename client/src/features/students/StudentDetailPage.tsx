@@ -48,6 +48,7 @@ import {
   Archive,
   RotateCcw,
   Trash2,
+  Sparkles,
 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
@@ -93,6 +94,7 @@ import { useListTeamsQuery } from "../../store/api/teamsApi";
 import { academyApi } from "../../store/api/academyApi";
 import { useListPlayerMutation } from "../../store/api/transferApi";
 import { useUploadImageMutation } from "../../store/api/uploadApi";
+import { PlayerAiPromptModal } from "./PlayerAiPromptModal";
 
 const getRatingColor = (r: number) =>
   r >= 9
@@ -218,6 +220,7 @@ const StudentDetailPage: React.FC = () => {
   const transferWallEnabled = useTransferWallEnabled();
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [aiPromptOpen, setAiPromptOpen] = useState(false);
 
   // Only Head Office (an academy-owner manager, or super_admin) may move a
   // player between franchises — matches the backend authorization check.
@@ -321,6 +324,11 @@ const StudentDetailPage: React.FC = () => {
   const attendance = card?.attendance ?? [];
   const remarks = card?.remarks ?? [];
   const student = card?.student;
+  const { data: squadTeams } = useListTeamsQuery(
+    { franchiseId: student?.franchiseId },
+    { skip: !student?.franchiseId },
+  );
+  const studentTeamName = squadTeams?.find((t) => t.id === student?.teamId)?.name;
   const isArchived = Boolean(
     student?.deletedAt ||
       student?.status === "archived" ||
@@ -891,6 +899,17 @@ const StudentDetailPage: React.FC = () => {
                     {student.status === "dropped_out" ? "Dropped Out" : "Archived"}
                   </div>
                 )}
+
+                {/* AI Photo Prompt Helper Button */}
+                <button
+                  type="button"
+                  onClick={() => setAiPromptOpen(true)}
+                  className="absolute bottom-2 left-2 z-20 bg-pitch-900/90 hover:bg-volt-400 hover:text-pitch-900 text-volt-400 border border-volt-400/30 rounded-full p-2 transition-all shadow-md"
+                  aria-label="Generate AI photo prompt"
+                  title="Generate AI photo prompt"
+                >
+                  <Sparkles size={13} />
+                </button>
 
                 {/* Photo Upload Button */}
                 <button
@@ -2541,6 +2560,19 @@ const StudentDetailPage: React.FC = () => {
           mode="upgrade"
         />
       )}
+
+      {aiPromptOpen && student && (
+        <PlayerAiPromptModal
+          isOpen={aiPromptOpen}
+          onClose={() => setAiPromptOpen(false)}
+          playerName={`${student.firstName} ${student.lastName}`}
+          ageGroup={student.ageGroup}
+          position={student.position}
+          teamName={studentTeamName}
+          jerseyNumber={student.jerseyNumber}
+        />
+      )}
+
       {ConfirmDialog}
     </div>
   );
