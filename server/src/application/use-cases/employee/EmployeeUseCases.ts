@@ -44,6 +44,25 @@ export interface CreateEmployeeDto {
   notes?: string;
 }
 
+function getPeriodsBetween(startPeriod: string, endPeriod: string): string[] {
+  const periods: string[] = [];
+  const [startYear, startMonth] = startPeriod.split("-").map(Number);
+  const [endYear, endMonth] = endPeriod.split("-").map(Number);
+
+  let curYear = startYear;
+  let curMonth = startMonth;
+
+  while (curYear < endYear || (curYear === endYear && curMonth <= endMonth)) {
+    periods.push(`${curYear}-${String(curMonth).padStart(2, "0")}`);
+    curMonth++;
+    if (curMonth > 12) {
+      curMonth = 1;
+      curYear++;
+    }
+  }
+  return periods;
+}
+
 export class EmployeeUseCases {
   constructor(private academySubscriptionUseCases: AcademySubscriptionUseCases) {}
 
@@ -370,7 +389,22 @@ export class EmployeeUseCases {
   }
 
   async listSalaryHistory(employeeId: string) {
-    return SalaryPaymentModel.find({ employeeId })
+    const employee = await EmployeeModel.findById(employeeId).lean();
+    if (!employee) throw new NotFoundError("Employee");
+
+    const currentPeriod = new Date().toISOString().slice(0, 7);
+    const joinDate = employee.joinDate || (employee as any).createdAt || new Date();
+    const startPeriod = new Date(joinDate).toISOString().slice(0, 7);
+
+    // Ensure all past months up to current period are logged from employee creation/join date
+    const periods = getPeriodsBetween(startPeriod, currentPeriod);
+    await Promise.all(periods.map((p) => this.logSalaryForPeriod(employeeId, p)));
+
+    // Return history strictly from employee creation month up to current month (no future months)
+    return SalaryPaymentModel.find({
+      employeeId,
+      period: { $lte: currentPeriod, $gte: startPeriod },
+    })
       .populate("paidBy", "firstName lastName email")
       .sort({ period: -1 });
   }

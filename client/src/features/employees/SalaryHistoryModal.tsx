@@ -40,7 +40,13 @@ export const SalaryHistoryModal: React.FC<SalaryHistoryModalProps> = ({
     { skip: !isOpen || !employee?.id || !academyId },
   );
 
-  const historyRecords = history ?? [];
+  const currentPeriod = new Date().toISOString().slice(0, 7);
+
+  // Filter out any future periods strictly: only past months up to current period
+  const historyRecords = useMemo(
+    () => (history ?? []).filter((r) => r.period <= currentPeriod),
+    [history, currentPeriod],
+  );
 
   const paidRecords = useMemo(
     () => historyRecords.filter((r) => r.status === "paid"),
@@ -78,7 +84,7 @@ export const SalaryHistoryModal: React.FC<SalaryHistoryModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title="Salary Payout History" size="lg">
       <div className="space-y-4">
         {/* Employee Info Header */}
-        <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50 dark:bg-pitch-800/70 border border-slate-200 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50 dark:bg-pitch-800/70 border border-slate-200 dark:border-white/10 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-volt-500/10 text-volt-600 dark:text-volt-400 border border-volt-500/20 flex items-center justify-center font-bold text-sm shrink-0">
               {initials}
@@ -102,45 +108,42 @@ export const SalaryHistoryModal: React.FC<SalaryHistoryModalProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Quick Summary Pill on Mobile / Desktop */}
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <div className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs">
-              <span className="block text-3xs uppercase tracking-wider font-semibold opacity-70">
-                Total Paid
-              </span>
-              <span className="font-bold font-mono text-sm">
-                ₹{totalPaid.toLocaleString("en-IN")}
-              </span>
-            </div>
-            <div className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-pitch-700/60 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 text-xs">
-              <span className="block text-3xs uppercase tracking-wider font-semibold opacity-70">
-                Disbursements
-              </span>
-              <span className="font-bold font-mono text-sm">
-                {paidRecords.length} Paid
-              </span>
-            </div>
-          </div>
         </div>
 
-        {/* Breakdown Stats */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs">
-          <div className="p-2.5 rounded-lg bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 flex items-center justify-between">
-            <span className="text-slate-500 dark:text-slate-400 text-2xs uppercase tracking-wider font-semibold">
-              Pending Dues
-            </span>
-            <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
-              ₹{totalPending.toLocaleString("en-IN")} ({pendingRecords.length})
-            </span>
+        {/* Paid & Pending Summary Stats (No Total Logged) */}
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 text-xs">
+          <div className="p-3 rounded-xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20">
+            <div className="flex items-center justify-between">
+              <span className="text-3xs uppercase tracking-wider font-semibold text-emerald-700 dark:text-emerald-400">
+                Total Paid
+              </span>
+              <CheckCircle2 size={14} className="text-emerald-500" />
+            </div>
+            <div className="mt-1 flex items-baseline gap-1.5">
+              <span className="font-mono font-bold text-base sm:text-lg text-emerald-600 dark:text-emerald-400">
+                ₹{totalPaid.toLocaleString("en-IN")}
+              </span>
+              <span className="text-3xs text-emerald-600/70 dark:text-emerald-400/70">
+                ({paidRecords.length} paid)
+              </span>
+            </div>
           </div>
-          <div className="p-2.5 rounded-lg bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 flex items-center justify-between">
-            <span className="text-slate-500 dark:text-slate-400 text-2xs uppercase tracking-wider font-semibold">
-              Total Logged
-            </span>
-            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-              {historyRecords.length} Months
-            </span>
+
+          <div className="p-3 rounded-xl bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20">
+            <div className="flex items-center justify-between">
+              <span className="text-3xs uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-400">
+                Pending Payout
+              </span>
+              <Clock3 size={14} className="text-amber-500" />
+            </div>
+            <div className="mt-1 flex items-baseline gap-1.5">
+              <span className="font-mono font-bold text-base sm:text-lg text-amber-600 dark:text-amber-400">
+                ₹{totalPending.toLocaleString("en-IN")}
+              </span>
+              <span className="text-3xs text-amber-600/70 dark:text-amber-400/70">
+                ({pendingRecords.length} pending)
+              </span>
+            </div>
           </div>
         </div>
 
