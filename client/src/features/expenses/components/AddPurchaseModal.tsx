@@ -1,6 +1,6 @@
 // src/features/expenses/components/AddPurchaseModal.tsx
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Input } from "../../../components/ui";
+import { Modal, Button, Input, Select } from "../../../components/ui";
 import { useCreateExpenseMutation, type StockItem } from "../../../store/api/expenseApi";
 import toast from "react-hot-toast";
 import { PackagePlus, CheckCircle2 } from "lucide-react";
@@ -148,13 +148,10 @@ export const AddPurchaseModal: React.FC<AddPurchaseModalProps> = ({
         {/* Quick select existing stock */}
         {existingStocks.length > 0 && !preselectedStockItem && (
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Restock Existing Inventory Item (Optional)
-            </label>
-            <select
+            <Select
+              label="Restock Existing Inventory Item (Optional)"
               value={selectedStockId}
               onChange={(e) => handleStockSelect(e.target.value)}
-              className="input w-full text-sm"
             >
               <option value="">-- Or enter a new item below --</option>
               {existingStocks.map((s) => (
@@ -162,7 +159,7 @@ export const AddPurchaseModal: React.FC<AddPurchaseModalProps> = ({
                   {s.name} (Current Stock: {s.quantity} {s.unit})
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
 
@@ -180,13 +177,10 @@ export const AddPurchaseModal: React.FC<AddPurchaseModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Category *
-            </label>
-            <select
+            <Select
+              label="Category *"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="input w-full text-sm"
               required
             >
               {PURCHASE_CATEGORIES.map((c) => (
@@ -194,7 +188,7 @@ export const AddPurchaseModal: React.FC<AddPurchaseModalProps> = ({
                   {c}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
 
@@ -273,20 +267,17 @@ export const AddPurchaseModal: React.FC<AddPurchaseModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Payment Mode
-            </label>
-            <select
+            <Select
+              label="Payment Mode"
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
-              className="input w-full text-sm"
             >
               {PAYMENT_METHODS.map((m) => (
                 <option key={m.value} value={m.value}>
                   {m.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
 

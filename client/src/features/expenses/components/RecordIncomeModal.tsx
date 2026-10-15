@@ -1,6 +1,6 @@
 // src/features/expenses/components/RecordIncomeModal.tsx
 import React, { useState } from "react";
-import { Modal, Button, Input } from "../../../components/ui";
+import { Modal, Button, Input, Select } from "../../../components/ui";
 import { useCreateIncomeMutation } from "../../../store/api/expenseApi";
 import toast from "react-hot-toast";
 import { ArrowDownLeft } from "lucide-react";
@@ -103,13 +103,10 @@ export const RecordIncomeModal: React.FC<RecordIncomeModalProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Category *
-            </label>
-            <select
+            <Select
+              label="Category *"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="input w-full text-sm"
               required
             >
               {INCOME_CATEGORIES.map((c) => (
@@ -117,7 +114,7 @@ export const RecordIncomeModal: React.FC<RecordIncomeModalProps> = ({
                   {c}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div>
@@ -174,13 +171,10 @@ export const RecordIncomeModal: React.FC<RecordIncomeModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Payment Method
-            </label>
-            <select
+            <Select
+              label="Payment Method"
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
-              className="input w-full text-sm"
             >
               <option value="bank_transfer">Bank Transfer (NEFT/RTGS/IMPS)</option>
               <option value="upi">UPI / QR</option>
@@ -188,7 +182,7 @@ export const RecordIncomeModal: React.FC<RecordIncomeModalProps> = ({
               <option value="cash">Cash</option>
               <option value="card">Card</option>
               <option value="other">Other</option>
-            </select>
+            </Select>
           </div>
         </div>
 

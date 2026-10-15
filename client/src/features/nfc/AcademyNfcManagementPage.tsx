@@ -48,6 +48,7 @@ import {
   EmptyState,
   Skeleton,
   PageHeader,
+  Select,
 } from "../../components/ui";
 
 export const AcademyNfcManagementPage: React.FC = () => {
@@ -730,11 +731,8 @@ export const AcademyNfcManagementPage: React.FC = () => {
               {/* Franchise and search filters */}
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-2xs font-mono uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1 font-semibold">
-                    Filter by Franchise / Branch
-                  </label>
-                  <select
-                    className="input w-full text-xs"
+                  <Select
+                    label="Filter by Franchise / Branch"
                     value={selectedFranchiseId}
                     onChange={(e) => setSelectedFranchiseId(e.target.value)}
                   >
@@ -744,7 +742,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
                         {f.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
 
                 <div>

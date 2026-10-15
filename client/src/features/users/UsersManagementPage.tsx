@@ -12,6 +12,7 @@ import {
   Skeleton,
   EmptyState,
   PageHeader,
+  Select,
 } from "../../components/ui";
 import { useConfirm } from "../../hooks/useConfirm";
 import {
@@ -123,8 +124,7 @@ const UsersManagementPage: React.FC = () => {
           />
         </div>
         <div className="w-full sm:w-auto sm:min-w-40">
-          <select
-            className="input w-full"
+          <Select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
           >
@@ -134,7 +134,7 @@ const UsersManagementPage: React.FC = () => {
                 {ROLE_LABEL[r]}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -404,35 +404,29 @@ const CreateUserModal: React.FC<{
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
         />
-        <div>
-          <label className="label">Role</label>
-          <select
-            className="input"
-            value={role}
-            onChange={(e) => setRole(e.target.value as UserRole)}
-          >
-            {(Object.keys(ROLE_LABEL) as UserRole[]).map((r) => (
-              <option key={r} value={r}>
-                {ROLE_LABEL[r]}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="label">Franchise (optional)</label>
-          <select
-            className="input"
-            value={franchiseId}
-            onChange={(e) => setFranchiseId(e.target.value)}
-          >
-            <option value="">Unassigned</option>
-            {(franchises ?? []).map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.academyName ? `${f.academyName} — ${f.name}` : f.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label="Role"
+          value={role}
+          onChange={(e) => setRole(e.target.value as UserRole)}
+        >
+          {(Object.keys(ROLE_LABEL) as UserRole[]).map((r) => (
+            <option key={r} value={r}>
+              {ROLE_LABEL[r]}
+            </option>
+          ))}
+        </Select>
+        <Select
+          label="Franchise (optional)"
+          value={franchiseId}
+          onChange={(e) => setFranchiseId(e.target.value)}
+        >
+          <option value="">Unassigned</option>
+          {(franchises ?? []).map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.academyName ? `${f.academyName} — ${f.name}` : f.name}
+            </option>
+          ))}
+        </Select>
         <div className="sm:col-span-2 flex gap-3 pt-2">
           <Button type="submit" className="flex-1" loading={creating}>
             Create user

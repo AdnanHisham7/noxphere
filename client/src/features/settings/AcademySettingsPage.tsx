@@ -14,7 +14,7 @@ import {
   Layers,
   Sparkles,
 } from "lucide-react";
-import { Button, Input, Card, Badge, Skeleton, EmptyState, Modal, ConfirmModal, ImageUploadField, PageHeader } from "../../components/ui";
+import { Button, Input, Card, Badge, Skeleton, EmptyState, Modal, ConfirmModal, ImageUploadField, PageHeader, Select } from "../../components/ui";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import { academyApi } from "../../store/api/academyApi";
 import type { Location, AcademyPitch } from "../academies/types";
@@ -541,22 +541,13 @@ const AcademySettingsPage: React.FC = () => {
                 onChange={(e) => setPitchForm({ ...pitchForm, fieldNumber: e.target.value })}
               />
 
-              <div>
-                <label className="block text-2xs font-semibold text-slate-400 uppercase tracking-wide mb-1">
-                  Surface Type
-                </label>
-                <select
-                  value={pitchForm.surfaceType}
-                  onChange={(e) => setPitchForm({ ...pitchForm, surfaceType: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-pitch-900 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-volt-500 dark:focus:border-volt-400 text-xs"
-                >
-                  {SURFACE_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label="Surface Type"
+                value={pitchForm.surfaceType}
+                onChange={(e) => setPitchForm({ ...pitchForm, surfaceType: e.target.value })}
+                className="text-xs"
+                options={SURFACE_TYPES}
+              />
             </div>
 
             <Input

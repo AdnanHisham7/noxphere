@@ -19,7 +19,7 @@ import {
   MessageSquare,
   type LucideIcon,
 } from "lucide-react";
-import { Badge, Button, Skeleton, EmptyState } from "../../components/ui";
+import { Badge, Button, Skeleton, EmptyState, Select } from "../../components/ui";
 import {
   useListMyPlatformTicketsQuery,
   useCreatePlatformTicketMutation,
@@ -102,17 +102,18 @@ export const PlatformSupportTab: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <select
+          <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="input text-xs py-1.5 px-3 w-full sm:w-auto"
+            className="!text-xs !py-1.5 !px-3"
+            wrapperClassName="w-full sm:w-auto"
           >
             <option value="">All statuses</option>
             <option value="open">Open</option>
             <option value="in_progress">In Progress</option>
             <option value="resolved">Resolved</option>
             <option value="closed">Closed</option>
-          </select>
+          </Select>
           <Button
             size="sm"
             icon={<Plus size={15} />}
@@ -461,36 +462,32 @@ const CreateTicketModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="label">Category</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as TicketCategory)}
-                className="input w-full text-xs"
-              >
-                <option value="bug_technical">Technical Issue / Bug</option>
-                <option value="billing_subscription">
-                  Billing & Subscriptions
-                </option>
-                <option value="feature_request">Feature Request</option>
-                <option value="account_access">Account & Access</option>
-                <option value="other">General Platform Query</option>
-              </select>
-            </div>
+            <Select
+              label="Category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value as TicketCategory)}
+              className="text-xs"
+            >
+              <option value="bug_technical">Technical Issue / Bug</option>
+              <option value="billing_subscription">
+                Billing & Subscriptions
+              </option>
+              <option value="feature_request">Feature Request</option>
+              <option value="account_access">Account & Access</option>
+              <option value="other">General Platform Query</option>
+            </Select>
 
-            <div>
-              <label className="label">Priority Level</label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as TicketPriority)}
-                className="input w-full text-xs"
-              >
-                <option value="low">Low - General query</option>
-                <option value="medium">Medium - Standard operational</option>
-                <option value="high">High - Feature hindered</option>
-                <option value="urgent">Urgent - Critical blocker</option>
-              </select>
-            </div>
+            <Select
+              label="Priority Level"
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as TicketPriority)}
+              className="text-xs"
+            >
+              <option value="low">Low - General query</option>
+              <option value="medium">Medium - Standard operational</option>
+              <option value="high">High - Feature hindered</option>
+              <option value="urgent">Urgent - Critical blocker</option>
+            </Select>
           </div>
 
           <div>

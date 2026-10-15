@@ -24,6 +24,7 @@ import {
   EmptyState,
   PageHeader,
   Tabs,
+  Select,
 } from "../../components/ui";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import {
@@ -113,16 +114,17 @@ const ComplaintsInboxPage: React.FC = () => {
       ) : (
         <>
           <div className="flex justify-end">
-            <select
+            <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="input text-xs py-1.5 px-3 w-full sm:w-auto"
+              className="!text-xs !py-1.5 !px-3"
+              wrapperClassName="w-full sm:w-auto"
             >
               <option value="">All statuses</option>
               <option value="open">Open</option>
               <option value="in_progress">In Progress</option>
               <option value="resolved">Resolved</option>
-            </select>
+            </Select>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

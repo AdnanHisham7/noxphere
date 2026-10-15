@@ -14,7 +14,7 @@ import {
   type TransferListing,
   type TransferRequest,
 } from '../../store/api/transferApi';
-import { Badge, Button, Input, Modal, Skeleton, EmptyState, Avatar } from '../../components/ui';
+import { Badge, Button, Input, Modal, Skeleton, EmptyState, Avatar, Select } from '../../components/ui';
 import { RootState } from '../../store';
 import { toast } from 'react-hot-toast';
 import { useTransferWallEnabled } from '../../hooks/useTransferWallEnabled';
@@ -429,22 +429,26 @@ const TransferWallPage: React.FC = () => {
                 />
               </div>
               <div className="min-w-36">
-                <label className="label">Position</label>
-                <select className="input" value={filterPosition} onChange={(e) => setFilterPosition(e.target.value)}>
-                  <option value="">All Positions</option>
-                  {['Forward', 'Midfielder', 'Defender', 'Goalkeeper'].map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
+                <Select
+                  label="Position"
+                  value={filterPosition}
+                  onChange={(e) => setFilterPosition(e.target.value)}
+                  options={[
+                    { value: '', label: 'All Positions' },
+                    ...['Forward', 'Midfielder', 'Defender', 'Goalkeeper'].map((p) => ({ value: p, label: p })),
+                  ]}
+                />
               </div>
               <div className="min-w-36">
-                <label className="label">Age Group</label>
-                <select className="input" value={filterAge} onChange={(e) => setFilterAge(e.target.value)}>
-                  <option value="">All Ages</option>
-                  {['U-13', 'U-15', 'U-17', 'U-19', 'U-21'].map((a) => (
-                    <option key={a} value={a}>{a}</option>
-                  ))}
-                </select>
+                <Select
+                  label="Age Group"
+                  value={filterAge}
+                  onChange={(e) => setFilterAge(e.target.value)}
+                  options={[
+                    { value: '', label: 'All Ages' },
+                    ...['U-13', 'U-15', 'U-17', 'U-19', 'U-21'].map((a) => ({ value: a, label: a })),
+                  ]}
+                />
               </div>
               <Button
                 variant="ghost"

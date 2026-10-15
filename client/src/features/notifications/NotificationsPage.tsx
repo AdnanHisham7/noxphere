@@ -37,6 +37,7 @@ import {
   DocumentUploadField,
   PageHeader,
   Tabs,
+  Select,
 } from "../../components/ui";
 import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
@@ -823,48 +824,42 @@ const ComposeModal: React.FC<{
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <label className="label">Target Audience</label>
-          <select
-            value={audience}
-            onChange={(e) =>
-              setAudience(e.target.value as AdminNotification["audience"])
-            }
-            className="input text-xs"
-          >
-            <option value="franchise">
-              Entire Franchise (Guardians + Players + Coaches + Managers)
-            </option>
-            <option value="academy">
-              Entire Academy (All Sibling Franchises)
-            </option>
-            <option value="players">Players Only</option>
-            <option value="guardians">Guardians Only</option>
-            <option value="coaches">Coaches Only</option>
-            <option value="managers">Managers Only</option>
-            <option value="team">One specific team roster</option>
-          </select>
-        </div>
+        <Select
+          label="Target Audience"
+          value={audience}
+          onChange={(e) =>
+            setAudience(e.target.value as AdminNotification["audience"])
+          }
+        >
+          <option value="franchise">
+            Entire Franchise (Guardians + Players + Coaches + Managers)
+          </option>
+          <option value="academy">
+            Entire Academy (All Sibling Franchises)
+          </option>
+          <option value="players">Players Only</option>
+          <option value="guardians">Guardians Only</option>
+          <option value="coaches">Coaches Only</option>
+          <option value="managers">Managers Only</option>
+          <option value="team">One specific team roster</option>
+        </Select>
 
         {audience === "team" && (
-          <div className="space-y-1.5">
-            <label className="label">Team</label>
-            <select
-              value={teamId}
-              onChange={(e) => setTeamId(e.target.value)}
-              className="input text-xs"
-              required
-            >
-              <option value="" disabled>
-                Select a team
+          <Select
+            label="Team"
+            value={teamId}
+            onChange={(e) => setTeamId(e.target.value)}
+            required
+          >
+            <option value="" disabled>
+              Select a team
+            </option>
+            {(teams ?? []).map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name} ({t.ageGroup})
               </option>
-              {(teams ?? []).map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.ageGroup})
-                </option>
-              ))}
-            </select>
-          </div>
+            ))}
+          </Select>
         )}
 
         <ImageUploadField

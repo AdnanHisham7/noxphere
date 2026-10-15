@@ -23,7 +23,7 @@ import {
   ShieldAlert,
   type LucideIcon,
 } from "lucide-react";
-import { Badge, Button, Skeleton, EmptyState, PageHeader, Card } from "../../components/ui";
+import { Badge, Button, Skeleton, EmptyState, PageHeader, Card, Select } from "../../components/ui";
 import {
   useListAllPlatformTicketsQuery,
   useReplyPlatformTicketMutation,
@@ -143,42 +143,45 @@ export const PlatformTicketsAdminPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="input text-xs py-1.5 px-3 flex-1 sm:flex-none"
-          >
-            <option value="">All Statuses</option>
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="resolved">Resolved</option>
-            <option value="closed">Closed</option>
-          </select>
+          <div className="w-32 flex-1 sm:flex-none">
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">All Statuses</option>
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+              <option value="closed">Closed</option>
+            </Select>
+          </div>
 
-          <select
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            className="input text-xs py-1.5 px-3 flex-1 sm:flex-none"
-          >
-            <option value="">All Priorities</option>
-            <option value="urgent">Urgent</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
+          <div className="w-32 flex-1 sm:flex-none">
+            <Select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+            >
+              <option value="">All Priorities</option>
+              <option value="urgent">Urgent</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </Select>
+          </div>
 
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="input text-xs py-1.5 px-3 flex-1 sm:flex-none"
-          >
-            <option value="">All Categories</option>
-            <option value="bug_technical">Bug / Technical</option>
-            <option value="billing_subscription">Billing & Subscriptions</option>
-            <option value="feature_request">Feature Request</option>
-            <option value="account_access">Account & Access</option>
-            <option value="other">General Platform Query</option>
-          </select>
+          <div className="w-44 flex-1 sm:flex-none">
+            <Select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
+              <option value="">All Categories</option>
+              <option value="bug_technical">Bug / Technical</option>
+              <option value="billing_subscription">Billing & Subscriptions</option>
+              <option value="feature_request">Feature Request</option>
+              <option value="account_access">Account & Access</option>
+              <option value="other">General Platform Query</option>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -341,17 +344,18 @@ const AdminTicketWorkspace: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) 
           {/* Direct Status Selector */}
           <div className="flex items-center gap-2">
             <span className="text-2xs text-slate-500 dark:text-slate-400 font-medium">Status:</span>
-            <select
-              value={ticket.status}
-              disabled={isUpdatingStatus}
-              onChange={(e) => handleStatusChangeOnly(e.target.value as TicketStatus)}
-              className="input text-xs py-1 px-2.5 font-semibold bg-slate-50 dark:bg-pitch-800 text-slate-900 dark:text-white border-slate-300 dark:border-white/10"
-            >
-              <option value="open">Open</option>
-              <option value="in_progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
-            </select>
+            <div className="w-32">
+              <Select
+                value={ticket.status}
+                disabled={isUpdatingStatus}
+                onChange={(e) => handleStatusChangeOnly(e.target.value as TicketStatus)}
+              >
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </Select>
+            </div>
           </div>
         </div>
 
@@ -449,17 +453,18 @@ const AdminTicketWorkspace: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) 
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-2xs text-slate-500 dark:text-slate-400 font-medium">Update status on reply:</span>
-            <select
-              value={targetStatus}
-              onChange={(e) => setTargetStatus(e.target.value as TicketStatus)}
-              className="input text-xs py-1 px-2.5 font-semibold bg-slate-50 dark:bg-pitch-800 text-slate-900 dark:text-white border-slate-300 dark:border-white/10"
-            >
-              <option value="in_progress">In Progress</option>
-              <option value="resolved">Mark as Resolved</option>
-              <option value="open">Keep Open</option>
-              <option value="closed">Close Ticket</option>
-            </select>
+            <span className="text-2xs text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">Update status on reply:</span>
+            <div className="w-40">
+              <Select
+                value={targetStatus}
+                onChange={(e) => setTargetStatus(e.target.value as TicketStatus)}
+              >
+                <option value="in_progress">In Progress</option>
+                <option value="resolved">Mark as Resolved</option>
+                <option value="open">Keep Open</option>
+                <option value="closed">Close Ticket</option>
+              </Select>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 justify-end">

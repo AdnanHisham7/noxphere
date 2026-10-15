@@ -14,3 +14,5 @@ export { DocumentUploadField } from "./DocumentUploadField";
 export { ConfirmModal } from "./ConfirmModal";
 export { PageHeader } from "./PageHeader";
 export { Tabs } from "./Tabs";
+export { Select } from "./Select";
+export type { SelectProps, SelectOption } from "./Select";

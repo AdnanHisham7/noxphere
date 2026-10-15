@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { clsx } from "clsx";
 import { toast } from "react-hot-toast";
 import { UserPlus, Users, Shield, Wallet, Pencil, Power, Trash2, ShieldPlus } from "lucide-react";
-import { Button, Input, Badge, Modal, Skeleton, EmptyState, PageHeader, Tabs } from "../../components/ui";
+import { Button, Input, Badge, Modal, Skeleton, EmptyState, PageHeader, Tabs, Select } from "../../components/ui";
 import { useConfirm } from "../../hooks/useConfirm";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import {
@@ -335,11 +335,10 @@ const EmployeeFormModal: React.FC<{
           <>
             <Input label="Email (login)" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             <div>
-              <label className="label">Role</label>
-              <select value={roleId} onChange={(e) => setRoleId(e.target.value)} className="input !w-full">
+              <Select label="Role" value={roleId} onChange={(e) => setRoleId(e.target.value)}>
                 <option value="">Select a role…</option>
                 {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
+              </Select>
               {roles.length === 0 && <p className="text-2xs text-slate-500 mt-1.5">Create a role first, under the Roles tab.</p>}
             </div>
           </>
@@ -397,10 +396,9 @@ const EditEmployeeModal: React.FC<{
         <Input label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
         {employee.employeeType === "staff" && (
           <div>
-            <label className="label">Role</label>
-            <select value={roleId} onChange={(e) => setRoleId(e.target.value)} className="input !w-full">
+            <Select label="Role" value={roleId} onChange={(e) => setRoleId(e.target.value)}>
               {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </select>
+            </Select>
           </div>
         )}
         <Input label="Monthly salary (₹)" type="number" value={salaryAmount} onChange={(e) => setSalaryAmount(e.target.value)} />

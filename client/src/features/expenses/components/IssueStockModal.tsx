@@ -1,6 +1,6 @@
 // src/features/expenses/components/IssueStockModal.tsx
 import React, { useState } from "react";
-import { Modal, Button, Input } from "../../../components/ui";
+import { Modal, Button, Input, Select } from "../../../components/ui";
 import { useIssueStockMutation, type StockItem } from "../../../store/api/expenseApi";
 import toast from "react-hot-toast";
 
@@ -69,18 +69,15 @@ export const IssueStockModal: React.FC<IssueStockModalProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            Usage Type *
-          </label>
-          <select
+          <Select
+            label="Usage Type *"
             value={action}
             onChange={(e) => setAction(e.target.value as any)}
-            className="input w-full text-sm"
           >
             <option value="issued_out">Issued to Player / Coach / Team</option>
             <option value="used_training">Consumed in Training Session / Match</option>
             <option value="damaged">Damaged / Worn Out / Discarded</option>
-          </select>
+          </Select>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

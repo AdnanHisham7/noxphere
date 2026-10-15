@@ -14,7 +14,7 @@ import {
   getAptitudeMultiplier,
 } from "./types";
 import { TacticalCard } from "./TacticalCard";
-import { Avatar } from "../../../components/ui";
+import { Avatar, Select } from "../../../components/ui";
 import { PlayerPlaceholder } from "../../../components/ui/PlayerPlaceholder";
 import mannequinPng from "../../../assets/players/mannequin.png";
 import {
@@ -330,15 +330,15 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                   </button>
                 </div>
               </div>
-              <select
+              <Select
                 value={formation}
                 onChange={(e) => applyFormationReset(e.target.value as FormationType)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:ring-1 focus:ring-cyan-500 outline-none font-mono"
+                className="font-mono text-xs"
               >
                 {FORMATIONS_BY_FORMAT[teamFormat]?.formations.map((f) => (
                   <option key={f} value={f}>{f}</option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             {/* Save formation */}
@@ -347,17 +347,18 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                 Save formation as
               </label>
               <div className="flex gap-1.5 mb-3">
-                <select
+                <Select
                   value={labelInput}
                   onChange={(e) => setLabelInput(e.target.value)}
-                  className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-1 text-xs text-slate-700 dark:text-slate-300"
+                  className="text-xs"
+                  wrapperClassName="flex-1"
                 >
                   <option value="Friendly Match">Friendly Match</option>
                   <option value="Tournament Run">Tournament Run</option>
                   <option value="Local Derby">Local Derby</option>
                   <option value="Championship Final">Championship Final</option>
                   <option value="Training Match">Training Match</option>
-                </select>
+                </Select>
                 <button
                   onClick={saveFormationPreset}
                   disabled={isSaving}

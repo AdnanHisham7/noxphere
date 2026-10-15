@@ -40,7 +40,7 @@ import {
   NoxEmptyState,
   NoxStatusBadge,
 } from "../../components/portal-ui";
-import { ImageUploadField } from "../../components/ui";
+import { ImageUploadField, Select } from "../../components/ui";
 import { NfcPlayerCardSection } from "./NfcPlayerCardSection";
 import { AcceptSquadInvitationModal } from "./AcceptSquadInvitationModal";
 
@@ -633,10 +633,8 @@ const StudentDashboardPage: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="text-2xs uppercase tracking-wider text-nox-low font-mono block mb-1">
-                          Preferred Foot
-                        </label>
-                        <select
+                        <Select
+                          label="Preferred Foot"
                           value={visibilitySettings.preferredFoot}
                           onChange={(e) =>
                             setVisibilitySettings((s) => ({
@@ -644,13 +642,12 @@ const StudentDashboardPage: React.FC = () => {
                               preferredFoot: e.target.value,
                             }))
                           }
-                          className="input text-xs w-full"
                         >
                           <option value="">Unspecified</option>
                           <option value="right">Right</option>
                           <option value="left">Left</option>
                           <option value="both">Both (Ambidextrous)</option>
-                        </select>
+                        </Select>
                       </div>
                     </div>
 
@@ -738,10 +735,8 @@ const StudentDashboardPage: React.FC = () => {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-2xs uppercase tracking-wider text-nox-low font-mono block mb-1">
-                          Playing Position
-                        </label>
-                        <select
+                        <Select
+                          label="Playing Position"
                           value={profileForm.position}
                           onChange={(e) =>
                             setProfileForm((p) => ({
@@ -749,7 +744,6 @@ const StudentDashboardPage: React.FC = () => {
                               position: e.target.value,
                             }))
                           }
-                          className="input text-xs w-full"
                         >
                           <option value="">Select position</option>
                           <option value="Forward">Forward</option>
@@ -766,7 +760,7 @@ const StudentDashboardPage: React.FC = () => {
                           <option value="Center Back">Center Back</option>
                           <option value="Full Back">Full Back</option>
                           <option value="Goalkeeper">Goalkeeper</option>
-                        </select>
+                        </Select>
                       </div>
                       <div>
                         <label className="text-2xs uppercase tracking-wider text-nox-low font-mono block mb-1">

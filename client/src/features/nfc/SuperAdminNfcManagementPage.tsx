@@ -41,6 +41,7 @@ import {
   Skeleton,
   PageHeader,
   Card,
+  Select,
 } from "../../components/ui";
 
 export const SuperAdminNfcManagementPage: React.FC = () => {
@@ -347,15 +348,16 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
 
           {/* Filters right side: Type filter + Search bar */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
-            <select
-              className="input text-xs w-full sm:!w-auto"
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-            >
-              <option value="all">All Purchasers</option>
-              <option value="independent_player">Independent Players</option>
-              <option value="academy">Academies (Bulk)</option>
-            </select>
+            <div className="w-full sm:w-48">
+              <Select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+              >
+                <option value="all">All Purchasers</option>
+                <option value="independent_player">Independent Players</option>
+                <option value="academy">Academies (Bulk)</option>
+              </Select>
+            </div>
 
             <div className="relative w-full sm:min-w-[200px]">
               <Search

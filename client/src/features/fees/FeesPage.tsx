@@ -38,6 +38,7 @@ import {
   Avatar,
   ImageUploadField,
   PageHeader,
+  Select,
 } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
@@ -1746,8 +1747,7 @@ const CreateFeeModal: React.FC<{
           </div>
 
           {selectionMode === "single" && (
-            <select
-              className="input text-xs !w-full"
+            <Select
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
               required
@@ -1759,7 +1759,7 @@ const CreateFeeModal: React.FC<{
                   {s.ageGroup ? `· ${s.ageGroup}` : ""}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
 
           {selectionMode === "all" && (
@@ -1774,8 +1774,7 @@ const CreateFeeModal: React.FC<{
 
           {selectionMode === "category" && (
             <div className="space-y-2">
-              <select
-                className="input text-xs !w-full"
+              <Select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 required
@@ -1787,7 +1786,7 @@ const CreateFeeModal: React.FC<{
                     players)
                   </option>
                 ))}
-              </select>
+              </Select>
               {selectedCategory && (
                 <p className="text-2xs text-slate-500">
                   Targeting{" "}
@@ -2148,20 +2147,17 @@ const RecordPaymentModal: React.FC<{
               onChange={(e) => setSingleAmount(e.target.value)}
               required
             />
-            <div>
-              <label className="label text-xs">Payment Method</label>
-              <select
-                className="input text-xs !w-full"
-                value={singleMethod}
-                onChange={(e) => setSingleMethod(e.target.value)}
-              >
-                <option value="cash">Cash</option>
-                <option value="upi">UPI / GPay / PhonePe</option>
-                <option value="card">Credit / Debit Card</option>
-                <option value="bank_transfer">Bank Transfer / NEFT</option>
-                <option value="cheque">Cheque</option>
-              </select>
-            </div>
+            <Select
+              label="Payment Method"
+              value={singleMethod}
+              onChange={(e) => setSingleMethod(e.target.value)}
+            >
+              <option value="cash">Cash</option>
+              <option value="upi">UPI / GPay / PhonePe</option>
+              <option value="card">Credit / Debit Card</option>
+              <option value="bank_transfer">Bank Transfer / NEFT</option>
+              <option value="cheque">Cheque</option>
+            </Select>
             <Input
               label="Transaction ID / Ref (optional)"
               value={singleTxnId}
@@ -2191,17 +2187,18 @@ const RecordPaymentModal: React.FC<{
                   key={idx}
                   className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5"
                 >
-                  <select
-                    className="input text-xs !w-32 shrink-0"
-                    value={row.method}
-                    onChange={(e) => updateSplitRow(idx, "method", e.target.value)}
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="upi">UPI</option>
-                    <option value="card">Card</option>
-                    <option value="bank_transfer">Bank Txn</option>
-                    <option value="cheque">Cheque</option>
-                  </select>
+                  <div className="w-32 shrink-0">
+                    <Select
+                      value={row.method}
+                      onChange={(e) => updateSplitRow(idx, "method", e.target.value)}
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="upi">UPI</option>
+                      <option value="card">Card</option>
+                      <option value="bank_transfer">Bank Txn</option>
+                      <option value="cheque">Cheque</option>
+                    </Select>
+                  </div>
 
                   <div className="flex-1 relative">
                     <input
@@ -2446,20 +2443,17 @@ const EditPaymentModal: React.FC<{
               onChange={(e) => setSingleAmount(e.target.value)}
               required
             />
-            <div>
-              <label className="label text-xs">Payment Method</label>
-              <select
-                className="input text-xs !w-full"
-                value={singleMethod}
-                onChange={(e) => setSingleMethod(e.target.value)}
-              >
-                <option value="cash">Cash</option>
-                <option value="upi">UPI / GPay / PhonePe</option>
-                <option value="card">Credit / Debit Card</option>
-                <option value="bank_transfer">Bank Transfer / NEFT</option>
-                <option value="cheque">Cheque</option>
-              </select>
-            </div>
+            <Select
+              label="Payment Method"
+              value={singleMethod}
+              onChange={(e) => setSingleMethod(e.target.value)}
+            >
+              <option value="cash">Cash</option>
+              <option value="upi">UPI / GPay / PhonePe</option>
+              <option value="card">Credit / Debit Card</option>
+              <option value="bank_transfer">Bank Transfer / NEFT</option>
+              <option value="cheque">Cheque</option>
+            </Select>
             <Input
               label="Transaction ID / Ref (optional)"
               value={singleTxnId}
@@ -2489,17 +2483,18 @@ const EditPaymentModal: React.FC<{
                   key={idx}
                   className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5"
                 >
-                  <select
-                    className="input text-xs !w-32 shrink-0"
-                    value={row.method}
-                    onChange={(e) => updateSplitRow(idx, "method", e.target.value)}
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="upi">UPI</option>
-                    <option value="card">Card</option>
-                    <option value="bank_transfer">Bank Txn</option>
-                    <option value="cheque">Cheque</option>
-                  </select>
+                  <div className="w-32 shrink-0">
+                    <Select
+                      value={row.method}
+                      onChange={(e) => updateSplitRow(idx, "method", e.target.value)}
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="upi">UPI</option>
+                      <option value="card">Card</option>
+                      <option value="bank_transfer">Bank Txn</option>
+                      <option value="cheque">Cheque</option>
+                    </Select>
+                  </div>
 
                   <div className="flex-1">
                     <input

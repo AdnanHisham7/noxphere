@@ -8,6 +8,7 @@ import {
   type Complaint,
 } from "../../store/api/complaintApi";
 import { useGetMyChildrenQuery } from "../../store/api/guardianApi";
+import { Select } from "../../components/ui";
 
 const STATUS_LABEL: Record<Complaint["status"], string> = {
   open: "Awaiting response",
@@ -59,23 +60,18 @@ export const FileComplaintWidget: React.FC = () => {
         </div>
 
         {children && children.length > 0 && (
-          <div>
-            <label className="block text-2xs uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold mb-1">
-              Select Child / Student (Optional)
-            </label>
-            <select
-              value={selectedStudentId}
-              onChange={(e) => setSelectedStudentId(e.target.value)}
-              className="w-full rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 px-3 py-2 text-sm text-slate-900 dark:text-white outline-none focus:border-slate-400 dark:focus:border-white/30"
-            >
-              <option value="">Regarding child (Select student)...</option>
-              {children.map((child) => (
-                <option key={child._id || (child as any).id} value={child._id || (child as any).id}>
-                  {child.firstName} {child.lastName} {child.ageGroup ? `(${child.ageGroup})` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            label="Select Child / Student (Optional)"
+            value={selectedStudentId}
+            onChange={(e) => setSelectedStudentId(e.target.value)}
+          >
+            <option value="">Regarding child (Select student)...</option>
+            {children.map((child) => (
+              <option key={child._id || (child as any).id} value={child._id || (child as any).id}>
+                {child.firstName} {child.lastName} {child.ageGroup ? `(${child.ageGroup})` : ""}
+              </option>
+            ))}
+          </Select>
         )}
 
         <input

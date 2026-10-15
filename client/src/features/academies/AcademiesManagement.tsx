@@ -24,7 +24,7 @@ import {
   CreditCard,
   Sliders,
 } from "lucide-react";
-import { Button, Input, Modal, Badge, StatCard, ImageUploadField, PageHeader } from "../../components/ui";
+import { Button, Input, Modal, Badge, StatCard, ImageUploadField, PageHeader, Select } from "../../components/ui";
 import { baseApi } from "../../store/api/baseApi";
 import { academyApi } from "@/store/api/academyApi";
 import { academySubscriptionApi } from "@/store/api/academySubscriptionApi";
@@ -438,26 +438,27 @@ const AcademiesManagement: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full sm:w-48"
             />
-            <select
-              className="bg-white dark:bg-pitch-700 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-white rounded px-2 py-1 text-sm flex-1 sm:flex-initial"
-              value={
-                activeFilter === undefined
-                  ? "all"
-                  : activeFilter
-                    ? "active"
-                    : "inactive"
-              }
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === "all") setActiveFilter(undefined);
-                else if (val === "active") setActiveFilter(true);
-                else setActiveFilter(false);
-              }}
-            >
-              <option value="all">All</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
+            <div className="w-full sm:w-32">
+              <Select
+                value={
+                  activeFilter === undefined
+                    ? "all"
+                    : activeFilter
+                      ? "active"
+                      : "inactive"
+                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "all") setActiveFilter(undefined);
+                  else if (val === "active") setActiveFilter(true);
+                  else setActiveFilter(false);
+                }}
+              >
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </Select>
+            </div>
             <div className="flex bg-slate-100 dark:bg-pitch-700 p-1 rounded border border-slate-200 dark:border-white/5">
               <button
                 onClick={() => setViewMode("table")}
@@ -920,11 +921,8 @@ const AcademiesManagement: React.FC = () => {
               <Globe2 size={14} /> Currency, Country &amp; Free Trial Policy
             </p>
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
-                Operating Currency &amp; Country Jurisdiction *
-              </label>
-              <select
-                className="input w-full bg-pitch-900 border border-white/10 rounded-lg p-2 text-xs text-white"
+              <Select
+                label="Operating Currency & Country Jurisdiction *"
                 value={newAcademyForm.currency}
                 onChange={(e) => {
                   const opt = CURRENCY_OPTIONS.find((c) => c.currency === e.target.value);
@@ -940,7 +938,7 @@ const AcademiesManagement: React.FC = () => {
                     {c.currency} ({c.symbol}) — {c.countryName}
                   </option>
                 ))}
-              </select>
+              </Select>
               <p className="text-[10px] text-emerald-400 mt-1 font-mono">
                 Geo-Fencing: Operations and logins under this academy will be strictly restricted to {newAcademyForm.country}.
               </p>
@@ -1048,9 +1046,8 @@ const AcademiesManagement: React.FC = () => {
 
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label className="text-2xs font-semibold text-slate-300 block mb-1">Billing Cycle</label>
-                      <select
-                        className="input w-full bg-pitch-900 border border-white/10 rounded-lg p-2 text-xs text-white"
+                      <Select
+                        label="Billing Cycle"
                         value={newAcademyForm.paidBillingInterval}
                         onChange={(e) => {
                           const interval = e.target.value as any;
@@ -1066,7 +1063,7 @@ const AcademiesManagement: React.FC = () => {
                         <option value="quarter">Quarterly</option>
                         <option value="half_year">Half-Yearly</option>
                         <option value="year">Annual</option>
-                      </select>
+                      </Select>
                     </div>
 
                     <Input
@@ -1078,9 +1075,8 @@ const AcademiesManagement: React.FC = () => {
                     />
 
                     <div>
-                      <label className="text-2xs font-semibold text-slate-300 block mb-1">Payment Method</label>
-                      <select
-                        className="input w-full bg-pitch-900 border border-white/10 rounded-lg p-2 text-xs text-white"
+                      <Select
+                        label="Payment Method"
                         value={newAcademyForm.paidPaymentMethod}
                         onChange={(e) => setNewAcademyForm({ ...newAcademyForm, paidPaymentMethod: e.target.value as any })}
                       >
@@ -1089,7 +1085,7 @@ const AcademiesManagement: React.FC = () => {
                         <option value="cheque">Cheque</option>
                         <option value="waived">Waived</option>
                         <option value="other">Other</option>
-                      </select>
+                      </Select>
                     </div>
                   </div>
 
@@ -1775,9 +1771,8 @@ const AcademiesManagement: React.FC = () => {
             {/* Billing Cycle, Duration & Method */}
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="text-2xs font-semibold text-slate-300 block mb-1">Billing Interval</label>
-                <select
-                  className="input w-full bg-pitch-900 border border-white/10 rounded-lg p-2 text-xs text-white"
+                <Select
+                  label="Billing Interval"
                   value={manualSubForm.billingInterval}
                   onChange={(e) => {
                     const interval = e.target.value as any;
@@ -1793,7 +1788,7 @@ const AcademiesManagement: React.FC = () => {
                   <option value="quarter">Quarterly</option>
                   <option value="half_year">Half-Yearly</option>
                   <option value="year">Annual</option>
-                </select>
+                </Select>
               </div>
 
               <Input
@@ -1805,9 +1800,8 @@ const AcademiesManagement: React.FC = () => {
               />
 
               <div>
-                <label className="text-2xs font-semibold text-slate-300 block mb-1">Payment Method</label>
-                <select
-                  className="input w-full bg-pitch-900 border border-white/10 rounded-lg p-2 text-xs text-white"
+                <Select
+                  label="Payment Method"
                   value={manualSubForm.paymentMethod}
                   onChange={(e) => setManualSubForm({ ...manualSubForm, paymentMethod: e.target.value as any })}
                 >
@@ -1816,7 +1810,7 @@ const AcademiesManagement: React.FC = () => {
                   <option value="cheque">Cheque</option>
                   <option value="waived">Waived / Free Deal</option>
                   <option value="other">Other Offline</option>
-                </select>
+                </Select>
               </div>
             </div>
 

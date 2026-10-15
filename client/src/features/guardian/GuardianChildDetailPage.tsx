@@ -38,6 +38,7 @@ import {
   NoxStatusBadge,
   NoxStatCard,
 } from "../../components/portal-ui";
+import { Select } from "../../components/ui";
 
 type Tab = "attendance" | "schedule" | "fees" | "performance";
 
@@ -387,21 +388,18 @@ const PublicProfileToggleCard: React.FC<{
               />
             </div>
             <div>
-              <label className="text-2xs uppercase tracking-wider text-nox-low font-mono block mb-1">
-                Preferred Foot
-              </label>
-              <select
+              <Select
+                label="Preferred Foot"
                 value={settings.preferredFoot}
                 onChange={(e) =>
                   setSettings((s) => ({ ...s, preferredFoot: e.target.value }))
                 }
-                className="input text-xs w-full"
               >
                 <option value="">Unspecified</option>
                 <option value="right">Right</option>
                 <option value="left">Left</option>
                 <option value="both">Both (Ambidextrous)</option>
-              </select>
+              </Select>
             </div>
           </div>
 

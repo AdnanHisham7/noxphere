@@ -18,6 +18,7 @@ import {
   usePayChildFeeMutation,
 } from "../../store/api/guardianApi";
 import { NoxSkeleton } from "../../components/portal-ui";
+import { Select } from "../../components/ui";
 
 interface PayFeeModalProps {
   feeId: string;
@@ -456,13 +457,10 @@ export const PayFeeModal: React.FC<PayFeeModalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Payment Method */}
                   <div>
-                    <label className="block text-xs font-medium text-nox-mid mb-1">
-                      Payment Mode
-                    </label>
-                    <select
+                    <Select
+                      label="Payment Mode"
                       value={paymentMethod}
                       onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="nox-input w-full text-xs"
                     >
                       <option value="upi">UPI (GPay / PhonePe / Paytm)</option>
                       <option value="bank_transfer">
@@ -470,7 +468,7 @@ export const PayFeeModal: React.FC<PayFeeModalProps> = ({
                       </option>
                       <option value="card">Debit / Credit Card</option>
                       <option value="cash">Cash paid at Academy</option>
-                    </select>
+                    </Select>
                   </div>
 
                   {/* Amount Paid */}

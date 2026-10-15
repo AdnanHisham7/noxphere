@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { TrendingUp, CalendarCheck } from "lucide-react";
-import { Card, Badge, Skeleton, EmptyState } from "../../components/ui";
+import { Card, Badge, Skeleton, EmptyState, Select } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
 import { useListPerformanceQuery } from "../../store/api/adminPerformanceApi";
@@ -58,18 +58,19 @@ const PerformancePage: React.FC = () => {
             Performance is logged against a scheduled session
           </p>
         </div>
-        <select
-          className="input !w-auto"
-          value={teamId}
-          onChange={(e) => setTeamId(e.target.value)}
-        >
-          <option value="">All teams</option>
-          {(teams ?? []).map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
+        <div className="w-48">
+          <Select
+            value={teamId}
+            onChange={(e) => setTeamId(e.target.value)}
+          >
+            <option value="">All teams</option>
+            {(teams ?? []).map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </Select>
+        </div>
       </div>
 
       {/* Sessions to log */}

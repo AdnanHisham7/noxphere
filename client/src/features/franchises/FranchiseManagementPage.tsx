@@ -6,7 +6,7 @@ import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { setActiveFranchise } from "../../store/slices/uiSlice";
-import { Button, Input, Badge, Modal, Skeleton, EmptyState, PageHeader } from "../../components/ui";
+import { Button, Input, Badge, Modal, Skeleton, EmptyState, PageHeader, Select } from "../../components/ui";
 import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useConfirm } from "../../hooks/useConfirm";
@@ -117,13 +117,12 @@ const FranchiseManagementPage: React.FC = () => {
       {isSuperAdmin && (
         <div className="card p-4 flex items-end gap-3">
           <div className="w-full sm:w-64">
-            <label className="label">Academy</label>
-            <select className="input" value={selectedAcademyId} onChange={(e) => setSelectedAcademyId(e.target.value)}>
+            <Select label="Academy" value={selectedAcademyId} onChange={(e) => setSelectedAcademyId(e.target.value)}>
               <option value="">Select an academy…</option>
               {academies.map((a) => (
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
       )}
