@@ -5,7 +5,7 @@ import {
   useApproveRegistrationRequestMutation,
   useRejectRegistrationRequestMutation,
 } from "@/store/api/studentsApi";
-import { Button, Modal, Badge, EmptyState } from "@/components/ui";
+import { Button, Modal, Badge, EmptyState, Select } from "@/components/ui";
 import {
   CheckCircle2,
   XCircle,
@@ -174,14 +174,15 @@ export const RegistrationRequestsTab: React.FC<RegistrationRequestsTabProps> = (
           </button>
 
           {franchiseId && (
-            <select
+            <Select
               value={scope}
               onChange={(e) => setScope(e.target.value as "all" | "franchise")}
-              className="ml-2 text-xs bg-slate-100 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-slate-700 dark:text-slate-300 font-medium outline-none cursor-pointer"
+              className="!py-1 !px-2 text-xs"
+              wrapperClassName="ml-2 inline-block"
             >
               <option value="all">All Academy Branches</option>
               <option value="franchise">This Branch Only</option>
-            </select>
+            </Select>
           )}
         </div>
 
@@ -354,37 +355,33 @@ export const RegistrationRequestsTab: React.FC<RegistrationRequestsTabProps> = (
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Assign Team / Squad</label>
-                <select
-                  value={approvalForm.teamId}
-                  onChange={(e) => setApprovalForm({ ...approvalForm, teamId: e.target.value })}
-                  className="input text-xs"
-                >
-                  <option value="">Unassigned</option>
-                  {teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="label">Position</label>
-                <select
-                  value={approvalForm.position}
-                  onChange={(e) => setApprovalForm({ ...approvalForm, position: e.target.value })}
-                  className="input text-xs"
-                >
-                  <option value="Forward">Forward</option>
-                  <option value="Winger">Winger</option>
-                  <option value="Midfielder">Midfielder</option>
-                  <option value="Defensive Midfielder">Defensive Midfielder</option>
-                  <option value="Defender">Defender</option>
-                  <option value="Full Back">Full Back</option>
-                  <option value="Goalkeeper">Goalkeeper</option>
-                </select>
-              </div>
+              <Select
+                label="Assign Team / Squad"
+                value={approvalForm.teamId}
+                onChange={(e) => setApprovalForm({ ...approvalForm, teamId: e.target.value })}
+                className="text-xs"
+              >
+                <option value="">Unassigned</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                label="Position"
+                value={approvalForm.position}
+                onChange={(e) => setApprovalForm({ ...approvalForm, position: e.target.value })}
+                className="text-xs"
+              >
+                <option value="Forward">Forward</option>
+                <option value="Winger">Winger</option>
+                <option value="Midfielder">Midfielder</option>
+                <option value="Defensive Midfielder">Defensive Midfielder</option>
+                <option value="Defender">Defender</option>
+                <option value="Full Back">Full Back</option>
+                <option value="Goalkeeper">Goalkeeper</option>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -400,20 +397,18 @@ export const RegistrationRequestsTab: React.FC<RegistrationRequestsTabProps> = (
                   className="input text-xs"
                 />
               </div>
-              <div>
-                <label className="label">Jersey Size</label>
-                <select
-                  value={approvalForm.jerseySize}
-                  onChange={(e) => setApprovalForm({ ...approvalForm, jerseySize: e.target.value })}
-                  className="input text-xs"
-                >
-                  <option value="XS">XS</option>
-                  <option value="S">S</option>
-                  <option value="M">M</option>
-                  <option value="L">L</option>
-                  <option value="XL">XL</option>
-                </select>
-              </div>
+              <Select
+                label="Jersey Size"
+                value={approvalForm.jerseySize}
+                onChange={(e) => setApprovalForm({ ...approvalForm, jerseySize: e.target.value })}
+                className="text-xs"
+              >
+                <option value="XS">XS</option>
+                <option value="S">S</option>
+                <option value="M">M</option>
+                <option value="L">L</option>
+                <option value="XL">XL</option>
+              </Select>
             </div>
 
             <p className="text-2xs text-slate-500">

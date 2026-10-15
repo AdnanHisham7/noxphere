@@ -9,7 +9,7 @@ import {
   useCancelSquadInvitationMutation,
   type SquadInvitation,
 } from "@/store/api/squadInvitationApi";
-import { Button, Input, Badge, EmptyState } from "@/components/ui";
+import { Button, Input, Badge, EmptyState, Select } from "@/components/ui";
 import {
   Search,
   UserPlus,
@@ -186,8 +186,8 @@ export const FreeAgentsTab: React.FC<FreeAgentsTabProps> = ({
                 </button>
               )}
             </div>
-            <select
-              className="input text-xs w-32"
+            <Select
+              className="text-xs w-32"
               value={ageFilter}
               onChange={(e) => setAgeFilter(e.target.value)}
             >
@@ -197,7 +197,7 @@ export const FreeAgentsTab: React.FC<FreeAgentsTabProps> = ({
                   {ag}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
       </div>

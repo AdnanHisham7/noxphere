@@ -16,6 +16,7 @@ import {
   List,
   Archive,
   RotateCcw,
+  Eye,
 } from "lucide-react";
 import {
   Button,
@@ -28,6 +29,7 @@ import {
   ImageUploadField,
   DocumentUploadField,
   PageHeader,
+  Select,
 } from "../../components/ui";
 import { toast } from "react-hot-toast";
 import mannequinPng from "../../assets/players/mannequin.png";
@@ -530,7 +532,7 @@ const StudentsPage: React.FC = () => {
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                 <Archive size={16} className="text-volt-400" />
-                Archived & Soft-Deleted Players
+                Archived & Dropped-Out Players
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 Archived players do not occupy student slots in your subscription plan. Their profiles and match records are preserved and can be restored back to the active squad whenever capacity allows.
@@ -582,21 +584,31 @@ const StudentsPage: React.FC = () => {
                     {archivedStudents.map((student) => (
                       <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-pitch-800/50 transition-colors">
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
+                          <Link
+                            to={`/students/${student.id}`}
+                            className="flex items-center gap-3 group"
+                          >
                             <Avatar
                               name={`${student.firstName} ${student.lastName}`}
                               src={student.photo}
                               size="sm"
                             />
                             <div>
-                              <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                              <p className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-volt-400 transition-colors">
                                 {student.firstName} {student.lastName}
                               </p>
-                              <p className="text-2xs text-slate-500">
-                                #{student.jerseyNumber ?? "—"} · Status: {student.status}
-                              </p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <Badge variant="red" className="!py-0 !px-1.5 text-[9px] uppercase tracking-wider font-bold">
+                                  Archived
+                                </Badge>
+                                {student.jerseyNumber !== undefined && (
+                                  <span className="text-2xs text-slate-500 font-mono">
+                                    #{student.jerseyNumber}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
+                          </Link>
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 hidden sm:table-cell">
                           {student.position ?? "—"}
@@ -615,16 +627,26 @@ const StudentsPage: React.FC = () => {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            icon={<RotateCcw size={13} className="text-volt-400" />}
-                            onClick={() => handleRestore(student.id, `${student.firstName} ${student.lastName}`)}
-                            disabled={restoring}
-                            className="text-xs"
-                          >
-                            Restore to Squad
-                          </Button>
+                          <div className="flex items-center justify-end gap-2">
+                            <Link
+                              to={`/students/${student.id}`}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-pitch-800 transition-colors border border-slate-200 dark:border-white/10"
+                              title="View full player profile and history"
+                            >
+                              <Eye size={13} className="text-volt-400" />
+                              <span className="hidden sm:inline">View Profile</span>
+                            </Link>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              icon={<RotateCcw size={13} className="text-volt-400" />}
+                              onClick={() => handleRestore(student.id, `${student.firstName} ${student.lastName}`)}
+                              disabled={restoring}
+                              className="text-xs"
+                            >
+                              Restore to Squad
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -647,8 +669,7 @@ const StudentsPage: React.FC = () => {
               />
             </div>
             <div className="w-full sm:w-auto sm:min-w-32">
-              <select
-                className="input w-full"
+              <Select
                 value={filterTeam}
                 onChange={(e) => setFilterTeam(e.target.value)}
               >
@@ -658,11 +679,10 @@ const StudentsPage: React.FC = () => {
                     {t.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="w-full sm:w-auto sm:min-w-32">
-              <select
-                className="input w-full"
+              <Select
                 value={filterAge}
                 onChange={(e) => setFilterAge(e.target.value)}
               >
@@ -670,11 +690,10 @@ const StudentsPage: React.FC = () => {
                 {categoriesList.map((a) => (
                   <option key={a}>{a}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="w-full sm:w-auto sm:min-w-40">
-              <select
-                className="input w-full"
+              <Select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
@@ -684,7 +703,7 @@ const StudentsPage: React.FC = () => {
                 <option value="pending">Pending</option>
                 <option value="on_hold">On Hold</option>
                 <option value="not_selected">Not Selected</option>
-              </select>
+              </Select>
             </div>
 
             <div className="w-full sm:w-auto sm:ml-auto flex items-center justify-between sm:justify-start gap-2 pt-1 sm:pt-0">
@@ -791,28 +810,52 @@ const StudentsPage: React.FC = () => {
           {!isLoading && viewMode === "grid" && students.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
               {students.map((student) => (
-                <Link
-                  key={student.id}
-                  to={`/students/${student.id}`}
-                  className="relative aspect-[2/3] [perspective:2000px] overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-pitch-950 group transition-all duration-300 hover:border-volt-500 dark:hover:border-volt-400/30 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-2xl dark:hover:shadow-volt-400/10"
-                >
-                  <div
-                    className="relative h-full w-full [transform-style:preserve-3d] transition-transform duration-700"
-                    style={{
-                      transform: showPhotoCards
-                        ? "rotateY(0deg)"
-                        : "rotateY(180deg)",
-                    }}
+                <div key={student.id} className="relative group/card">
+                  <Link
+                    to={`/students/${student.id}`}
+                    className="block relative aspect-[2/3] [perspective:2000px] overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-pitch-950 group transition-all duration-300 hover:border-volt-500 dark:hover:border-volt-400/30 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-2xl dark:hover:shadow-volt-400/10"
                   >
-                    <div className="absolute inset-0 rounded-3xl overflow-hidden [backface-visibility:hidden] bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-pitch-900 dark:via-pitch-950 dark:to-black">
-                      <div className="absolute inset-0">
-                        {student.photo ? (
-                          <img
-                            src={student.photo}
-                            alt={`${student.firstName} ${student.lastName}`}
-                            className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
-                          />
-                        ) : (
+                    <div
+                      className="relative h-full w-full [transform-style:preserve-3d] transition-transform duration-700"
+                      style={{
+                        transform: showPhotoCards
+                          ? "rotateY(0deg)"
+                          : "rotateY(180deg)",
+                      }}
+                    >
+                      <div className="absolute inset-0 rounded-3xl overflow-hidden [backface-visibility:hidden] bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-pitch-900 dark:via-pitch-950 dark:to-black">
+                        <div className="absolute inset-0">
+                          {student.photo ? (
+                            <img
+                              src={student.photo}
+                              alt={`${student.firstName} ${student.lastName}`}
+                              className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <PlayerPlaceholder
+                              image={mannequinPng}
+                              name={`${student.firstName} ${student.lastName}`}
+                              number={student.jerseyNumber ?? 0}
+                              className="h-full w-full px-6 pb-14"
+                              nameTop="28%"
+                              numberTop="34%"
+                              nameSize="11px"
+                              numberSize="55px"
+                              nameWidth="75%"
+                            />
+                          )}
+                        </div>
+                        <PlayerCardContent
+                          student={student}
+                          teamName={teamNameOf(student.teamId)}
+                          getRatingColor={getRatingColor}
+                          selectionBadge={selectionBadge}
+                          hasConsent={consentStatus?.[student.id]}
+                        />
+                      </div>
+
+                      <div className="absolute inset-0 rounded-3xl overflow-hidden [transform:rotateY(180deg)] [backface-visibility:hidden] bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-pitch-900 dark:via-pitch-950 dark:to-black">
+                        <div className="absolute inset-0">
                           <PlayerPlaceholder
                             image={mannequinPng}
                             name={`${student.firstName} ${student.lastName}`}
@@ -824,41 +867,37 @@ const StudentsPage: React.FC = () => {
                             numberSize="55px"
                             nameWidth="75%"
                           />
-                        )}
-                      </div>
-                      <PlayerCardContent
-                        student={student}
-                        teamName={teamNameOf(student.teamId)}
-                        getRatingColor={getRatingColor}
-                        selectionBadge={selectionBadge}
-                        hasConsent={consentStatus?.[student.id]}
-                      />
-                    </div>
-
-                    <div className="absolute inset-0 rounded-3xl overflow-hidden [transform:rotateY(180deg)] [backface-visibility:hidden] bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-pitch-900 dark:via-pitch-950 dark:to-black">
-                      <div className="absolute inset-0">
-                        <PlayerPlaceholder
-                          image={mannequinPng}
-                          name={`${student.firstName} ${student.lastName}`}
-                          number={student.jerseyNumber ?? 0}
-                          className="h-full w-full px-6 pb-14"
-                          nameTop="28%"
-                          numberTop="34%"
-                          nameSize="11px"
-                          numberSize="55px"
-                          nameWidth="75%"
+                        </div>
+                        <PlayerCardContent
+                          student={student}
+                          teamName={teamNameOf(student.teamId)}
+                          getRatingColor={getRatingColor}
+                          selectionBadge={selectionBadge}
+                          hasConsent={consentStatus?.[student.id]}
                         />
                       </div>
-                      <PlayerCardContent
-                        student={student}
-                        teamName={teamNameOf(student.teamId)}
-                        getRatingColor={getRatingColor}
-                        selectionBadge={selectionBadge}
-                        hasConsent={consentStatus?.[student.id]}
-                      />
                     </div>
-                  </div>
-                </Link>
+                  </Link>
+
+                  {canManageSquad && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDelete(
+                          student.id,
+                          `${student.firstName} ${student.lastName}`,
+                        );
+                      }}
+                      className="absolute top-12 right-2.5 z-30 opacity-0 group-hover/card:opacity-100 p-1.5 rounded-lg bg-pitch-950/85 hover:bg-rose-600 text-slate-300 hover:text-white transition-all shadow-md border border-white/15 backdrop-blur-sm"
+                      title="Archive player & release roster slot"
+                      aria-label="Archive player"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -982,8 +1021,9 @@ const StudentsPage: React.FC = () => {
                                   `${student.firstName} ${student.lastName}`,
                                 )
                               }
-                              className="text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-ember-400 transition-colors"
-                              aria-label="Remove player"
+                              className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 dark:text-slate-500 dark:hover:text-ember-400 transition-colors"
+                              aria-label="Archive player"
+                              title="Archive player & release roster slot"
                             >
                               <Trash2 size={14} />
                             </button>
@@ -1375,18 +1415,12 @@ const AddPlayerModal: React.FC<{
                 onChange={(e) => handleDobChange(e.target.value)}
                 required
               />
-              <div>
-                <label className="label">Age Group</label>
-                <select
-                  className="input w-full"
-                  value={ageGroup}
-                  onChange={(e) => setAgeGroup(e.target.value)}
-                >
-                  {categoriesList.map((a) => (
-                    <option key={a}>{a}</option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label="Age Group"
+                value={ageGroup}
+                onChange={(e) => setAgeGroup(e.target.value)}
+                options={categoriesList}
+              />
             </div>
 
             <div>
@@ -1442,21 +1476,18 @@ const AddPlayerModal: React.FC<{
         {step === 2 && (
           <div className="space-y-4 animate-fade-in">
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Team / Squad (optional)</label>
-                <select
-                  className="input w-full"
-                  value={teamId}
-                  onChange={(e) => setTeamId(e.target.value)}
-                >
-                  <option value="">Assign later</option>
-                  {teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label="Team / Squad (optional)"
+                value={teamId}
+                onChange={(e) => setTeamId(e.target.value)}
+              >
+                <option value="">Assign later</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </Select>
               <Input
                 label="Jersey Number (optional)"
                 type="number"

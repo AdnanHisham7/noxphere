@@ -22,8 +22,15 @@ export class StudentRepository implements IStudentRepository {
     return this.toEntity(doc);
   }
 
-  async findById(id: string): Promise<StudentEntity | null> {
-    const doc = await StudentModel.findById(id).lean();
+  async findById(
+    id: string,
+    options?: { includeDeleted?: boolean },
+  ): Promise<StudentEntity | null> {
+    const query = StudentModel.findById(id);
+    if (options?.includeDeleted !== false) {
+      query.setOptions({ includeDeleted: true });
+    }
+    const doc = await query.lean();
     return doc ? this.toEntity(doc) : null;
   }
 
@@ -52,7 +59,9 @@ export class StudentRepository implements IStudentRepository {
   ): Promise<StudentEntity | null> {
     const doc = await StudentModel.findByIdAndUpdate(id, data, {
       new: true,
-    }).lean();
+    })
+      .setOptions({ includeDeleted: true })
+      .lean();
     return doc ? this.toEntity(doc) : null;
   }
 
@@ -67,7 +76,7 @@ export class StudentRepository implements IStudentRepository {
   async findDeletedById(id: string): Promise<StudentEntity | null> {
     const doc = await StudentModel.findOne({
       _id: id,
-      deletedAt: { $exists: true },
+      $or: [{ deletedAt: { $exists: true } }, { status: "dropped_out" }],
     })
       .setOptions({ includeDeleted: true })
       .lean();
@@ -76,7 +85,10 @@ export class StudentRepository implements IStudentRepository {
 
   async restore(id: string): Promise<StudentEntity | null> {
     const doc = await StudentModel.findOneAndUpdate(
-      { _id: id, deletedAt: { $exists: true } },
+      {
+        _id: id,
+        $or: [{ deletedAt: { $exists: true } }, { status: "dropped_out" }],
+      },
       {
         $unset: { deletedAt: 1 },
         $set: { isActive: true, status: "active" },

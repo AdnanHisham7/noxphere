@@ -2,7 +2,7 @@ import { baseApi } from './baseApi';
 
 export type SelectionStatus = 'pending' | 'shortlisted' | 'on_hold' | 'selected' | 'not_selected' | 'released';
 export type TransferStatus = 'not_listed' | 'listed' | 'sold';
-export type StudentStatus = 'active' | 'inactive' | 'on_leave' | 'graduated' | 'dropped_out';
+export type StudentStatus = 'active' | 'inactive' | 'on_leave' | 'graduated' | 'dropped_out' | 'archived';
 
 export interface MedicalInfo {
   bloodGroup?: string;
@@ -60,6 +60,7 @@ export interface Student {
   transferNote?: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
 }
 
 export interface CreateStudentBody {

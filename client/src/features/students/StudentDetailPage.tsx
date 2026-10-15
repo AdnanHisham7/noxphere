@@ -45,6 +45,9 @@ import {
   Plus,
   MoreVertical,
   BarChart3,
+  Archive,
+  RotateCcw,
+  Trash2,
 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
@@ -56,11 +59,14 @@ import {
   Skeleton,
   EmptyState,
   Input,
+  Select,
   DocumentUploadField,
 } from "../../components/ui";
 import { toast } from "react-hot-toast";
 import { useTransferWallEnabled } from "../../hooks/useTransferWallEnabled";
 import { useConfirm } from "../../hooks/useConfirm";
+import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
+import { SubscriptionModal } from "../subscription/SubscriptionModal";
 import mannequinPng from "../../assets/players/mannequin.png";
 import { PlayerPlaceholder } from "@/components/ui/PlayerPlaceholder";
 import { jsPDF } from "jspdf";
@@ -74,6 +80,8 @@ import {
   useTransferStudentFranchiseMutation,
   useGetTransferHistoryQuery,
   useAddCoachRemarkMutation,
+  useRestoreStudentMutation,
+  useDeleteStudentMutation,
   type Student,
   type StudentStatus,
 } from "../../store/api/studentsApi";
@@ -198,6 +206,7 @@ const StudentDetailPage: React.FC = () => {
     data: card,
     isLoading,
     isError,
+    refetch,
   } = useGetPlayerCardQuery(id ?? "", { skip: !id });
   const [listPlayer, { isLoading: listing }] = useListPlayerMutation();
   const [uploadImage, { isLoading: uploadingPhoto }] = useUploadImageMutation();
@@ -222,6 +231,14 @@ const StudentDetailPage: React.FC = () => {
     user?.role === "manager" ||
     user?.role === "coach" ||
     !!user?.permissions?.canManagePerformance;
+  const canManageSquad =
+    user?.role === "manager" || user?.role === "super_admin";
+  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
+  const academyId = useCurrentAcademyId();
+  const [restoreStudent, { isLoading: isRestoring }] =
+    useRestoreStudentMutation();
+  const [deleteStudent, { isLoading: isDeleting }] =
+    useDeleteStudentMutation();
 
   const [newRemarkText, setNewRemarkText] = useState("");
   const [addCoachRemark, { isLoading: isAddingRemark }] =
@@ -244,7 +261,15 @@ const StudentDetailPage: React.FC = () => {
 
   const handleStatusChange = async (status: StudentStatus) => {
     if (!id) return;
-    if (status !== "active") {
+    if (status === "dropped_out") {
+      const ok = await confirm({
+        title: "Mark player as Dropped Out",
+        message: `Mark ${student?.firstName ?? "this player"} as Dropped Out? This will move them to the Archived Players section and release 1 student slot immediately. Their full match, attendance, and fee history are preserved.`,
+        confirmLabel: "Confirm Drop Out",
+        danger: true,
+      });
+      if (!ok) return;
+    } else if (status !== "active") {
       const ok = await confirm({
         title: "Change player status",
         message: `Mark this player as "${status.replace("_", " ")}"? This is visible across the roster and to guardians.`,
@@ -254,7 +279,11 @@ const StudentDetailPage: React.FC = () => {
     }
     try {
       await updateStudentStatus({ id, status }).unwrap();
-      toast.success("Player status updated");
+      toast.success(
+        status === "dropped_out"
+          ? "Player marked as dropped out and archived"
+          : "Player status updated",
+      );
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't update status — try again");
     }
@@ -292,6 +321,58 @@ const StudentDetailPage: React.FC = () => {
   const attendance = card?.attendance ?? [];
   const remarks = card?.remarks ?? [];
   const student = card?.student;
+  const isArchived = Boolean(
+    student?.deletedAt ||
+      student?.status === "archived" ||
+      student?.status === "dropped_out",
+  );
+
+  const handleRestoreStudent = async () => {
+    if (!student) return;
+    const ok = await confirm({
+      title: "Restore player to squad",
+      message: `Restore ${student.firstName} ${student.lastName} back to the active squad? This will occupy 1 student capacity slot in your subscription plan.`,
+      confirmLabel: "Restore Player",
+    });
+    if (!ok) return;
+    try {
+      await restoreStudent(student.id).unwrap();
+      toast.success(
+        `${student.firstName} ${student.lastName} restored to active squad!`,
+      );
+    } catch (err: any) {
+      const msg =
+        err?.data?.message ||
+        "Failed to restore player. Check subscription capacity.";
+      toast.error(msg);
+      if (
+        err?.data?.code === "SUBSCRIPTION_CAPACITY_EXCEEDED" ||
+        err?.data?.code === "SUBSCRIPTION_REQUIRED"
+      ) {
+        setSubscriptionModalOpen(true);
+      }
+    }
+  };
+
+  const handleDeleteStudent = async () => {
+    if (!student) return;
+    const ok = await confirm({
+      title: "Archive Player & Release Slot",
+      message: `Remove ${student.firstName} ${student.lastName} from the active franchise squad? This will release 1 student subscription slot immediately. The player's profile and historical stats are safely archived and can be restored anytime from the Archived tab.`,
+      confirmLabel: "Archive Player",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await deleteStudent(student.id).unwrap();
+      toast.success(
+        `${student.firstName} ${student.lastName} archived and subscription slot released`,
+      );
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to remove player — try again");
+    }
+  };
 
   // Aggregate skill scores across recent performances into a radar profile
   const skillTotals = new Map<string, { sum: number; count: number }>();
@@ -492,10 +573,61 @@ const StudentDetailPage: React.FC = () => {
           Squad
         </Link>
         <span>›</span>
+        {isArchived && (
+          <>
+            <span className="text-rose-500 font-semibold uppercase tracking-wider text-[11px]">
+              Archived
+            </span>
+            <span>›</span>
+          </>
+        )}
         <span className="text-slate-900 dark:text-white font-medium">
           {student.firstName} {student.lastName}
         </span>
       </div>
+
+      {/* Prominent Archived & Soft-Deleted Player Banner */}
+      {isArchived && (
+        <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 dark:bg-rose-950/40 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 backdrop-blur-sm shadow-sm animate-fade-in">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 ring-1 ring-rose-500/30">
+              <Archive size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wide">
+                  {student.status === "dropped_out" ? "Dropped Out & Archived Player" : "Archived & Soft-Deleted Player"}
+                </h3>
+                <Badge variant="red" className="font-bold text-[10px] uppercase tracking-wider">
+                  {student.status === "dropped_out" ? "Dropped Out" : "Off-Squad"}
+                </Badge>
+                {student.deletedAt && (
+                  <span className="text-xs text-rose-600/80 dark:text-rose-400/70 font-mono">
+                    Archived on {new Date(student.deletedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-rose-600/90 dark:text-rose-300/80 mt-1">
+                {student.status === "dropped_out"
+                  ? "This player has dropped out and has been archived. Their roster slot has been released, while all historical match performance, attendance, notes, and fee records are fully preserved."
+                  : "This player was removed from the active squad. Their roster slot has been released, but historical match performance, attendance, notes, and fee records are fully preserved."}
+              </p>
+            </div>
+          </div>
+          {canManageSquad && (
+            <Button
+              size="sm"
+              variant="primary"
+              icon={isRestoring ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+              onClick={handleRestoreStudent}
+              disabled={isRestoring}
+              className="shrink-0 bg-rose-600 hover:bg-rose-500 text-white border-0 shadow-lg shadow-rose-600/20 font-semibold"
+            >
+              {isRestoring ? "Restoring..." : "Restore to Squad"}
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Hero section */}
       <div className="card overflow-hidden relative shadow-lg border-slate-200 dark:border-white/10 bg-gradient-to-b from-white via-white to-slate-50 dark:from-pitch-900 dark:via-pitch-900 dark:to-pitch-950">
@@ -537,6 +669,32 @@ const StudentDetailPage: React.FC = () => {
                 </div>
 
                 <div className="py-1 space-y-0.5">
+                  {isArchived && canManageSquad && (
+                    <button
+                      type="button"
+                      disabled={isRestoring}
+                      onClick={() => {
+                        setActionsMenuOpen(false);
+                        handleRestoreStudent();
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors group"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        {isRestoring ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <RotateCcw size={14} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-semibold block truncate">Restore to Squad</span>
+                        <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-normal block truncate">
+                          Re-add to active roster
+                        </span>
+                      </div>
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     disabled={isDownloading}
@@ -601,7 +759,7 @@ const StudentDetailPage: React.FC = () => {
                     </div>
                   </button>
 
-                  {canTransferFranchise && (
+                  {canTransferFranchise && !isArchived && (
                     <button
                       type="button"
                       onClick={() => {
@@ -622,7 +780,8 @@ const StudentDetailPage: React.FC = () => {
                     </button>
                   )}
 
-                  {student.transferStatus !== "listed" &&
+                  {!isArchived &&
+                    student.transferStatus !== "listed" &&
                     student.transferStatus !== "sold" &&
                     transferWallEnabled && (
                       <button
@@ -660,6 +819,35 @@ const StudentDetailPage: React.FC = () => {
                       </span>
                     </div>
                   </a>
+
+                  {canManageSquad && !isArchived && (
+                    <>
+                      <div className="border-t border-slate-100 dark:border-white/5 my-1" />
+                      <button
+                        type="button"
+                        disabled={isDeleting}
+                        onClick={() => {
+                          setActionsMenuOpen(false);
+                          handleDeleteStudent();
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-rose-300 transition-colors group"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-rose-500/10 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                          {isDeleting ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <Trash2 size={14} />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-semibold block truncate">Archive / Remove Player</span>
+                          <span className="text-[10px] text-rose-500/80 dark:text-rose-400/70 font-normal block truncate">
+                            Release slot & move to archived
+                          </span>
+                        </div>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -694,6 +882,13 @@ const StudentDetailPage: React.FC = () => {
                 {student.jerseyNumber !== undefined && (
                   <div className="absolute top-2.5 left-2.5 z-20 px-2 py-0.5 rounded-md bg-pitch-950/80 text-volt-400 font-display font-black text-xs border border-volt-400/30 backdrop-blur-sm">
                     #{student.jerseyNumber}
+                  </div>
+                )}
+
+                {/* Archived Badge Overlay */}
+                {isArchived && (
+                  <div className="absolute top-2.5 right-2.5 z-20 px-2 py-0.5 rounded-md bg-rose-950/90 text-rose-300 font-display font-bold text-2xs border border-rose-500/40 uppercase tracking-wider backdrop-blur-sm shadow-sm">
+                    {student.status === "dropped_out" ? "Dropped Out" : "Archived"}
                   </div>
                 )}
 
@@ -755,15 +950,19 @@ const StudentDetailPage: React.FC = () => {
                     {student.transferStatus === "sold" && (
                       <Badge variant="green">Transferred</Badge>
                     )}
-                    {canEditStatus ? (
-                      <select
+                    {isArchived ? (
+                      <Badge variant="red" className="font-bold uppercase tracking-wider">
+                        {student.status === "dropped_out" ? "Dropped Out" : "Archived"}
+                      </Badge>
+                    ) : canEditStatus ? (
+                      <Select
                         value={student.status}
                         disabled={statusUpdating}
                         onChange={(e) =>
                           handleStatusChange(e.target.value as StudentStatus)
                         }
                         className={clsx(
-                          "text-2xs font-bold uppercase tracking-wide rounded px-2 py-1 border bg-slate-100 dark:bg-pitch-800",
+                          "!py-1 !px-2 text-2xs font-bold uppercase tracking-wide border",
                           student.status === "active"
                             ? "text-field-500 dark:text-field-400 border-field-400/30"
                             : "text-ember-500 dark:text-ember-400 border-ember-400/30",
@@ -774,7 +973,7 @@ const StudentDetailPage: React.FC = () => {
                         <option value="on_leave">On Leave</option>
                         <option value="graduated">Graduated</option>
                         <option value="dropped_out">Dropped Out</option>
-                      </select>
+                      </Select>
                     ) : (
                       <Badge
                         variant={student.status === "active" ? "green" : "gray"}
@@ -802,6 +1001,24 @@ const StudentDetailPage: React.FC = () => {
 
                 {/* Desktop Action buttons */}
                 <div className="hidden lg:flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-slate-200/70 dark:border-white/5">
+                {isArchived && canManageSquad && (
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    icon={
+                      isRestoring ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <RotateCcw size={14} />
+                      )
+                    }
+                    onClick={handleRestoreStudent}
+                    disabled={isRestoring}
+                    className="bg-volt-400 text-pitch-900 hover:bg-volt-300 font-semibold shadow-sm"
+                  >
+                    {isRestoring ? "Restoring..." : "Restore to Squad"}
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="secondary"
@@ -1027,7 +1244,7 @@ const StudentDetailPage: React.FC = () => {
                   Generate Report
                 </Button>
 
-                {canTransferFranchise && (
+                {canTransferFranchise && !isArchived && (
                   <Button
                     size="sm"
                     variant="secondary"
@@ -1038,7 +1255,8 @@ const StudentDetailPage: React.FC = () => {
                   </Button>
                 )}
 
-                {student.transferStatus !== "listed" &&
+                {!isArchived &&
+                  student.transferStatus !== "listed" &&
                   student.transferStatus !== "sold" &&
                   transferWallEnabled && (
                     <Button
@@ -1057,6 +1275,26 @@ const StudentDetailPage: React.FC = () => {
                 >
                   <Mail size={13} /> Message Guardian
                 </a>
+
+                {canManageSquad && !isArchived && (
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    icon={
+                      isDeleting ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={14} />
+                      )
+                    }
+                    onClick={handleDeleteStudent}
+                    disabled={isDeleting}
+                    className="text-xs"
+                    title="Remove player from active squad and release subscription slot"
+                  >
+                    {isDeleting ? "Archiving..." : "Archive Player"}
+                  </Button>
+                )}
                 </div>
 
                 {/* Mobile & Tablet Full-Width Metrics Grid (Eliminates empty side space) */}
@@ -2295,6 +2533,15 @@ const StudentDetailPage: React.FC = () => {
           studentName={`${student.firstName} ${student.lastName}`}
         />
       )}
+
+      {subscriptionModalOpen && academyId && (
+        <SubscriptionModal
+          academyId={academyId}
+          onClose={() => setSubscriptionModalOpen(false)}
+          mode="upgrade"
+        />
+      )}
+      {ConfirmDialog}
     </div>
   );
 };
@@ -2598,26 +2845,23 @@ const FranchiseTransferModal: React.FC<{
             {currentFranchise?.name ?? "—"}
           </p>
         </div>
-        <div>
-          <label className="label">Move to</label>
-          <select
-            value={toFranchiseId}
-            onChange={(e) => setToFranchiseId(e.target.value)}
-            className="input !w-full"
-          >
-            <option value="">Select destination franchise…</option>
-            {destinationOptions.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-          {destinationOptions.length === 0 && (
-            <p className="text-2xs text-slate-500 mt-1.5">
-              No other active franchises in this academy to transfer into.
-            </p>
-          )}
-        </div>
+        <Select
+          label="Move to"
+          value={toFranchiseId}
+          onChange={(e) => setToFranchiseId(e.target.value)}
+          helperText={
+            destinationOptions.length === 0
+              ? "No other active franchises in this academy to transfer into."
+              : undefined
+          }
+        >
+          <option value="">Select destination franchise…</option>
+          {destinationOptions.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name}
+            </option>
+          ))}
+        </Select>
         <div>
           <label className="label">Reason (optional)</label>
           <textarea
@@ -2894,20 +3138,12 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
                 onChange={(e) => handleDobChange(e.target.value)}
                 required
               />
-              <div>
-                <label className="label">Age group</label>
-                <select
-                  value={ageGroup}
-                  onChange={(e) => setAgeGroup(e.target.value)}
-                  className="input !w-full"
-                >
-                  {allCategories.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label="Age group"
+                value={ageGroup}
+                onChange={(e) => setAgeGroup(e.target.value)}
+                options={allCategories}
+              />
             </div>
 
             <div>
@@ -2968,21 +3204,18 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
               </div>
             </div>
 
-            <div>
-              <label className="label">Team Assignment</label>
-              <select
-                value={teamId}
-                onChange={(e) => setTeamId(e.target.value)}
-                className="input !w-full"
-              >
-                <option value="">No team assigned</option>
-                {(teams ?? []).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.ageGroup})
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              label="Team Assignment"
+              value={teamId}
+              onChange={(e) => setTeamId(e.target.value)}
+            >
+              <option value="">No team assigned</option>
+              {(teams ?? []).map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} ({t.ageGroup})
+                </option>
+              ))}
+            </Select>
 
             <div className="border-t border-white/5 pt-4 mt-2">
               <p className="section-title mb-3 text-volt-400">

@@ -346,14 +346,19 @@ export class StudentUseCases {
       filters.deleted === true ||
       filters.deleted === "true" ||
       filters.status === "deleted" ||
-      filters.status === "archived";
+      filters.status === "archived" ||
+      filters.status === "dropped_out";
 
     const filter: any = { franchiseId };
 
     if (isDeletedRequested) {
-      filter.deletedAt = { $exists: true };
+      filter.$or = [
+        { deletedAt: { $exists: true } },
+        { status: "dropped_out" },
+      ];
     } else {
       filter.deletedAt = { $exists: false };
+      filter.status = { $ne: "dropped_out" };
       if (filters.status) {
         filter.status = filters.status;
       }
@@ -519,6 +524,9 @@ export class StudentUseCases {
   ): Promise<void> {
     const student = await this.studentRepo.findById(id);
     if (!student) throw new NotFoundError("Student");
+    if (student.deletedAt) {
+      throw new BadRequestError("Student is already archived");
+    }
 
     if (
       requester &&
@@ -576,8 +584,14 @@ export class StudentUseCases {
     // Marking them 'inactive', 'graduated', or 'dropped_out' releases their subscription slot.
     const willBeActive = status === "active" || status === "on_leave";
 
-    // If student was inactive and is being reactivated, enforce subscription quota!
-    if (willBeActive && !currentStudent.isActive && currentStudent.franchiseId) {
+    // If student was inactive/deleted and is being reactivated, enforce subscription quota!
+    if (
+      willBeActive &&
+      (!currentStudent.isActive ||
+        currentStudent.deletedAt ||
+        currentStudent.status === "dropped_out") &&
+      currentStudent.franchiseId
+    ) {
       const franchise = await FranchiseModel.findById(
         currentStudent.franchiseId,
       )
@@ -590,11 +604,26 @@ export class StudentUseCases {
       }
     }
 
-    const student = await this.studentRepo.update(id, {
+    const updatePayload: any = {
       status,
       isActive: willBeActive,
-    });
+    };
+    if (status === "dropped_out") {
+      updatePayload.deletedAt = new Date();
+    } else if (willBeActive && currentStudent.deletedAt) {
+      updatePayload.$unset = { deletedAt: 1 };
+    }
+
+    const student = await this.studentRepo.update(id, updatePayload);
     if (!student) throw new NotFoundError("Student");
+
+    if (currentStudent.userId) {
+      await UserModel.findByIdAndUpdate(currentStudent.userId, {
+        isActive: willBeActive,
+        ...(willBeActive ? { $unset: { deletedAt: 1 } } : {}),
+      }).catch(() => undefined);
+    }
+
     return student;
   }
 

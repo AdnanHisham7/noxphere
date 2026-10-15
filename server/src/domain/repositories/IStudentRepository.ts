@@ -6,7 +6,10 @@ import { CoachRemarkDocument } from '../../infrastructure/database/models/CoachR
 export interface IStudentRepository {
   // Student CRUD
   create(data: Partial<StudentEntity>): Promise<StudentEntity>;
-  findById(id: string): Promise<StudentEntity | null>;
+  findById(
+    id: string,
+    options?: { includeDeleted?: boolean },
+  ): Promise<StudentEntity | null>;
   findAll(
     filter: any,
     page: number,
