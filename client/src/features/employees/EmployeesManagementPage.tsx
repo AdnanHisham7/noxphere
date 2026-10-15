@@ -176,11 +176,11 @@ const EmployeesManagementPage: React.FC = () => {
                 placeholder="Search by name, designation, phone..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-volt-400 transition-colors"
+                className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-volt-400 transition-colors"
               />
             </div>
 
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-900 p-1 rounded-lg border border-slate-200 dark:border-white/10 overflow-x-auto scrollbar-none max-w-full">
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-800 p-1 rounded-lg border border-slate-200 dark:border-white/10 overflow-x-auto scrollbar-none max-w-full">
               {(
                 [
                   { id: "all", label: "All" },
@@ -196,7 +196,7 @@ const EmployeesManagementPage: React.FC = () => {
                   className={clsx(
                     "px-2.5 sm:px-3 py-1 text-2xs sm:text-xs font-semibold rounded-md transition-all whitespace-nowrap shrink-0",
                     roleFilter === f.id
-                      ? "bg-white dark:bg-pitch-800 text-slate-900 dark:text-white shadow-xs"
+                      ? "bg-white dark:bg-pitch-700 text-slate-900 dark:text-white shadow-xs"
                       : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                   )}
                 >
@@ -243,7 +243,7 @@ const EmployeesManagementPage: React.FC = () => {
               }
             />
           ) : (
-            <div className="bg-white dark:bg-pitch-900/90 rounded-xl border border-slate-200 dark:border-white/10 shadow-xs divide-y divide-slate-100 dark:divide-white/5 overflow-hidden">
+            <div className="card rounded-xl border border-slate-200/80 dark:border-white/5 shadow-sm divide-y divide-slate-100 dark:divide-white/5 overflow-hidden">
               {filteredEmployees.map((emp) => {
                 const designation =
                   emp.designation ||
@@ -258,10 +258,10 @@ const EmployeesManagementPage: React.FC = () => {
                 return (
                   <div
                     key={emp.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-4 hover:bg-slate-50 dark:hover:bg-pitch-800/50 transition-colors"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-4 hover:bg-slate-50 dark:hover:bg-pitch-700/40 transition-colors"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 flex items-center justify-center font-bold text-xs text-slate-800 dark:text-white shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-pitch-700 border border-slate-200 dark:border-white/10 flex items-center justify-center font-bold text-xs text-slate-800 dark:text-white shrink-0">
                         {emp.firstName[0]}
                         {emp.lastName[0]}
                       </div>

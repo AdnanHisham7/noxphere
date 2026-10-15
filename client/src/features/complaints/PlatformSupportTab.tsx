@@ -90,7 +90,7 @@ export const PlatformSupportTab: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Control bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-pitch-900/60 p-4 rounded-xl border border-slate-200 dark:border-white/5 shadow-xs transition-colors">
+      <div className="card flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border-slate-200/80 dark:border-white/5 shadow-sm transition-colors">
         <div>
           <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
             <LifeBuoy className="text-volt-600 dark:text-volt-400" size={18} />
@@ -167,8 +167,8 @@ export const PlatformSupportTab: React.FC = () => {
                   className={clsx(
                     "w-full text-left card p-4 space-y-2.5 transition-all relative overflow-hidden border",
                     isSelected
-                      ? "border-volt-500 dark:border-volt-400 bg-volt-500/5 dark:bg-pitch-900/90 shadow-sm"
-                      : "border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/40 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50/70 dark:hover:bg-pitch-900/60",
+                      ? "border-volt-500 dark:border-volt-400 bg-volt-500/5 dark:bg-pitch-800 shadow-sm ring-1 ring-volt-500/20"
+                      : "border-slate-200/80 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/15 hover:shadow-md",
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -276,7 +276,7 @@ const TicketDetailView: React.FC<{ ticket: PlatformTicket }> = ({ ticket }) => {
   const CategoryIcon = CATEGORY_LABELS[ticket.category]?.icon || HelpCircle;
 
   return (
-    <div className="card p-5 space-y-5 bg-white dark:bg-pitch-900/70 border border-slate-200 dark:border-white/10 shadow-xs">
+    <div className="card p-5 space-y-5 border-slate-200/80 dark:border-white/5 shadow-sm">
       {/* Header */}
       <div className="border-b border-slate-200 dark:border-white/10 pb-4 space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -441,7 +441,7 @@ const CreateTicketModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="card w-full max-w-lg p-6 bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 space-y-5 shadow-2xl relative">
+      <div className="card w-full max-w-lg p-6 bg-white dark:bg-pitch-800 border-slate-200/80 dark:border-white/10 space-y-5 shadow-2xl relative">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"

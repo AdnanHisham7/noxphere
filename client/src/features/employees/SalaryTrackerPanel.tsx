@@ -321,7 +321,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
 
       {/* KPI Cards (Optimized 2-in-a-row on mobile, 3-in-a-row on desktop) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
-        <div className="p-3 sm:p-4 rounded-xl bg-white dark:bg-pitch-900/90 border border-slate-200 dark:border-white/10 shadow-xs">
+        <div className="card p-3 sm:p-4 rounded-xl border-slate-200/80 dark:border-white/5 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-2xs sm:text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
               Total Payroll
@@ -340,7 +340,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
           </div>
         </div>
 
-        <div className="p-3 sm:p-4 rounded-xl bg-white dark:bg-pitch-900/90 border border-slate-200 dark:border-white/10 shadow-xs">
+        <div className="card p-3 sm:p-4 rounded-xl border-slate-200/80 dark:border-white/5 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-2xs sm:text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
               Disbursed (Paid)
@@ -359,7 +359,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
           </div>
         </div>
 
-        <div className="col-span-2 sm:col-span-1 p-3 sm:p-4 rounded-xl bg-white dark:bg-pitch-900/90 border border-slate-200 dark:border-white/10 shadow-xs">
+        <div className="col-span-2 sm:col-span-1 card p-3 sm:p-4 rounded-xl border-slate-200/80 dark:border-white/5 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-2xs sm:text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
               Pending Payout
@@ -388,11 +388,11 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
             placeholder="Search employee or designation..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-volt-400 transition-colors"
+            className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-volt-400 transition-colors"
           />
         </div>
 
-        <div className="grid grid-cols-3 sm:flex items-center gap-1 bg-slate-100 dark:bg-pitch-900 p-1 rounded-lg border border-slate-200 dark:border-white/10 w-full sm:w-auto">
+        <div className="grid grid-cols-3 sm:flex items-center gap-1 bg-slate-100 dark:bg-pitch-800 p-1 rounded-lg border border-slate-200 dark:border-white/10 w-full sm:w-auto">
           {(["all", "pending", "paid"] as const).map((filter) => {
             const count =
               filter === "all"
@@ -409,7 +409,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
                 className={clsx(
                   "px-2 sm:px-3 py-1.5 text-2xs sm:text-xs font-semibold rounded-md transition-all capitalize flex items-center justify-center gap-1.5",
                   statusFilter === filter
-                    ? "bg-white dark:bg-pitch-800 text-slate-900 dark:text-white shadow-xs"
+                    ? "bg-white dark:bg-pitch-700 text-slate-900 dark:text-white shadow-xs"
                     : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                 )}
               >
@@ -418,8 +418,8 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
                   className={clsx(
                     "text-3xs px-1.5 py-0.2 rounded-full",
                     statusFilter === filter
-                      ? "bg-slate-100 dark:bg-pitch-700 text-slate-700 dark:text-slate-300"
-                      : "bg-slate-200/60 dark:bg-pitch-800/80 text-slate-500 dark:text-slate-400"
+                      ? "bg-slate-100 dark:bg-pitch-800 text-slate-700 dark:text-slate-300"
+                      : "bg-slate-200/60 dark:bg-pitch-700/80 text-slate-500 dark:text-slate-400"
                   )}
                 >
                   {count}
@@ -462,7 +462,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
           }
         />
       ) : (
-        <div className="bg-white dark:bg-pitch-900/90 rounded-xl border border-slate-200 dark:border-white/10 shadow-xs divide-y divide-slate-100 dark:divide-white/5 overflow-hidden">
+        <div className="card rounded-xl border border-slate-200/80 dark:border-white/5 shadow-sm divide-y divide-slate-100 dark:divide-white/5 overflow-hidden">
           {filteredRecords.map((rec) => {
             const emp = typeof rec.employeeId === "object" ? rec.employeeId : null;
             const designation =
@@ -479,10 +479,10 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
             return (
               <div
                 key={rec.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 hover:bg-slate-50 dark:hover:bg-pitch-800/50 transition-colors"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 hover:bg-slate-50 dark:hover:bg-pitch-700/40 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-pitch-800 flex items-center justify-center font-bold text-xs text-slate-700 dark:text-slate-300 shrink-0 border border-slate-200 dark:border-white/10">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-pitch-700 flex items-center justify-center font-bold text-xs text-slate-700 dark:text-slate-300 shrink-0 border border-slate-200 dark:border-white/10">
                     {emp ? `${emp.firstName[0]}${emp.lastName[0]}`.toUpperCase() : "EM"}
                   </div>
                   <div className="min-w-0">

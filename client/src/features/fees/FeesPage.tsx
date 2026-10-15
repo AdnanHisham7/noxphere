@@ -172,7 +172,7 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
       : !!qrImageUrl || !!(bankForm.accountNumber && bankForm.ifscCode);
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/60 overflow-hidden mb-6 transition-all shadow-xs">
+    <div className="card rounded-xl border border-slate-200/80 dark:border-white/5 overflow-hidden mb-6 shadow-sm">
       <button
         type="button"
         onClick={onToggle}
@@ -214,7 +214,7 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
       </button>
 
       {isOpen && (
-        <div className="p-4 pt-3 border-t border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-pitch-950/40 space-y-4">
+        <div className="p-4 pt-3 border-t border-slate-200 dark:border-white/5 bg-slate-50/60 dark:bg-pitch-900/60 space-y-4">
           {/* Method selector */}
           <div>
             <label className="block text-2xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
@@ -249,7 +249,7 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
                     "p-3 rounded-lg border text-left transition-all",
                     method === opt.id
                       ? "border-volt-400 bg-volt-400/10 dark:bg-volt-400/5 text-slate-900 dark:text-white ring-1 ring-volt-400/50"
-                      : "border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/10",
+                      : "border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/10",
                   )}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -267,7 +267,7 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
             {/* QR Code Section */}
             {(method === "qr" || method === "both") && (
-              <div className="p-3.5 rounded-lg border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 space-y-3">
+              <div className="p-3.5 rounded-lg border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-800 space-y-3">
                 <div className="flex items-center gap-2">
                   <QrCode size={16} className="text-sky-400" />
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-white">
@@ -296,7 +296,7 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
             {(method === "bank_transfer" || method === "both") && (
               <form
                 onSubmit={handleSaveBankDetails}
-                className="p-3.5 rounded-lg border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 space-y-3"
+                className="p-3.5 rounded-lg border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-800 space-y-3"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -693,7 +693,7 @@ const FeesPage: React.FC = () => {
 
       {/* KPI Overview Metrics Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="card p-3.5 bg-white dark:bg-pitch-900/60 border-slate-200 dark:border-white/10 relative overflow-hidden">
+        <div className="card p-3.5 relative overflow-hidden">
           <p className="text-2xs font-semibold uppercase tracking-wider text-slate-400">
             Total Invoiced
           </p>
@@ -705,7 +705,7 @@ const FeesPage: React.FC = () => {
           </span>
         </div>
 
-        <div className="card p-3.5 bg-white dark:bg-pitch-900/60 border-slate-200 dark:border-white/10 relative overflow-hidden">
+        <div className="card p-3.5 relative overflow-hidden">
           <div className="flex items-center justify-between">
             <p className="text-2xs font-semibold uppercase tracking-wider text-emerald-400">
               Collected
@@ -726,7 +726,7 @@ const FeesPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="card p-3.5 bg-white dark:bg-pitch-900/60 border-slate-200 dark:border-white/10 relative overflow-hidden">
+        <div className="card p-3.5 relative overflow-hidden">
           <p className="text-2xs font-semibold uppercase tracking-wider text-amber-400">
             Outstanding Due
           </p>
@@ -739,7 +739,7 @@ const FeesPage: React.FC = () => {
           </span>
         </div>
 
-        <div className="card p-3.5 bg-white dark:bg-pitch-900/60 border-slate-200 dark:border-white/10 relative overflow-hidden">
+        <div className="card p-3.5 relative overflow-hidden">
           <div className="flex items-center justify-between">
             <p className="text-2xs font-semibold uppercase tracking-wider text-rose-400">
               Overdue Amount
@@ -764,7 +764,7 @@ const FeesPage: React.FC = () => {
       />
 
       {/* Control & Filter Toolbar */}
-      <div className="card p-3.5 space-y-3 bg-white dark:bg-pitch-900/80 border-slate-200 dark:border-white/10">
+      <div className="card p-3.5 space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-3">
           {/* Search input */}
           <div className="relative flex-1 min-w-[220px]">
@@ -774,7 +774,7 @@ const FeesPage: React.FC = () => {
               placeholder="Search by student name, fee type..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input !pl-9 !py-1.5 text-xs w-full bg-slate-50 dark:bg-pitch-950/60"
+              className="input !pl-9 !py-1.5 text-xs w-full bg-slate-50 dark:bg-pitch-800"
             />
             {searchQuery && (
               <button
@@ -788,7 +788,7 @@ const FeesPage: React.FC = () => {
 
           {/* View mode toggle & expand controls */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center bg-slate-100 dark:bg-pitch-950/80 rounded-lg p-0.5 border border-slate-200 dark:border-white/10">
+            <div className="flex items-center bg-slate-100 dark:bg-pitch-800 rounded-lg p-0.5 border border-slate-200 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setViewMode("student")}
@@ -963,7 +963,7 @@ const FeesPage: React.FC = () => {
               return (
                 <div
                   key={group.student._id}
-                  className="card border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/70 overflow-hidden transition-all shadow-xs"
+                  className="card border-slate-200/80 dark:border-white/5 overflow-hidden transition-all shadow-sm"
                 >
                   {/* Student Header Bar */}
                   <div
@@ -1077,7 +1077,7 @@ const FeesPage: React.FC = () => {
 
                   {/* Expanded Fee Details for this Student */}
                   {isExpanded && (
-                    <div className="border-t border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-pitch-950/50 p-3.5 sm:p-4 space-y-4">
+                    <div className="border-t border-slate-200/80 dark:border-white/5 bg-slate-50/70 dark:bg-pitch-900/60 p-3.5 sm:p-4 space-y-4">
                       {group.fees.map((fee) => (
                         <FeePlanDetailBlock
                           key={fee._id}
@@ -1104,7 +1104,7 @@ const FeesPage: React.FC = () => {
         !isError &&
         filteredFees.length > 0 &&
         viewMode === "table" && (
-          <div className="card overflow-hidden border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/80">
+          <div className="card overflow-hidden border-slate-200/80 dark:border-white/5 shadow-sm">
             <div className="table-responsive">
               <table className="w-full min-w-[680px] text-left text-xs border-collapse">
                 <thead>
@@ -1200,7 +1200,7 @@ const FeesPage: React.FC = () => {
 
                         {/* Expanded Installment Table */}
                         {isExpanded && (
-                          <tr className="bg-slate-50/70 dark:bg-pitch-950/70">
+                          <tr className="bg-slate-50/70 dark:bg-pitch-900/60">
                             <td
                               colSpan={8}
                               className="p-3.5 border-t border-b border-slate-200 dark:border-white/10"
@@ -1335,7 +1335,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
   onToggleAudit,
 }) => {
   return (
-    <div className="rounded-lg border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-pitch-900/50 p-3.5 space-y-3">
+    <div className="rounded-lg border border-slate-200/80 dark:border-white/5 bg-white dark:bg-pitch-800 p-3.5 space-y-3 shadow-xs">
       {/* Plan Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
@@ -1378,7 +1378,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
           return (
             <div
               key={inst.installmentNumber}
-              className="flex items-center justify-between text-xs bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 rounded-lg px-3 py-2 flex-wrap gap-2 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors shadow-2xs"
+              className="flex items-center justify-between text-xs bg-slate-50 dark:bg-pitch-700/50 border border-slate-200/80 dark:border-white/5 rounded-lg px-3 py-2 flex-wrap gap-2 hover:bg-slate-100 dark:hover:bg-pitch-700/80 transition-colors shadow-2xs"
             >
               {/* Left Info: Milestone #, Due Date, Payment Details */}
               <div className="flex flex-col min-w-0">
@@ -1801,7 +1801,7 @@ const CreateFeeModal: React.FC<{
           )}
 
           {selectionMode === "custom" && (
-            <div className="space-y-2 border border-slate-200 dark:border-white/10 rounded-lg p-3 bg-slate-50/50 dark:bg-pitch-900/30">
+            <div className="space-y-2 border border-slate-200 dark:border-white/10 rounded-lg p-3 bg-slate-50/50 dark:bg-pitch-800/60">
               <div className="flex items-center justify-between gap-2">
                 <input
                   type="text"
@@ -1888,7 +1888,7 @@ const CreateFeeModal: React.FC<{
                   "flex-1 px-3 py-2 rounded border text-xs font-semibold uppercase tracking-wide transition-colors",
                   feeType === t
                     ? "bg-volt-400 text-pitch-900 border-volt-400"
-                    : "bg-slate-50 dark:bg-pitch-900 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/25",
+                    : "bg-slate-50 dark:bg-pitch-800 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/25",
                 )}
               >
                 {t === "one_time"
@@ -2108,7 +2108,7 @@ const RecordPaymentModal: React.FC<{
     <Modal isOpen onClose={onClose} title="Record Payment" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Toggle Mode: Single vs Mixed */}
-        <div className="flex p-1 bg-slate-100 dark:bg-pitch-950 rounded-lg border border-slate-200 dark:border-white/5">
+        <div className="flex p-1 bg-slate-100 dark:bg-pitch-800 rounded-lg border border-slate-200 dark:border-white/5">
           <button
             type="button"
             onClick={() => setIsMixed(false)}
@@ -2238,7 +2238,7 @@ const RecordPaymentModal: React.FC<{
             </div>
 
             {/* Allocation summary banner */}
-            <div className="p-2.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-pitch-900 flex items-center justify-between text-xs">
+            <div className="p-2.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-pitch-800 flex items-center justify-between text-xs">
               <div>
                 <span className="text-slate-500 dark:text-slate-400">Total Allocated: </span>
                 <span className="font-mono font-bold text-slate-900 dark:text-white">
@@ -2404,7 +2404,7 @@ const EditPaymentModal: React.FC<{
     <Modal isOpen onClose={onClose} title="Edit Payment Details" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Toggle Mode */}
-        <div className="flex p-1 bg-slate-100 dark:bg-pitch-950 rounded-lg border border-slate-200 dark:border-white/5">
+        <div className="flex p-1 bg-slate-100 dark:bg-pitch-800 rounded-lg border border-slate-200 dark:border-white/5">
           <button
             type="button"
             onClick={() => setIsMixed(false)}
@@ -2534,7 +2534,7 @@ const EditPaymentModal: React.FC<{
             </div>
 
             {/* Allocation summary banner */}
-            <div className="p-2.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-pitch-900 flex items-center justify-between text-xs">
+            <div className="p-2.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-pitch-800 flex items-center justify-between text-xs">
               <div>
                 <span className="text-slate-500 dark:text-slate-400">Total Updated Amount: </span>
                 <span className="font-mono font-bold text-slate-900 dark:text-white">

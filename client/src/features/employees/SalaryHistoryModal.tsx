@@ -189,7 +189,7 @@ export const SalaryHistoryModal: React.FC<SalaryHistoryModalProps> = ({
                 return (
                   <div
                     key={rec.id}
-                    className="p-3 rounded-xl bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:border-slate-300 dark:hover:border-white/20 transition-all shadow-2xs"
+                    className="card p-3 rounded-xl border-slate-200/80 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:border-slate-300 dark:hover:border-white/15 transition-all shadow-sm"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div

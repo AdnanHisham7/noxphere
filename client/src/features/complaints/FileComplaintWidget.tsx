@@ -53,7 +53,7 @@ export const FileComplaintWidget: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-slate-200 dark:border-white/10 p-5 space-y-3 bg-white dark:bg-pitch-900/40">
+      <div className="card rounded-xl border-slate-200/80 dark:border-white/5 p-5 space-y-3 shadow-sm">
         <div className="flex items-center gap-2">
           <MessageSquareWarning size={16} className="text-amber-400" />
           <p className="text-sm font-semibold text-slate-900 dark:text-white">Raise a complaint</p>
@@ -103,7 +103,7 @@ export const FileComplaintWidget: React.FC = () => {
           {mine.map((c) => (
             <div
               key={c.id}
-              className="rounded-xl border border-slate-200 dark:border-white/10 p-4 space-y-2 bg-slate-50/50 dark:bg-pitch-900/40"
+              className="card rounded-xl border-slate-200/80 dark:border-white/5 p-4 space-y-2 shadow-sm"
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 flex-wrap">

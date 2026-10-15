@@ -149,10 +149,10 @@ const ComplaintsInboxPage: React.FC = () => {
                     key={c.id}
                     onClick={() => setSelected(c)}
                     className={clsx(
-                      "w-full text-left card p-4 space-y-2 transition-colors border",
+                      "w-full text-left card p-4 space-y-2 transition-all border",
                       selected?.id === c.id
-                        ? "border-volt-500 dark:border-volt-400/40 bg-volt-500/5 dark:bg-pitch-900/90 shadow-sm"
-                        : "border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/50 hover:border-slate-300 dark:hover:border-white/20",
+                        ? "border-volt-500 dark:border-volt-400 bg-volt-500/5 dark:bg-pitch-800 shadow-sm ring-1 ring-volt-500/20"
+                        : "border-slate-200/80 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/15 hover:shadow-md",
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -316,7 +316,7 @@ const ComplaintDetail: React.FC<{
   };
 
   return (
-    <div className="card p-5 space-y-5 bg-white dark:bg-pitch-900 border-slate-200 dark:border-white/10 shadow-sm">
+    <div className="card p-5 space-y-5 border-slate-200/80 dark:border-white/5 shadow-sm">
       {/* Header */}
       <div>
         <div className="flex items-center justify-between mb-1 gap-2">
@@ -345,7 +345,7 @@ const ComplaintDetail: React.FC<{
         <label className="label text-2xs uppercase tracking-wider text-slate-400">
           Complaint Details
         </label>
-        <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded-lg p-3.5 leading-relaxed whitespace-pre-wrap">
+        <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-pitch-700/40 border border-slate-200/80 dark:border-white/5 rounded-lg p-3.5 leading-relaxed whitespace-pre-wrap">
           {complaint.message}
         </p>
       </div>
@@ -393,7 +393,7 @@ const ComplaintDetail: React.FC<{
             {complaint.coachResponses.map((cr, idx) => (
               <div
                 key={idx}
-                className="bg-slate-50 dark:bg-pitch-800/70 border border-slate-200 dark:border-white/10 rounded-lg p-3 space-y-1"
+                className="bg-slate-50 dark:bg-pitch-700/50 border border-slate-200/80 dark:border-white/5 rounded-lg p-3 space-y-1"
               >
                 <div className="flex items-center justify-between text-2xs text-slate-500 dark:text-slate-400">
                   <span className="font-semibold text-slate-900 dark:text-white">
@@ -459,7 +459,7 @@ const ComplaintDetail: React.FC<{
           </div>
 
           {showForwardPanel && (
-            <div className="bg-slate-50 dark:bg-pitch-800/50 border border-slate-200 dark:border-white/10 rounded-xl p-4 space-y-3 animate-fade-in">
+            <div className="bg-slate-50 dark:bg-pitch-700/40 border border-slate-200/80 dark:border-white/5 rounded-xl p-4 space-y-3 animate-fade-in">
               <label className="block text-2xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Select Coaches to Notify
               </label>
@@ -476,7 +476,7 @@ const ComplaintDetail: React.FC<{
                         className={`w-full flex items-center justify-between p-2.5 rounded-lg border text-left text-xs transition-colors ${
                           isSelected
                             ? "bg-volt-400/10 border-volt-400 text-slate-900 dark:text-white font-semibold"
-                            : "bg-white dark:bg-pitch-900 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
+                            : "bg-white dark:bg-pitch-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0 pr-2">
@@ -556,7 +556,7 @@ const ComplaintDetail: React.FC<{
                   <label className="label text-2xs uppercase tracking-wider text-slate-400">
                     Official Response Sent {complaint.respondedByName ? `by ${complaint.respondedByName}` : ""}
                   </label>
-                  <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded-lg p-3 leading-relaxed whitespace-pre-wrap">
+                  <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-pitch-700/40 border border-slate-200/80 dark:border-white/5 rounded-lg p-3 leading-relaxed whitespace-pre-wrap">
                     {complaint.response}
                   </p>
                 </div>
