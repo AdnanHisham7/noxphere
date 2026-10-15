@@ -17,6 +17,7 @@ import {
   UserCheck,
   Activity,
   FileText,
+  ExternalLink,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -33,6 +34,7 @@ import {
   NoxStatusBadge,
   NoxStatCard,
 } from "../../components/portal-ui";
+import { getMapsLink } from "../../components/ui";
 import { Badge } from "../../components/ui";
 
 type Tab = "attendance" | "schedule" | "fees" | "performance";
@@ -335,7 +337,7 @@ const ScheduleTab: React.FC = () => {
                     </div>
 
                     {session.location && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <MapPin
                           size={12}
                           className="text-emerald-400 shrink-0"
@@ -346,6 +348,27 @@ const ScheduleTab: React.FC = () => {
                             ? `(Pitch #${session.fieldNumber})`
                             : ""}
                         </span>
+                        {(() => {
+                          const mapsUrl = getMapsLink({
+                            googleMapsUrl: (session as any).googleMapsUrl,
+                            latitude: (session as any).latitude,
+                            longitude: (session as any).longitude,
+                            location: session.location,
+                            fieldNumber: session.fieldNumber,
+                          });
+                          return mapsUrl ? (
+                            <a
+                              href={mapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-2xs font-semibold text-volt-500 hover:text-volt-400 hover:underline px-1.5 py-0.5 rounded bg-volt-400/10 border border-volt-400/20 transition-colors ml-1"
+                              title="Open venue in Google Maps"
+                            >
+                              <span>Open in Google Maps</span>
+                              <ExternalLink size={10} />
+                            </a>
+                          ) : null;
+                        })()}
                       </div>
                     )}
 

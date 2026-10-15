@@ -17,9 +17,11 @@ import {
   X,
   CheckCircle2,
   UserCheck,
+  ExternalLink,
+  Navigation,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { Button, Badge, Modal, Input, Skeleton, EmptyState, DocumentUploadField, PageHeader, Card, Select } from "../../components/ui";
+import { Button, Badge, Modal, Input, Skeleton, EmptyState, DocumentUploadField, PageHeader, Card, Select, getMapsLink } from "../../components/ui";
 import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
@@ -426,11 +428,32 @@ const SchedulePage: React.FC = () => {
 
                     {/* Location */}
                     <td className="py-3.5 px-4 font-sans text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <MapPin size={13} className="text-slate-400 dark:text-slate-500" />
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <MapPin size={13} className="text-slate-400 dark:text-slate-500 shrink-0" />
                         <span>
                           {session.location} {session.fieldNumber ? `(${session.fieldNumber})` : ""}
                         </span>
+                        {(() => {
+                          const mapsUrl = getMapsLink({
+                            googleMapsUrl: session.googleMapsUrl,
+                            latitude: session.latitude,
+                            longitude: session.longitude,
+                            location: session.location,
+                            fieldNumber: session.fieldNumber,
+                          });
+                          return mapsUrl ? (
+                            <a
+                              href={mapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-volt-600 dark:text-volt-400 hover:underline ml-1"
+                              title="Open venue in Google Maps"
+                            >
+                              <span>Maps</span>
+                              <ExternalLink size={10} />
+                            </a>
+                          ) : null;
+                        })()}
                       </div>
                     </td>
 
@@ -713,6 +736,11 @@ const CreateSessionModal: React.FC<{
 
     const finalType = selectedTypeOpt === "custom" ? customType.trim() : selectedTypeOpt;
 
+    const matchingPitch =
+      selectedPitchId !== "manual"
+        ? academyPitches.find((p) => p.id === selectedPitchId)
+        : academyPitches.find((p) => p.name.toLowerCase() === location.trim().toLowerCase());
+
     onCreate({
       franchiseId: selectedFranchiseId,
       targetType,
@@ -731,6 +759,10 @@ const CreateSessionModal: React.FC<{
       dailyEndTime: isMultiDay ? dailyEndTime : endTime,
       location,
       fieldNumber: fieldNumber || undefined,
+      pitchId: matchingPitch?.id,
+      googleMapsUrl: matchingPitch?.googleMapsUrl,
+      latitude: matchingPitch?.latitude,
+      longitude: matchingPitch?.longitude,
       notes: notes || undefined,
       playerIds: playerIds.length > 0 ? playerIds : undefined,
       documents: documents.length > 0 ? documents : undefined,
@@ -1078,6 +1110,38 @@ const CreateSessionModal: React.FC<{
               placeholder="e.g. Field B, Pitch 2"
             />
           </div>
+
+          {(() => {
+            const selectedPitch = academyPitches.find((p) => p.id === selectedPitchId);
+            const mapsUrl = getMapsLink({
+              googleMapsUrl: selectedPitch?.googleMapsUrl,
+              latitude: selectedPitch?.latitude,
+              longitude: selectedPitch?.longitude,
+              address: selectedPitch?.address,
+              location,
+              fieldNumber,
+            });
+            return mapsUrl ? (
+              <div className="flex items-center gap-1.5 pt-0.5 text-2xs">
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-semibold text-volt-600 dark:text-volt-400 hover:underline"
+                  title="Open venue in Google Maps"
+                >
+                  <Navigation size={11} className="text-volt-500" />
+                  <span>Preview Venue in Google Maps</span>
+                  <ExternalLink size={10} />
+                </a>
+                {selectedPitch?.address && (
+                  <span className="text-slate-400 dark:text-slate-500 truncate max-w-xs">
+                    · {selectedPitch.address}
+                  </span>
+                )}
+              </div>
+            ) : null;
+          })()}
         </div>
 
         {/* Notes */}
@@ -1303,6 +1367,11 @@ const EditSessionModal: React.FC<{
 
     const finalType = selectedTypeOpt === "custom" ? customType.trim() : selectedTypeOpt;
 
+    const matchingPitch =
+      selectedPitchId !== "manual"
+        ? academyPitches.find((p) => p.id === selectedPitchId)
+        : academyPitches.find((p) => p.name.toLowerCase() === location.trim().toLowerCase());
+
     onUpdate({
       categories: session.targetType === "category" ? categoriesState : undefined,
       coachIds: isCoach ? undefined : coachIds,
@@ -1316,6 +1385,10 @@ const EditSessionModal: React.FC<{
       dailyEndTime: isMultiDay ? dailyEndTime : endTime,
       location,
       fieldNumber: fieldNumber || undefined,
+      pitchId: matchingPitch?.id,
+      googleMapsUrl: matchingPitch?.googleMapsUrl,
+      latitude: matchingPitch?.latitude,
+      longitude: matchingPitch?.longitude,
       notes: notes || undefined,
       playerIds,
       documents,
@@ -1544,6 +1617,38 @@ const EditSessionModal: React.FC<{
               placeholder="e.g. Field B, Pitch 2"
             />
           </div>
+
+          {(() => {
+            const selectedPitch = academyPitches.find((p) => p.id === selectedPitchId);
+            const mapsUrl = getMapsLink({
+              googleMapsUrl: selectedPitch?.googleMapsUrl || session.googleMapsUrl,
+              latitude: selectedPitch?.latitude || session.latitude,
+              longitude: selectedPitch?.longitude || session.longitude,
+              address: selectedPitch?.address,
+              location,
+              fieldNumber,
+            });
+            return mapsUrl ? (
+              <div className="flex items-center gap-1.5 pt-0.5 text-2xs">
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-semibold text-volt-600 dark:text-volt-400 hover:underline"
+                  title="Open venue in Google Maps"
+                >
+                  <Navigation size={11} className="text-volt-500" />
+                  <span>Preview Venue in Google Maps</span>
+                  <ExternalLink size={10} />
+                </a>
+                {selectedPitch?.address && (
+                  <span className="text-slate-400 dark:text-slate-500 truncate max-w-xs">
+                    · {selectedPitch.address}
+                  </span>
+                )}
+              </div>
+            ) : null;
+          })()}
         </div>
 
         {/* Notes */}

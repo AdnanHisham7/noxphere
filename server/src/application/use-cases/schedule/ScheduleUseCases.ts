@@ -80,6 +80,10 @@ function toCard(doc: any) {
     endTime: json.endTime,
     location: json.location,
     fieldNumber: json.fieldNumber,
+    pitchId: json.pitchId,
+    googleMapsUrl: json.googleMapsUrl,
+    latitude: json.latitude,
+    longitude: json.longitude,
     status: json.status,
     notes: json.notes,
     cancelReason: json.cancelReason,
@@ -304,6 +308,10 @@ export class ScheduleUseCases {
       dailyEndTime: dto.dailyEndTime || dto.endTime,
       location: dto.location,
       fieldNumber: dto.fieldNumber,
+      pitchId: dto.pitchId,
+      googleMapsUrl: dto.googleMapsUrl,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
       notes: dto.notes,
       playerIds: dto.targetType === "category" ? resolvedPlayerIds.map((id) => id.toString()) : dto.playerIds,
       rosterPlayerIds: resolvedPlayerIds,
@@ -448,6 +456,10 @@ export class ScheduleUseCases {
     if (!session) throw new NotFoundError("Session");
     session.location = dto.location;
     if (dto.fieldNumber !== undefined) session.fieldNumber = dto.fieldNumber;
+    if (dto.pitchId !== undefined) session.pitchId = dto.pitchId;
+    if (dto.googleMapsUrl !== undefined) session.googleMapsUrl = dto.googleMapsUrl;
+    if (dto.latitude !== undefined) session.latitude = dto.latitude;
+    if (dto.longitude !== undefined) session.longitude = dto.longitude;
     await session.save();
 
     if (dto.notifyGuardians) {

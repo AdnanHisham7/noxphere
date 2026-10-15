@@ -25,6 +25,9 @@ export const PitchSchemaDto = z.object({
   fieldNumber: z.string().optional(),
   surfaceType: z.string().optional(),
   address: z.string().optional(),
+  googleMapsUrl: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
   isActive: z.boolean().optional(),
 });
 

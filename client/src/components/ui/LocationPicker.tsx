@@ -8,11 +8,43 @@ export interface LocationPickerProps {
   label?: string;
   latitude: number;
   longitude: number;
+  mapsUrl?: string;
   onChange: (coords: { latitude: number; longitude: number; mapsUrl?: string }) => void;
   helperText?: string;
   required?: boolean;
   disabled?: boolean;
   className?: string;
+}
+
+export function getMapsLink(opts?: {
+  googleMapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  location?: string;
+  fieldNumber?: string;
+}): string | null {
+  if (!opts) return null;
+  if (opts.googleMapsUrl && opts.googleMapsUrl.trim().startsWith("http")) {
+    return opts.googleMapsUrl.trim();
+  }
+  if (
+    typeof opts.latitude === "number" &&
+    typeof opts.longitude === "number" &&
+    (opts.latitude !== 0 || opts.longitude !== 0) &&
+    !isNaN(opts.latitude) &&
+    !isNaN(opts.longitude)
+  ) {
+    return `https://www.google.com/maps?q=${opts.latitude},${opts.longitude}`;
+  }
+  if (opts.address && opts.address.trim()) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(opts.address.trim())}`;
+  }
+  if (opts.location && opts.location.trim()) {
+    const q = `${opts.location.trim()}${opts.fieldNumber ? ` ${opts.fieldNumber.trim()}` : ""}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+  }
+  return null;
 }
 
 export function extractLatLngFromMapsUrl(input: string): { latitude: number; longitude: number } | null {
@@ -63,23 +95,26 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
   label = "Location & Map Coordinates",
   latitude,
   longitude,
+  mapsUrl,
   onChange,
   helperText,
   required,
   disabled,
   className,
 }) => {
-  const [mapsInput, setMapsInput] = useState<string>("");
+  const [mapsInput, setMapsInput] = useState<string>(mapsUrl || "");
   const [isDetecting, setIsDetecting] = useState<boolean>(false);
   const [inputError, setInputError] = useState<string | null>(null);
 
   const hasCoords = (latitude !== 0 || longitude !== 0) && !isNaN(latitude) && !isNaN(longitude);
 
   useEffect(() => {
-    if (hasCoords && !mapsInput) {
+    if (mapsUrl && !mapsInput) {
+      setMapsInput(mapsUrl);
+    } else if (hasCoords && !mapsInput) {
       setMapsInput(`https://www.google.com/maps?q=${latitude},${longitude}`);
     }
-  }, [latitude, longitude, hasCoords]);
+  }, [mapsUrl, latitude, longitude, hasCoords]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -95,6 +130,9 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     if (parsed) {
       onChange({ ...parsed, mapsUrl: val.trim() });
     } else {
+      if (val.trim().startsWith("http://") || val.trim().startsWith("https://")) {
+        onChange({ latitude: latitude || 0, longitude: longitude || 0, mapsUrl: val.trim() });
+      }
       if (val.length > 10 && !val.includes("http") && !val.includes(",")) {
         setInputError("Enter coordinates like '12.9716, 77.5946' or paste a Google Maps link");
       }
@@ -230,15 +268,25 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
         </p>
       )}
 
-      {hasCoords && (
+      {(hasCoords || (mapsUrl && mapsUrl.startsWith("http")) || (mapsInput && mapsInput.startsWith("http"))) && (
         <div className="flex items-center gap-2 pt-1 text-2xs text-slate-500 dark:text-slate-400">
-          <span className="flex items-center gap-1 font-mono text-slate-700 dark:text-slate-300">
-            <MapPin size={11} className="text-volt-500 dark:text-volt-400" />
-            Lat: {latitude}, Lng: {longitude}
-          </span>
-          <span>·</span>
+          {hasCoords && (
+            <>
+              <span className="flex items-center gap-1 font-mono text-slate-700 dark:text-slate-300">
+                <MapPin size={11} className="text-volt-500 dark:text-volt-400" />
+                Lat: {latitude}, Lng: {longitude}
+              </span>
+              <span>·</span>
+            </>
+          )}
           <a
-            href={`https://www.google.com/maps?q=${latitude},${longitude}`}
+            href={
+              mapsInput?.startsWith("http")
+                ? mapsInput
+                : mapsUrl?.startsWith("http")
+                  ? mapsUrl
+                  : `https://www.google.com/maps?q=${latitude},${longitude}`
+            }
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-volt-600 dark:text-volt-400 hover:underline font-semibold"

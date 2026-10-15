@@ -14,6 +14,9 @@ export interface AcademyPitch {
   fieldNumber?: string;
   surfaceType?: string;
   address?: string;
+  googleMapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
   isActive?: boolean;
 }
 

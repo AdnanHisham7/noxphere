@@ -38,7 +38,7 @@ import {
   NoxStatusBadge,
   NoxStatCard,
 } from "../../components/portal-ui";
-import { Select } from "../../components/ui";
+import { Select, getMapsLink } from "../../components/ui";
 
 type Tab = "attendance" | "schedule" | "fees" | "performance";
 
@@ -630,9 +630,32 @@ const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
             {s.startTime} - {s.endTime}
           </span>
           {s.location && (
-            <span className="flex items-center gap-1.5">
-              <MapPin size={13} className="text-core-400" />
-              {s.location} {s.fieldNumber ? `(Field ${s.fieldNumber})` : ""}
+            <span className="flex items-center gap-1.5 flex-wrap">
+              <MapPin size={13} className="text-core-400 shrink-0" />
+              <span>
+                {s.location} {s.fieldNumber ? `(Field ${s.fieldNumber})` : ""}
+              </span>
+              {(() => {
+                const mapsUrl = getMapsLink({
+                  googleMapsUrl: s.googleMapsUrl,
+                  latitude: s.latitude,
+                  longitude: s.longitude,
+                  location: s.location,
+                  fieldNumber: s.fieldNumber,
+                });
+                return mapsUrl ? (
+                  <a
+                    href={mapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-2xs font-semibold text-volt-500 hover:text-volt-400 hover:underline px-1.5 py-0.5 rounded bg-volt-400/10 border border-volt-400/20 transition-colors ml-1"
+                    title="Open venue in Google Maps"
+                  >
+                    <span>Open in Google Maps</span>
+                    <ExternalLink size={10} />
+                  </a>
+                ) : null;
+              })()}
             </span>
           )}
         </div>

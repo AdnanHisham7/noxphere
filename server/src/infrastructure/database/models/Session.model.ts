@@ -19,6 +19,10 @@ export interface SessionDocument extends Document {
   dailyEndTime?: string; // HH:MM
   location: string;
   fieldNumber?: string;
+  pitchId?: string;
+  googleMapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
   status: string;
   notes?: string;
   cancelReason?: string;
@@ -58,6 +62,10 @@ const SessionSchema = new Schema<SessionDocument>(
     dailyEndTime: String,
     location: { type: String, required: true },
     fieldNumber: String,
+    pitchId: String,
+    googleMapsUrl: { type: String, trim: true },
+    latitude: Number,
+    longitude: Number,
     status: {
       type: String,
       enum: ["upcoming", "ongoing", "completed", "cancelled"],

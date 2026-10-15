@@ -13,6 +13,10 @@ export interface SessionEntity {
   endTime: string; // HH:MM
   location: string;
   fieldNumber?: string;
+  pitchId?: string;
+  googleMapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
   status: SessionStatus;
   notes?: string;
   cancelReason?: string;

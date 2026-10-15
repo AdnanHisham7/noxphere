@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
-import { ArrowLeft, CalendarDays, Save, Zap, Star, AlertTriangle, AlertCircle, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, Save, Zap, Star, AlertTriangle, AlertCircle, LayoutList, LayoutGrid, ChevronLeft, ChevronRight, ArrowRight, CheckCircle2, MapPin, ExternalLink } from "lucide-react";
 import { toast } from "react-hot-toast";
 import clsx from "clsx";
 import {
@@ -10,6 +10,7 @@ import {
   Skeleton,
   EmptyState,
   Modal,
+  getMapsLink,
 } from "../../components/ui";
 import {
   useGetSessionRosterQuery,
@@ -501,7 +502,31 @@ const SessionRosterPage: React.FC = () => {
             {session.dailyStartTime || session.startTime}–
             {session.dailyEndTime || session.endTime}
             {" · "}
-            {session.location}
+            <span className="inline-flex items-center gap-1">
+              <MapPin size={12} className="text-slate-400 shrink-0" />
+              <span>{session.location}</span>
+              {(() => {
+                const mapsUrl = getMapsLink({
+                  googleMapsUrl: session.googleMapsUrl,
+                  latitude: session.latitude,
+                  longitude: session.longitude,
+                  location: session.location,
+                  fieldNumber: session.fieldNumber,
+                });
+                return mapsUrl ? (
+                  <a
+                    href={mapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-0.5 text-volt-600 dark:text-volt-400 hover:underline font-semibold ml-0.5"
+                    title="Open venue in Google Maps"
+                  >
+                    <span>Maps</span>
+                    <ExternalLink size={10} />
+                  </a>
+                ) : null;
+              })()}
+            </span>
             {session.coaches &&
               session.coaches.length > 0 &&
               ` · Coaches: ${session.coaches.join(", ")}`}
