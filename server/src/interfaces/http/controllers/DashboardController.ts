@@ -29,7 +29,7 @@ export class DashboardController {
           franchiseId: franchiseId as string | undefined,
           academyId: academyId as string | undefined,
         },
-        days ? parseInt(days as string) : undefined,
+        days !== undefined && !isNaN(Number(days)) ? parseInt(days as string, 10) : 7,
       );
       ResponseHandler.success(res, data, "Attendance trend retrieved");
     } catch (err) {

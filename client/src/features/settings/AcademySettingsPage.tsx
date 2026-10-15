@@ -14,7 +14,7 @@ import {
   Layers,
   Sparkles,
 } from "lucide-react";
-import { Button, Input, Card, Badge, Skeleton, EmptyState, Modal, ConfirmModal, ImageUploadField, PageHeader, Select } from "../../components/ui";
+import { Button, Input, Card, Badge, Skeleton, EmptyState, Modal, ConfirmModal, ImageUploadField, PageHeader, Select, LocationPicker } from "../../components/ui";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import { academyApi } from "../../store/api/academyApi";
 import type { Location, AcademyPitch } from "../academies/types";
@@ -316,20 +316,15 @@ const AcademySettingsPage: React.FC = () => {
             value={location?.address}
             onChange={(e) => setLocation((prev) => ({ ...prev, address: e.target.value }))}
           />
-          <Input
-            label="Latitude"
-            type="number"
-            step="any"
-            value={location?.latitude}
-            onChange={(e) => setLocation((prev) => ({ ...prev, latitude: parseFloat(e.target.value) || 0 }))}
-          />
-          <Input
-            label="Longitude"
-            type="number"
-            step="any"
-            value={location?.longitude}
-            onChange={(e) => setLocation((prev) => ({ ...prev, longitude: parseFloat(e.target.value) || 0 }))}
-          />
+          <div className="sm:col-span-2">
+            <LocationPicker
+              latitude={location?.latitude ?? 0}
+              longitude={location?.longitude ?? 0}
+              onChange={({ latitude, longitude }) =>
+                setLocation((prev) => ({ ...prev, latitude, longitude }))
+              }
+            />
+          </div>
           <Input
             label="Field number (optional)"
             value={location?.fieldNumber ?? ""}

@@ -16,3 +16,5 @@ export { PageHeader } from "./PageHeader";
 export { Tabs } from "./Tabs";
 export { Select } from "./Select";
 export type { SelectProps, SelectOption } from "./Select";
+export { LocationPicker, extractLatLngFromMapsUrl } from "./LocationPicker";
+export type { LocationPickerProps } from "./LocationPicker";

@@ -9,6 +9,7 @@ interface StatCardProps {
   icon?: React.ReactNode;
   trend?: { value: number; positive: boolean };
   accent?: "volt" | "ice" | "ember" | "field";
+  className?: string;
 }
 
 export const StatCard: React.FC<StatCardProps> = ({
@@ -18,26 +19,27 @@ export const StatCard: React.FC<StatCardProps> = ({
   icon,
   trend,
   accent = "volt",
+  className,
 }) => {
   const accents = {
-    volt: "text-volt-400",
-    ice: "text-ice-400",
-    ember: "text-ember-400",
-    field: "text-field-400",
+    volt: "text-volt-600 dark:text-volt-400",
+    ice: "text-sky-600 dark:text-ice-400",
+    ember: "text-amber-600 dark:text-ember-400",
+    field: "text-emerald-600 dark:text-field-400",
   };
 
   return (
-    <div className="card p-4 space-y-3">
-      <div className="flex items-start justify-between">
-        <span className="section-title">{label}</span>
+    <div className={clsx("card p-3 sm:p-4 space-y-2 sm:space-y-3 h-full flex flex-col justify-between", className)}>
+      <div className="flex items-start justify-between gap-1">
+        <span className="section-title text-[10px] sm:text-xs truncate block">{label}</span>
         {icon && (
-          <span className={clsx("text-lg", accents[accent])}>{icon}</span>
+          <span className={clsx("text-base sm:text-lg shrink-0", accents[accent])}>{icon}</span>
         )}
       </div>
       <div>
         <span
           className={clsx(
-            "font-display font-extrabold text-2xl sm:text-3xl tabular-nums truncate block",
+            "font-display font-extrabold text-xl sm:text-2xl lg:text-3xl tabular-nums truncate block",
             accents[accent],
           )}
           title={
@@ -49,14 +51,16 @@ export const StatCard: React.FC<StatCardProps> = ({
           {value}
         </span>
         {sublabel && (
-          <p className="text-xs text-slate-500 mt-0.5">{sublabel}</p>
+          <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{sublabel}</p>
         )}
       </div>
       {trend && (
         <div
           className={clsx(
-            "flex items-center gap-1 text-xs",
-            trend.positive ? "text-field-400" : "text-ember-400",
+            "flex items-center gap-1 text-[11px] sm:text-xs",
+            trend.positive
+              ? "text-emerald-600 dark:text-field-400"
+              : "text-amber-600 dark:text-ember-400",
           )}
         >
           {trend.positive ? (

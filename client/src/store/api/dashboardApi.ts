@@ -40,6 +40,8 @@ export interface AttendanceTrendPoint {
   date: string;
   day: string;
   rate: number;
+  present?: number;
+  total?: number;
 }
 
 export interface SkillRadarPoint {

@@ -24,7 +24,7 @@ import {
   CreditCard,
   Sliders,
 } from "lucide-react";
-import { Button, Input, Modal, Badge, StatCard, ImageUploadField, PageHeader, Select } from "../../components/ui";
+import { Button, Input, Modal, Badge, StatCard, ImageUploadField, PageHeader, Select, LocationPicker } from "../../components/ui";
 import { baseApi } from "../../store/api/baseApi";
 import { academyApi } from "@/store/api/academyApi";
 import { academySubscriptionApi } from "@/store/api/academySubscriptionApi";
@@ -1221,38 +1221,20 @@ const AcademiesManagement: React.FC = () => {
               }
               required
             />
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Latitude"
-                type="number"
-                value={newAcademyForm.location.latitude}
-                onChange={(e) =>
-                  setNewAcademyForm({
-                    ...newAcademyForm,
-                    location: {
-                      ...newAcademyForm.location,
-                      latitude: parseFloat(e.target.value) || 0,
-                    },
-                  })
-                }
-                required
-              />
-              <Input
-                label="Longitude"
-                type="number"
-                value={newAcademyForm.location.longitude}
-                onChange={(e) =>
-                  setNewAcademyForm({
-                    ...newAcademyForm,
-                    location: {
-                      ...newAcademyForm.location,
-                      longitude: parseFloat(e.target.value) || 0,
-                    },
-                  })
-                }
-                required
-              />
-            </div>
+            <LocationPicker
+              latitude={Number(newAcademyForm.location.latitude) || 0}
+              longitude={Number(newAcademyForm.location.longitude) || 0}
+              onChange={({ latitude, longitude }) =>
+                setNewAcademyForm({
+                  ...newAcademyForm,
+                  location: {
+                    ...newAcademyForm.location,
+                    latitude,
+                    longitude,
+                  },
+                })
+              }
+            />
             <Input
               label="Field Number (optional)"
               value={newAcademyForm.location.fieldNumber}

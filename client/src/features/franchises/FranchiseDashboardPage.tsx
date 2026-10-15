@@ -48,14 +48,28 @@ import {
   useGetTeamHealthQuery,
   useGetTopPerformersQuery,
   useGetRecentActivityQuery,
+  type AttendanceTrendPoint,
 } from "../../store/api/dashboardApi";
 
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
+  const item = payload[0].payload as AttendanceTrendPoint;
+  const hasSessions = (item?.total ?? 0) > 0;
   return (
-    <div className="bg-slate-900 dark:bg-pitch-800 border border-slate-700 dark:border-white/10 rounded px-3 py-2 text-xs">
-      <p className="text-slate-400">{label}</p>
-      <p className="text-volt-400 font-bold">{payload[0].value}%</p>
+    <div className="bg-white dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs shadow-md">
+      <p className="text-slate-500 dark:text-slate-400 font-medium">{label}</p>
+      {hasSessions ? (
+        <div className="mt-0.5 space-y-0.5">
+          <p className="text-volt-600 dark:text-volt-400 font-bold text-sm">
+            {payload[0].value}%
+          </p>
+          <p className="text-3xs text-slate-400 font-mono">
+            {item.present ?? 0} of {item.total ?? 0} present
+          </p>
+        </div>
+      ) : (
+        <p className="text-slate-400 italic mt-0.5 text-2xs">No sessions recorded</p>
+      )}
     </div>
   );
 };
@@ -116,6 +130,21 @@ const FranchiseDashboardPage: React.FC = () => {
 
   const { data: attendanceTrend, isLoading: trendLoading } =
     useGetAttendanceTrendQuery({ ...queryParams, days: attendanceDays }, { skip });
+
+  const activeTrendSummary = React.useMemo(() => {
+    if (!attendanceTrend || attendanceTrend.length === 0) return null;
+    const withSessions = attendanceTrend.filter((d) => (d.total ?? 0) > 0);
+    if (withSessions.length === 0) return null;
+    const totalPresent = withSessions.reduce((acc, d) => acc + (d.present ?? 0), 0);
+    const totalSessions = withSessions.reduce((acc, d) => acc + (d.total ?? 0), 0);
+    const rate = totalSessions > 0 ? Math.round((totalPresent / totalSessions) * 1000) / 10 : 0;
+    return {
+      rate,
+      present: totalPresent,
+      total: totalSessions,
+      sessionDays: withSessions.length,
+    };
+  }, [attendanceTrend]);
   const { data: radarData, isLoading: radarLoading } = useGetSkillRadarQuery(
     queryParams,
     { skip },
@@ -177,13 +206,13 @@ const FranchiseDashboardPage: React.FC = () => {
 
       {/* KPI Stats Row */}
       {statsLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-28 rounded-lg" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           <StatCard
             label="Total Students"
             value={stats?.totalStudents ?? 0}
@@ -222,9 +251,9 @@ const FranchiseDashboardPage: React.FC = () => {
             <div>
               <p className="section-title">Attendance Trend</p>
               <p className="text-xs text-slate-500 mt-0.5">
-                {attendanceDays === 7 && "Last 7 days — daily breakdown"}
-                {attendanceDays === 30 && "Last 30 days (Month) — daily trend"}
-                {attendanceDays === 365 && "Last 12 months (Year) — monthly average"}
+                {attendanceDays === 7 && "Last 7 days daily — franchise breakdown"}
+                {attendanceDays === 30 && "Last 30 days daily — franchise trend"}
+                {attendanceDays === 365 && "Last 12 months — monthly average"}
                 {attendanceDays === 0 && "Overall historical attendance"}
               </p>
             </div>
@@ -232,9 +261,9 @@ const FranchiseDashboardPage: React.FC = () => {
               <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-800 p-0.5 rounded-lg border border-slate-200 dark:border-white/5">
                 {[
                   { label: "7D", title: "Last 7 Days", value: 7 },
-                  { label: "1M", title: "Last Month", value: 30 },
-                  { label: "1Y", title: "Last Year", value: 365 },
-                  { label: "All", title: "Overall", value: 0 },
+                  { label: "1M", title: "Last Month (30 Days)", value: 30 },
+                  { label: "1Y", title: "Last 12 Months", value: 365 },
+                  { label: "All", title: "Overall Historical", value: 0 },
                 ].map((t) => (
                   <button
                     key={t.value}
@@ -252,18 +281,31 @@ const FranchiseDashboardPage: React.FC = () => {
                   </button>
                 ))}
               </div>
-              <span className="text-volt-400 font-display font-extrabold text-xl">
-                {stats?.avgAttendance ?? 0}%
-              </span>
+              <div className="text-right shrink-0">
+                <span className="text-volt-400 font-display font-extrabold text-xl block leading-tight">
+                  {activeTrendSummary ? `${activeTrendSummary.rate}%` : `${stats?.avgAttendance ?? 0}%`}
+                </span>
+                <span className="text-3xs text-slate-500 font-mono block">
+                  {activeTrendSummary
+                    ? `${activeTrendSummary.present}/${activeTrendSummary.total} present`
+                    : "period avg"}
+                </span>
+              </div>
             </div>
           </div>
           {trendLoading ? (
             <Skeleton className="h-40 rounded" />
           ) : !attendanceTrend?.length ||
-            attendanceTrend.every((d) => d.rate === 0) ? (
+            attendanceTrend.every((d) => (d.total ?? 0) === 0) ? (
             <EmptyState
-              title="No attendance recorded yet"
-              description="Mark attendance to see the trend here."
+              title="No attendance recorded for this timeframe"
+              description={
+                attendanceDays === 7
+                  ? "No sessions conducted in the last 7 days. Try switching to 1M, 1Y, or All."
+                  : attendanceDays === 30
+                    ? "No sessions conducted in the last 30 days. Try switching to 1Y or All."
+                    : "Mark attendance in sessions to populate trend data."
+              }
             />
           ) : (
             <ResponsiveContainer width="100%" height={160}>
@@ -282,6 +324,13 @@ const FranchiseDashboardPage: React.FC = () => {
                 </defs>
                 <XAxis
                   dataKey="day"
+                  interval={
+                    attendanceDays === 30
+                      ? 4
+                      : attendanceDays === 0 && (attendanceTrend?.length ?? 0) > 12
+                        ? "preserveStartEnd"
+                        : 0
+                  }
                   tick={{ fill: "#64748b", fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
