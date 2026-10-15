@@ -1,5 +1,5 @@
 // src/features/guardian/GuardianChildDetailPage.tsx
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import {
@@ -19,9 +19,16 @@ import {
   Lock,
   Check,
   CreditCard,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Receipt,
+  Download,
+  AlertTriangle,
 } from "lucide-react";
 import QRCode from "react-qr-code";
 import { PayFeeModal } from "./PayFeeModal";
+import { FeeReceiptModal } from "./FeeReceiptModal";
 import {
   useGetChildProfileQuery,
   useGetChildAttendanceQuery,
@@ -49,6 +56,46 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "performance", label: "Performance", icon: TrendingUp },
 ];
 
+const PaginationControls: React.FC<{
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (p: number) => void;
+  totalItems: number;
+  itemName: string;
+}> = ({ currentPage, totalPages, onPageChange, totalItems, itemName }) => {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-pitch-200/50 dark:border-white/[0.06] text-xs text-nox-mid">
+      <span className="font-mono text-2xs">
+        Showing page {currentPage} of {totalPages} ({totalItems} {itemName})
+      </span>
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          disabled={currentPage === 1}
+          onClick={() => onPageChange(currentPage - 1)}
+          className="p-1.5 rounded-lg border border-pitch-200 dark:border-white/10 bg-pitch-100 dark:bg-white/[0.04] text-nox-high disabled:opacity-30 disabled:cursor-not-allowed hover:bg-pitch-200 dark:hover:bg-white/10 transition-colors"
+          title="Previous page"
+        >
+          <ChevronLeft size={14} />
+        </button>
+        <span className="px-2 py-0.5 rounded font-mono text-2xs font-semibold bg-core-400/10 text-core-400">
+          {currentPage} / {totalPages}
+        </span>
+        <button
+          type="button"
+          disabled={currentPage >= totalPages}
+          onClick={() => onPageChange(currentPage + 1)}
+          className="p-1.5 rounded-lg border border-pitch-200 dark:border-white/10 bg-pitch-100 dark:bg-white/[0.04] text-nox-high disabled:opacity-30 disabled:cursor-not-allowed hover:bg-pitch-200 dark:hover:bg-white/10 transition-colors"
+          title="Next page"
+        >
+          <ChevronRight size={14} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const GuardianChildDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const studentId = id!;
@@ -72,24 +119,24 @@ const GuardianChildDetailPage: React.FC = () => {
       {profileLoading && <NoxSkeleton className="h-24 mb-8" />}
 
       {profile && (
-        <div className="nox-card p-4 sm:p-6 mb-8 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 justify-between">
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+        <div className="nox-card p-4 sm:p-6 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full md:w-auto">
             <span className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-core-400/[0.12] text-core-400 font-orbital font-semibold text-base sm:text-lg shrink-0">
               {profile.firstName.charAt(0)}
               {profile.lastName.charAt(0)}
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h1 className="font-orbital text-lg sm:text-xl font-semibold text-nox-high truncate">
                 {profile.firstName} {profile.lastName}
               </h1>
-              <p className="text-xs sm:text-sm text-nox-mid mt-0.5 truncate">
-                {teamName ?? profile.ageGroup}
-                {profile.position ? ` · ${profile.position}` : ""}
-                {profile.jerseyNumber ? ` · #${profile.jerseyNumber}` : ""}
+              <p className="text-xs sm:text-sm text-nox-mid mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <span className="font-medium text-nox-high">{teamName ?? profile.ageGroup}</span>
+                {profile.position && <span>· {profile.position}</span>}
+                {profile.jerseyNumber && <span>· #{profile.jerseyNumber}</span>}
               </p>
             </div>
           </div>
-          <div className="flex gap-3 sm:gap-4 w-full sm:w-auto">
+          <div className="grid grid-cols-2 gap-3 w-full md:w-auto shrink-0">
             <NoxStatCard
               label="Attendance"
               value={`${profile.attendancePercentage}%`}
@@ -107,7 +154,7 @@ const GuardianChildDetailPage: React.FC = () => {
       {profile && (
         <button
           onClick={() => window.open(`/students/${studentId}/report`, "_blank")}
-          className="inline-flex items-center gap-2 text-xs text-core-400 hover:underline mb-8"
+          className="inline-flex items-center gap-2 text-xs text-core-400 hover:underline mb-6"
         >
           <FileText size={13} />
           Download full report (performance, attendance, fees)
@@ -118,7 +165,7 @@ const GuardianChildDetailPage: React.FC = () => {
         <PublicProfileToggleCard studentId={studentId} profile={profile} />
       )}
 
-      <div className="flex gap-2 border-b border-white/[0.06] mb-6 overflow-x-auto no-scrollbar flex-nowrap -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
+      <div className="flex gap-2 border-b border-pitch-200/60 dark:border-white/[0.06] mb-6 overflow-x-auto no-scrollbar flex-nowrap -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
         {TABS.map((t) => {
           const Icon = t.icon;
           const active = tab === t.id;
@@ -128,7 +175,7 @@ const GuardianChildDetailPage: React.FC = () => {
               onClick={() => setTab(t.id)}
               className={`flex items-center gap-2 px-4 py-3 text-sm border-b-2 transition-colors whitespace-nowrap ${
                 active
-                  ? "border-core-400 text-core-400"
+                  ? "border-core-400 text-core-400 font-semibold"
                   : "border-transparent text-nox-mid hover:text-nox-high"
               }`}
             >
@@ -507,6 +554,11 @@ const PublicProfileToggleCard: React.FC<{
 
 const AttendanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
   const { data, isLoading } = useGetChildAttendanceQuery({ studentId });
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "present" | "absent" | "late"
+  >("all");
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 8;
 
   if (isLoading) return <NoxSkeleton className="h-64" />;
   if (!data || data.records.length === 0) {
@@ -518,9 +570,20 @@ const AttendanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
     );
   }
 
+  const filteredRecords = data.records.filter((r) => {
+    if (filterStatus === "all") return true;
+    return r.status === filterStatus;
+  });
+
+  const totalPages = Math.ceil(filteredRecords.length / ITEMS_PER_PAGE);
+  const pagedRecords = filteredRecords.slice(
+    (page - 1) * ITEMS_PER_PAGE,
+    page * ITEMS_PER_PAGE,
+  );
+
   return (
-    <div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <NoxStatCard
           label="Present"
           value={data.summary.present}
@@ -534,34 +597,90 @@ const AttendanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
           accent="ion"
         />
       </div>
-      <div className="nox-card divide-y divide-white/[0.06]">
-        {data.records.map((r) => (
-          <div
-            key={r._id}
-            className="flex items-center justify-between px-5 py-4"
-          >
-            <div>
-              <div className="text-sm text-nox-high">
-                {new Date(r.sessionDate).toLocaleDateString(undefined, {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                })}
-              </div>
-              {r.remarks && (
-                <div className="text-xs text-nox-low mt-0.5">{r.remarks}</div>
-              )}
-            </div>
-            <NoxStatusBadge status={r.status} />
-          </div>
-        ))}
+
+      {/* Filter Chips Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white/[0.02] p-2 rounded-xl border border-pitch-200/50 dark:border-white/[0.06]">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          {(["all", "present", "absent", "late"] as const).map((status) => {
+            const count =
+              status === "all"
+                ? data.records.length
+                : data.records.filter((r) => r.status === status).length;
+            const active = filterStatus === status;
+            return (
+              <button
+                key={status}
+                type="button"
+                onClick={() => {
+                  setFilterStatus(status);
+                  setPage(1);
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs capitalize transition-all flex items-center gap-1.5 ${
+                  active
+                    ? "bg-pitch-900 text-white dark:bg-white dark:text-pitch-950 font-semibold shadow-sm"
+                    : "text-nox-mid hover:text-nox-high"
+                }`}
+              >
+                <span>{status}</span>
+                <span className="text-2xs font-mono px-1.5 py-0.2 rounded-full bg-white/10 text-nox-mid">
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <span className="text-2xs font-mono text-nox-low px-2">
+          {filteredRecords.length} record{filteredRecords.length === 1 ? "" : "s"}
+        </span>
       </div>
+
+      {/* Attendance Log Card */}
+      {filteredRecords.length === 0 ? (
+        <div className="py-8 text-center nox-card">
+          <p className="text-sm text-nox-mid">No records match the selected filter.</p>
+        </div>
+      ) : (
+        <div className="nox-card divide-y divide-pitch-200/50 dark:divide-white/[0.06] overflow-hidden">
+          {pagedRecords.map((r) => (
+            <div
+              key={r._id}
+              className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.01] transition-colors"
+            >
+              <div>
+                <div className="text-sm font-medium text-nox-high">
+                  {new Date(r.sessionDate).toLocaleDateString(undefined, {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </div>
+                {r.remarks && (
+                  <div className="text-xs text-nox-mid mt-0.5">{r.remarks}</div>
+                )}
+              </div>
+              <NoxStatusBadge status={r.status} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <PaginationControls
+        currentPage={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        totalItems={filteredRecords.length}
+        itemName="records"
+      />
     </div>
   );
 };
 
 const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
   const { data: sessions, isLoading } = useGetChildSessionsQuery(studentId);
+  const [activeView, setActiveView] = useState<"upcoming" | "past">("upcoming");
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
 
   if (isLoading) return <NoxSkeleton className="h-64" />;
   if (!sessions || sessions.length === 0) {
@@ -577,7 +696,6 @@ const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
   const todayStart = new Date(now.setHours(0, 0, 0, 0));
 
   const isUpcoming = (s: any) => {
-    // Marked or completed sessions must never appear in upcoming sessions
     if (s.status === "completed" || s.isMarked || s.attendanceStatus) {
       return false;
     }
@@ -585,20 +703,23 @@ const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
   };
 
   const upcomingSessions = sessions.filter(isUpcoming);
-  // Past sessions: only sessions this student actually attended (have a real attendance record)
   const pastSessions = sessions.filter((s: any) => !!s.attendanceStatus);
+
+  const activeList = activeView === "upcoming" ? upcomingSessions : pastSessions;
+  const totalPages = Math.ceil(activeList.length / ITEMS_PER_PAGE);
+  const pagedList = activeList.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const renderSessionCard = (s: any) => (
     <div
       key={s.id || s._id}
-      className="nox-card p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-core-400/30 transition-colors"
+      className="nox-card p-4 sm:p-5 flex flex-col justify-between gap-3.5 hover:border-core-400/30 transition-all rounded-2xl"
     >
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2">
-          <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-core-400/10 text-core-400 font-semibold">
+      <div className="space-y-1.5 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-core-400/10 text-core-600 dark:text-core-400 font-semibold border border-core-400/20">
             {s.type}
           </span>
-          <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-white/5 text-slate-400">
+          <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 border border-slate-200/50 dark:border-transparent">
             {s.targetType === "batch"
               ? "Custom Batch"
               : s.targetType === "category"
@@ -611,88 +732,133 @@ const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
             <NoxStatusBadge status={s.status} />
           )}
         </div>
-        <h4 className="font-orbital text-sm font-semibold text-nox-high">
+        <h4 className="font-orbital text-sm sm:text-base font-bold text-slate-900 dark:text-nox-high">
           {s.notes ||
             `${s.type.charAt(0).toUpperCase() + s.type.slice(1)} Session`}
         </h4>
-        <div className="flex flex-wrap items-center gap-4 text-xs text-nox-mid pt-1">
-          <span className="flex items-center gap-1.5">
-            <CalendarCheck size={13} className="text-core-400" />
-            {new Date(s.date).toLocaleDateString(undefined, {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Clock size={13} className="text-core-400" />
-            {s.startTime} - {s.endTime}
-          </span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 dark:text-nox-mid pt-1">
+          <div className="flex items-center gap-1.5">
+            <CalendarCheck size={13} className="text-core-500 shrink-0" />
+            <span>
+              {new Date(s.date).toLocaleDateString(undefined, {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 font-mono font-medium text-slate-900 dark:text-white">
+            <Clock size={13} className="text-core-500 shrink-0" />
+            <span>{s.startTime} - {s.endTime}</span>
+          </div>
           {s.location && (
-            <span className="flex items-center gap-1.5 flex-wrap">
-              <MapPin size={13} className="text-core-400 shrink-0" />
+            <div className="flex items-center gap-1.5 sm:col-span-2">
+              <MapPin size={13} className="text-core-500 shrink-0" />
               <span>
                 {s.location} {s.fieldNumber ? `(Field ${s.fieldNumber})` : ""}
               </span>
-              {(() => {
-                const mapsUrl = getMapsLink({
-                  googleMapsUrl: s.googleMapsUrl,
-                  latitude: s.latitude,
-                  longitude: s.longitude,
-                  location: s.location,
-                  fieldNumber: s.fieldNumber,
-                });
-                return mapsUrl ? (
-                  <a
-                    href={mapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-2xs font-semibold text-volt-500 hover:text-volt-400 hover:underline px-1.5 py-0.5 rounded bg-volt-400/10 border border-volt-400/20 transition-colors ml-1"
-                    title="Open venue in Google Maps"
-                  >
-                    <span>Open in Google Maps</span>
-                    <ExternalLink size={10} />
-                  </a>
-                ) : null;
-              })()}
-            </span>
+            </div>
           )}
         </div>
       </div>
+
+      {(() => {
+        const mapsUrl = getMapsLink({
+          googleMapsUrl: s.googleMapsUrl,
+          latitude: s.latitude,
+          longitude: s.longitude,
+          location: s.location,
+          fieldNumber: s.fieldNumber,
+        });
+        return mapsUrl ? (
+          <div className="pt-2 border-t border-slate-100 dark:border-white/[0.06]">
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-volt-800 dark:text-volt-300 hover:underline px-3 py-1.5 rounded-xl bg-volt-400/15 border border-volt-400/30 transition-all cursor-pointer"
+              title="Open venue in Google Maps"
+            >
+              <MapPin size={12} className="text-volt-600 dark:text-volt-400" />
+              <span>Open in Google Maps</span>
+              <ExternalLink size={10} />
+            </a>
+          </div>
+        ) : null;
+      })()}
     </div>
   );
 
   return (
     <div className="space-y-6">
-      {upcomingSessions.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="font-orbital text-xs uppercase tracking-wider text-core-400 font-bold flex items-center gap-2">
-            <CalendarCheck size={14} /> Upcoming Sessions ({upcomingSessions.length})
-          </h3>
-          <div className="space-y-3">
-            {upcomingSessions.map(renderSessionCard)}
-          </div>
+      {/* Sub-view switcher */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white/[0.02] p-2 rounded-xl border border-pitch-200/50 dark:border-white/[0.06]">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveView("upcoming");
+              setPage(1);
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+              activeView === "upcoming"
+                ? "bg-pitch-900 text-white dark:bg-white dark:text-pitch-950 font-semibold shadow-sm"
+                : "text-nox-mid hover:text-nox-high"
+            }`}
+          >
+            <Clock size={13} />
+            <span>Upcoming Sessions</span>
+            <span className="text-2xs font-mono px-1.5 py-0.2 rounded-full bg-white/10 font-bold">
+              {upcomingSessions.length}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveView("past");
+              setPage(1);
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+              activeView === "past"
+                ? "bg-pitch-900 text-white dark:bg-white dark:text-pitch-950 font-semibold shadow-sm"
+                : "text-nox-mid hover:text-nox-high"
+            }`}
+          >
+            <CalendarCheck size={13} />
+            <span>Sessions Attended</span>
+            <span className="text-2xs font-mono px-1.5 py-0.2 rounded-full bg-white/10 font-bold">
+              {pastSessions.length}
+            </span>
+          </button>
         </div>
-      )}
+        <span className="text-2xs font-mono text-nox-low px-2">
+          {activeList.length} total
+        </span>
+      </div>
 
-      {pastSessions.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="font-orbital text-xs uppercase tracking-wider text-slate-400 font-bold flex items-center gap-2">
-            <CalendarCheck size={14} /> Sessions Attended ({pastSessions.length})
-          </h3>
-          <div className="space-y-3">
-            {pastSessions.map(renderSessionCard)}
-          </div>
-        </div>
-      )}
-
-      {upcomingSessions.length === 0 && pastSessions.length === 0 && (
+      {activeList.length === 0 ? (
         <NoxEmptyState
-          title="No session history yet"
-          body="Upcoming sessions will appear here once scheduled. Past attendance will show here once sessions are marked by the coach."
+          title={activeView === "upcoming" ? "No upcoming sessions" : "No sessions attended yet"}
+          body={
+            activeView === "upcoming"
+              ? "All upcoming sessions scheduled by coaches will appear here."
+              : "Past attended sessions will show here once coaches mark attendance."
+          }
         />
+      ) : (
+        <div className="space-y-3">
+          {pagedList.map(renderSessionCard)}
+        </div>
       )}
+
+      <PaginationControls
+        currentPage={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        totalItems={activeList.length}
+        itemName="sessions"
+      />
     </div>
   );
 };
@@ -702,12 +868,18 @@ const FeesTab: React.FC<{ studentId: string; studentName?: string }> = ({
   studentName,
 }) => {
   const { data, isLoading, refetch } = useGetChildFeesQuery(studentId);
+  const [filter, setFilter] = useState<"all" | "action_required" | "paid">("all");
   const [selectedFeeForPayment, setSelectedFeeForPayment] = useState<{
     feeId: string;
     installmentNumber: number;
     amount: number;
     dueDate: string;
     feeType: string;
+  } | null>(null);
+
+  const [receiptToView, setReceiptToView] = useState<{
+    fee: any;
+    installment: any;
   } | null>(null);
 
   if (isLoading) return <NoxSkeleton className="h-64" />;
@@ -720,69 +892,237 @@ const FeesTab: React.FC<{ studentId: string; studentName?: string }> = ({
     );
   }
 
-  return (
-    <div className="space-y-5">
-      {data.map((fee) => (
-        <div key={fee._id} className="nox-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="font-orbital text-sm font-medium text-nox-high capitalize">
-                {fee.feeType.replace("_", " ")}
-              </div>
-              <div className="text-xs text-nox-low font-mono mt-0.5">
-                ₹{fee.finalAmount.toLocaleString("en-IN")} total
-              </div>
-            </div>
-            <NoxStatusBadge status={fee.overallStatus} />
-          </div>
-          <div className="space-y-2">
-            {fee.installments.map((inst) => {
-              const remaining = inst.amount - inst.paidAmount;
-              const canPay =
-                inst.status !== "paid" &&
-                inst.status !== "refunded" &&
-                remaining > 0;
+  // Weight function to prioritize overdue and pending verification on top
+  const getInstUrgencyWeight = (inst: any) => {
+    const isOverdue =
+      inst.status === "overdue" ||
+      (inst.status !== "paid" &&
+        inst.status !== "refunded" &&
+        inst.amount > inst.paidAmount &&
+        new Date(inst.dueDate).getTime() < Date.now());
 
-              return (
-                <div
-                  key={inst.installmentNumber}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between text-sm bg-white/[0.02] rounded-lg px-3 py-2.5 gap-2"
-                >
-                  <span className="text-nox-mid">
-                    Installment {inst.installmentNumber} · due{" "}
-                    {new Date(inst.dueDate).toLocaleDateString()}
-                  </span>
-                  <div className="flex items-center justify-between sm:justify-end gap-3">
-                    <span className="text-nox-high font-mono">
-                      ₹{inst.paidAmount.toLocaleString("en-IN")} / ₹
-                      {inst.amount.toLocaleString("en-IN")}
-                    </span>
-                    <NoxStatusBadge status={inst.status} />
-                    {canPay && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSelectedFeeForPayment({
-                            feeId: fee._id,
-                            installmentNumber: inst.installmentNumber,
-                            amount: remaining,
-                            dueDate: inst.dueDate,
-                            feeType: fee.feeType,
-                          })
-                        }
-                        className="nox-btn-primary !py-1 !px-2.5 text-xs flex items-center gap-1 shadow-sm"
-                      >
-                        <CreditCard size={12} />
-                        <span>Pay Fee</span>
-                      </button>
-                    )}
+    if (isOverdue) return 1;
+    if (inst.status === "pending_verification") return 2;
+    if (inst.status === "pending") return 3;
+    if (inst.status === "paid") return 4;
+    return 5;
+  };
+
+  // Sort and process fee plans
+  const sortedAndFilteredFees = data
+    .map((fee) => {
+      // Sort installments within plan: overdue & pending verification on top!
+      const sortedInstallments = [...fee.installments].sort((a, b) => {
+        const weightA = getInstUrgencyWeight(a);
+        const weightB = getInstUrgencyWeight(b);
+        if (weightA !== weightB) return weightA - weightB;
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      });
+
+      return {
+        ...fee,
+        installments: sortedInstallments,
+      };
+    })
+    .sort((feeA, feeB) => {
+      // Prioritize fee plans that have overdue or pending_verification installments
+      const minWeightA = Math.min(...feeA.installments.map(getInstUrgencyWeight));
+      const minWeightB = Math.min(...feeB.installments.map(getInstUrgencyWeight));
+      return minWeightA - minWeightB;
+    })
+    .filter((fee) => {
+      if (filter === "all") return true;
+      if (filter === "action_required") {
+        return fee.installments.some((i) => getInstUrgencyWeight(i) <= 3);
+      }
+      if (filter === "paid") {
+        return fee.installments.some((i) => i.status === "paid");
+      }
+      return true;
+    });
+
+  return (
+    <div className="space-y-6">
+      {/* Filter and sorting pill bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white/[0.02] p-2 rounded-xl border border-pitch-200/50 dark:border-white/[0.06]">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFilter("all")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              filter === "all"
+                ? "bg-pitch-900 text-white dark:bg-white dark:text-pitch-950 font-semibold shadow-sm"
+                : "text-nox-mid hover:text-nox-high"
+            }`}
+          >
+            All Fee Plans ({data.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("action_required")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+              filter === "action_required"
+                ? "bg-pitch-900 text-white dark:bg-white dark:text-pitch-950 font-semibold shadow-sm"
+                : "text-nox-mid hover:text-nox-high"
+            }`}
+          >
+            <AlertTriangle size={12} className="text-amber-400" />
+            <span>Overdue &amp; Pending First</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("paid")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              filter === "paid"
+                ? "bg-pitch-900 text-white dark:bg-white dark:text-pitch-950 font-semibold shadow-sm"
+                : "text-nox-mid hover:text-nox-high"
+            }`}
+          >
+            Paid / Cleared
+          </button>
+        </div>
+        <span className="text-2xs font-mono text-core-400 font-semibold">
+          Sorted: Overdue &amp; Pending on top
+        </span>
+      </div>
+
+      {sortedAndFilteredFees.length === 0 ? (
+        <div className="py-8 text-center nox-card">
+          <p className="text-sm text-nox-mid">No fee plans match the selected filter.</p>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {sortedAndFilteredFees.map((fee) => (
+            <div key={fee._id} className="nox-card p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-pitch-200/50 dark:border-white/[0.06] pb-3">
+                <div>
+                  <div className="font-orbital text-sm font-semibold text-nox-high capitalize">
+                    {fee.feeType.replace("_", " ")}
+                  </div>
+                  <div className="text-xs text-nox-low font-mono mt-0.5">
+                    ₹{fee.finalAmount.toLocaleString("en-IN")} total ·{" "}
+                    {fee.installments.length} installment{fee.installments.length === 1 ? "" : "s"}
                   </div>
                 </div>
-              );
-            })}
-          </div>
+                <NoxStatusBadge status={fee.overallStatus} />
+              </div>
+
+              <div className="space-y-2">
+                {fee.installments.map((inst) => {
+                  const remaining = inst.amount - inst.paidAmount;
+                  const isPendingVerif = inst.status === "pending_verification";
+                  const isPaid = inst.status === "paid" || remaining <= 0;
+                  const isOverdue =
+                    inst.status === "overdue" ||
+                    (!isPaid &&
+                      !isPendingVerif &&
+                      new Date(inst.dueDate).getTime() < Date.now());
+
+                  const canPay = !isPaid && !isPendingVerif && remaining > 0;
+
+                  return (
+                    <div
+                      key={inst.installmentNumber}
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between text-sm rounded-xl p-3.5 sm:p-4 gap-3 border transition-all ${
+                        isOverdue
+                          ? "bg-rose-500/[0.05] border-rose-500/40 dark:bg-rose-950/[0.15]"
+                          : isPendingVerif
+                            ? "bg-blue-500/[0.05] border-blue-500/40 dark:bg-blue-950/[0.15]"
+                            : isPaid
+                              ? "bg-slate-50 border-slate-200/80 dark:bg-white/[0.02] dark:border-white/[0.05]"
+                              : "bg-amber-500/[0.05] border-amber-500/30 dark:bg-amber-950/[0.12]"
+                      }`}
+                    >
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-nox-high text-xs">
+                            Installment #{inst.installmentNumber}
+                          </span>
+                          {isOverdue && (
+                            <span className="text-2xs font-mono uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 font-bold">
+                              Overdue
+                            </span>
+                          )}
+                          {isPendingVerif && (
+                            <span className="text-2xs font-mono uppercase px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold">
+                              Under Verification
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-nox-mid font-mono">
+                          Due {new Date(inst.dueDate).toLocaleDateString()}
+                          {inst.paidAt && (
+                            <span className="text-field-500 dark:text-field-400 ml-2">
+                              · Paid on {new Date(inst.paidAt).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                        <div className="text-right">
+                          <span className="text-nox-high font-mono text-sm font-semibold">
+                            ₹{inst.paidAmount.toLocaleString("en-IN")} / ₹
+                            {inst.amount.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+
+                        {isPendingVerif && (
+                          <div className="text-2xs text-blue-400 font-mono px-2.5 py-1 rounded bg-blue-500/10 border border-blue-500/20">
+                            Proof Under Review
+                          </div>
+                        )}
+
+                        {isPaid && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setReceiptToView({
+                                fee,
+                                installment: inst,
+                              })
+                            }
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-pitch-100 hover:bg-pitch-200 dark:bg-white/10 dark:hover:bg-white/15 text-nox-high border border-pitch-200 dark:border-white/10 transition-colors"
+                            title="View official digital receipt"
+                          >
+                            <Receipt size={13} className="text-core-400" />
+                            <span>Receipt</span>
+                          </button>
+                        )}
+
+                        {canPay && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedFeeForPayment({
+                                feeId: fee._id,
+                                installmentNumber: inst.installmentNumber,
+                                amount: remaining,
+                                dueDate: inst.dueDate,
+                                feeType: fee.feeType,
+                              })
+                            }
+                            className={`nox-btn-primary !py-1 !px-3 text-xs flex items-center gap-1.5 shadow-sm font-bold ${
+                              isOverdue
+                                ? "!bg-volt-400 hover:!bg-volt-300 !text-pitch-950 dark:!text-pitch-950"
+                                : "!bg-volt-400 hover:!bg-volt-300 !text-pitch-950 dark:!text-pitch-950"
+                            }`}
+                          >
+                            <CreditCard size={13} className="text-pitch-950" />
+                            <span className="text-pitch-950 font-bold">
+                              {isOverdue ? "Pay Overdue Fee" : "Pay Fee"}
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
 
       {selectedFeeForPayment && (
         <PayFeeModal
@@ -799,6 +1139,23 @@ const FeesTab: React.FC<{ studentId: string; studentName?: string }> = ({
           }}
         />
       )}
+
+      {receiptToView && (
+        <FeeReceiptModal
+          studentName={studentName || "Academy Student"}
+          feeType={receiptToView.fee.feeType}
+          installmentNumber={receiptToView.installment.installmentNumber}
+          amountPaid={receiptToView.installment.paidAmount}
+          totalAmount={receiptToView.installment.amount}
+          currency={receiptToView.fee.currency || "INR"}
+          paymentMethod={receiptToView.installment.paymentMethod}
+          transactionId={receiptToView.installment.receiptNumber}
+          paidAt={receiptToView.installment.paidAt}
+          receiptNumber={receiptToView.installment.receiptNumber}
+          receiptUrl={`/api/fees/${receiptToView.fee._id}/receipt`}
+          onClose={() => setReceiptToView(null)}
+        />
+      )}
     </div>
   );
 };
@@ -809,14 +1166,34 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
   const { data: remarks, isLoading: loadingRemarks } =
     useGetChildRemarksQuery(studentId);
 
+  const [remarksPage, setRemarksPage] = useState(1);
+  const [perfPage, setPerfPage] = useState(1);
+
+  const REMARKS_PER_PAGE = 4;
+  const PERF_PER_PAGE = 3;
+
   if (loadingPerformance || loadingRemarks)
     return <NoxSkeleton className="h-64" />;
+
+  const totalRemarksPages = Math.ceil((remarks?.length ?? 0) / REMARKS_PER_PAGE);
+  const pagedRemarks = (remarks ?? []).slice(
+    (remarksPage - 1) * REMARKS_PER_PAGE,
+    remarksPage * REMARKS_PER_PAGE,
+  );
+
+  const totalPerfPages = Math.ceil(
+    (performanceRecords?.length ?? 0) / PERF_PER_PAGE,
+  );
+  const pagedPerformance = (performanceRecords ?? []).slice(
+    (perfPage - 1) * PERF_PER_PAGE,
+    perfPage * PERF_PER_PAGE,
+  );
 
   return (
     <div className="space-y-6">
       {/* Coach Feedback & Notes Space */}
       <div className="nox-card p-5 space-y-4">
-        <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+        <div className="flex items-center justify-between border-b border-pitch-200/50 dark:border-white/[0.06] pb-3">
           <div>
             <h3 className="font-orbital text-sm font-semibold text-nox-high flex items-center gap-2">
               <FileText size={16} className="text-core-400" />
@@ -838,7 +1215,7 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
           </p>
         ) : (
           <div className="space-y-2.5">
-            {remarks.map((r) => {
+            {pagedRemarks.map((r) => {
               const coachName =
                 r.coachId && typeof r.coachId === "object"
                   ? `${r.coachId.firstName} ${r.coachId.lastName}`
@@ -846,7 +1223,7 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
               return (
                 <div
                   key={r._id}
-                  className="bg-white/[0.02] border-l-2 border-core-400 border-t border-r border-b border-white/[0.06] rounded-r-lg p-3.5 space-y-1"
+                  className="bg-white/[0.02] border-l-2 border-core-400 border-t border-r border-b border-pitch-200/50 dark:border-white/[0.06] rounded-r-lg p-3.5 space-y-1"
                 >
                   <div className="flex items-center justify-between text-2xs">
                     <span className="text-core-400 font-semibold">
@@ -866,6 +1243,14 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
                 </div>
               );
             })}
+
+            <PaginationControls
+              currentPage={remarksPage}
+              totalPages={totalRemarksPages}
+              onPageChange={setRemarksPage}
+              totalItems={remarks.length}
+              itemName="remarks"
+            />
           </div>
         )}
       </div>
@@ -896,7 +1281,7 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
           />
         ) : (
           <div className="space-y-4">
-            {performanceRecords.map((p) => {
+            {pagedPerformance.map((p) => {
               const sessionObj =
                 typeof p.sessionId === "object" ? p.sessionId : null;
               const sessionTitle =
@@ -918,7 +1303,7 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
                   className="nox-card p-5 space-y-4 hover:border-core-400/30 transition-colors"
                 >
                   {/* Session Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.06] pb-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-pitch-200/50 dark:border-white/[0.06] pb-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="font-orbital text-sm font-semibold text-nox-high">
@@ -990,7 +1375,7 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
                         {p.skillScores.map((skill) => (
                           <div
                             key={skill.parameter}
-                            className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-2.5 flex flex-col justify-between gap-1.5"
+                            className="bg-white/[0.02] border border-pitch-200/50 dark:border-white/[0.06] rounded-lg p-2.5 flex flex-col justify-between gap-1.5"
                           >
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-nox-high font-medium truncate">
@@ -1000,7 +1385,7 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
                                 {skill.score} / 10
                               </span>
                             </div>
-                            <div className="h-1.5 w-full bg-white/[0.06] rounded-full overflow-hidden">
+                            <div className="h-1.5 w-full bg-pitch-200/50 dark:bg-white/[0.06] rounded-full overflow-hidden">
                               <div
                                 className="h-full bg-core-400 transition-all duration-300"
                                 style={{
@@ -1016,7 +1401,7 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
 
                   {/* Evaluator Remarks / Session Notes */}
                   {(p.remarks || p.notes) && (
-                    <div className="p-3 bg-white/[0.02] border border-white/[0.06] rounded-lg space-y-1">
+                    <div className="p-3 bg-white/[0.02] border border-pitch-200/50 dark:border-white/[0.06] rounded-lg space-y-1">
                       <span className="text-2xs font-mono uppercase tracking-widest text-core-400 font-semibold block">
                         Coach's Session Notes:
                       </span>
@@ -1041,6 +1426,14 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
                 </div>
               );
             })}
+
+            <PaginationControls
+              currentPage={perfPage}
+              totalPages={totalPerfPages}
+              onPageChange={setPerfPage}
+              totalItems={performanceRecords.length}
+              itemName="evaluations"
+            />
           </div>
         )}
       </div>

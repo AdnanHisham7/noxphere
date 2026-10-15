@@ -19,6 +19,15 @@ export interface FeeAuditLog {
   details?: string;
 }
 
+export interface VerificationProof {
+  claimedAmount?: number;
+  paymentMethod?: string;
+  transactionId?: string;
+  notes?: string;
+  submittedAt?: string;
+  submittedBy?: string;
+}
+
 export interface FeeInstallment {
   installmentNumber: number;
   amount: number;
@@ -29,6 +38,8 @@ export interface FeeInstallment {
   paymentMethod?: string;
   transactionId?: string;
   paymentBreakdown?: PaymentBreakdownItem[];
+  verificationProof?: VerificationProof;
+  receiptUrl?: string;
   reminderSentCount?: number;
   lastReminderAt?: string;
 }
@@ -126,6 +137,24 @@ export const adminFeesApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Fee"],
     }),
+    verifyPayment: builder.mutation<
+      AdminFeeRecord,
+      {
+        feeId: string;
+        installmentNumber: number;
+        action: "approve" | "reject";
+        rejectionReason?: string;
+        adjustedAmount?: number;
+      }
+    >({
+      query: ({ feeId, installmentNumber, ...body }) => ({
+        url: `/fees/${feeId}/installments/${installmentNumber}/verify`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (res: { data: AdminFeeRecord }) => res.data,
+      invalidatesTags: ["Fee", "Student"],
+    }),
   }),
 });
 
@@ -136,4 +165,5 @@ export const {
   useUpdatePaymentMutation,
   useUndoPaymentMutation,
   useSendInstallmentReminderMutation,
+  useVerifyPaymentMutation,
 } = adminFeesApi;

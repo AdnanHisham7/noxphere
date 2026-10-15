@@ -37,6 +37,7 @@ export interface RecordPaymentInput {
 function computeOverallStatus(installments: { status: string }[]): string {
   if (installments.every((i) => i.status === "paid")) return "paid";
   if (installments.some((i) => i.status === "overdue")) return "overdue";
+  if (installments.some((i) => i.status === "pending_verification")) return "pending_verification";
   if (installments.some((i) => i.status === "partial" || i.status === "paid")) return "partial";
   return "pending";
 }
@@ -273,6 +274,133 @@ export class AdminFeesUseCases {
     await fee.save();
 
     return fee.toJSON ? fee.toJSON() : fee;
+  }
+
+  async submitPaymentProof(
+    feeId: string,
+    installmentNumber: number,
+    input: {
+      amount: number;
+      paymentMethod?: string;
+      transactionId?: string;
+      notes?: string;
+    },
+    performedBy: string,
+  ) {
+    const fee = await FeeModel.findById(feeId);
+    if (!fee) throw new NotFoundError("Fee record not found");
+
+    const installment = fee.installments.find((i) => i.installmentNumber === installmentNumber);
+    if (!installment) throw new NotFoundError("Installment not found");
+
+    if (installment.status === "paid") {
+      throw new BadRequestError("This installment is already fully paid");
+    }
+
+    installment.status = "pending_verification";
+    installment.verificationProof = {
+      claimedAmount: input.amount,
+      paymentMethod: input.paymentMethod || "upi",
+      transactionId: input.transactionId,
+      notes: input.notes,
+      submittedAt: new Date(),
+      submittedBy: performedBy,
+    };
+
+    const user = await UserModel.findById(performedBy).select("firstName lastName").lean();
+    const performedByName = user ? `${user.firstName} ${user.lastName}` : "Guardian";
+
+    fee.auditLog.push({
+      action: "payment_proof_submitted",
+      amount: input.amount,
+      installmentNumber,
+      paymentMethod: input.paymentMethod,
+      transactionId: input.transactionId,
+      timestamp: new Date(),
+      performedBy: performedBy as any,
+      performedByName,
+      details: `Guardian submitted payment proof of ${fee.currency || 'INR'} ${input.amount} via ${input.paymentMethod || 'upi'}${input.transactionId ? ` (Ref: ${input.transactionId})` : ''}. Awaiting academy verification.`
+    });
+
+    fee.overallStatus = computeOverallStatus(fee.installments) as typeof fee.overallStatus;
+    await fee.save();
+
+    return fee.toJSON ? fee.toJSON() : fee;
+  }
+
+  async verifyPayment(
+    feeId: string,
+    installmentNumber: number,
+    input: {
+      action: "approve" | "reject";
+      rejectionReason?: string;
+      adjustedAmount?: number;
+    },
+    performedBy: string,
+  ) {
+    const fee = await FeeModel.findById(feeId);
+    if (!fee) throw new NotFoundError("Fee record not found");
+
+    const installment = fee.installments.find((i) => i.installmentNumber === installmentNumber);
+    if (!installment) throw new NotFoundError("Installment not found");
+
+    if (installment.status !== "pending_verification") {
+      throw new BadRequestError("This installment does not have a pending verification");
+    }
+
+    const user = await UserModel.findById(performedBy).select("firstName lastName").lean();
+    const performedByName = user ? `${user.firstName} ${user.lastName}` : "Academy Manager";
+
+    if (input.action === "approve") {
+      const proof = installment.verificationProof;
+      const effectiveAmount = input.adjustedAmount ?? proof?.claimedAmount ?? (installment.amount - installment.paidAmount);
+
+      installment.paidAmount = Math.min(installment.amount, installment.paidAmount + effectiveAmount);
+      installment.paidAt = new Date();
+      installment.paymentMethod = proof?.paymentMethod || installment.paymentMethod || "upi";
+      installment.transactionId = proof?.transactionId || installment.transactionId;
+      installment.status = installment.paidAmount >= installment.amount ? "paid" : "partial";
+      installment.verificationProof = undefined;
+
+      fee.auditLog.push({
+        action: "verify_payment_approved",
+        amount: effectiveAmount,
+        installmentNumber,
+        paymentMethod: installment.paymentMethod,
+        transactionId: installment.transactionId,
+        timestamp: new Date(),
+        performedBy: performedBy as any,
+        performedByName,
+        details: `Verified & approved payment proof of ${fee.currency || 'INR'} ${effectiveAmount} for installment #${installmentNumber}.`
+      });
+
+      fee.overallStatus = computeOverallStatus(fee.installments) as typeof fee.overallStatus;
+      await fee.save();
+
+      await this.sendPaymentReceipt(fee, installmentNumber, effectiveAmount);
+    } else {
+      const now = new Date();
+      const isOverdue = installment.dueDate < now;
+      installment.status = isOverdue ? "overdue" : (installment.paidAmount > 0 ? "partial" : "pending");
+
+      const reason = input.rejectionReason || "Payment proof could not be verified by academy.";
+      installment.verificationProof = undefined;
+
+      fee.auditLog.push({
+        action: "verify_payment_rejected",
+        amount: 0,
+        installmentNumber,
+        timestamp: new Date(),
+        performedBy: performedBy as any,
+        performedByName,
+        details: `Rejected payment proof for installment #${installmentNumber}. Reason: ${reason}`
+      });
+
+      fee.overallStatus = computeOverallStatus(fee.installments) as typeof fee.overallStatus;
+      await fee.save();
+    }
+
+    return FeeModel.findById(fee._id).populate("studentId", "firstName lastName photo").lean();
   }
 
   async sendInstallmentReminder(feeId: string, installmentNumber: number, performedBy: string) {

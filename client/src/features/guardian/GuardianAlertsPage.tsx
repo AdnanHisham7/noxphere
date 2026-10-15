@@ -100,28 +100,28 @@ const GuardianAlertsPage: React.FC = () => {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center gap-2 mb-6 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setFilter("all")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
             filter === "all"
-              ? "bg-core-400/15 text-core-400 border border-core-400/30"
-              : "bg-white/[0.04] text-nox-mid hover:text-nox-high border border-white/5"
+              ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm"
+              : "bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-nox-mid hover:text-slate-900 dark:hover:text-nox-high border border-slate-200/80 dark:border-white/5"
           }`}
         >
           All Alerts ({notifications.length})
         </button>
         <button
           onClick={() => setFilter("unread")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
             filter === "unread"
-              ? "bg-core-400/15 text-core-400 border border-core-400/30"
-              : "bg-white/[0.04] text-nox-mid hover:text-nox-high border border-white/5"
+              ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm"
+              : "bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-nox-mid hover:text-slate-900 dark:hover:text-nox-high border border-slate-200/80 dark:border-white/5"
           }`}
         >
           <span>Unread</span>
           {unreadCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-orbit-cta text-black font-extrabold shadow-xs">
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-volt-400 text-pitch-950 font-extrabold shadow-xs">
               {unreadCount}
             </span>
           )}
@@ -180,31 +180,31 @@ const GuardianAlertsPage: React.FC = () => {
             return (
               <div
                 key={n.id}
-                className={`nox-card p-5 transition-all ${
+                className={`nox-card p-4 sm:p-5 transition-all rounded-2xl ${
                   !n.isRead
-                    ? "border-core-400/40 bg-core-400/[0.03] shadow-sm"
-                    : "hover:border-white/10"
+                    ? "border-core-400/40 bg-core-400/[0.03] shadow-sm ring-1 ring-core-400/20"
+                    : "hover:border-slate-300 dark:hover:border-white/10"
                 }`}
               >
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/5 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/5 flex items-center justify-center shrink-0 mt-0.5">
                     {getNotificationIcon(n.type)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-3 mb-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-1.5">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-orbital text-sm font-semibold text-nox-high">
+                        <h3 className="font-orbital text-sm sm:text-base font-bold text-slate-900 dark:text-nox-high">
                           {n.title}
                         </h3>
                         {!n.isRead && (
-                          <span className="inline-block px-1.5 py-0.5 rounded-full text-[9px] font-mono uppercase font-bold tracking-wider bg-core-400/15 text-core-400 border border-core-400/30">
+                          <span className="inline-block px-1.5 py-0.5 rounded-full text-[9px] font-mono uppercase font-bold tracking-wider bg-core-400/15 text-core-600 dark:text-core-400 border border-core-400/30">
                             New
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[11px] font-mono text-nox-low flex items-center gap-1">
-                          <Clock size={12} />
+                        <span className="text-2xs font-mono text-slate-500 dark:text-nox-low flex items-center gap-1">
+                          <Clock size={11} />
                           {new Date(n.createdAt).toLocaleDateString("en-IN", {
                             day: "numeric",
                             month: "short",
@@ -216,7 +216,7 @@ const GuardianAlertsPage: React.FC = () => {
                           <button
                             onClick={(e) => handleMarkOne(n.id, e)}
                             title="Mark as read"
-                            className="p-1 rounded text-nox-low hover:text-core-400 hover:bg-white/[0.05] transition-colors"
+                            className="p-1 rounded text-slate-400 hover:text-core-500 hover:bg-slate-100 dark:hover:bg-white/[0.05] transition-colors cursor-pointer"
                           >
                             <Check size={14} />
                           </button>
@@ -224,7 +224,7 @@ const GuardianAlertsPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <p className="text-xs text-nox-mid leading-relaxed whitespace-pre-wrap">
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-nox-mid leading-relaxed whitespace-pre-wrap">
                       {n.body}
                     </p>
 

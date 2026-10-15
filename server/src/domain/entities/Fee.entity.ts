@@ -1,6 +1,6 @@
 // src/domain/entities/Fee.entity.ts
 export type FeeType = 'one_time' | 'installment' | 'early_bird';
-export type PaymentStatus = 'pending' | 'partial' | 'paid' | 'overdue' | 'refunded';
+export type PaymentStatus = 'pending' | 'partial' | 'paid' | 'overdue' | 'refunded' | 'pending_verification';
 export type PaymentMethod = 'online' | 'cash' | 'cheque' | 'upi' | 'card' | 'wallet' | 'mixed';
 export type PaymentGateway = 'stripe' | 'razorpay' | 'paypal';
 
@@ -8,6 +8,15 @@ export interface PaymentBreakdownItem {
   method: string;
   amount: number;
   transactionId?: string;
+}
+
+export interface VerificationProof {
+  claimedAmount?: number;
+  paymentMethod?: string;
+  transactionId?: string;
+  notes?: string;
+  submittedAt?: Date;
+  submittedBy?: string;
 }
 
 export interface FeeInstallment {
@@ -20,6 +29,7 @@ export interface FeeInstallment {
   transactionId?: string;
   paymentMethod?: PaymentMethod | string;
   paymentBreakdown?: PaymentBreakdownItem[];
+  verificationProof?: VerificationProof;
   gateway?: PaymentGateway;
   receiptUrl?: string;
   reminderSentCount: number;

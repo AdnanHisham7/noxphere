@@ -25,6 +25,9 @@ import {
   ArrowUpRight,
   History,
   X,
+  ShieldCheck,
+  CheckCircle,
+  User,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
@@ -51,6 +54,7 @@ import {
   useUpdatePaymentMutation,
   useUndoPaymentMutation,
   useSendInstallmentReminderMutation,
+  useVerifyPaymentMutation,
   type CreateFeeBody,
   type AdminFeeRecord,
   type FeeInstallment,
@@ -64,6 +68,7 @@ const STATUS_VARIANT: Record<string, "green" | "red" | "yellow" | "gray"> = {
   partial: "yellow",
   pending: "gray",
   refunded: "gray",
+  pending_verification: "yellow",
 };
 
 const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
@@ -403,6 +408,10 @@ const FeesPage: React.FC = () => {
     transactionId?: string;
     paymentBreakdown?: PaymentBreakdownItem[];
   } | null>(null);
+  const [verifyTarget, setVerifyTarget] = useState<{
+    fee: AdminFeeRecord;
+    installment: FeeInstallment;
+  } | null>(null);
 
   // Accordion expansion tracking
   const [expandedStudents, setExpandedStudents] = useState<Set<string>>(
@@ -500,12 +509,14 @@ const FeesPage: React.FC = () => {
       pending: 0,
       partial: 0,
       paid: 0,
+      pending_verification: 0,
     };
     for (const f of fees ?? []) {
       if (f.overallStatus === "overdue") counts.overdue++;
       else if (f.overallStatus === "pending") counts.pending++;
       else if (f.overallStatus === "partial") counts.partial++;
       else if (f.overallStatus === "paid") counts.paid++;
+      else if (f.overallStatus === "pending_verification") counts.pending_verification++;
     }
     return counts;
   }, [fees]);
@@ -862,6 +873,12 @@ const FeesPage: React.FC = () => {
               variant: "yellow",
             },
             {
+              id: "pending_verification",
+              label: "Under Verification",
+              count: statusCounts.pending_verification,
+              variant: "yellow",
+            },
+            {
               id: "paid",
               label: "Paid",
               count: statusCounts.paid,
@@ -1087,6 +1104,7 @@ const FeesPage: React.FC = () => {
                           onUndoPayment={handleUndoPayment}
                           onRecordPayment={(target) => setPayTarget(target)}
                           onEditPayment={(target) => setEditTarget(target)}
+                          onVerifyPayment={(target) => setVerifyTarget(target)}
                           isAuditExpanded={expandedAudits.has(fee._id)}
                           onToggleAudit={() => toggleAuditExpanded(fee._id)}
                         />
@@ -1216,6 +1234,9 @@ const FeesPage: React.FC = () => {
                                 onEditPayment={(target) =>
                                   setEditTarget(target)
                                 }
+                                onVerifyPayment={(target) =>
+                                  setVerifyTarget(target)
+                                }
                                 isAuditExpanded={expandedAudits.has(fee._id)}
                                 onToggleAudit={() =>
                                   toggleAuditExpanded(fee._id)
@@ -1295,6 +1316,13 @@ const FeesPage: React.FC = () => {
           onClose={() => setEditTarget(null)}
         />
       )}
+      {verifyTarget && (
+        <VerifyPaymentModal
+          fee={verifyTarget.fee}
+          installment={verifyTarget.installment}
+          onClose={() => setVerifyTarget(null)}
+        />
+      )}
       {ConfirmDialog}
     </div>
   );
@@ -1320,6 +1348,10 @@ interface FeePlanDetailBlockProps {
     transactionId?: string;
     paymentBreakdown?: PaymentBreakdownItem[];
   }) => void;
+  onVerifyPayment?: (target: {
+    fee: AdminFeeRecord;
+    installment: FeeInstallment;
+  }) => void;
   isAuditExpanded: boolean;
   onToggleAudit: () => void;
 }
@@ -1331,6 +1363,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
   onUndoPayment,
   onRecordPayment,
   onEditPayment,
+  onVerifyPayment,
   isAuditExpanded,
   onToggleAudit,
 }) => {
@@ -1463,11 +1496,15 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
 
                 <Badge
                   variant={
-                    STATUS_VARIANT[inst.status] ?? (isPastDue ? "red" : "gray")
+                    inst.status === "pending_verification"
+                      ? "yellow"
+                      : (STATUS_VARIANT[inst.status] ?? (isPastDue ? "red" : "gray"))
                   }
                   size="sm"
                 >
-                  {isPastDue && inst.status !== "paid"
+                  {inst.status === "pending_verification"
+                    ? "verification pending"
+                    : isPastDue && inst.status !== "paid"
                     ? "overdue"
                     : inst.status}
                 </Badge>
@@ -1505,7 +1542,17 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                     </>
                   )}
 
-                  {inst.status !== "paid" && (
+                  {inst.status === "pending_verification" ? (
+                    <button
+                      type="button"
+                      onClick={() => onVerifyPayment?.({ fee, installment: inst })}
+                      className="flex items-center gap-1.5 text-[11px] font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 px-3 py-1 rounded shadow-sm transition-colors animate-pulse"
+                      title="Guardian submitted proof. Click to verify."
+                    >
+                      <ShieldCheck size={12} />
+                      <span>Verify Payment</span>
+                    </button>
+                  ) : inst.status !== "paid" ? (
                     <>
                       <button
                         type="button"
@@ -1541,7 +1588,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                         Record Pay
                       </button>
                     </>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -2007,6 +2054,209 @@ const CreateFeeModal: React.FC<{
           </Button>
         </div>
       </form>
+    </Modal>
+  );
+};
+
+const VerifyPaymentModal: React.FC<{
+  fee: AdminFeeRecord;
+  installment: FeeInstallment;
+  onClose: () => void;
+}> = ({ fee, installment, onClose }) => {
+  const [verifyPayment, { isLoading }] = useVerifyPaymentMutation();
+  const [showRejectInput, setShowRejectInput] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+
+  const proof = installment.verificationProof;
+  const claimedAmount = proof?.claimedAmount ?? (installment.amount - installment.paidAmount);
+  const studentName = `${fee.studentId?.firstName || ""} ${fee.studentId?.lastName || ""}`.trim() || "Student";
+
+  const handleApprove = async () => {
+    try {
+      await verifyPayment({
+        feeId: fee._id,
+        installmentNumber: installment.installmentNumber,
+        action: "approve",
+        adjustedAmount: claimedAmount,
+      }).unwrap();
+      toast.success("Payment verified and marked as paid! Receipt created.");
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to verify payment");
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectionReason.trim()) {
+      toast.error("Please enter a reason for rejecting the payment proof");
+      return;
+    }
+    try {
+      await verifyPayment({
+        feeId: fee._id,
+        installmentNumber: installment.installmentNumber,
+        action: "reject",
+        rejectionReason: rejectionReason.trim(),
+      }).unwrap();
+      toast.success("Payment proof rejected");
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to reject payment proof");
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title="Verify Guardian Payment Proof"
+      size="md"
+    >
+      <div className="space-y-4">
+        {/* Info Card */}
+        <div className="bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <User size={16} className="text-volt-500" />
+              <span className="font-semibold text-slate-900 dark:text-white text-sm">
+                {studentName}
+              </span>
+            </div>
+            <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold">
+              Pending Verification
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-200 dark:border-white/10 pt-3">
+            <div>
+              <span className="text-slate-500 block text-2xs uppercase tracking-wider font-mono">
+                Installment Milestone
+              </span>
+              <span className="font-medium text-slate-800 dark:text-slate-200">
+                Installment #{installment.installmentNumber}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-2xs uppercase tracking-wider font-mono">
+                Milestone Due Date
+              </span>
+              <span className="font-mono text-slate-800 dark:text-slate-200">
+                {new Date(installment.dueDate).toLocaleDateString()}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Claimed Payment Proof Box */}
+        <div className="border border-amber-500/30 bg-amber-500/[0.04] rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+              Submitted Payment Proof
+            </span>
+            <span className="font-orbital text-lg font-bold text-slate-900 dark:text-white">
+              ₹{claimedAmount.toLocaleString("en-IN")}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+            <div>
+              <span className="text-slate-500 text-2xs block uppercase font-mono">Payment Mode:</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200 uppercase">
+                {proof?.paymentMethod || "UPI"}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-500 text-2xs block uppercase font-mono">Reference / UTR ID:</span>
+              <span className="font-mono font-semibold text-slate-900 dark:text-white truncate block">
+                {proof?.transactionId || "—"}
+              </span>
+            </div>
+            {proof?.submittedAt && (
+              <div className="sm:col-span-2">
+                <span className="text-slate-500 text-2xs block uppercase font-mono">Submitted On:</span>
+                <span className="font-mono text-slate-700 dark:text-slate-300">
+                  {new Date(proof.submittedAt).toLocaleString()}
+                </span>
+              </div>
+            )}
+            {proof?.notes && (
+              <div className="sm:col-span-2 pt-1 border-t border-amber-500/20">
+                <span className="text-slate-500 text-2xs block uppercase font-mono">Guardian Notes:</span>
+                <p className="text-slate-700 dark:text-slate-300 italic text-xs mt-0.5">
+                  "{proof.notes}"
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Reject Reason Form if active */}
+        {showRejectInput && (
+          <div className="space-y-2 border border-rose-500/30 bg-rose-500/[0.04] rounded-xl p-3 animate-fade-in">
+            <label className="block text-xs font-semibold text-rose-600 dark:text-rose-400">
+              Rejection Reason (will be shown to guardian)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. UTR number not found in academy bank account, incorrect amount"
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              className="w-full text-xs rounded-lg bg-white dark:bg-white/5 border border-rose-300 dark:border-rose-500/30 px-3 py-2 text-slate-900 dark:text-white outline-none focus:border-rose-500"
+            />
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="pt-2 flex items-center justify-between gap-3 border-t border-slate-200 dark:border-white/10">
+          {!showRejectInput ? (
+            <button
+              type="button"
+              onClick={() => setShowRejectInput(true)}
+              className="text-xs text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 font-semibold px-3 py-2 rounded hover:bg-rose-500/10 transition-colors"
+            >
+              Reject Proof
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleReject}
+                disabled={isLoading}
+                className="btn-danger text-xs py-2 px-3"
+              >
+                Confirm Reject
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowRejectInput(false)}
+                className="btn-secondary text-xs py-2 px-3"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isLoading}
+              className="btn-secondary text-xs py-2 px-3"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              onClick={handleApprove}
+              disabled={isLoading}
+              className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
+            >
+              <CheckCircle size={14} />
+              <span>Approve &amp; Mark Paid</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </Modal>
   );
 };

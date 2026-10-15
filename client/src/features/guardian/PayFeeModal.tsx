@@ -11,6 +11,8 @@ import {
   Calendar,
   User,
   ArrowRight,
+  Info,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
@@ -79,8 +81,27 @@ export const PayFeeModal: React.FC<PayFeeModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!payAmount || payAmount <= 0) {
-      toast.error("Please enter a valid payment amount");
+
+    const numericAmount = Number(payAmount);
+    if (!numericAmount || numericAmount <= 0) {
+      toast.error("Please enter a valid payment amount greater than zero");
+      return;
+    }
+
+    if (numericAmount > amount) {
+      toast.error(`Amount cannot exceed the remaining due of ${currency === "INR" ? "₹" : currency} ${amount.toLocaleString("en-IN")}`);
+      return;
+    }
+
+    if (
+      (paymentMethod === "upi" || paymentMethod === "bank_transfer") &&
+      !transactionId.trim()
+    ) {
+      toast.error(
+        paymentMethod === "upi"
+          ? "Please provide the UPI Transaction Reference ID (UTR)"
+          : "Please enter the Bank Transfer Reference / UTR Number"
+      );
       return;
     }
 
@@ -88,17 +109,21 @@ export const PayFeeModal: React.FC<PayFeeModalProps> = ({
       await payChildFee({
         feeId,
         installmentNumber,
-        amount: Number(payAmount),
+        amount: numericAmount,
         paymentMethod,
         transactionId: transactionId.trim() || undefined,
         notes: notes.trim() || undefined,
       }).unwrap();
 
-      toast.success("Payment recorded successfully!");
+      toast.success(
+        "Payment proof submitted successfully! Awaiting academy verification."
+      );
       onSuccess?.();
       onClose();
     } catch (err: any) {
-      toast.error(err?.data?.message || "Failed to submit payment. Please try again.");
+      toast.error(
+        err?.data?.message || "Failed to submit payment. Please try again."
+      );
     }
   };
 
@@ -109,48 +134,48 @@ export const PayFeeModal: React.FC<PayFeeModalProps> = ({
     activeTab === "bank_transfer" || config?.paymentMethod === "bank_transfer";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
-      <div className="nox-card w-full max-w-xl max-h-[90vh] overflow-y-auto border-core-400/30 bg-[#0d121c] p-0 shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/[0.08] px-6 py-4 sticky top-0 bg-[#0d121c] z-10">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+      <div className="card w-full max-w-xl max-h-[92vh] overflow-y-auto border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-800 shadow-2xl p-0 rounded-2xl flex flex-col">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 px-5 sm:px-6 py-4 sticky top-0 bg-white/95 dark:bg-pitch-900/95 backdrop-blur z-20 rounded-t-2xl">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-core-400/10 border border-core-400/20 flex items-center justify-center text-core-400">
+            <div className="w-10 h-10 rounded-xl bg-volt-400/15 border border-volt-400/30 flex items-center justify-center text-volt-600 dark:text-volt-400">
               <Wallet size={20} />
             </div>
             <div>
-              <h3 className="font-orbital text-base font-semibold text-nox-high">
-                Pay Academy Fee
+              <h3 className="font-orbital text-base font-semibold text-slate-900 dark:text-white">
+                Submit Fee Payment
               </h3>
-              <p className="text-xs text-nox-mid">
-                Installment #{installmentNumber} · {config?.academyName || "Academy"}
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Installment #{installmentNumber} · {config?.academyName || "Academy Office"}
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-nox-low hover:text-nox-high transition-colors p-1 rounded-lg hover:bg-white/[0.06]"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06]"
           >
             <X size={20} />
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
-          {/* Fee Summary Card */}
-          <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="p-5 sm:p-6 space-y-6">
+          {/* Fee Summary Banner */}
+          <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-core-400 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-volt-600 dark:text-volt-400 uppercase tracking-wider">
                   {feeType?.replace("_", " ") || "Tuition Fee"}
                 </span>
                 {studentName && (
-                  <span className="text-xs text-nox-mid flex items-center gap-1">
+                  <span className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1 font-medium">
                     <User size={12} /> {studentName}
                   </span>
                 )}
               </div>
               {dueDate && (
-                <div className="flex items-center gap-1.5 text-xs text-nox-low font-mono mt-1">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-mono mt-1">
                   <Calendar size={13} /> Due:{" "}
                   {new Date(dueDate).toLocaleDateString(undefined, {
                     month: "short",
@@ -160,11 +185,12 @@ export const PayFeeModal: React.FC<PayFeeModalProps> = ({
                 </div>
               )}
             </div>
+
             <div className="text-left sm:text-right">
-              <div className="text-2xs text-nox-low uppercase tracking-wider font-mono">
-                Amount to Pay
-              </div>
-              <div className="font-orbital text-xl font-bold text-nox-high">
+              <span className="text-3xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Remaining Due
+              </span>
+              <div className="font-orbital text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                 {currencySymbol}
                 {amount.toLocaleString("en-IN")}
               </div>
@@ -172,125 +198,107 @@ export const PayFeeModal: React.FC<PayFeeModalProps> = ({
           </div>
 
           {configLoading ? (
-            <NoxSkeleton className="h-44 rounded-xl" />
+            <NoxSkeleton className="h-64 rounded-xl" />
           ) : (
             <>
-              {/* Payment Method Switcher if academy supports both */}
+              {/* Method Tabs if both QR and Bank Transfer supported */}
               {isBoth && (
-                <div className="flex rounded-xl bg-white/[0.04] p-1 border border-white/[0.08]">
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/5">
                   <button
                     type="button"
-                    onClick={() => {
-                      setActiveTab("qr");
-                      setPaymentMethod("upi");
-                    }}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition-all ${
+                    onClick={() => setActiveTab("qr")}
+                    className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
                       activeTab === "qr"
-                        ? "bg-core-400 text-black font-semibold shadow-sm"
-                        : "text-nox-mid hover:text-nox-high"
+                        ? "bg-white dark:bg-pitch-700 text-slate-900 dark:text-white shadow-sm"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
-                    <QrCode size={15} />
-                    <span>Scan UPI QR Code</span>
+                    <QrCode size={14} />
+                    <span>Pay via UPI QR</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setActiveTab("bank_transfer");
-                      setPaymentMethod("bank_transfer");
-                    }}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition-all ${
+                    onClick={() => setActiveTab("bank_transfer")}
+                    className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
                       activeTab === "bank_transfer"
-                        ? "bg-core-400 text-black font-semibold shadow-sm"
-                        : "text-nox-mid hover:text-nox-high"
+                        ? "bg-white dark:bg-pitch-700 text-slate-900 dark:text-white shadow-sm"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
-                    <Building2 size={15} />
-                    <span>Bank Account Details</span>
+                    <Building2 size={14} />
+                    <span>Bank Transfer (NEFT/IMPS)</span>
                   </button>
                 </div>
               )}
 
-              {/* QR Code Presentation */}
+              {/* 1. UPI QR Presentation */}
               {showQr && (
-                <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-5 text-center space-y-4">
-                  <div className="flex items-center justify-center gap-2 text-xs font-semibold text-core-400 uppercase tracking-wider">
-                    <QrCode size={16} /> Scan &amp; Pay via UPI
-                  </div>
-                  <div className="flex justify-center">
-                    {config?.feeQrImageUrl ? (
-                      <div className="p-3 bg-white rounded-xl shadow-lg border border-white/20 inline-block">
+                <div className="space-y-4">
+                  {config?.feeQrImageUrl ? (
+                    <div className="flex flex-col items-center justify-center p-5 bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-2xl text-center">
+                      <div className="relative p-3 bg-white rounded-2xl shadow-md border border-slate-200">
                         <img
                           src={config.feeQrImageUrl}
-                          alt="Academy UPI QR"
-                          className="w-48 h-48 object-contain rounded-lg"
+                          alt="Academy Payment QR Code"
+                          className="w-44 h-44 object-contain"
                         />
                       </div>
-                    ) : (
-                      <div className="w-48 h-48 rounded-xl bg-white/[0.04] border border-dashed border-white/20 flex flex-col items-center justify-center text-center p-4">
-                        <QrCode size={36} className="text-nox-low mb-2" />
-                        <span className="text-xs text-nox-low font-mono">
-                          Academy hasn't uploaded a QR image yet
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {config?.bankDetails?.upiId && (
-                    <div className="pt-2">
-                      <div className="text-2xs text-nox-low uppercase tracking-wider font-mono mb-1">
-                        Academy UPI ID
-                      </div>
-                      <div className="inline-flex items-center gap-2 bg-white/[0.05] border border-white/[0.1] rounded-lg px-3 py-1.5 text-xs font-mono text-nox-high">
-                        <span>{config.bankDetails.upiId}</span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            copyToClipboard(config.bankDetails!.upiId!, "UPI ID")
-                          }
-                          className="text-core-400 hover:text-core-300 p-0.5"
-                          title="Copy UPI ID"
-                        >
-                          {copiedField === "UPI ID" ? (
-                            <Check size={14} className="text-field-400" />
-                          ) : (
-                            <Copy size={14} />
-                          )}
-                        </button>
-                      </div>
+                      <p className="text-xs font-medium text-slate-700 dark:text-slate-300 mt-3">
+                        Scan with GPay, PhonePe, Paytm or any UPI App
+                      </p>
+                      <p className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Amount to pay: {currencySymbol} {payAmount.toLocaleString("en-IN")}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-700 dark:text-amber-400 text-xs flex items-center gap-2">
+                      <AlertCircle size={16} className="shrink-0" />
+                      <span>
+                        The academy has not uploaded a payment QR code yet. Please use direct bank transfer details below.
+                      </span>
                     </div>
                   )}
 
-                  <p className="text-xs text-nox-mid max-w-sm mx-auto leading-relaxed">
-                    Open Google Pay, PhonePe, Paytm, or any UPI app on your mobile,
-                    scan the QR code above, and complete the fee payment.
-                  </p>
+                  {config?.bankDetails?.upiId && (
+                    <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-xl p-3 flex items-center justify-between">
+                      <div>
+                        <div className="text-2xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
+                          Academy UPI VPA
+                        </div>
+                        <div className="font-mono font-semibold text-slate-900 dark:text-white text-sm">
+                          {config.bankDetails.upiId}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          copyToClipboard(config.bankDetails!.upiId!, "UPI ID")
+                        }
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/10 transition-colors"
+                        title="Copy UPI ID"
+                      >
+                        {copiedField === "UPI ID" ? (
+                          <Check size={14} className="text-emerald-500" />
+                        ) : (
+                          <Copy size={14} />
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Bank Account Details Presentation */}
+              {/* 2. Bank Transfer Presentation */}
               {showBank && (
-                <div className="bg-gradient-to-br from-core-400/[0.04] to-transparent border border-core-400/20 rounded-2xl p-5 space-y-4">
-                  <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-                    <div className="flex items-center gap-2">
-                      <Building2 size={18} className="text-core-400" />
-                      <h4 className="font-orbital text-sm font-semibold text-nox-high">
-                        Academy Bank Account
-                      </h4>
-                    </div>
-                    <span className="text-2xs font-mono px-2 py-0.5 rounded bg-core-400/10 text-core-400 font-semibold uppercase">
-                      IMPS / NEFT / RTGS
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    {/* Beneficiary Name */}
-                    <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 flex items-center justify-between">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Account Name */}
+                    <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-xl p-3 flex items-center justify-between sm:col-span-2">
                       <div className="min-w-0 pr-2">
-                        <div className="text-[10px] text-nox-low uppercase tracking-wider font-mono">
+                        <div className="text-2xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
                           Beneficiary Name
                         </div>
-                        <div className="font-medium text-nox-high truncate">
+                        <div className="font-medium text-slate-900 dark:text-white truncate text-sm">
                           {config?.bankDetails?.accountName || config?.academyName || "—"}
                         </div>
                       </div>
@@ -300,14 +308,13 @@ export const PayFeeModal: React.FC<PayFeeModalProps> = ({
                           onClick={() =>
                             copyToClipboard(
                               config.bankDetails!.accountName!,
-                              "Beneficiary Name",
+                              "Beneficiary Name"
                             )
                           }
-                          className="text-nox-low hover:text-core-400 p-1 rounded"
-                          title="Copy Name"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/10 transition-colors"
                         >
                           {copiedField === "Beneficiary Name" ? (
-                            <Check size={14} className="text-field-400" />
+                            <Check size={14} className="text-emerald-500" />
                           ) : (
                             <Copy size={14} />
                           )}
@@ -315,41 +322,13 @@ export const PayFeeModal: React.FC<PayFeeModalProps> = ({
                       )}
                     </div>
 
-                    {/* Bank Name */}
-                    <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 flex items-center justify-between">
+                    {/* Bank & Account Number */}
+                    <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-xl p-3 flex items-center justify-between">
                       <div className="min-w-0 pr-2">
-                        <div className="text-[10px] text-nox-low uppercase tracking-wider font-mono">
-                          Bank Name
-                        </div>
-                        <div className="font-medium text-nox-high truncate">
-                          {config?.bankDetails?.bankName || "—"}
-                        </div>
-                      </div>
-                      {config?.bankDetails?.bankName && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            copyToClipboard(config.bankDetails!.bankName!, "Bank Name")
-                          }
-                          className="text-nox-low hover:text-core-400 p-1 rounded"
-                          title="Copy Bank"
-                        >
-                          {copiedField === "Bank Name" ? (
-                            <Check size={14} className="text-field-400" />
-                          ) : (
-                            <Copy size={14} />
-                          )}
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Account Number */}
-                    <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 flex items-center justify-between">
-                      <div className="min-w-0 pr-2">
-                        <div className="text-[10px] text-nox-low uppercase tracking-wider font-mono">
+                        <div className="text-2xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
                           Account Number
                         </div>
-                        <div className="font-mono font-semibold text-nox-high text-sm tracking-wide truncate">
+                        <div className="font-mono font-semibold text-slate-900 dark:text-white text-sm truncate">
                           {config?.bankDetails?.accountNumber || "—"}
                         </div>
                       </div>
@@ -359,14 +338,13 @@ export const PayFeeModal: React.FC<PayFeeModalProps> = ({
                           onClick={() =>
                             copyToClipboard(
                               config.bankDetails!.accountNumber!,
-                              "Account Number",
+                              "Account Number"
                             )
                           }
-                          className="text-nox-low hover:text-core-400 p-1 rounded"
-                          title="Copy Account Number"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/10 transition-colors"
                         >
                           {copiedField === "Account Number" ? (
-                            <Check size={14} className="text-field-400" />
+                            <Check size={14} className="text-emerald-500" />
                           ) : (
                             <Copy size={14} />
                           )}
@@ -375,12 +353,12 @@ export const PayFeeModal: React.FC<PayFeeModalProps> = ({
                     </div>
 
                     {/* IFSC Code */}
-                    <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 flex items-center justify-between">
+                    <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-xl p-3 flex items-center justify-between">
                       <div className="min-w-0 pr-2">
-                        <div className="text-[10px] text-nox-low uppercase tracking-wider font-mono">
+                        <div className="text-2xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
                           IFSC Code
                         </div>
-                        <div className="font-mono font-semibold text-nox-high text-sm tracking-wide truncate">
+                        <div className="font-mono font-semibold text-slate-900 dark:text-white text-sm truncate">
                           {config?.bankDetails?.ifscCode || "—"}
                         </div>
                       </div>
@@ -390,11 +368,10 @@ export const PayFeeModal: React.FC<PayFeeModalProps> = ({
                           onClick={() =>
                             copyToClipboard(config.bankDetails!.ifscCode!, "IFSC Code")
                           }
-                          className="text-nox-low hover:text-core-400 p-1 rounded"
-                          title="Copy IFSC"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/10 transition-colors"
                         >
                           {copiedField === "IFSC Code" ? (
-                            <Check size={14} className="text-field-400" />
+                            <Check size={14} className="text-emerald-500" />
                           ) : (
                             <Copy size={14} />
                           )}
@@ -402,142 +379,137 @@ export const PayFeeModal: React.FC<PayFeeModalProps> = ({
                       )}
                     </div>
 
-                    {/* Branch Name */}
-                    {config?.bankDetails?.branchName && (
-                      <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 flex items-center justify-between sm:col-span-2">
+                    {/* Bank Name / Branch */}
+                    {config?.bankDetails?.bankName && (
+                      <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-xl p-3 flex items-center justify-between sm:col-span-2">
                         <div className="min-w-0 pr-2">
-                          <div className="text-[10px] text-nox-low uppercase tracking-wider font-mono">
-                            Branch
+                          <div className="text-2xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
+                            Bank &amp; Branch
                           </div>
-                          <div className="font-medium text-nox-high truncate">
-                            {config.bankDetails.branchName}
+                          <div className="font-medium text-slate-800 dark:text-slate-200 truncate text-sm">
+                            {config.bankDetails.bankName}
+                            {config.bankDetails.branchName ? ` · ${config.bankDetails.branchName}` : ""}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            copyToClipboard(
-                              config.bankDetails!.branchName!,
-                              "Branch Name",
-                            )
-                          }
-                          className="text-nox-low hover:text-core-400 p-1 rounded"
-                          title="Copy Branch"
-                        >
-                          {copiedField === "Branch Name" ? (
-                            <Check size={14} className="text-field-400" />
-                          ) : (
-                            <Copy size={14} />
-                          )}
-                        </button>
                       </div>
                     )}
                   </div>
-
-                  <p className="text-xs text-nox-mid leading-relaxed pt-1">
-                    Please transfer the fee amount directly using Net Banking, NEFT,
-                    or IMPS. After transferring, paste your Transaction / UTR number
-                    below to confirm.
-                  </p>
                 </div>
               )}
 
-              {/* Confirmation Form */}
+              {/* 3. CONFIRM YOUR PAYMENT PROOF FORM */}
               <form
                 onSubmit={handleSubmit}
-                className="border-t border-white/[0.08] pt-5 space-y-4"
+                className="border-t border-slate-200 dark:border-white/10 pt-5 space-y-4"
               >
-                <div className="flex items-center gap-2">
-                  <ShieldCheck size={16} className="text-core-400" />
-                  <h4 className="font-orbital text-xs font-semibold uppercase tracking-wider text-nox-high">
-                    Confirm Your Payment
-                  </h4>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={18} className="text-volt-500" />
+                    <h4 className="font-orbital text-sm font-semibold uppercase tracking-wider text-slate-900 dark:text-white">
+                      Confirm Your Payment Proof
+                    </h4>
+                  </div>
+                  <span className="text-2xs font-mono text-slate-400">Step 2 of 2</span>
+                </div>
+
+                {/* Workflow Explanatory Notice */}
+                <div className="bg-sky-500/10 border border-sky-500/20 rounded-xl p-3 text-sky-800 dark:text-sky-300 text-xs flex items-start gap-2.5">
+                  <Info size={16} className="shrink-0 mt-0.5 text-sky-500" />
+                  <p className="leading-relaxed">
+                    <strong>Verification Process:</strong> Once submitted, your payment details will be placed under review by the academy office. After verification, an official receipt will be generated and added to your portal.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Payment Method */}
                   <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Payment Mode <span className="text-rose-500">*</span>
+                    </label>
                     <Select
-                      label="Payment Mode"
                       value={paymentMethod}
                       onChange={(e) => setPaymentMethod(e.target.value)}
                     >
-                      <option value="upi">UPI (GPay / PhonePe / Paytm)</option>
-                      <option value="bank_transfer">
-                        Bank Transfer (IMPS / NEFT)
-                      </option>
+                      <option value="upi">UPI (GPay / PhonePe / Paytm / BHIM)</option>
+                      <option value="bank_transfer">Bank Transfer (IMPS / NEFT / RTGS)</option>
                       <option value="card">Debit / Credit Card</option>
-                      <option value="cash">Cash paid at Academy</option>
+                      <option value="cash">Cash Paid at Academy Counter</option>
+                      <option value="cheque">Cheque</option>
                     </Select>
                   </div>
 
                   {/* Amount Paid */}
                   <div>
-                    <label className="block text-xs font-medium text-nox-mid mb-1">
-                      Amount Paid ({currencySymbol})
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Amount Paid ({currencySymbol}) <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="number"
                       step="any"
                       min="1"
+                      max={amount}
                       value={payAmount}
                       onChange={(e) => setPayAmount(Number(e.target.value))}
-                      className="nox-input w-full text-xs font-mono font-semibold"
+                      className="w-full rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-volt-500 focus:ring-1 focus:ring-volt-500 transition-all font-mono font-medium"
                       required
                     />
                   </div>
 
                   {/* Transaction ID / UTR */}
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-medium text-nox-mid mb-1">
-                      Transaction ID / UTR / Reference Number
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Transaction ID / UTR / Reference Number{" "}
+                      {(paymentMethod === "upi" || paymentMethod === "bank_transfer") && (
+                        <span className="text-rose-500">*</span>
+                      )}
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. UTR123456789 or UPI Ref / Cheque No."
+                      placeholder="e.g. 12-digit UPI UTR or Bank Reference No."
                       value={transactionId}
                       onChange={(e) => setTransactionId(e.target.value)}
-                      className="nox-input w-full text-xs font-mono"
+                      className="w-full rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-volt-500 focus:ring-1 focus:ring-volt-500 transition-all font-mono font-medium"
+                      required={paymentMethod === "upi" || paymentMethod === "bank_transfer"}
                     />
-                    <p className="text-[11px] text-nox-low mt-1">
-                      Helps the academy instantly identify and reconcile your payment.
+                    <p className="text-2xs text-slate-500 dark:text-slate-400 mt-1">
+                      Enables the academy finance desk to reconcile and approve your payment.
                     </p>
                   </div>
 
-                  {/* Optional Notes */}
+                  {/* Optional Remarks */}
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-medium text-nox-mid mb-1">
-                      Additional Remarks / Note (Optional)
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Additional Remarks / Notes (Optional)
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Paid from HDFC account ending in 1234"
+                      placeholder="e.g. Paid via HDFC account / Cheque number / Deposited by guardian"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      className="nox-input w-full text-xs"
+                      className="w-full rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-volt-500 focus:ring-1 focus:ring-volt-500 transition-all text-xs"
                     />
                   </div>
                 </div>
 
-                <div className="pt-2 flex items-center justify-end gap-3">
+                <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-3">
                   <button
                     type="button"
                     onClick={onClose}
                     disabled={isSubmitting}
-                    className="nox-btn-secondary text-xs"
+                    className="btn-secondary text-xs py-2.5 px-4"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="nox-btn-primary text-xs flex items-center gap-2"
+                    className="btn-primary text-xs py-2.5 px-5 flex items-center gap-2"
                   >
                     {isSubmitting ? (
-                      "Recording Payment..."
+                      "Submitting Proof..."
                     ) : (
                       <>
-                        <span>Submit Payment Proof</span>
+                        <span>Submit Proof for Verification</span>
                         <ArrowRight size={14} />
                       </>
                     )}

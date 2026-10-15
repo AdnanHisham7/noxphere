@@ -39,6 +39,14 @@ export interface FeeDocument extends Document {
     transactionId?: string;
     paymentMethod?: string;
     paymentBreakdown?: PaymentBreakdownItem[];
+    verificationProof?: {
+      claimedAmount?: number;
+      paymentMethod?: string;
+      transactionId?: string;
+      notes?: string;
+      submittedAt?: Date;
+      submittedBy?: string;
+    };
     gateway?: string;
     receiptUrl?: string;
     reminderSentCount: number;
@@ -60,7 +68,7 @@ const InstallmentSchema = new Schema({
   paidAt: Date,
   status: {
     type: String,
-    enum: ['pending', 'partial', 'paid', 'overdue', 'refunded'],
+    enum: ['pending', 'partial', 'paid', 'overdue', 'refunded', 'pending_verification'],
     default: 'pending',
   },
   transactionId: String,
@@ -73,6 +81,14 @@ const InstallmentSchema = new Schema({
       _id: false,
     }],
     default: undefined,
+  },
+  verificationProof: {
+    claimedAmount: Number,
+    paymentMethod: String,
+    transactionId: String,
+    notes: String,
+    submittedAt: Date,
+    submittedBy: String,
   },
   gateway: String,
   receiptUrl: String,
@@ -114,7 +130,7 @@ const FeeSchema = new Schema<FeeDocument>(
     installments: [InstallmentSchema],
     overallStatus: {
       type: String,
-      enum: ['pending', 'partial', 'paid', 'overdue', 'refunded'],
+      enum: ['pending', 'partial', 'paid', 'overdue', 'refunded', 'pending_verification'],
       default: 'pending',
       index: true,
     },
