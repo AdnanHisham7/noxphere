@@ -43,6 +43,7 @@ import {
   Button,
   PageHeader,
 } from "../../components/ui";
+import { SuperAdminDashboardView } from "./SuperAdminDashboardView";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useTransferWallEnabled } from "../../hooks/useTransferWallEnabled";
 import { RootState } from "../../store";
@@ -115,7 +116,7 @@ const DashboardPage: React.FC = () => {
 
   const { data: stats, isLoading: statsLoading } = useGetDashboardStatsQuery(
     queryParams,
-    { skip },
+    { skip: skip || isSuperAdmin },
   );
   const { data: attendanceTrend, isLoading: trendLoading } =
     useGetAttendanceTrendQuery(
@@ -187,57 +188,19 @@ const DashboardPage: React.FC = () => {
         }
       />
 
-      {/* KPI Stats Row */}
-      {statsLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-lg" />
-          ))}
-        </div>
-      ) : isSuperAdmin ? (
-        /* Super Admin Stats Layout */
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          <StatCard
-            label="Total Academies"
-            value={stats?.totalAcademies ?? 0}
-            sublabel="Registered academies"
-            icon={<School className="h-5 w-5" />}
-            accent="volt"
-          />
-
-          <StatCard
-            label="Total Franchises"
-            value={stats?.totalFranchises ?? 0}
-            sublabel="Operational branches"
-            icon={<Building2 className="h-5 w-5" />}
-            accent="field"
-          />
-
-          <StatCard
-            label="Total Players"
-            value={stats?.totalStudents ?? 0}
-            sublabel="Registered squad members"
-            icon={<Shirt className="h-5 w-5" />}
-            accent="ice"
-          />
-
-          <StatCard
-            label="Total Coaches"
-            value={stats?.totalCoaches ?? 0}
-            sublabel="Active staff"
-            icon={<Users className="h-5 w-5" />}
-            accent="ember"
-          />
-
-          <StatCard
-            label="Total Teams"
-            value={stats?.totalTeams ?? 0}
-            sublabel="Squad groups"
-            icon={<Shield className="h-5 w-5" />}
-            accent="volt"
-          />
-        </div>
-      ) : isConsolidated ? (
+      {/* Super Admin Master Analytics or Manager/Coach Dashboard */}
+      {isSuperAdmin ? (
+        <SuperAdminDashboardView />
+      ) : (
+        <>
+          {/* KPI Stats Row */}
+          {statsLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-28 rounded-lg" />
+              ))}
+            </div>
+          ) : isConsolidated ? (
         /* Consolidated (academy-wide) Stats Layout */
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           <StatCard
@@ -864,6 +827,8 @@ const DashboardPage: React.FC = () => {
             })}
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

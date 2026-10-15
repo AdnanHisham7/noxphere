@@ -26,6 +26,7 @@ import {
   LifeBuoy,
   X,
   Receipt,
+  Sliders,
   type LucideIcon,
 } from 'lucide-react';
 import { RootState } from '../../store';
@@ -86,7 +87,7 @@ const navConfig: Record<string, NavItem[]> = {
     { path: '/franchises', label: 'Franchises', icon: Building2 },
     { path: '/users', label: 'Users', icon: Users },
     { path: '/finance', label: 'Finance', icon: Wallet },
-    { path: '/expenses', label: 'Expenses & Stocks', icon: Receipt },
+    { path: '/platform-settings', label: 'Platform Engine', icon: Sliders },
     { path: '/nfc-cards', label: 'NFC Cards', icon: CreditCard },
     { path: '/admin/support', label: 'Platform Issues', icon: LifeBuoy },
   ],

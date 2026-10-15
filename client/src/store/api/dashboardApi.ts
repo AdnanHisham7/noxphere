@@ -72,11 +72,85 @@ export interface ActivityEvent {
   icon: string;
 }
 
+export interface SuperAdminKpi {
+  totalAcademies: number;
+  activeAcademies: number;
+  trialingAcademies: number;
+  expiredAcademies: number;
+  totalFranchises: number;
+  totalStudents: number;
+  totalCoaches: number;
+  totalTeams: number;
+  totalSessions: number;
+  totalPlatformRevenue: number;
+  subscriptionRevenue: number;
+  nfcRevenue: number;
+  totalCapacity: number;
+  overallCapacityUtilization: number;
+  openTicketsCount: number;
+}
+
+export interface SuperAdminMonthlyRevenue {
+  month: string;
+  label: string;
+  subscriptions: number;
+  nfc: number;
+  total: number;
+}
+
+export interface SuperAdminStatusDist {
+  status: string;
+  count: number;
+  color: string;
+}
+
+export interface SuperAdminCurrencyDist {
+  currency: string;
+  count: number;
+}
+
+export interface SuperAdminTopAcademy {
+  id: string;
+  name: string;
+  country: string;
+  currency: string;
+  isTrial: boolean;
+  status: string;
+  totalFranchises: number;
+  activeStudents: number;
+  capacity: number;
+  utilizationPercentage: number;
+  coachesCount: number;
+  currentPeriodEnd: string | null;
+}
+
+export interface SuperAdminActivityEvent {
+  id: string;
+  type: "academy" | "nfc" | "ticket";
+  title: string;
+  description: string;
+  time: string;
+}
+
+export interface SuperAdminAnalyticsData {
+  kpi: SuperAdminKpi;
+  monthlyRevenue: SuperAdminMonthlyRevenue[];
+  statusDistribution: SuperAdminStatusDist[];
+  currencyDistribution: SuperAdminCurrencyDist[];
+  topAcademies: SuperAdminTopAcademy[];
+  activityFeed: SuperAdminActivityEvent[];
+}
+
 export const dashboardApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getDashboardStats: builder.query<DashboardStats, { franchiseId?: string; academyId?: string }>({
       query: (params) => ({ url: "/dashboard/stats", params }),
       transformResponse: (res: ApiResponse<DashboardStats>) => res.data,
+      providesTags: ["Dashboard"],
+    }),
+    getSuperAdminAnalytics: builder.query<SuperAdminAnalyticsData, void>({
+      query: () => "/dashboard/super-admin",
+      transformResponse: (res: ApiResponse<SuperAdminAnalyticsData>) => res.data,
       providesTags: ["Dashboard"],
     }),
     getAttendanceTrend: builder.query<AttendanceTrendPoint[], { franchiseId?: string; academyId?: string; days?: number }>({
@@ -109,6 +183,7 @@ export const dashboardApi = baseApi.injectEndpoints({
 
 export const {
   useGetDashboardStatsQuery,
+  useGetSuperAdminAnalyticsQuery,
   useGetAttendanceTrendQuery,
   useGetSkillRadarQuery,
   useGetTeamHealthQuery,

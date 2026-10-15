@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { clsx } from "clsx";
 import { toast } from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   LayoutGrid,
   List,
@@ -22,9 +22,9 @@ import {
   Globe2,
   CheckCircle2,
   CreditCard,
+  Sliders,
 } from "lucide-react";
 import { Button, Input, Modal, Badge, StatCard, ImageUploadField, PageHeader } from "../../components/ui";
-import { PlatformBillingCard } from "./PlatformBillingCard";
 import { baseApi } from "../../store/api/baseApi";
 import { academyApi } from "@/store/api/academyApi";
 import { academySubscriptionApi } from "@/store/api/academySubscriptionApi";
@@ -482,6 +482,15 @@ const AcademiesManagement: React.FC = () => {
                 <LayoutGrid size={16} />
               </button>
             </div>
+            <Link to="/platform-settings">
+              <Button
+                variant="secondary"
+                icon={<Sliders size={16} className="text-volt-400" />}
+                className="w-full sm:w-auto justify-center"
+              >
+                Platform Engine
+              </Button>
+            </Link>
             <Button
               onClick={() => setIsAddModalOpen(true)}
               icon={<Plus size={18} />}
@@ -492,8 +501,6 @@ const AcademiesManagement: React.FC = () => {
           </div>
         }
       />
-
-      <PlatformBillingCard />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

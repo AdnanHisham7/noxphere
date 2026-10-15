@@ -113,6 +113,7 @@ const NfcOrderSuccessPage = lazy(() => import("./features/nfc/NfcOrderSuccessPag
 const NfcOrderCancelledPage = lazy(() => import("./features/nfc/NfcOrderCancelledPage"));
 const ProfilePage = lazy(() => import("./features/profile/ProfilePage"));
 const AcademyDashboardPage = lazy(() => import("./features/academies/AcademyDashboardPage"));
+const PlatformSettingsPage = lazy(() => import("./features/super-admin/PlatformSettingsPage"));
 
 const PageLoader = () => (
   <div className="min-h-screen bg-slate-50 dark:bg-pitch-950 flex items-center justify-center transition-colors duration-200">
@@ -286,6 +287,7 @@ const App: React.FC = () => (
               >
                 <Route path="/academies" element={<AcademiesManagement />} />
                 <Route path="/academies/:academyId/dashboard" element={<AcademyDashboardPage />} />
+                <Route path="/platform-settings" element={<PlatformSettingsPage />} />
                 <Route path="/users" element={<UsersManagementPage />} />
                 <Route path="/finance" element={<FinancePage />} />
                 <Route path="/admin/support" element={<PlatformTicketsAdminPage />} />

@@ -9,6 +9,9 @@ import { FranchiseModel } from "../../../infrastructure/database/models/Franchis
 import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { SessionModel } from "../../../infrastructure/database/models/Session.model";
 import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
+import { AcademySubscriptionModel } from "../../../infrastructure/database/models/AcademySubscription.model";
+import { NfcCardRequestModel } from "../../../infrastructure/database/models/NfcCardRequest.model";
+import { PlatformTicketModel } from "../../../infrastructure/database/models/PlatformTicket.model";
 import { BadRequestError } from "../../../shared/errors/AppError";
 
 function round1(n: number): number {
@@ -345,5 +348,351 @@ export class DashboardUseCases {
     return events
       .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
       .slice(0, limit);
+  }
+
+  async getSuperAdminAnalytics() {
+    const [
+      academies,
+      franchises,
+      subscriptions,
+      nfcOrders,
+      sessionsCount,
+      teamsCount,
+      openTicketsCount,
+      studentAgg,
+      coachAgg,
+    ] = await Promise.all([
+      AcademyModel.find({ deletedAt: { $exists: false } }).lean(),
+      FranchiseModel.find({ deletedAt: { $exists: false } }).select("_id academyId name").lean(),
+      AcademySubscriptionModel.find().lean(),
+      NfcCardRequestModel.find({ status: { $in: ["paid", "dispatched", "delivered"] } }).lean(),
+      SessionModel.countDocuments({ deletedAt: { $exists: false } }),
+      TeamModel.countDocuments({ deletedAt: { $exists: false } }),
+      PlatformTicketModel.countDocuments({ status: { $in: ["open", "in_progress"] } }),
+      StudentModel.aggregate([
+        { $match: { isActive: true, deletedAt: { $exists: false } } },
+        { $group: { _id: "$franchiseId", count: { $sum: 1 } } },
+      ]),
+      UserModel.aggregate([
+        { $match: { role: "coach", isActive: true, deletedAt: { $exists: false } } },
+        { $group: { _id: "$academyId", count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    // Map student counts per franchise
+    const franchiseStudentMap = new Map<string, number>();
+    let totalStudents = 0;
+    for (const item of studentAgg) {
+      if (item._id) {
+        const c = item.count || 0;
+        franchiseStudentMap.set(item._id.toString(), c);
+        totalStudents += c;
+      }
+    }
+
+    // Map coach counts per academy
+    const academyCoachMap = new Map<string, number>();
+    let totalCoaches = 0;
+    for (const item of coachAgg) {
+      if (item._id) {
+        const c = item.count || 0;
+        academyCoachMap.set(item._id.toString(), c);
+        totalCoaches += c;
+      }
+    }
+
+    // Map franchises per academy and student total per academy
+    const academyFranchisesMap = new Map<string, string[]>();
+    const academyStudentMap = new Map<string, number>();
+    for (const f of franchises) {
+      if (f.academyId) {
+        const acId = f.academyId.toString();
+        const list = academyFranchisesMap.get(acId) || [];
+        list.push(f._id.toString());
+        academyFranchisesMap.set(acId, list);
+
+        const currentStCount = academyStudentMap.get(acId) || 0;
+        const fCount = franchiseStudentMap.get(f._id.toString()) || 0;
+        academyStudentMap.set(acId, currentStCount + fCount);
+      }
+    }
+
+    const subMap = new Map<string, any>();
+    for (const s of subscriptions) {
+      if (s.academyId) {
+        subMap.set(s.academyId.toString(), s);
+      }
+    }
+
+    const now = new Date();
+    let activeAcademies = 0;
+    let trialingAcademies = 0;
+    let expiredAcademies = 0;
+    let totalProvisionedCapacity = 0;
+
+    const academyStatusList: Array<{
+      id: string;
+      name: string;
+      country?: string;
+      currency?: string;
+      isTrial: boolean;
+      status: string;
+      totalFranchises: number;
+      activeStudents: number;
+      capacity: number;
+      utilizationPercentage: number;
+      coachesCount: number;
+      currentPeriodEnd: Date | null;
+    }> = [];
+
+    const currencyMap = new Map<string, { count: number }>();
+
+    for (const a of academies) {
+      const aId = a._id.toString();
+      const sub = subMap.get(aId);
+      const isTrial = Boolean(sub?.isTrial || a.isTrial);
+      const trialEndsAt = sub?.trialEndsAt || a.trialEndsAt;
+      const isTrialActive = Boolean(isTrial && trialEndsAt && now <= new Date(trialEndsAt));
+      const isTrialExpired = Boolean(isTrial && trialEndsAt && now > new Date(trialEndsAt));
+      const isPaidExpired = Boolean(
+        !isTrial && sub?.currentPeriodEnd && now > new Date(sub.currentPeriodEnd)
+      );
+
+      let effectiveStatus = "incomplete";
+      if (isTrialActive) {
+        effectiveStatus = "trialing";
+        trialingAcademies++;
+      } else if (isTrialExpired) {
+        effectiveStatus = "trial_expired";
+        expiredAcademies++;
+      } else if (isPaidExpired) {
+        effectiveStatus = "past_due";
+        expiredAcademies++;
+      } else if (sub?.status === "active") {
+        effectiveStatus = "active";
+        activeAcademies++;
+      } else {
+        effectiveStatus = (sub?.status as string) || "incomplete";
+      }
+
+      const capacity = isTrialActive
+        ? (sub?.provisionedCapacity || a.trialCapacity || 50)
+        : (sub?.provisionedCapacity || 0);
+
+      totalProvisionedCapacity += capacity;
+      const stCount = academyStudentMap.get(aId) || 0;
+      const util = capacity > 0 ? Math.min(100, Math.round((stCount / capacity) * 100)) : 0;
+      const cur = (a.currency || sub?.currency || "INR").toUpperCase();
+
+      const currEntry = currencyMap.get(cur) || { count: 0 };
+      currEntry.count++;
+      currencyMap.set(cur, currEntry);
+
+      academyStatusList.push({
+        id: aId,
+        name: a.name,
+        country: a.country || "IN",
+        currency: cur,
+        isTrial,
+        status: effectiveStatus,
+        totalFranchises: (academyFranchisesMap.get(aId) || []).length,
+        activeStudents: stCount,
+        capacity,
+        utilizationPercentage: util,
+        coachesCount: academyCoachMap.get(aId) || 0,
+        currentPeriodEnd: sub?.currentPeriodEnd || trialEndsAt || null,
+      });
+    }
+
+    // Revenue calculations
+    let totalSubscriptionRevenue = 0;
+    for (const s of subscriptions) {
+      if (s.status === "active") {
+        const days =
+          s.billingInterval === "year"
+            ? 365
+            : s.billingInterval === "half_year"
+            ? 180
+            : s.billingInterval === "quarter"
+            ? 90
+            : 30;
+        const months =
+          s.billingInterval === "year"
+            ? 12
+            : s.billingInterval === "half_year"
+            ? 6
+            : s.billingInterval === "quarter"
+            ? 3
+            : 1;
+        const studentTotal = (s.ratePerStudentPerDay || 0) * (s.provisionedCapacity || 0) * days;
+        const staffTotal = (s.staffRatePerStaffPerMonth || 0) * (s.provisionedStaffCapacity || 0) * months;
+        totalSubscriptionRevenue += Math.round(studentTotal + staffTotal);
+      }
+    }
+
+    let totalNfcRevenue = 0;
+    for (const o of nfcOrders) {
+      totalNfcRevenue += o.totalAmount || 0;
+    }
+    const totalPlatformRevenue = Math.round(totalSubscriptionRevenue + totalNfcRevenue);
+
+    // Monthly breakdown (last 6 months)
+    const monthlyRevenue: Array<{
+      month: string;
+      label: string;
+      subscriptions: number;
+      nfc: number;
+      total: number;
+    }> = [];
+
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = `${monthNames[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
+
+      let subMonth = 0;
+      for (const s of subscriptions) {
+        const updated = s.updatedAt || s.createdAt;
+        if (
+          updated &&
+          `${updated.getFullYear()}-${String(updated.getMonth() + 1).padStart(2, "0")}` === key &&
+          s.status === "active"
+        ) {
+          const days =
+            s.billingInterval === "year"
+              ? 365
+              : s.billingInterval === "half_year"
+              ? 180
+              : s.billingInterval === "quarter"
+              ? 90
+              : 30;
+          const months =
+            s.billingInterval === "year"
+              ? 12
+              : s.billingInterval === "half_year"
+              ? 6
+              : s.billingInterval === "quarter"
+              ? 3
+              : 1;
+          subMonth += Math.round(
+            (s.ratePerStudentPerDay || 0) * (s.provisionedCapacity || 0) * days +
+              (s.staffRatePerStaffPerMonth || 0) * (s.provisionedStaffCapacity || 0) * months
+          );
+        }
+      }
+
+      let nfcMonth = 0;
+      for (const o of nfcOrders) {
+        const pd = o.paidAt || o.createdAt;
+        if (pd && `${pd.getFullYear()}-${String(pd.getMonth() + 1).padStart(2, "0")}` === key) {
+          nfcMonth += o.totalAmount || 0;
+        }
+      }
+
+      monthlyRevenue.push({
+        month: key,
+        label,
+        subscriptions: subMonth,
+        nfc: nfcMonth,
+        total: Math.round(subMonth + nfcMonth),
+      });
+    }
+
+    // Currency distribution
+    const currencyDistribution = Array.from(currencyMap.entries()).map(([currency, data]) => ({
+      currency,
+      count: data.count,
+    }));
+
+    // Top utilized academies sorted by active students / utilization
+    const topAcademies = academyStatusList
+      .sort((a, b) => b.activeStudents - a.activeStudents || b.utilizationPercentage - a.utilizationPercentage)
+      .slice(0, 8);
+
+    // Recent events across the platform
+    const recentAcademies = await AcademyModel.find({ deletedAt: { $exists: false } })
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .select("name createdAt currency")
+      .lean();
+
+    const recentNfc = await NfcCardRequestModel.find()
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .populate("academyId", "name")
+      .select("quantity totalAmount status createdAt academyId")
+      .lean();
+
+    const recentTickets = await PlatformTicketModel.find()
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .populate("academyId", "name")
+      .select("ticketNumber subject priority status createdAt")
+      .lean();
+
+    const activityFeed: Array<{
+      id: string;
+      type: "academy" | "nfc" | "ticket";
+      title: string;
+      description: string;
+      time: Date;
+    }> = [
+      ...recentAcademies.map((a: any) => ({
+        id: a._id.toString(),
+        type: "academy" as const,
+        title: "New Academy Onboarded",
+        description: `${a.name} registered on the platform (${a.currency || "INR"})`,
+        time: a.createdAt,
+      })),
+      ...recentNfc.map((n: any) => ({
+        id: n._id.toString(),
+        type: "nfc" as const,
+        title: `NFC Order: ${n.quantity} Cards`,
+        description: `${(n.academyId as any)?.name || "Academy"} — Status: ${n.status}`,
+        time: n.createdAt,
+      })),
+      ...recentTickets.map((t: any) => ({
+        id: t._id.toString(),
+        type: "ticket" as const,
+        title: `Support: ${t.ticketNumber}`,
+        description: `${t.subject} (${t.priority} priority)`,
+        time: t.createdAt,
+      })),
+    ]
+      .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+      .slice(0, 8);
+
+    return {
+      kpi: {
+        totalAcademies: academies.length,
+        activeAcademies,
+        trialingAcademies,
+        expiredAcademies,
+        totalFranchises: franchises.length,
+        totalStudents,
+        totalCoaches,
+        totalTeams: teamsCount,
+        totalSessions: sessionsCount,
+        totalPlatformRevenue,
+        subscriptionRevenue: Math.round(totalSubscriptionRevenue),
+        nfcRevenue: Math.round(totalNfcRevenue),
+        totalCapacity: totalProvisionedCapacity,
+        overallCapacityUtilization:
+          totalProvisionedCapacity > 0
+            ? Math.round((totalStudents / totalProvisionedCapacity) * 100)
+            : 0,
+        openTicketsCount,
+      },
+      monthlyRevenue,
+      statusDistribution: [
+        { status: "Active SaaS", count: activeAcademies, color: "#10b981" },
+        { status: "Trialing", count: trialingAcademies, color: "#f59e0b" },
+        { status: "Expired / Past Due", count: expiredAcademies, color: "#ef4444" },
+      ],
+      currencyDistribution,
+      topAcademies,
+      activityFeed,
+    };
   }
 }
