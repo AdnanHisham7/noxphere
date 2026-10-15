@@ -44,6 +44,7 @@ export interface SalaryPayment {
   amount: number;
   status: "pending" | "paid";
   paidAt?: string;
+  paidBy?: string | { firstName?: string; lastName?: string; email?: string };
   notes?: string;
 }
 

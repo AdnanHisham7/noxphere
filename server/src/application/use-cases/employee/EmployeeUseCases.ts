@@ -370,7 +370,9 @@ export class EmployeeUseCases {
   }
 
   async listSalaryHistory(employeeId: string) {
-    return SalaryPaymentModel.find({ employeeId }).sort({ period: -1 });
+    return SalaryPaymentModel.find({ employeeId })
+      .populate("paidBy", "firstName lastName email")
+      .sort({ period: -1 });
   }
 
   async listSalaryForAcademyPeriod(academyId: string, period: string) {

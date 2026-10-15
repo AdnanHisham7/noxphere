@@ -18,6 +18,7 @@ import {
   AlertCircle,
   Phone,
   Mail,
+  Clock3,
 } from "lucide-react";
 import {
   Button,
@@ -43,6 +44,7 @@ import {
 import { useCreateUserMutation } from "../../store/api/usersApi";
 import { useGetFranchisesQuery } from "../../store/api/franchiseApi";
 import { SalaryTrackerPanel } from "./SalaryTrackerPanel";
+import { SalaryHistoryModal } from "./SalaryHistoryModal";
 
 const EmployeesManagementPage: React.FC = () => {
   const academyId = useCurrentAcademyId();
@@ -50,6 +52,7 @@ const EmployeesManagementPage: React.FC = () => {
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [showAddOperationalManager, setShowAddOperationalManager] = useState(false);
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
+  const [historyEmployee, setHistoryEmployee] = useState<Employee | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | "coaches" | "operational" | "staff">("all");
   const { confirm, ConfirmDialog } = useConfirm();
@@ -130,20 +133,22 @@ const EmployeesManagementPage: React.FC = () => {
         title="Employees & Payroll"
         subtitle="Manage employees, coach salaries, operational manager accounts, and monthly payroll disbursement."
         actions={
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
             <Button
               variant="secondary"
-              icon={<ShieldCheck size={15} className="text-volt-500 dark:text-volt-400" />}
+              icon={<ShieldCheck size={14} className="text-volt-500 dark:text-volt-400 shrink-0" />}
               onClick={() => setShowAddOperationalManager(true)}
-              className="border-volt-500/30 text-slate-800 dark:text-white hover:border-volt-400 justify-center"
+              className="border-volt-500/30 text-slate-800 dark:text-white hover:border-volt-400 justify-center !text-xs !py-1.5 sm:!py-2 !px-2.5 sm:!px-3 truncate"
+              title="Add Operational Manager"
             >
-              Add Operational Manager
+              <span className="hidden sm:inline">Add Operational Manager</span>
+              <span className="sm:hidden">Ops Manager</span>
             </Button>
             <Button
               variant="primary"
-              icon={<UserPlus size={15} />}
+              icon={<UserPlus size={14} className="shrink-0" />}
               onClick={() => setShowAddEmployee(true)}
-              className="justify-center"
+              className="justify-center !text-xs !py-1.5 sm:!py-2 !px-2.5 sm:!px-3 truncate"
             >
               Add Employee
             </Button>
@@ -163,9 +168,9 @@ const EmployeesManagementPage: React.FC = () => {
       {tab === "employees" && (
         <div className="space-y-4">
           {/* Search & Filter Toolbar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div className="relative flex-1 max-w-sm">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
+            <div className="relative flex-1">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search by name, designation, phone..."
@@ -175,13 +180,13 @@ const EmployeesManagementPage: React.FC = () => {
               />
             </div>
 
-            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-pitch-900 p-1 rounded-lg border border-slate-200 dark:border-white/10 self-start sm:self-auto">
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-900 p-1 rounded-lg border border-slate-200 dark:border-white/10 overflow-x-auto scrollbar-none max-w-full">
               {(
                 [
                   { id: "all", label: "All" },
                   { id: "coaches", label: "Coaches" },
-                  { id: "operational", label: "Operational Managers" },
-                  { id: "staff", label: "General Staff" },
+                  { id: "operational", label: "Ops Mgrs" },
+                  { id: "staff", label: "Staff" },
                 ] as const
               ).map((f) => (
                 <button
@@ -189,7 +194,7 @@ const EmployeesManagementPage: React.FC = () => {
                   type="button"
                   onClick={() => setRoleFilter(f.id)}
                   className={clsx(
-                    "px-3 py-1 text-xs font-semibold rounded-md transition-all",
+                    "px-2.5 sm:px-3 py-1 text-2xs sm:text-xs font-semibold rounded-md transition-all whitespace-nowrap shrink-0",
                     roleFilter === f.id
                       ? "bg-white dark:bg-pitch-800 text-slate-900 dark:text-white shadow-xs"
                       : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
@@ -330,6 +335,14 @@ const EmployeesManagementPage: React.FC = () => {
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
+                          onClick={() => setHistoryEmployee(emp)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-volt-500 hover:bg-volt-50 dark:hover:bg-volt-500/10 transition-colors"
+                          title="View salary payout history"
+                        >
+                          <Clock3 size={14} />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => setEditEmployee(emp)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
                           title="Edit employee"
@@ -435,6 +448,16 @@ const EmployeesManagementPage: React.FC = () => {
               toast.error(err?.data?.message || "Couldn't update employee — try again");
             }
           }}
+        />
+      )}
+
+      {/* Salary History Modal */}
+      {historyEmployee && (
+        <SalaryHistoryModal
+          isOpen={!!historyEmployee}
+          employee={historyEmployee}
+          academyId={academyId}
+          onClose={() => setHistoryEmployee(null)}
         />
       )}
 

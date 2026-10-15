@@ -21,6 +21,7 @@ import {
   useMarkSalaryPaidMutation,
   type SalaryPayment,
 } from "../../store/api/employeeApi";
+import { SalaryHistoryModal } from "./SalaryHistoryModal";
 
 const currentPeriod = () => new Date().toISOString().slice(0, 7);
 
@@ -174,6 +175,15 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "paid">("all");
   const [payingRecord, setPayingRecord] = useState<SalaryPayment | null>(null);
+  const [historyEmployee, setHistoryEmployee] = useState<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    designation?: string;
+    salaryAmount?: number;
+    phone?: string;
+    email?: string;
+  } | null>(null);
 
   const { data: records, isLoading } = useListSalaryForPeriodQuery({ academyId, period });
   const [markPaid, { isLoading: marking }] = useMarkSalaryPaidMutation();
@@ -252,8 +262,8 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Month Navigator Toolbar */}
-      <div className="bg-white dark:bg-pitch-900/90 p-4 rounded-xl border border-slate-200 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
-        <div className="flex items-center gap-2">
+      <div className="bg-white dark:bg-pitch-900/90 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 shadow-xs">
+        <div className="flex flex-wrap items-center gap-2 justify-between sm:justify-start">
           <div className="flex items-center bg-slate-100 dark:bg-pitch-800 rounded-lg p-1 border border-slate-200 dark:border-white/10">
             <button
               type="button"
@@ -263,9 +273,9 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
             >
               <ChevronLeft size={16} />
             </button>
-            <div className="flex items-center gap-2 px-3">
-              <Calendar size={15} className="text-volt-500" />
-              <span className="font-semibold text-sm text-slate-800 dark:text-white min-w-[130px] text-center">
+            <div className="flex items-center gap-1.5 px-2 sm:px-3">
+              <Calendar size={14} className="text-volt-500 shrink-0" />
+              <span className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-white min-w-[110px] sm:min-w-[130px] text-center">
                 {formattedMonthLabel}
               </span>
             </div>
@@ -283,7 +293,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
             type="button"
             onClick={setThisMonth}
             className={clsx(
-              "px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors",
+              "px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors",
               period === currentPeriod()
                 ? "bg-volt-500/10 border-volt-500/30 text-volt-600 dark:text-volt-400"
                 : "bg-slate-100 dark:bg-pitch-800 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -293,81 +303,86 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Direct Jump:</label>
-          <input
-            type="month"
-            value={period}
-            onChange={(e) => e.target.value && setPeriod(e.target.value)}
-            className="input text-xs py-1.5 px-3 bg-slate-50 dark:bg-pitch-950 border-slate-200 dark:border-white/10 text-slate-800 dark:text-white rounded-lg focus:ring-1 focus:ring-volt-400"
-          />
+        <div className="flex items-center justify-between sm:justify-start gap-2 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-white/5">
+          <label className="text-xs text-slate-500 dark:text-slate-400 font-medium shrink-0 flex items-center gap-1.5">
+            <Calendar size={14} className="text-volt-500" />
+            <span>Direct Jump:</span>
+          </label>
+          <div className="relative inline-flex items-center">
+            <input
+              type="month"
+              value={period}
+              onChange={(e) => e.target.value && setPeriod(e.target.value)}
+              className="text-xs py-1.5 px-2.5 sm:px-3 bg-slate-50 dark:bg-pitch-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white rounded-lg focus:ring-1 focus:ring-volt-400 focus:outline-none dark:[color-scheme:dark] [color-scheme:light] [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+            />
+          </div>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 rounded-xl bg-white dark:bg-pitch-900/90 border border-slate-200 dark:border-white/10 shadow-xs">
+      {/* KPI Cards (Optimized 2-in-a-row on mobile, 3-in-a-row on desktop) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
+        <div className="p-3 sm:p-4 rounded-xl bg-white dark:bg-pitch-900/90 border border-slate-200 dark:border-white/10 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <span className="text-2xs sm:text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
               Total Payroll
             </span>
-            <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center">
-              <DollarSign size={16} />
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+              <DollarSign size={14} />
             </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-xl font-bold font-display text-slate-900 dark:text-white font-mono">
+          <div className="mt-1.5 sm:mt-2 flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2">
+            <span className="text-base sm:text-xl font-bold font-display text-slate-900 dark:text-white font-mono">
               ₹{totalPayroll.toLocaleString("en-IN")}
             </span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
+            <span className="text-3xs sm:text-xs text-slate-500 dark:text-slate-400">
               ({allRecords.length} staff)
             </span>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-white dark:bg-pitch-900/90 border border-slate-200 dark:border-white/10 shadow-xs">
+        <div className="p-3 sm:p-4 rounded-xl bg-white dark:bg-pitch-900/90 border border-slate-200 dark:border-white/10 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <span className="text-2xs sm:text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
               Disbursed (Paid)
             </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-              <CheckCircle2 size={16} />
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+              <CheckCircle2 size={14} />
             </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-xl font-bold font-display text-emerald-600 dark:text-emerald-400 font-mono">
+          <div className="mt-1.5 sm:mt-2 flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2">
+            <span className="text-base sm:text-xl font-bold font-display text-emerald-600 dark:text-emerald-400 font-mono">
               ₹{totalPaid.toLocaleString("en-IN")}
             </span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
+            <span className="text-3xs sm:text-xs text-slate-500 dark:text-slate-400">
               ({paidRecords.length} paid)
             </span>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-white dark:bg-pitch-900/90 border border-slate-200 dark:border-white/10 shadow-xs">
+        <div className="col-span-2 sm:col-span-1 p-3 sm:p-4 rounded-xl bg-white dark:bg-pitch-900/90 border border-slate-200 dark:border-white/10 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <span className="text-2xs sm:text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
               Pending Payout
             </span>
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
-              <AlertCircle size={16} />
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+              <AlertCircle size={14} />
             </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-xl font-bold font-display text-amber-600 dark:text-amber-400 font-mono">
+          <div className="mt-1.5 sm:mt-2 flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2">
+            <span className="text-base sm:text-xl font-bold font-display text-amber-600 dark:text-amber-400 font-mono">
               ₹{totalPending.toLocaleString("en-IN")}
             </span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
+            <span className="text-3xs sm:text-xs text-slate-500 dark:text-slate-400">
               ({pendingRecords.length} pending)
             </span>
           </div>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+      {/* Filter and Search Bar (Responsive full width / grid segmented control) */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
+        <div className="relative flex-1">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Search employee or designation..."
@@ -377,7 +392,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
           />
         </div>
 
-        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-pitch-900 p-1 rounded-lg border border-slate-200 dark:border-white/10 self-start sm:self-auto">
+        <div className="grid grid-cols-3 sm:flex items-center gap-1 bg-slate-100 dark:bg-pitch-900 p-1 rounded-lg border border-slate-200 dark:border-white/10 w-full sm:w-auto">
           {(["all", "pending", "paid"] as const).map((filter) => {
             const count =
               filter === "all"
@@ -392,7 +407,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
                 type="button"
                 onClick={() => setStatusFilter(filter)}
                 className={clsx(
-                  "px-3 py-1 text-xs font-semibold rounded-md transition-all capitalize flex items-center gap-1.5",
+                  "px-2 sm:px-3 py-1.5 text-2xs sm:text-xs font-semibold rounded-md transition-all capitalize flex items-center justify-center gap-1.5",
                   statusFilter === filter
                     ? "bg-white dark:bg-pitch-800 text-slate-900 dark:text-white shadow-xs"
                     : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
@@ -401,7 +416,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
                 <span>{filter}</span>
                 <span
                   className={clsx(
-                    "text-2xs px-1.5 py-0.2 rounded-full",
+                    "text-3xs px-1.5 py-0.2 rounded-full",
                     statusFilter === filter
                       ? "bg-slate-100 dark:bg-pitch-700 text-slate-700 dark:text-slate-300"
                       : "bg-slate-200/60 dark:bg-pitch-800/80 text-slate-500 dark:text-slate-400"
@@ -504,7 +519,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-3 self-end sm:self-auto w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-white/5">
+                <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 sm:gap-3 self-end sm:self-auto w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-white/5">
                   <div className="text-left sm:text-right">
                     <span className="text-sm font-bold text-slate-900 dark:text-white block font-mono">
                       ₹{rec.amount.toLocaleString("en-IN")}
@@ -520,26 +535,51 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
                     </span>
                   </div>
 
-                  <Badge variant={rec.status === "paid" ? "green" : "yellow"}>
+                  <Badge variant={rec.status === "paid" ? "green" : "yellow"} className="!text-3xs !py-0.5 !px-2">
                     {rec.status === "paid" ? "Paid" : "Pending"}
                   </Badge>
 
-                  {rec.status === "pending" ? (
+                  <div className="flex items-center gap-1.5">
                     <Button
                       size="sm"
                       variant="secondary"
-                      icon={<CheckCircle2 size={13} />}
-                      onClick={() => setPayingRecord(rec)}
-                      className="border-slate-300 dark:border-white/10 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                      icon={<Clock3 size={13} />}
+                      onClick={() => {
+                        if (emp) {
+                          setHistoryEmployee({
+                            id: (emp as any).id || (emp as any)._id || (typeof rec.employeeId === "string" ? rec.employeeId : (emp as any).id),
+                            firstName: emp.firstName,
+                            lastName: emp.lastName,
+                            designation,
+                            salaryAmount: rec.amount,
+                            phone: emp.phone,
+                            email: emp.email,
+                          });
+                        }
+                      }}
+                      className="border-slate-300 dark:border-white/10 hover:border-slate-400 text-slate-600 dark:text-slate-300 !py-1 !px-2 text-xs"
+                      title="View payout history"
                     >
-                      Mark Paid
+                      History
                     </Button>
-                  ) : (
-                    <div className="w-[88px] text-right flex items-center justify-end gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
-                      <CheckCircle2 size={14} />
-                      <span>Settled</span>
-                    </div>
-                  )}
+
+                    {rec.status === "pending" ? (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        icon={<CheckCircle2 size={13} />}
+                        onClick={() => setPayingRecord(rec)}
+                        className="border-slate-300 dark:border-white/10 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors !py-1 !px-2.5 text-xs"
+                      >
+                        Mark Paid
+                      </Button>
+                    ) : (
+                      <div className="min-w-[65px] text-right flex items-center justify-end gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
+                        <CheckCircle2 size={14} />
+                        <span>Settled</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -555,6 +595,14 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
         onClose={() => setPayingRecord(null)}
         onConfirm={handleConfirmPayout}
         loading={marking}
+      />
+
+      {/* Salary History Modal */}
+      <SalaryHistoryModal
+        isOpen={!!historyEmployee}
+        employee={historyEmployee}
+        academyId={academyId}
+        onClose={() => setHistoryEmployee(null)}
       />
     </div>
   );
