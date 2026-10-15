@@ -9,6 +9,7 @@ import { config } from '../../../config/app.config';
 import { FranchiseModel } from '../../../infrastructure/database/models/Franchise.model';
 import { StudentModel } from '../../../infrastructure/database/models/Student.model';
 import { AcademyModel } from '../../../infrastructure/database/models/Academy.model';
+import { EmployeeModel } from '../../../infrastructure/database/models/Employee.model';
 import { UserModel } from '../../../infrastructure/database/models/User.model';
 import { PasswordResetOtpModel } from '../../../infrastructure/database/models/PasswordResetOtp.model';
 import { notificationService } from '../../../infrastructure/services/NotificationService';
@@ -27,6 +28,68 @@ export interface AuthResult {
 
 export class AuthUseCases {
   constructor(private readonly userRepository: IUserRepository) {}
+
+  private async assertUserAcademyActive(user: UserEntity): Promise<void> {
+    if (user.role === 'super_admin') return;
+
+    let academyId = user.academyId;
+
+    if (!academyId && user.franchiseId) {
+      try {
+        const franchise = await FranchiseModel.findById(user.franchiseId).select('academyId').lean();
+        if (franchise?.academyId) {
+          academyId = franchise.academyId.toString();
+        }
+      } catch {}
+    }
+
+    if (!academyId && user.role === 'manager') {
+      try {
+        const managedAcademy = await AcademyModel.findOne({ managerId: user.id }).select('_id isActive name').lean();
+        if (managedAcademy) {
+          academyId = managedAcademy._id.toString();
+          if (managedAcademy.isActive === false) {
+            throw new UnauthorizedError(`Academy "${managedAcademy.name || 'Your academy'}" has been deactivated by the administrator. Access is denied.`);
+          }
+        }
+      } catch (err) {
+        if (err instanceof UnauthorizedError) throw err;
+      }
+    }
+
+    if (!academyId && user.role === 'employee') {
+      try {
+        const employee = await EmployeeModel.findOne({ userId: user.id }).select('academyId').lean();
+        if (employee?.academyId) {
+          academyId = employee.academyId.toString();
+        }
+      } catch {}
+    }
+
+    if (!academyId && (user.role === 'guardian' || user.role === 'student')) {
+      try {
+        const student = await StudentModel.findOne({
+          $or: [{ guardianIds: user.id }, { userId: user.id }],
+          deletedAt: { $exists: false },
+        }).select('franchiseId academyId').lean();
+        if (student?.franchiseId) {
+          const franchise = await FranchiseModel.findById(student.franchiseId).select('academyId').lean();
+          if (franchise?.academyId) {
+            academyId = franchise.academyId.toString();
+          }
+        } else if ((student as any)?.academyId) {
+          academyId = (student as any).academyId.toString();
+        }
+      } catch {}
+    }
+
+    if (academyId) {
+      const academy = await AcademyModel.findById(academyId).select('isActive name').lean();
+      if (academy && academy.isActive === false) {
+        throw new UnauthorizedError(`Academy "${academy.name || 'Your academy'}" has been deactivated by the administrator. Access is denied.`);
+      }
+    }
+  }
 
   async register(dto: RegisterDto): Promise<AuthResult> {
     const existing = await this.userRepository.findByEmail(dto.email);
@@ -107,6 +170,14 @@ export class AuthUseCases {
           }
         }
       } catch {}
+    } else if (!user.academyId && user.role === 'employee') {
+      try {
+        const employee = await EmployeeModel.findOne({ userId: user.id }).select('academyId').lean();
+        if (employee?.academyId) {
+          user.academyId = employee.academyId.toString();
+          await this.userRepository.update(user.id, { academyId: user.academyId } as Partial<UserEntity>);
+        }
+      } catch {}
     } else if (!user.academyId && user.role === 'manager') {
       try {
         const managedAcademy = await AcademyModel.findOne({ managerId: user.id }).select('_id').lean();
@@ -116,6 +187,9 @@ export class AuthUseCases {
         }
       } catch {}
     }
+
+    // Ensure users belonging to a deactivated academy cannot log in
+    await this.assertUserAcademyActive(user);
 
     if (user.role === 'student') {
       const student = await StudentModel.findOne({
@@ -143,8 +217,12 @@ export class AuthUseCases {
       if (!user || !user.isActive) {
         throw new UnauthorizedError('Invalid refresh token');
       }
+      await this.assertUserAcademyActive(user);
       return this.generateTokens(user);
-    } catch {
+    } catch (err: any) {
+      if (err instanceof UnauthorizedError) {
+        throw err;
+      }
       throw new UnauthorizedError('Invalid or expired refresh token');
     }
   }
@@ -169,6 +247,7 @@ export class AuthUseCases {
   async getProfile(userId: string) {
     const user = await this.userRepository.findById(userId);
     if (!user) throw new NotFoundError('User');
+    await this.assertUserAcademyActive(user);
 
     let academyName: string | undefined;
     let franchiseName: string | undefined;

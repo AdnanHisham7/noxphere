@@ -5,6 +5,8 @@ import { config } from '../../../config/app.config';
 import { UnauthorizedError, ForbiddenError } from '../../../shared/errors/AppError';
 import { UserRole } from '../../../domain/entities/User.entity';
 import { geoLocationService } from '../../../infrastructure/services/GeoLocationService';
+import { AcademyModel } from '../../../infrastructure/database/models/Academy.model';
+import { FranchiseModel } from '../../../infrastructure/database/models/Franchise.model';
 
 export interface JwtPayload {
   sub: string;
@@ -34,8 +36,25 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
     const payload = jwt.verify(token, config.jwt.accessSecret) as JwtPayload;
     req.user = payload;
 
-    if (req.user && req.user.role !== 'super_admin' && req.user.academyId) {
-      await geoLocationService.assertAcademyGeoAccess(req, req.user.academyId, req.user.role);
+    if (req.user && req.user.role !== 'super_admin') {
+      let academyId = req.user.academyId;
+      if (!academyId && req.user.role === 'manager') {
+        const managed = await AcademyModel.findOne({ managerId: req.user.sub }).select('_id').lean();
+        if (managed) {
+          academyId = managed._id.toString();
+          req.user.academyId = academyId;
+        }
+      } else if (!academyId && req.user.franchiseId) {
+        const franchise = await FranchiseModel.findById(req.user.franchiseId).select('academyId').lean();
+        if (franchise?.academyId) {
+          academyId = franchise.academyId.toString();
+          req.user.academyId = academyId;
+        }
+      }
+
+      if (academyId) {
+        await geoLocationService.assertAcademyGeoAccess(req, academyId, req.user.role);
+      }
     }
 
     next();

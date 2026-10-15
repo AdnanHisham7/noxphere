@@ -5,6 +5,7 @@ import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { StudentModel } from "../../../infrastructure/database/models/Student.model";
 import { TeamModel } from "../../../infrastructure/database/models/Team.model";
 import { SessionModel } from "../../../infrastructure/database/models/Session.model";
+import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
 import { NotFoundError, ForbiddenError, BadRequestError } from "../../../shared/errors/AppError";
 import { notificationService } from "../../../infrastructure/services/NotificationService";
 
@@ -52,23 +53,35 @@ export class ComplaintUseCases {
       message: dto.message,
     });
 
-    // 1. Notify academy managers about the new complaint
+    // 1. Notify academy owner & managers about the new complaint
+    const academy = await AcademyModel.findById(dto.academyId).select("managerId").lean();
+    const managerIdSet = new Set<string>();
+    if (academy?.managerId) {
+      managerIdSet.add(academy.managerId.toString());
+    }
+
     const managers = await UserModel.find({
-      academyId: dto.academyId,
-      role: "manager",
-      isActive: true,
+      $or: [
+        { academyId: dto.academyId, role: "manager", isActive: true },
+        ...(academy?.managerId ? [{ _id: academy.managerId, isActive: true }] : []),
+      ],
     })
       .select("_id")
       .lean();
 
-    if (managers.length > 0) {
-      const managerIds = managers.map((m) => m._id.toString());
+    managers.forEach((m) => managerIdSet.add(m._id.toString()));
+
+    if (managerIdSet.size > 0) {
+      const managerIds = Array.from(managerIdSet);
+      // ONLY send email alert if the complaint was registered by a guardian
+      const channels: ("push" | "email")[] = user.role === "guardian" ? ["push", "email"] : ["push"];
+
       await notificationService.send({
         userIds: managerIds,
         type: "complaint_received",
         title: "New Complaint Submitted",
         body: `${complaint.raisedByName} submitted a complaint${studentName ? ` regarding ${studentName}` : ""}: "${dto.subject}"`,
-        channels: ["push", "email"],
+        channels,
       }).catch(() => undefined);
     }
 
@@ -268,7 +281,7 @@ export class ComplaintUseCases {
         type: "complaint_forwarded",
         title: `Complaint Forwarded: ${complaint.subject}`,
         body: `Manager ${managerName} forwarded a complaint${complaint.studentName ? ` regarding ${complaint.studentName}` : ""}: "${complaint.subject}".${notes ? ` Manager Note: "${notes}"` : ""}`,
-        channels: ["push", "email"],
+        channels: ["push"],
       }).catch(() => undefined);
     }
 
@@ -335,7 +348,7 @@ export class ComplaintUseCases {
         type: "complaint_coach_response",
         title: `Coach Response: ${complaint.subject}`,
         body: `Coach ${coachName} responded to complaint${complaint.studentName ? ` regarding ${complaint.studentName}` : ""}: "${response}"`,
-        channels: ["push", "email"],
+        channels: ["push"],
       }).catch(() => undefined);
     }
 
@@ -386,7 +399,7 @@ export class ComplaintUseCases {
       type: "complaint_response",
       title: `Complaint ${status === "resolved" ? "Resolved" : "Updated"}: ${complaint.subject}`,
       body: `Your complaint has been marked as ${status.replace("_", " ")}. Management response: "${response}"`,
-      channels: ["push", "email"],
+      channels: ["push"],
     }).catch(() => undefined);
 
     // 2. If forwarded to coaches, inform them of manager's response / resolution

@@ -1,7 +1,7 @@
 // src/infrastructure/services/GeoLocationService.ts
 import { Request } from 'express';
 import { AcademyModel } from '../database/models/Academy.model';
-import { GeoRestrictionError } from '../../shared/errors/AppError';
+import { GeoRestrictionError, UnauthorizedError } from '../../shared/errors/AppError';
 
 export interface CurrencyConfigItem {
   currency: string;
@@ -189,10 +189,16 @@ class GeoLocationService {
     if (!academyId) return;
 
     const academy = await AcademyModel.findById(academyId)
-      .select('name currency country')
+      .select('name currency country isActive')
       .lean();
 
     if (!academy) return;
+
+    if (academy.isActive === false) {
+      throw new UnauthorizedError(
+        `Academy "${academy.name || 'Your academy'}" has been deactivated by the administrator. Access is denied.`
+      );
+    }
 
     const requiredCountry = (
       academy.country ||
