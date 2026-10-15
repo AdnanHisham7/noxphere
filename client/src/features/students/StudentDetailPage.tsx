@@ -222,20 +222,25 @@ const StudentDetailPage: React.FC = () => {
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [aiPromptOpen, setAiPromptOpen] = useState(false);
 
-  // Only Head Office (an academy-owner manager, or super_admin) may move a
+  // Only Head Office (an academy-owner manager, operational_manager, or super_admin) may move a
   // player between franchises — matches the backend authorization check.
   const canTransferFranchise =
     user?.role === "super_admin" ||
-    (user?.role === "manager" && !user?.franchiseId);
+    ((user?.role === "manager" || user?.role === "operational_manager") && !user?.franchiseId);
   const canEditStatus =
-    user?.role === "manager" || user?.role === "super_admin";
+    user?.role === "manager" ||
+    user?.role === "operational_manager" ||
+    user?.role === "super_admin";
   const canManagePerformance =
     user?.role === "super_admin" ||
     user?.role === "manager" ||
+    user?.role === "operational_manager" ||
     user?.role === "coach" ||
     !!user?.permissions?.canManagePerformance;
   const canManageSquad =
-    user?.role === "manager" || user?.role === "super_admin";
+    user?.role === "manager" ||
+    user?.role === "operational_manager" ||
+    user?.role === "super_admin";
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
   const academyId = useCurrentAcademyId();
   const [restoreStudent, { isLoading: isRestoring }] =

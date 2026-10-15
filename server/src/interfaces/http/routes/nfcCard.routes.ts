@@ -18,7 +18,7 @@ nfcCardRouter.post("/requests/player", authenticate, authorize("student"), (req,
   req.app.locals.controllers.nfcCard.createPlayerRequest(req, res, next);
 });
 
-nfcCardRouter.post("/requests/academy", authenticate, authorize("manager", "super_admin"), (req, res, next) => {
+nfcCardRouter.post("/requests/academy", authenticate, authorize("manager", "operational_manager", "super_admin"), (req, res, next) => {
   req.app.locals.controllers.nfcCard.createAcademyRequest(req, res, next);
 });
 

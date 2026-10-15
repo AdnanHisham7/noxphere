@@ -15,18 +15,31 @@ const CreateEmployeeSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   phone: z.string().optional(),
-  email: z.string().email().optional(),
-  employeeType: z.enum(["external", "staff"]),
+  email: z.string().email().optional().or(z.literal("")),
+  designation: z.string().optional(),
+  employeeType: z.enum(["external", "staff"]).default("external"),
   roleId: z.string().optional(),
   salaryAmount: z.number().min(0),
   joinDate: z.string().optional(),
   notes: z.string().max(1000).optional(),
 });
 
-const UpdateEmployeeSchema = CreateEmployeeSchema.partial().omit({ employeeType: true, email: true });
+const UpdateEmployeeSchema = z.object({
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
+  phone: z.string().optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  designation: z.string().optional(),
+  salaryAmount: z.number().min(0).optional(),
+  notes: z.string().max(1000).optional(),
+  roleId: z.string().optional(),
+});
 
 const ActiveSchema = z.object({ isActive: z.boolean() });
-const MarkPaidSchema = z.object({ notes: z.string().max(500).optional() });
+const MarkPaidSchema = z.object({
+  amount: z.number().min(0).optional(),
+  notes: z.string().max(500).optional(),
+});
 const PeriodQuerySchema = z.object({ period: z.string().regex(/^\d{4}-\d{2}$/) });
 
 // Only a manager of this specific academy (or super_admin) can touch its
@@ -156,7 +169,7 @@ export class EmployeeController {
     try {
       assertAcademyAccess(req, req.params.academyId);
       const dto = MarkPaidSchema.parse(req.body);
-      const payment = await this.useCases.markSalaryPaid(req.params.salaryPaymentId, req.user!.sub, dto.notes);
+      const payment = await this.useCases.markSalaryPaid(req.params.salaryPaymentId, req.user!.sub, dto.notes, dto.amount);
       ResponseHandler.success(res, payment, "Marked as paid");
     } catch (err) {
       next(err);

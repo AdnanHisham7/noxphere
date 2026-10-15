@@ -36,7 +36,7 @@ function formatBytes(bytes: number): string {
 const ResourcesPage: React.FC = () => {
   const franchiseId = useCurrentFranchiseId();
   const { user } = useSelector((s: RootState) => s.auth);
-  const isManager = user?.role === "manager" || user?.role === "super_admin";
+  const isManager = user?.role === "manager" || user?.role === "operational_manager" || user?.role === "super_admin";
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading, isError } = useGetResourcesQuery(

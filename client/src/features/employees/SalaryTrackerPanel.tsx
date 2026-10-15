@@ -1,5 +1,5 @@
 // src/features/employees/SalaryTrackerPanel.tsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { clsx } from "clsx";
 import { toast } from "react-hot-toast";
 import {
@@ -10,37 +10,186 @@ import {
   Calendar,
   Search,
   DollarSign,
-  Wallet,
   AlertCircle,
-  Sparkles,
+  TrendingUp,
+  TrendingDown,
+  Info,
 } from "lucide-react";
-import { Badge, Button, Skeleton, EmptyState } from "../../components/ui";
-import { useConfirm } from "../../hooks/useConfirm";
-import { useListSalaryForPeriodQuery, useMarkSalaryPaidMutation } from "../../store/api/employeeApi";
+import { Badge, Button, Skeleton, EmptyState, Modal, Input } from "../../components/ui";
+import {
+  useListSalaryForPeriodQuery,
+  useMarkSalaryPaidMutation,
+  type SalaryPayment,
+} from "../../store/api/employeeApi";
 
 const currentPeriod = () => new Date().toISOString().slice(0, 7);
+
+interface MarkPaidModalProps {
+  isOpen: boolean;
+  record: SalaryPayment | null;
+  periodLabel: string;
+  onClose: () => void;
+  onConfirm: (salaryPaymentId: string, amount: number, notes?: string) => Promise<void>;
+  loading: boolean;
+}
+
+const MarkPaidModal: React.FC<MarkPaidModalProps> = ({
+  isOpen,
+  record,
+  periodLabel,
+  onClose,
+  onConfirm,
+  loading,
+}) => {
+  const [amount, setAmount] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
+
+  useEffect(() => {
+    if (record) {
+      setAmount(String(record.amount));
+      setNotes(record.notes || "");
+    }
+  }, [record]);
+
+  if (!isOpen || !record) return null;
+
+  const emp = typeof record.employeeId === "object" ? record.employeeId : null;
+  const employeeName = emp ? `${emp.firstName} ${emp.lastName}` : "Employee";
+  const defaultAmount = record.amount;
+  const currentAmountNum = Number(amount) || 0;
+  const diff = currentAmountNum - defaultAmount;
+  const designation =
+    emp?.designation ||
+    (emp && typeof emp.roleId === "object" ? emp.roleId?.name : (emp?.employeeType === "staff" ? "Staff" : "Employee"));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isNaN(currentAmountNum) || currentAmountNum < 0) {
+      toast.error("Please enter a valid salary amount");
+      return;
+    }
+    await onConfirm(record.id, currentAmountNum, notes.trim() || undefined);
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Settle Salary Payment" size="sm">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Employee Summary Card */}
+        <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-pitch-800/60 border border-slate-200 dark:border-white/10 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-lg bg-white dark:bg-pitch-700 border border-slate-200 dark:border-white/10 flex items-center justify-center font-bold text-xs text-slate-800 dark:text-white shrink-0">
+              {emp ? `${emp.firstName[0]}${emp.lastName[0]}`.toUpperCase() : "EM"}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                {employeeName}
+              </p>
+              <div className="flex items-center gap-1.5 mt-0.5 text-2xs text-slate-500 dark:text-slate-400">
+                <span className="font-medium text-volt-600 dark:text-volt-400">{designation}</span>
+                <span>•</span>
+                <span>{periodLabel}</span>
+              </div>
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="text-2xs uppercase tracking-wider text-slate-400 dark:text-slate-500 block">Base Salary</span>
+            <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-200">
+              ₹{defaultAmount.toLocaleString("en-IN")}
+            </span>
+          </div>
+        </div>
+
+        {/* Amount Input with Live Difference Chip */}
+        <div className="space-y-1.5">
+          <Input
+            label="Paid Amount (₹)"
+            type="number"
+            min="0"
+            step="1"
+            required
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="e.g. 25000"
+          />
+
+          <div className="flex items-center justify-between text-2xs pt-1">
+            {diff > 0 ? (
+              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                <TrendingUp size={12} />
+                +₹{diff.toLocaleString("en-IN")} performance incentive / bonus included
+              </span>
+            ) : diff < 0 ? (
+              <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
+                <TrendingDown size={12} />
+                -₹{Math.abs(diff).toLocaleString("en-IN")} deduction applied
+              </span>
+            ) : (
+              <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                <Info size={11} />
+                Matches monthly default salary
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setAmount(String(defaultAmount))}
+              className="text-volt-600 dark:text-volt-400 hover:underline font-semibold"
+            >
+              Reset to Base
+            </button>
+          </div>
+        </div>
+
+        {/* Optional Notes */}
+        <div>
+          <label className="label">Notes / Remarks (Optional)</label>
+          <input
+            type="text"
+            className="input text-xs"
+            placeholder="e.g. Added ₹2,000 performance bonus for tournament victory"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            maxLength={500}
+          />
+          <p className="text-2xs text-slate-400 dark:text-slate-500 mt-1">
+            Notes will be attached to this month's payroll ledger record.
+          </p>
+        </div>
+
+        {/* Modal Actions */}
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-white/10">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" loading={loading} icon={<CheckCircle2 size={14} />}>
+            Confirm Payout
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
 
 export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId }) => {
   const [period, setPeriod] = useState(currentPeriod());
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "paid">("all");
+  const [payingRecord, setPayingRecord] = useState<SalaryPayment | null>(null);
 
   const { data: records, isLoading } = useListSalaryForPeriodQuery({ academyId, period });
   const [markPaid, { isLoading: marking }] = useMarkSalaryPaidMutation();
-  const { confirm, ConfirmDialog } = useConfirm();
 
-  const handleMarkPaid = async (salaryPaymentId: string, name: string) => {
-    const ok = await confirm({
-      title: "Mark salary as paid",
-      message: `Mark ${name}'s salary for ${period} as paid? This is a record-keeping action only — no payment is actually processed.`,
-      confirmLabel: "Mark as paid",
-    });
-    if (!ok) return;
+  const handleConfirmPayout = async (salaryPaymentId: string, amount: number, notes?: string) => {
     try {
-      await markPaid({ academyId, salaryPaymentId }).unwrap();
-      toast.success("Marked as paid");
+      await markPaid({
+        academyId,
+        salaryPaymentId,
+        amount,
+        notes,
+      }).unwrap();
+      toast.success("Salary payment marked as paid");
+      setPayingRecord(null);
     } catch (err: any) {
-      toast.error(err?.data?.message || "Couldn't update — try again");
+      toast.error(err?.data?.message || "Couldn't update salary payment — try again");
     }
   };
 
@@ -86,17 +235,24 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
 
       const emp = typeof rec.employeeId === "object" ? rec.employeeId : null;
       const fullName = emp ? `${emp.firstName} ${emp.lastName}`.toLowerCase() : "employee";
-      const roleName = (emp && typeof emp.roleId === "object" ? emp.roleId?.name : (emp?.employeeType === "staff" ? "Staff" : "External")).toLowerCase();
+      const designation = (
+        emp?.designation ||
+        (emp && typeof emp.roleId === "object"
+          ? emp.roleId?.name
+          : emp?.employeeType === "staff"
+          ? "Staff"
+          : "Employee")
+      ).toLowerCase();
       const term = searchTerm.toLowerCase().trim();
 
-      return fullName.includes(term) || roleName.includes(term);
+      return fullName.includes(term) || designation.includes(term);
     });
   }, [allRecords, statusFilter, searchTerm]);
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Month Navigator Toolbar */}
-      <div className="bg-white dark:bg-pitch-900/80 p-4 rounded-xl border border-slate-200 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+      <div className="bg-white dark:bg-pitch-900/90 p-4 rounded-xl border border-slate-200 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
         <div className="flex items-center gap-2">
           <div className="flex items-center bg-slate-100 dark:bg-pitch-800 rounded-lg p-1 border border-slate-200 dark:border-white/10">
             <button
@@ -138,19 +294,19 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-500 dark:text-slate-400">Direct Jump:</label>
+          <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Direct Jump:</label>
           <input
             type="month"
             value={period}
             onChange={(e) => e.target.value && setPeriod(e.target.value)}
-            className="input text-xs py-1 px-2.5 bg-slate-50 dark:bg-pitch-950 border-slate-200 dark:border-white/10 text-slate-800 dark:text-white rounded-lg"
+            className="input text-xs py-1.5 px-3 bg-slate-50 dark:bg-pitch-950 border-slate-200 dark:border-white/10 text-slate-800 dark:text-white rounded-lg focus:ring-1 focus:ring-volt-400"
           />
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 rounded-xl bg-white dark:bg-pitch-900/80 border border-slate-200 dark:border-white/5 shadow-sm">
+        <div className="p-4 rounded-xl bg-white dark:bg-pitch-900/90 border border-slate-200 dark:border-white/10 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Total Payroll
@@ -160,7 +316,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-xl font-bold font-display text-slate-900 dark:text-white">
+            <span className="text-xl font-bold font-display text-slate-900 dark:text-white font-mono">
               ₹{totalPayroll.toLocaleString("en-IN")}
             </span>
             <span className="text-xs text-slate-500 dark:text-slate-400">
@@ -169,7 +325,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-white dark:bg-pitch-900/80 border border-slate-200 dark:border-white/5 shadow-sm">
+        <div className="p-4 rounded-xl bg-white dark:bg-pitch-900/90 border border-slate-200 dark:border-white/10 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Disbursed (Paid)
@@ -179,7 +335,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-xl font-bold font-display text-emerald-600 dark:text-emerald-400">
+            <span className="text-xl font-bold font-display text-emerald-600 dark:text-emerald-400 font-mono">
               ₹{totalPaid.toLocaleString("en-IN")}
             </span>
             <span className="text-xs text-slate-500 dark:text-slate-400">
@@ -188,7 +344,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-white dark:bg-pitch-900/80 border border-slate-200 dark:border-white/5 shadow-sm">
+        <div className="p-4 rounded-xl bg-white dark:bg-pitch-900/90 border border-slate-200 dark:border-white/10 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Pending Payout
@@ -198,7 +354,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-xl font-bold font-display text-amber-600 dark:text-amber-400">
+            <span className="text-xl font-bold font-display text-amber-600 dark:text-amber-400 font-mono">
               ₹{totalPending.toLocaleString("en-IN")}
             </span>
             <span className="text-xs text-slate-500 dark:text-slate-400">
@@ -214,10 +370,10 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search employee or role..."
+            placeholder="Search employee or designation..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-volt-500"
+            className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-volt-400 transition-colors"
           />
         </div>
 
@@ -291,15 +447,19 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
           }
         />
       ) : (
-        <div className="bg-white dark:bg-pitch-900/90 rounded-xl border border-slate-200 dark:border-white/5 shadow-sm divide-y divide-slate-100 dark:divide-white/5 overflow-hidden">
+        <div className="bg-white dark:bg-pitch-900/90 rounded-xl border border-slate-200 dark:border-white/10 shadow-xs divide-y divide-slate-100 dark:divide-white/5 overflow-hidden">
           {filteredRecords.map((rec) => {
             const emp = typeof rec.employeeId === "object" ? rec.employeeId : null;
-            const roleName =
-              emp && typeof emp.roleId === "object"
+            const designation =
+              emp?.designation ||
+              (emp && typeof emp.roleId === "object"
                 ? emp.roleId?.name
                 : emp?.employeeType === "staff"
                 ? "Staff"
-                : "External";
+                : "Employee");
+
+            const isCoach = designation.toLowerCase().includes("coach");
+            const isOpManager = designation.toLowerCase().includes("operational manager");
 
             return (
               <div
@@ -307,39 +467,46 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 hover:bg-slate-50 dark:hover:bg-pitch-800/50 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-pitch-800 flex items-center justify-center font-bold text-xs text-slate-700 dark:text-slate-300 shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-pitch-800 flex items-center justify-center font-bold text-xs text-slate-700 dark:text-slate-300 shrink-0 border border-slate-200 dark:border-white/10">
                     {emp ? `${emp.firstName[0]}${emp.lastName[0]}`.toUpperCase() : "EM"}
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                       {emp ? `${emp.firstName} ${emp.lastName}` : "Employee"}
                     </p>
-                    <p className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
+                    <div className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5 flex flex-wrap items-center gap-1.5">
                       <span
                         className={clsx(
-                          "font-semibold",
-                          roleName === "Coach"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-blue-600 dark:text-blue-400"
+                          "font-semibold px-1.5 py-0.5 rounded",
+                          isCoach
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            : isOpManager
+                            ? "bg-volt-500/10 text-volt-600 dark:text-volt-400"
+                            : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
                         )}
                       >
-                        {roleName}
+                        {designation}
                       </span>
-                      <span>·</span>
-                      <span>{emp?.employeeType === "staff" ? "System Access" : "External / On-field"}</span>
-                      {(emp as any)?.phone && (
+                      <span>•</span>
+                      <span>{emp?.employeeType === "staff" ? "System Access" : "Payroll Only"}</span>
+                      {emp?.phone && (
                         <>
-                          <span>·</span>
-                          <span>{(emp as any).phone}</span>
+                          <span>•</span>
+                          <span>{emp.phone}</span>
                         </>
                       )}
-                    </p>
+                    </div>
+                    {rec.notes && rec.status === "paid" && (
+                      <p className="text-2xs text-slate-500 dark:text-slate-400 italic mt-1 bg-slate-50 dark:bg-pitch-800/80 px-2 py-0.5 rounded border border-slate-200 dark:border-white/5 inline-block">
+                        Remark: {rec.notes}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between sm:justify-end gap-3 self-end sm:self-auto w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-white/5">
                   <div className="text-left sm:text-right">
-                    <span className="text-sm font-bold text-slate-900 dark:text-white block">
+                    <span className="text-sm font-bold text-slate-900 dark:text-white block font-mono">
                       ₹{rec.amount.toLocaleString("en-IN")}
                     </span>
                     <span className="text-2xs text-slate-400 dark:text-slate-500">
@@ -362,19 +529,13 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
                       size="sm"
                       variant="secondary"
                       icon={<CheckCircle2 size={13} />}
-                      loading={marking}
-                      onClick={() =>
-                        handleMarkPaid(
-                          rec.id,
-                          emp ? `${emp.firstName} ${emp.lastName}` : "this employee"
-                        )
-                      }
-                      className="border-slate-300 dark:border-white/10 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400"
+                      onClick={() => setPayingRecord(rec)}
+                      className="border-slate-300 dark:border-white/10 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                     >
                       Mark Paid
                     </Button>
                   ) : (
-                    <div className="w-[88px] text-right flex items-center justify-end gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+                    <div className="w-[88px] text-right flex items-center justify-end gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
                       <CheckCircle2 size={14} />
                       <span>Settled</span>
                     </div>
@@ -385,7 +546,16 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
           })}
         </div>
       )}
-      {ConfirmDialog}
+
+      {/* Settle Payout Modal */}
+      <MarkPaidModal
+        isOpen={!!payingRecord}
+        record={payingRecord}
+        periodLabel={formattedMonthLabel}
+        onClose={() => setPayingRecord(null)}
+        onConfirm={handleConfirmPayout}
+        loading={marking}
+      />
     </div>
   );
 };

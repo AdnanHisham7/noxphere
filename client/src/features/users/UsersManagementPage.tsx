@@ -28,6 +28,7 @@ import { franchiseApi } from "../../store/api/franchiseApi";
 const ROLE_LABEL: Record<UserRole, string> = {
   super_admin: "Super Admin",
   manager: "Manager",
+  operational_manager: "Operational Manager",
   coach: "Coach",
   student: "Student",
   guardian: "Guardian",
@@ -39,6 +40,7 @@ const ROLE_BADGE: Record<
 > = {
   super_admin: "red",
   manager: "blue",
+  operational_manager: "blue",
   coach: "green",
   student: "yellow",
   guardian: "gray",

@@ -36,7 +36,8 @@ export interface CreateEmployeeDto {
   lastName: string;
   phone?: string;
   email?: string;
-  employeeType: "external" | "staff";
+  designation?: string;
+  employeeType?: "external" | "staff";
   roleId?: string;
   salaryAmount: number;
   joinDate?: string;
@@ -81,18 +82,15 @@ export class EmployeeUseCases {
   }
 
   async createEmployee(dto: CreateEmployeeDto) {
-    if (dto.employeeType === "staff") {
-      // Staff employees count toward the billed staff-seat quota — same
-      // "no active subscription / at capacity" gate as adding a player,
-      // checked before creating any account so we never have to roll one
-      // back.
+    const employeeType = dto.employeeType || "external";
+    if (employeeType === "staff") {
       await this.academySubscriptionUseCases.assertCanAddStaff(dto.academyId);
       if (!dto.roleId) throw new BadRequestError("A staff employee needs a role assigned");
       if (!dto.email) throw new BadRequestError("A staff employee needs an email to log in with");
     }
 
     const cleanPhone = dto.phone ? normalizePhone(dto.phone) : undefined;
-    if (cleanPhone) {
+    if (cleanPhone && employeeType === "staff") {
       const existingUserPhone = await UserModel.findOne({
         phone: { $in: getPhoneMatchVariants(cleanPhone) },
       });
@@ -100,7 +98,7 @@ export class EmployeeUseCases {
     }
 
     let userId: string | undefined;
-    if (dto.employeeType === "staff") {
+    if (employeeType === "staff") {
       const role = await EmployeeRoleModel.findById(dto.roleId);
       if (!role) throw new NotFoundError("Role");
 
@@ -122,8 +120,6 @@ export class EmployeeUseCases {
         fcmTokens: [],
         academyId: dto.academyId,
       });
-      // TODO: send an email with the temp password — same gap as the
-      // guardian/student account creation flow elsewhere in this app.
       userId = user._id.toString();
     }
 
@@ -133,9 +129,10 @@ export class EmployeeUseCases {
       lastName: dto.lastName,
       phone: cleanPhone || dto.phone,
       email: dto.email,
-      employeeType: dto.employeeType,
+      designation: dto.designation || (employeeType === "staff" ? "Staff" : "Employee"),
+      employeeType,
       userId,
-      roleId: dto.employeeType === "staff" ? dto.roleId : undefined,
+      roleId: employeeType === "staff" ? dto.roleId : undefined,
       salaryAmount: dto.salaryAmount,
       joinDate: dto.joinDate ? new Date(dto.joinDate) : new Date(),
       notes: dto.notes,
@@ -177,6 +174,7 @@ export class EmployeeUseCases {
             lastName: coach.lastName,
             phone: coach.phone,
             email: coach.email,
+            designation: "Coach",
             employeeType: "staff",
             userId: coach._id,
             roleId: coachRole._id,
@@ -194,6 +192,10 @@ export class EmployeeUseCases {
             existing.roleId = coachRole._id as any;
             needsSave = true;
           }
+          if (!existing.designation) {
+            existing.designation = "Coach";
+            needsSave = true;
+          }
           if (existing.isActive !== coach.isActive) {
             existing.isActive = coach.isActive;
             needsSave = true;
@@ -208,8 +210,63 @@ export class EmployeeUseCases {
     }
   }
 
+  async syncAcademyOperationalManagers(academyId: string) {
+    try {
+      const franchises = await FranchiseModel.find({ academyId }).select("_id").lean();
+      const franchiseIds = franchises.map((f) => f._id.toString());
+
+      const opManagers = await UserModel.find({
+        role: "operational_manager",
+        $or: [{ academyId }, { franchiseId: { $in: franchiseIds } }],
+      }).lean();
+
+      for (const opm of opManagers) {
+        const existing = await EmployeeModel.findOne({
+          academyId,
+          $or: [{ userId: opm._id }, { email: opm.email }],
+        });
+
+        if (!existing) {
+          await EmployeeModel.create({
+            academyId,
+            firstName: opm.firstName,
+            lastName: opm.lastName,
+            phone: opm.phone,
+            email: opm.email,
+            designation: "Operational Manager",
+            employeeType: "staff",
+            userId: opm._id,
+            salaryAmount: (opm as any).salaryAmount ?? 0,
+            joinDate: opm.createdAt || new Date(),
+            isActive: opm.isActive ?? true,
+          });
+        } else {
+          let needsSave = false;
+          if (!existing.userId) {
+            existing.userId = opm._id as any;
+            needsSave = true;
+          }
+          if (existing.designation !== "Operational Manager") {
+            existing.designation = "Operational Manager";
+            needsSave = true;
+          }
+          if (existing.isActive !== opm.isActive) {
+            existing.isActive = opm.isActive;
+            needsSave = true;
+          }
+          if (needsSave) {
+            await existing.save();
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to sync operational managers to employees for academy:", academyId, err);
+    }
+  }
+
   async listEmployees(academyId: string) {
     await this.syncAcademyCoaches(academyId);
+    await this.syncAcademyOperationalManagers(academyId);
     return EmployeeModel.find({ academyId })
       .populate("roleId", "name permissions")
       .sort({ createdAt: -1 });
@@ -217,7 +274,7 @@ export class EmployeeUseCases {
 
   async updateEmployee(
     employeeId: string,
-    dto: Partial<Pick<CreateEmployeeDto, "firstName" | "lastName" | "phone" | "salaryAmount" | "notes" | "roleId">>,
+    dto: Partial<Pick<CreateEmployeeDto, "firstName" | "lastName" | "phone" | "email" | "designation" | "salaryAmount" | "notes" | "roleId">>,
   ) {
     const employee = await EmployeeModel.findById(employeeId);
     if (!employee) throw new NotFoundError("Employee");
@@ -231,6 +288,8 @@ export class EmployeeUseCases {
     if (dto.firstName !== undefined) employee.firstName = dto.firstName;
     if (dto.lastName !== undefined) employee.lastName = dto.lastName;
     if (dto.phone !== undefined) employee.phone = dto.phone;
+    if (dto.email !== undefined) employee.email = dto.email;
+    if (dto.designation !== undefined) employee.designation = dto.designation;
     if (dto.salaryAmount !== undefined) employee.salaryAmount = dto.salaryAmount;
     if (dto.notes !== undefined) employee.notes = dto.notes;
     await employee.save();
@@ -286,10 +345,14 @@ export class EmployeeUseCases {
     );
   }
 
-  async markSalaryPaid(salaryPaymentId: string, paidBy: string, notes?: string) {
+  async markSalaryPaid(salaryPaymentId: string, paidBy: string, notes?: string, amount?: number) {
+    const updateData: any = { status: "paid", paidAt: new Date(), paidBy, notes };
+    if (typeof amount === "number" && !isNaN(amount)) {
+      updateData.amount = amount;
+    }
     const payment = await SalaryPaymentModel.findByIdAndUpdate(
       salaryPaymentId,
-      { status: "paid", paidAt: new Date(), paidBy, notes },
+      updateData,
       { new: true },
     );
     if (!payment) throw new NotFoundError("Salary payment record");
@@ -301,8 +364,9 @@ export class EmployeeUseCases {
   }
 
   async listSalaryForAcademyPeriod(academyId: string, period: string) {
-    // Ensures every coach in the academy has an employee profile
+    // Ensures every coach and operational manager in the academy has an employee profile
     await this.syncAcademyCoaches(academyId);
+    await this.syncAcademyOperationalManagers(academyId);
 
     // Ensures every active employee has a row for this period before
     // returning the list, so the manager sees the whole roster even for
@@ -312,7 +376,7 @@ export class EmployeeUseCases {
     return SalaryPaymentModel.find({ academyId, period })
       .populate({
         path: "employeeId",
-        select: "firstName lastName employeeType roleId",
+        select: "firstName lastName designation employeeType roleId phone email",
         populate: { path: "roleId", select: "name" },
       })
       .sort({ createdAt: 1 });

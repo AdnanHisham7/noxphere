@@ -85,7 +85,7 @@ const LoginPage: React.FC = () => {
       );
       if (loadedUser.franchiseId) {
         dispatch(setActiveFranchise(loadedUser.franchiseId));
-      } else if (loadedUser.role === 'manager') {
+      } else if (loadedUser.role === 'manager' || loadedUser.role === 'operational_manager') {
         dispatch(clearActiveFranchise());
       }
       toast.success('Welcome back!');

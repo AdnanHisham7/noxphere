@@ -7,14 +7,10 @@ export interface EmployeeDocument extends Document {
   lastName: string;
   phone?: string;
   email?: string;
-  // 'external' — e.g. a groundskeeper or physio who isn't managing the
-  // software at all: an HR/payroll record only, no login, no
-  // permissions, and doesn't count toward the staff-seat billing quota.
-  // 'staff' — has a real login (a User with role 'employee'), an
-  // assigned EmployeeRole granting specific permissions, and counts
-  // toward provisionedStaffCapacity on AcademySubscription (see
-  // EmployeeUseCases.assertCanAddStaff), billed at
-  // staffRatePerStaffPerMonth alongside the per-student rate.
+  designation?: string;
+  // 'external' — e.g. a groundskeeper, physio, or any record-only employee:
+  // an HR/payroll record only, no login method, no permissions.
+  // 'staff' — coach or operational manager with user login.
   employeeType: "external" | "staff";
   userId?: mongoose.Types.ObjectId;
   roleId?: mongoose.Types.ObjectId;
@@ -33,7 +29,8 @@ const EmployeeSchema = new Schema<EmployeeDocument>(
     lastName: { type: String, required: true, trim: true },
     phone: String,
     email: { type: String, trim: true, lowercase: true },
-    employeeType: { type: String, enum: ["external", "staff"], required: true },
+    designation: { type: String, trim: true },
+    employeeType: { type: String, enum: ["external", "staff"], default: "external" },
     userId: { type: Schema.Types.ObjectId, ref: "User" },
     roleId: { type: Schema.Types.ObjectId, ref: "EmployeeRole" },
     salaryAmount: { type: Number, required: true, min: 0 },

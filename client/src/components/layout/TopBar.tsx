@@ -38,7 +38,7 @@ const FranchiseSwitcher: React.FC = () => {
   const switcherRef = useRef<HTMLDivElement>(null);
   useClickOutside(switcherRef, () => setOpen(false), open);
   const { user } = useSelector((s: RootState) => s.auth);
-  const isFranchiseManager = user?.role === "manager" && !!user?.franchiseId;
+  const isFranchiseManager = (user?.role === "manager" || user?.role === "operational_manager") && !!user?.franchiseId;
 
   // Resolve the current franchise's academy, then list sibling franchises
   // under that same academy so a manager/coach can switch between them.
@@ -240,9 +240,9 @@ export const TopBar: React.FC = () => {
   const notifRef = useRef<HTMLDivElement>(null);
   useClickOutside(notifRef, () => setNotifOpen(false), notifOpen);
   const transferWallEnabled = useTransferWallEnabled();
-  const showTransferWallLink = user?.role === "manager" && transferWallEnabled;
+  const showTransferWallLink = (user?.role === "manager" || user?.role === "operational_manager") && transferWallEnabled;
 
-  const isAcademyOwner = user?.role === "manager" && !user?.franchiseId;
+  const isAcademyOwner = (user?.role === "manager" || user?.role === "operational_manager") && !user?.franchiseId;
   const hideFranchiseSwitcher = isNoFranchiseSwitchPage(location.pathname);
 
   // If a page doesn't need franchise switching, automatically set the franchise

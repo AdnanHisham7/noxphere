@@ -108,6 +108,22 @@ const navConfig: Record<string, NavItem[]> = {
     { path: '/subscription', label: 'Subscription', icon: Wallet },
     { path: '/settings', label: 'Settings', icon: Settings },
   ],
+  operational_manager: [
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/franchises', label: 'Franchise', icon: Building2 },
+    { path: '/students', label: 'Squad', icon: Shirt },
+    { path: '/teams', label: 'Team', icon: Shield },
+    { path: '/schedule', label: 'Sessions', icon: CalendarClock },
+    { path: '/coaches', label: 'Coaches', icon: UserCog },
+    { path: '/fees', label: 'Fees', icon: CreditCard },
+    { path: '/expenses', label: 'Expenses & Stocks', icon: Receipt },
+    { path: '/nfc-cards', label: 'NFC Cards', icon: CreditCard },
+    { path: '/notifications', label: 'Alerts', icon: Bell },
+    { path: '/complaints', label: 'Complaints', icon: MessageSquareWarning },
+    { path: '/resources', label: 'Resources', icon: FolderOpen },
+    { path: '/subscription', label: 'Subscription', icon: Wallet },
+    { path: '/settings', label: 'Settings', icon: Settings },
+  ],
   coach: [
     { path: '/coach/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/students', label: 'Squad', icon: Shirt },
@@ -131,7 +147,7 @@ export const Sidebar: React.FC = () => {
   }));
   const transferWallEnabled = useTransferWallEnabled();
 
-  const isHeadOfficeUser = user?.role === 'manager' && !user?.franchiseId;
+  const isHeadOfficeUser = (user?.role === 'manager' || user?.role === 'operational_manager') && !user?.franchiseId;
   const activeAcademyId = useCurrentAcademyId();
   const { data: franchises } = useGetFranchisesQuery(
     activeAcademyId ? { academyId: activeAcademyId, isActive: true } : undefined,
@@ -144,13 +160,13 @@ export const Sidebar: React.FC = () => {
 
   const { data: openComplaints } = useListAcademyComplaintsQuery(
     { academyId: activeAcademyId!, status: 'open' },
-    { skip: !activeAcademyId || user?.role !== 'manager' }
+    { skip: !activeAcademyId || (user?.role !== 'manager' && user?.role !== 'operational_manager') }
   );
   const openComplaintsCount = openComplaints?.length || 0;
 
   const { data: pendingRequestsData } = useGetRegistrationRequestsQuery(
     { academyId: activeAcademyId || undefined, franchiseId: activeFranchiseId || undefined, status: 'pending' },
-    { skip: !activeAcademyId || !['manager', 'coach', 'employee'].includes(user?.role || '') }
+    { skip: !activeAcademyId || !['manager', 'operational_manager', 'coach', 'employee'].includes(user?.role || '') }
   );
   const pendingRequestsCount = pendingRequestsData?.total ?? pendingRequestsData?.requests?.length ?? 0;
 

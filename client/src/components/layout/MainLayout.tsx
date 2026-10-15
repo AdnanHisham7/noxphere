@@ -35,7 +35,7 @@ export const MainLayout: React.FC = () => {
   useSocket();
 
   // Show sidebar only if a franchise is active, or if user is super admin (not tied to franchise), or if user is a manager (to support Head Office view), or an employee (academy-scoped, not franchise-scoped)
-  const showSidebar = !!activeFranchiseId || user?.role === 'super_admin' || user?.role === 'manager' || user?.role === 'employee';
+  const showSidebar = !!activeFranchiseId || user?.role === 'super_admin' || user?.role === 'manager' || user?.role === 'operational_manager' || user?.role === 'employee';
 
   return (
     <GeoRestrictionGate>

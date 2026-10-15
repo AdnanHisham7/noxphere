@@ -28,7 +28,7 @@ const FranchiseManagementPage: React.FC = () => {
   const { confirm, ConfirmDialog } = useConfirm();
   const { user } = useSelector((s: RootState) => s.auth);
   const isSuperAdmin = user?.role === "super_admin";
-  const isHeadOfficeRole = isSuperAdmin || (user?.role === "manager" && !user?.franchiseId);
+  const isHeadOfficeRole = isSuperAdmin || ((user?.role === "manager" || user?.role === "operational_manager") && !user?.franchiseId);
 
   // Manager: resolve their own academy via their user record, fallback to current franchise.
   const currentFranchiseId = useCurrentFranchiseId();

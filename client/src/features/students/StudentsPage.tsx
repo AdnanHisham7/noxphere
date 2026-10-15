@@ -277,6 +277,7 @@ const StudentsPage: React.FC = () => {
   const isCoach = user?.role === "coach";
   const canManageSquad =
     user?.role === "manager" ||
+    user?.role === "operational_manager" ||
     user?.role === "super_admin" ||
     !!user?.permissions?.canManageFranchises;
   const [subscriptionModalMode, setSubscriptionModalMode] = useState<

@@ -81,7 +81,7 @@ const SchedulePage: React.FC = () => {
   const { user } = useSelector((s: RootState) => s.auth);
   const isCoach = user?.role === "coach";
   const canBroadcast = user?.permissions?.canSendNotifications === true;
-  const canHardDelete = user?.role === "super_admin" || user?.role === "manager";
+  const canHardDelete = user?.role === "super_admin" || user?.role === "manager" || user?.role === "operational_manager";
 
   // State
   const [selectedDate, setSelectedDate] = useState<string>("");

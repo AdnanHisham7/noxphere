@@ -107,7 +107,7 @@ const DashboardPage: React.FC = () => {
   const academyId = user?.academyId;
 
   const isSuperAdmin = user?.role === "super_admin";
-  const isOwnerManager = user?.role === "manager" && !user?.franchiseId;
+  const isOwnerManager = (user?.role === "manager" || user?.role === "operational_manager") && !user?.franchiseId;
 
   // The plain /dashboard route always shows the academy-wide overview for
   // an owner-manager, regardless of any franchise picked earlier while

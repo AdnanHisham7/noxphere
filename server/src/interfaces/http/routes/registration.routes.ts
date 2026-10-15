@@ -33,15 +33,15 @@ registrationRouter.post("/apply", (req, res, next) => {
   req.app.locals.controllers.registration.submitRequest(req, res, next);
 });
 
-// Manager review routes
-registrationRouter.get("/requests", authenticate, authorize("manager", "super_admin"), (req, res, next) => {
+// Manager / Operational Manager review routes
+registrationRouter.get("/requests", authenticate, authorize("manager", "operational_manager", "super_admin"), (req, res, next) => {
   req.app.locals.controllers.registration.listRequests(req, res, next);
 });
 
-registrationRouter.post("/requests/:id/reject", authenticate, authorize("manager", "super_admin"), (req, res, next) => {
+registrationRouter.post("/requests/:id/reject", authenticate, authorize("manager", "operational_manager", "super_admin"), (req, res, next) => {
   req.app.locals.controllers.registration.rejectRequest(req, res, next);
 });
 
-registrationRouter.post("/requests/:id/approve", authenticate, authorize("manager", "super_admin"), (req, res, next) => {
+registrationRouter.post("/requests/:id/approve", authenticate, authorize("manager", "operational_manager", "super_admin"), (req, res, next) => {
   req.app.locals.controllers.registration.approveRequest(req, res, next);
 });

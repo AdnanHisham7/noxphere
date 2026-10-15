@@ -19,15 +19,15 @@ squadInvitationRouter.post('/:id/respond', authorize('student'), (req, res, next
   req.app.locals.controllers.squadInvitation.respond(req, res, next);
 });
 
-// Manager / Admin endpoints
-squadInvitationRouter.post('/', authorize('manager', 'super_admin'), (req, res, next) => {
+// Manager / Operational Manager / Admin endpoints
+squadInvitationRouter.post('/', authorize('manager', 'operational_manager', 'super_admin'), (req, res, next) => {
   req.app.locals.controllers.squadInvitation.send(req, res, next);
 });
 
-squadInvitationRouter.get('/academy', authorize('manager', 'super_admin'), (req, res, next) => {
+squadInvitationRouter.get('/academy', authorize('manager', 'operational_manager', 'super_admin'), (req, res, next) => {
   req.app.locals.controllers.squadInvitation.getAcademyInvitations(req, res, next);
 });
 
-squadInvitationRouter.delete('/:id', authorize('manager', 'super_admin'), (req, res, next) => {
+squadInvitationRouter.delete('/:id', authorize('manager', 'operational_manager', 'super_admin'), (req, res, next) => {
   req.app.locals.controllers.squadInvitation.cancel(req, res, next);
 });

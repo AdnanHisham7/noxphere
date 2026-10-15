@@ -55,7 +55,7 @@ academyRouter.put(
 // resolving the manager's franchise -> academy relationship.
 academyRouter.patch(
   "/:id/config",
-  authorize("super_admin", "manager"),
+  authorize("super_admin", "manager", "operational_manager"),
   validate(AcademyConfigSchema),
   (req, res, next) => {
     req.app.locals.controllers.academy.updateConfig(req, res, next);

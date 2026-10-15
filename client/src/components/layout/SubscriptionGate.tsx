@@ -21,7 +21,8 @@ export const SubscriptionGate: React.FC<{ children: React.ReactNode }> = ({ chil
   const user = useSelector((s: RootState) => s.auth.user);
   const [showModal, setShowModal] = useState(false);
 
-  const gatedRole = user?.role === "manager" || user?.role === "coach" || user?.role === "employee";
+  const isManagerLike = user?.role === "manager" || user?.role === "operational_manager";
+  const gatedRole = isManagerLike || user?.role === "coach" || user?.role === "employee";
   const franchiseId = user?.franchiseId;
   const { data: franchise } = useGetFranchiseByIdQuery(franchiseId ?? "", {
     skip: !gatedRole || !franchiseId,
@@ -56,7 +57,7 @@ export const SubscriptionGate: React.FC<{ children: React.ReactNode }> = ({ chil
             <span>
               <strong>Free Trial Active:</strong> You have {status.trialDaysRemaining ?? 0} days remaining ({status.activeStudentCount}/{status.provisionedCapacity} students provisioned).
             </span>
-            {user?.role === "manager" && (
+            {isManagerLike && (
               <button
                 onClick={() => setShowModal(true)}
                 className="underline hover:text-white font-bold ml-1 transition-colors"
@@ -89,16 +90,16 @@ export const SubscriptionGate: React.FC<{ children: React.ReactNode }> = ({ chil
         </h1>
         <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
           {isTrialExpired
-            ? user?.role === "manager"
+            ? isManagerLike
               ? "Your academy's free trial period has concluded. To continue adding players, managing coaching sessions, and utilizing the platform, please activate your academy subscription."
               : "Your academy's free trial period has ended and operations are currently restricted. Please contact your academy manager to activate the full subscription."
-            : user?.role === "manager"
+            : isManagerLike
             ? "Your academy's subscription period has ended. Portal operations are currently restricted until renewed. Complete payment to restore full access immediately."
             : "Your academy's subscription period has ended and operations are currently restricted. Please contact your academy manager to renew the subscription."}
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          {user?.role === "manager" && (
+          {isManagerLike && (
             <Button
               variant="primary"
               onClick={() => setShowModal(true)}

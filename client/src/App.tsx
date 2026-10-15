@@ -217,10 +217,10 @@ const App: React.FC = () => (
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/profile" element={<ProfileRouter />} />
 
-              {/* Manager + Coach */}
+              {/* Manager + Operational Manager + Coach */}
               <Route
                 element={
-                  <RoleProtectedRoute allowedRoles={["manager", "coach"]} />
+                  <RoleProtectedRoute allowedRoles={["manager", "operational_manager", "coach"]} />
                 }
               >
                 <Route path="/students" element={<StudentsPage />} />
@@ -241,29 +241,35 @@ const App: React.FC = () => (
                 <Route path="/coach/students/:id" element={<CoachStudentPanelPage />} />
               </Route>
 
-              {/* Manager only */}
+              {/* Manager + Operational Manager */}
               <Route
-                element={<RoleProtectedRoute allowedRoles={["manager"]} />}
+                element={<RoleProtectedRoute allowedRoles={["manager", "operational_manager"]} />}
               >
                 <Route path="/fees" element={<FeesPage />} />
                 <Route path="/teams" element={<TeamsPage />} />
                 <Route path="/teams/:id/manage" element={<TeamManagePage />} />
                 <Route path="/coaches" element={<CoachesManagementPage />} />
                 <Route path="/settings" element={<AcademySettingsPage />} />
+              </Route>
+
+              {/* Manager only - Operational manager is strictly blocked from Employees page */}
+              <Route
+                element={<RoleProtectedRoute allowedRoles={["manager"]} />}
+              >
                 <Route path="/employees" element={<EmployeesManagementPage />} />
               </Route>
 
-              {/* Manager + Coach Complaints Inbox */}
+              {/* Manager + Operational Manager + Coach Complaints Inbox */}
               <Route
-                element={<RoleProtectedRoute allowedRoles={["manager", "coach"]} />}
+                element={<RoleProtectedRoute allowedRoles={["manager", "operational_manager", "coach"]} />}
               >
                 <Route path="/complaints" element={<ComplaintsInboxPage />} />
               </Route>
 
-              {/* Manager + Super Admin */}
+              {/* Manager + Operational Manager + Super Admin */}
               <Route
                 element={
-                  <RoleProtectedRoute allowedRoles={["manager", "super_admin"]} />
+                  <RoleProtectedRoute allowedRoles={["manager", "operational_manager", "super_admin"]} />
                 }
               >
                 <Route path="/franchises" element={<FranchiseManagementPage />} />
@@ -272,10 +278,10 @@ const App: React.FC = () => (
                 <Route path="/nfc-cards" element={<NfcCardsRouter />} />
               </Route>
 
-              {/* Finance Management (Manager, Super Admin, Employee) */}
+              {/* Finance Management (Manager, Operational Manager, Super Admin, Employee) */}
               <Route
                 element={
-                  <RoleProtectedRoute allowedRoles={["manager", "super_admin", "employee"]} />
+                  <RoleProtectedRoute allowedRoles={["manager", "operational_manager", "super_admin", "employee"]} />
                 }
               >
                 <Route path="/expenses" element={<ExpenseManagementPage />} />

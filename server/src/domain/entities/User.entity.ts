@@ -1,5 +1,5 @@
 // src/domain/entities/User.entity.ts
-export type UserRole = 'super_admin' | 'manager' | 'coach' | 'student' | 'guardian' | 'employee';
+export type UserRole = 'super_admin' | 'manager' | 'coach' | 'student' | 'guardian' | 'employee' | 'operational_manager';
 
 export interface UserPermissions {
   canManageUsers: boolean;
@@ -55,6 +55,17 @@ export const defaultPermissions: Record<UserRole, UserPermissions> = {
     canSendNotifications: true,
   },
   manager: {
+    canManageUsers: true,
+    canManageFranchises: true,
+    canManageSessions: true,
+    canManageFinance: true,
+    canViewReports: true,
+    canManageAttendance: true,
+    canManagePerformance: true,
+    canManageSelection: true,
+    canSendNotifications: true,
+  },
+  operational_manager: {
     canManageUsers: true,
     canManageFranchises: true,
     canManageSessions: true,

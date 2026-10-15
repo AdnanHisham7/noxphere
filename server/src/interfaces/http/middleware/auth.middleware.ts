@@ -38,7 +38,7 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
 
     if (req.user && req.user.role !== 'super_admin') {
       let academyId = req.user.academyId;
-      if (!academyId && req.user.role === 'manager') {
+      if (!academyId && (req.user.role === 'manager' || req.user.role === 'operational_manager')) {
         const managed = await AcademyModel.findOne({ managerId: req.user.sub }).select('_id').lean();
         if (managed) {
           academyId = managed._id.toString();

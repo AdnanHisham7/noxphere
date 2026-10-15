@@ -42,7 +42,7 @@ const TeamsPage: React.FC = () => {
   const { user } = useSelector((s: RootState) => s.auth);
   const navigate = useNavigate();
   const franchiseId = useCurrentFranchiseId();
-  const isHeadOffice = user?.role === "manager" && !franchiseId;
+  const isHeadOffice = (user?.role === "manager" || user?.role === "operational_manager") && !franchiseId;
   const academyId = useCurrentAcademyId();
   const {
     data: teams,
@@ -506,7 +506,7 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
 }) => {
   const { user } = useSelector((s: RootState) => s.auth);
   const activeFranchiseId = useCurrentFranchiseId();
-  const isHeadOffice = user?.role === "manager" && !activeFranchiseId;
+  const isHeadOffice = (user?.role === "manager" || user?.role === "operational_manager") && !activeFranchiseId;
   const currentAcademyId = useCurrentAcademyId();
   const { data: team, isLoading: teamLoading } = useGetTeamByIdQuery(teamId);
   const [updateStudent] = useUpdateStudentMutation();
