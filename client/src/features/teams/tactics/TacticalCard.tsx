@@ -32,9 +32,9 @@ export const TacticalCard: React.FC<TacticalCardProps> = ({
 
   const getBadgeColor = (pos: string) => {
     if (["CF", "RWF", "LWF", "SS"].includes(pos)) return "bg-ember-600";
-    if (["AMF", "CMF", "DMF", "LMF", "RMF"].includes(pos)) return "bg-green-600";
-    if (pos === "GK") return "bg-yellow-600";
-    return "bg-blue-600";
+    if (["AMF", "CMF", "DMF", "LMF", "RMF"].includes(pos)) return "bg-field-500 text-pitch-950 font-black";
+    if (pos === "GK") return "bg-amber-500 text-pitch-950 font-black";
+    return "bg-slate-700 border border-white/20";
   };
 
   return (
@@ -49,7 +49,7 @@ export const TacticalCard: React.FC<TacticalCardProps> = ({
           draggable
           onDragStart={(e) => onDragStart(e, player.id, "pitch")}
           onClick={() => onViewDetails(player)}
-          className="relative w-[82px] aspect-square rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl transition-all hover:scale-110 hover:border-volt-400/80 cursor-grab active:cursor-grabbing"
+          className="relative w-[82px] aspect-square rounded-2xl overflow-hidden border-2 border-white/15 shadow-2xl transition-all hover:scale-110 hover:border-volt-400 cursor-grab active:cursor-grabbing"
           style={cardBackground}
         >
           <div className="absolute inset-0 z-0">
@@ -83,15 +83,15 @@ export const TacticalCard: React.FC<TacticalCardProps> = ({
             </span>
           </div>
 
-          <div className="absolute bottom-0 inset-x-0 z-20 bg-black/60 backdrop-blur-sm rounded-b-2xl border-t border-white/5">
+          <div className="absolute bottom-0 inset-x-0 z-20 bg-black/60 backdrop-blur-sm rounded-b-2xl border-t border-white/10">
             <p className="text-[9px] font-black text-white truncate text-center uppercase tracking-tight">
               {player.name.split(" ").pop()}
             </p>
           </div>
         </div>
       ) : (
-        <div className="w-[78px] aspect-square rounded-2xl border-2 border-dashed border-white/10 bg-white/5 flex items-center justify-center backdrop-blur-sm transition-colors hover:bg-white/10">
-          <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">{positionLabel}</span>
+        <div className="w-[78px] aspect-square rounded-2xl border-2 border-dashed border-white/20 bg-pitch-950/40 hover:bg-pitch-950/70 hover:border-volt-400/60 flex items-center justify-center backdrop-blur-xs transition-all cursor-pointer">
+          <span className="text-[10px] font-mono font-black text-white/35 group-hover:text-volt-400 transition-colors uppercase tracking-widest">{positionLabel}</span>
         </div>
       )}
     </div>
