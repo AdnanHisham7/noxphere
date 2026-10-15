@@ -226,7 +226,8 @@ const StudentDetailPage: React.FC = () => {
   // player between franchises — matches the backend authorization check.
   const canTransferFranchise =
     user?.role === "super_admin" ||
-    ((user?.role === "manager" || user?.role === "operational_manager") && !user?.franchiseId);
+    ((user?.role === "manager" || user?.role === "operational_manager") &&
+      !user?.franchiseId);
   const canEditStatus =
     user?.role === "manager" ||
     user?.role === "operational_manager" ||
@@ -245,8 +246,7 @@ const StudentDetailPage: React.FC = () => {
   const academyId = useCurrentAcademyId();
   const [restoreStudent, { isLoading: isRestoring }] =
     useRestoreStudentMutation();
-  const [deleteStudent, { isLoading: isDeleting }] =
-    useDeleteStudentMutation();
+  const [deleteStudent, { isLoading: isDeleting }] = useDeleteStudentMutation();
 
   const [newRemarkText, setNewRemarkText] = useState("");
   const [addCoachRemark, { isLoading: isAddingRemark }] =
@@ -333,14 +333,19 @@ const StudentDetailPage: React.FC = () => {
     { franchiseId: student?.franchiseId },
     { skip: !student?.franchiseId },
   );
-  const studentTeamName = squadTeams?.find((t) => t.id === student?.teamId)?.name;
-  const { data: franchise } = useGetFranchiseByIdQuery(student?.franchiseId ?? "", {
-    skip: !student?.franchiseId,
-  });
+  const studentTeamName = squadTeams?.find(
+    (t) => t.id === student?.teamId,
+  )?.name;
+  const { data: franchise } = useGetFranchiseByIdQuery(
+    student?.franchiseId ?? "",
+    {
+      skip: !student?.franchiseId,
+    },
+  );
   const isArchived = Boolean(
     student?.deletedAt ||
-      student?.status === "archived" ||
-      student?.status === "dropped_out",
+    student?.status === "archived" ||
+    student?.status === "dropped_out",
   );
 
   const handleRestoreStudent = async () => {
@@ -586,7 +591,10 @@ const StudentDetailPage: React.FC = () => {
       {/* Top Utility Bar: Breadcrumb & Quick Actions */}
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
         <div className="flex items-center gap-2">
-          <Link to="/students" className="hover:text-volt-400 transition-colors">
+          <Link
+            to="/students"
+            className="hover:text-volt-400 transition-colors"
+          >
             Squad
           </Link>
           <span>›</span>
@@ -604,12 +612,21 @@ const StudentDetailPage: React.FC = () => {
         </div>
 
         {/* Quick Actions & Actions Dropdown Menu */}
-        <div className="flex items-center gap-1.5 sm:gap-2 relative z-30" ref={actionsMenuRef}>
+        <div
+          className="flex items-center gap-1.5 sm:gap-2 relative z-30"
+          ref={actionsMenuRef}
+        >
           {isArchived && canManageSquad && (
             <Button
               size="sm"
               variant="primary"
-              icon={isRestoring ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
+              icon={
+                isRestoring ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <RotateCcw size={13} />
+                )
+              }
               onClick={handleRestoreStudent}
               disabled={isRestoring}
               className="!py-1 !px-2.5 text-xs bg-volt-400 text-pitch-900 hover:bg-volt-300 font-semibold shadow-sm"
@@ -621,7 +638,13 @@ const StudentDetailPage: React.FC = () => {
           <Button
             size="sm"
             variant="secondary"
-            icon={isDownloading ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+            icon={
+              isDownloading ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <FileText size={13} />
+              )
+            }
             onClick={handleDownloadCard}
             disabled={isDownloading}
             className="!py-1 !px-2.5 text-xs hidden sm:inline-flex"
@@ -647,19 +670,21 @@ const StudentDetailPage: React.FC = () => {
               "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border shadow-sm transition-all duration-200 select-none",
               actionsMenuOpen
                 ? "bg-slate-200 dark:bg-pitch-700 text-slate-900 dark:text-white border-volt-400/60 ring-2 ring-volt-400/20"
-                : "bg-white hover:bg-slate-100 dark:bg-pitch-800 dark:hover:bg-pitch-700 text-slate-700 dark:text-slate-100 border-slate-200 dark:border-white/15"
+                : "bg-white hover:bg-slate-100 dark:bg-pitch-800 dark:hover:bg-pitch-700 text-slate-700 dark:text-slate-100 border-slate-200 dark:border-white/15",
             )}
             aria-haspopup="true"
             aria-expanded={actionsMenuOpen}
             title="Player actions"
           >
             <MoreVertical size={14} className="text-volt-500 shrink-0" />
-            <span className="font-display font-bold uppercase tracking-wider text-[11px]">Actions</span>
+            <span className="font-display font-bold uppercase tracking-wider text-[11px]">
+              Actions
+            </span>
             <ChevronDown
               size={12}
               className={clsx(
                 "text-slate-400 transition-transform duration-200",
-                actionsMenuOpen && "rotate-180 text-volt-500"
+                actionsMenuOpen && "rotate-180 text-volt-500",
               )}
             />
           </button>
@@ -691,7 +716,9 @@ const StudentDetailPage: React.FC = () => {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="font-semibold block truncate">Restore to Squad</span>
+                      <span className="font-semibold block truncate">
+                        Restore to Squad
+                      </span>
                       <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-normal block truncate">
                         Re-add to active roster
                       </span>
@@ -737,7 +764,9 @@ const StudentDetailPage: React.FC = () => {
                     <Pencil size={14} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className="font-semibold block truncate text-slate-900 dark:text-white">Edit Details</span>
+                    <span className="font-semibold block truncate text-slate-900 dark:text-white">
+                      Edit Details
+                    </span>
                     <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
                       Update squad & profile data
                     </span>
@@ -756,7 +785,9 @@ const StudentDetailPage: React.FC = () => {
                     <FileText size={14} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className="font-semibold block truncate text-slate-900 dark:text-white">Generate Report</span>
+                    <span className="font-semibold block truncate text-slate-900 dark:text-white">
+                      Generate Report
+                    </span>
                     <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
                       Comprehensive progress dossier
                     </span>
@@ -776,7 +807,9 @@ const StudentDetailPage: React.FC = () => {
                       <ArrowLeftRight size={14} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="font-semibold block truncate text-slate-900 dark:text-white">Transfer Franchise</span>
+                      <span className="font-semibold block truncate text-slate-900 dark:text-white">
+                        Transfer Franchise
+                      </span>
                       <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
                         Move to another franchise
                       </span>
@@ -800,7 +833,9 @@ const StudentDetailPage: React.FC = () => {
                         <Repeat2 size={14} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="font-semibold block truncate text-slate-900 dark:text-white">List on Transfer Wall</span>
+                        <span className="font-semibold block truncate text-slate-900 dark:text-white">
+                          List on Transfer Wall
+                        </span>
                         <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
                           Publish to recruitment market
                         </span>
@@ -817,7 +852,9 @@ const StudentDetailPage: React.FC = () => {
                     <Mail size={14} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className="font-semibold block truncate text-slate-900 dark:text-white">Message Guardian</span>
+                    <span className="font-semibold block truncate text-slate-900 dark:text-white">
+                      Message Guardian
+                    </span>
                     <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
                       {student.guardian.email}
                     </span>
@@ -844,7 +881,9 @@ const StudentDetailPage: React.FC = () => {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="font-semibold block truncate">Archive / Remove Player</span>
+                        <span className="font-semibold block truncate">
+                          Archive / Remove Player
+                        </span>
                         <span className="text-[10px] text-rose-500/80 dark:text-rose-400/70 font-normal block truncate">
                           Release slot & move to archived
                         </span>
@@ -868,14 +907,26 @@ const StudentDetailPage: React.FC = () => {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-xs sm:text-sm font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wide">
-                  {student.status === "dropped_out" ? "Dropped Out & Archived Player" : "Archived & Soft-Deleted Player"}
+                  {student.status === "dropped_out"
+                    ? "Dropped Out & Archived Player"
+                    : "Archived & Soft-Deleted Player"}
                 </h3>
-                <Badge variant="red" className="font-bold text-[10px] uppercase tracking-wider">
-                  {student.status === "dropped_out" ? "Dropped Out" : "Off-Squad"}
+                <Badge
+                  variant="red"
+                  className="font-bold text-[10px] uppercase tracking-wider"
+                >
+                  {student.status === "dropped_out"
+                    ? "Dropped Out"
+                    : "Off-Squad"}
                 </Badge>
                 {student.deletedAt && (
                   <span className="text-xs text-rose-600/80 dark:text-rose-400/70 font-mono">
-                    Archived on {new Date(student.deletedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    Archived on{" "}
+                    {new Date(student.deletedAt).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
                   </span>
                 )}
               </div>
@@ -890,7 +941,13 @@ const StudentDetailPage: React.FC = () => {
             <Button
               size="sm"
               variant="primary"
-              icon={isRestoring ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
+              icon={
+                isRestoring ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <RotateCcw size={13} />
+                )
+              }
               onClick={handleRestoreStudent}
               disabled={isRestoring}
               className="shrink-0 bg-rose-600 hover:bg-rose-500 text-white border-0 shadow-lg shadow-rose-600/20 font-semibold !py-1 !px-3 text-xs"
@@ -905,7 +962,6 @@ const StudentDetailPage: React.FC = () => {
       <div className="card overflow-hidden relative shadow-lg border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900">
         <div className="p-3.5 sm:p-4.5 lg:p-5 relative">
           <div className="flex flex-col md:flex-row items-center md:items-stretch gap-4 sm:gap-6">
-            
             {/* LEFT: Athlete Stage (Clean outer wrapper, filled inner card container) */}
             <div className="relative shrink-0 flex flex-col items-center justify-center">
               {/* Inner Athlete Capsule: Holds the filled visual and the #0 MIDFIELDER U-15 section */}
@@ -946,7 +1002,9 @@ const StudentDetailPage: React.FC = () => {
                   <div className="absolute top-2 right-2 z-30 flex items-center gap-1.5">
                     {isArchived && (
                       <div className="px-1.5 py-0.5 rounded-md bg-rose-950/90 text-rose-300 font-display font-bold text-3xs border border-rose-500/40 uppercase tracking-wider backdrop-blur-md shadow-md">
-                        {student.status === "dropped_out" ? "Dropped" : "Archived"}
+                        {student.status === "dropped_out"
+                          ? "Dropped"
+                          : "Archived"}
                       </div>
                     )}
 
@@ -1003,12 +1061,38 @@ const StudentDetailPage: React.FC = () => {
                       preserveAspectRatio="none"
                     >
                       <defs>
-                        <linearGradient id="domeRimGlow" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="#ccff00" stopOpacity="0" />
-                          <stop offset="25%" stopColor="#ccff00" stopOpacity="0.6" />
-                          <stop offset="50%" stopColor="#ccff00" stopOpacity="1" />
-                          <stop offset="75%" stopColor="#ccff00" stopOpacity="0.6" />
-                          <stop offset="100%" stopColor="#ccff00" stopOpacity="0" />
+                        <linearGradient
+                          id="domeRimGlow"
+                          x1="0%"
+                          y1="0%"
+                          x2="100%"
+                          y2="0%"
+                        >
+                          <stop
+                            offset="0%"
+                            stopColor="#ccff00"
+                            stopOpacity="0"
+                          />
+                          <stop
+                            offset="25%"
+                            stopColor="#ccff00"
+                            stopOpacity="0.6"
+                          />
+                          <stop
+                            offset="50%"
+                            stopColor="#ccff00"
+                            stopOpacity="1"
+                          />
+                          <stop
+                            offset="75%"
+                            stopColor="#ccff00"
+                            stopOpacity="0.6"
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor="#ccff00"
+                            stopOpacity="0"
+                          />
                         </linearGradient>
                       </defs>
 
@@ -1040,7 +1124,9 @@ const StudentDetailPage: React.FC = () => {
                   {/* Pedestal Console Bar: #0 MIDFIELDER U-15 */}
                   <div className="w-full bg-slate-100 dark:bg-pitch-950 px-2.5 py-1.5 text-center">
                     <div className="flex items-center justify-between text-3xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      <span className="text-volt-600 dark:text-volt-400">#{student.jerseyNumber ?? 0}</span>
+                      <span className="text-volt-600 dark:text-volt-400">
+                        #{student.jerseyNumber ?? 0}
+                      </span>
                       <span>{student.position || "Player"}</span>
                       <span>{student.ageGroup || "All"}</span>
                     </div>
@@ -1078,14 +1164,18 @@ const StudentDetailPage: React.FC = () => {
                   {/* Status Dropdown / Badge */}
                   {isArchived ? (
                     <span className="inline-flex items-center px-2 py-1 rounded-lg text-3xs font-mono font-bold text-rose-500 uppercase bg-rose-500/10 border border-rose-500/25">
-                      {student.status === "dropped_out" ? "Dropped" : "Archived"}
+                      {student.status === "dropped_out"
+                        ? "Dropped"
+                        : "Archived"}
                     </span>
                   ) : canEditStatus ? (
                     <div className="inline-block relative">
                       <Select
                         value={student.status}
                         disabled={statusUpdating}
-                        onChange={(e) => handleStatusChange(e.target.value as StudentStatus)}
+                        onChange={(e) =>
+                          handleStatusChange(e.target.value as StudentStatus)
+                        }
                         className={clsx(
                           "!py-1 !px-2.5 !text-xs font-bold uppercase tracking-wider border rounded-xl inline-block h-[30px] cursor-pointer leading-none shadow-xs",
                           student.status === "active"
@@ -1124,12 +1214,18 @@ const StudentDetailPage: React.FC = () => {
 
                   {/* Transfer Status Badges */}
                   {student.transferStatus === "listed" && (
-                    <Badge variant="blue" className="!text-xs !py-1 !px-2.5 rounded-xl">
+                    <Badge
+                      variant="blue"
+                      className="!text-xs !py-1 !px-2.5 rounded-xl"
+                    >
                       ↔ Transfer Wall
                     </Badge>
                   )}
                   {student.transferStatus === "sold" && (
-                    <Badge variant="green" className="!text-xs !py-1 !px-2.5 rounded-xl">
+                    <Badge
+                      variant="green"
+                      className="!text-xs !py-1 !px-2.5 rounded-xl"
+                    >
                       Transferred
                     </Badge>
                   )}
@@ -1142,25 +1238,39 @@ const StudentDetailPage: React.FC = () => {
                 <div className="p-3 rounded-2xl bg-slate-50 dark:bg-pitch-950/70 border border-slate-200/80 dark:border-white/10 shadow-xs flex flex-col justify-between hover:border-volt-400/40 dark:hover:border-volt-400/30 transition-all">
                   <div className="flex items-center justify-between mb-1">
                     <span className="flex items-center gap-1.5 text-3xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      <Star size={12} className="text-volt-500 fill-volt-500" /> Overall Rating
+                      <Star size={12} className="text-volt-500 fill-volt-500" />{" "}
+                      Overall Rating
                     </span>
                     <span className="px-1.5 py-0.5 rounded text-3xs font-mono font-bold uppercase tracking-wider bg-volt-400/10 text-volt-600 dark:text-volt-400 border border-volt-400/20">
-                      {student.overallRating >= 8.5 ? "Elite" : student.overallRating >= 7 ? "Standout" : "Dev"}
+                      {student.overallRating >= 8.5
+                        ? "Elite"
+                        : student.overallRating >= 7
+                          ? "Standout"
+                          : "Dev"}
                     </span>
                   </div>
 
                   <div className="flex items-baseline gap-1.5 my-1">
-                    <span className={clsx("font-display font-black text-2xl sm:text-3xl tabular-nums leading-none tracking-tight", getRatingColor(student.overallRating))}>
+                    <span
+                      className={clsx(
+                        "font-display font-black text-2xl sm:text-3xl tabular-nums leading-none tracking-tight",
+                        getRatingColor(student.overallRating),
+                      )}
+                    >
                       {student.overallRating.toFixed(1)}
                     </span>
-                    <span className="text-3xs text-slate-400 font-mono">/ 10.0 OVR</span>
+                    <span className="text-3xs text-slate-400 font-mono">
+                      / 10.0 OVR
+                    </span>
                   </div>
 
                   <div>
                     <div className="w-full bg-slate-200 dark:bg-pitch-800 h-1.5 rounded-full overflow-hidden mb-1">
                       <div
                         className="h-full bg-gradient-to-r from-volt-500 to-volt-400 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, (student.overallRating / 10) * 100)}%` }}
+                        style={{
+                          width: `${Math.min(100, (student.overallRating / 10) * 100)}%`,
+                        }}
                       />
                     </div>
                     <span className="text-3xs font-mono text-slate-400 block truncate">
@@ -1184,14 +1294,18 @@ const StudentDetailPage: React.FC = () => {
                     <span className="font-display font-black text-2xl sm:text-3xl text-field-500 dark:text-field-400 tabular-nums leading-none tracking-tight">
                       {student.attendancePercentage}%
                     </span>
-                    <span className="text-3xs text-slate-400 font-mono">Reliability</span>
+                    <span className="text-3xs text-slate-400 font-mono">
+                      Reliability
+                    </span>
                   </div>
 
                   <div>
                     <div className="w-full bg-slate-200 dark:bg-pitch-800 h-1.5 rounded-full overflow-hidden mb-1">
                       <div
                         className="h-full bg-gradient-to-r from-field-500 to-field-400 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, student.attendancePercentage)}%` }}
+                        style={{
+                          width: `${Math.min(100, student.attendancePercentage)}%`,
+                        }}
                       />
                     </div>
                     <span className="text-3xs font-mono text-slate-400 block truncate">
@@ -1204,7 +1318,8 @@ const StudentDetailPage: React.FC = () => {
                 <div className="p-3 rounded-2xl bg-slate-50 dark:bg-pitch-950/70 border border-slate-200/80 dark:border-white/10 shadow-xs flex flex-col justify-between hover:border-volt-400/40 dark:hover:border-volt-400/30 transition-all">
                   <div className="flex items-center justify-between mb-1">
                     <span className="flex items-center gap-1.5 text-3xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      <MapPin size={12} className="text-volt-500" /> Club & Franchise
+                      <MapPin size={12} className="text-volt-500" /> Club &
+                      Franchise
                     </span>
                     <span className="px-1.5 py-0.5 rounded text-3xs font-mono font-bold uppercase tracking-wider bg-volt-400/10 text-volt-600 dark:text-volt-400 border border-volt-400/20">
                       Franchise
@@ -1216,13 +1331,20 @@ const StudentDetailPage: React.FC = () => {
                       {franchise?.name || "Main Academy"}
                     </p>
                     <p className="text-3xs text-slate-500 dark:text-slate-400 font-mono truncate">
-                      Squad: <span className="text-slate-800 dark:text-slate-200 font-semibold">{studentTeamName || "Unassigned"}</span>
+                      Squad:{" "}
+                      <span className="text-slate-800 dark:text-slate-200 font-semibold">
+                        {studentTeamName || "Unassigned"}
+                      </span>
                     </p>
                   </div>
 
                   <div className="pt-1 border-t border-slate-200/60 dark:border-white/5">
                     <span className="text-3xs font-mono text-slate-400 block truncate">
-                      Phase: <span className="text-slate-700 dark:text-slate-300 font-medium">{student.selectionPhase || student.selectionStatus.replace("_", " ")}</span>
+                      Phase:{" "}
+                      <span className="text-slate-700 dark:text-slate-300 font-medium">
+                        {student.selectionPhase ||
+                          student.selectionStatus.replace("_", " ")}
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -1320,8 +1442,7 @@ const StudentDetailPage: React.FC = () => {
                 <div className="flex justify-between items-end border-b-2 border-white/10 pb-8">
                   <div>
                     <h3 className="text-5xl text-white font-900 uppercase tracking-tighter leading-none">
-                      Technical{" "}
-                      <span className="text-volt-400">Breakdown</span>
+                      Technical <span className="text-volt-400">Breakdown</span>
                     </h3>
                     <p className="text-white/30 font-bold uppercase tracking-[0.4em] mt-2 text-[10px]">
                       Verified Franchise Data • {new Date().getFullYear()}
@@ -2634,7 +2755,9 @@ const TransferListingModal: React.FC<{
         <div className="flex items-center gap-3 bg-pitch-700 rounded p-3">
           <Avatar name={studentName} size="md" />
           <div>
-            <p className="font-display font-bold text-slate-900 dark:text-white">{studentName}</p>
+            <p className="font-display font-bold text-slate-900 dark:text-white">
+              {studentName}
+            </p>
             <p className="text-xs text-slate-500">
               {position ?? "—"} · Rating {rating.toFixed(1)}
             </p>
@@ -2757,13 +2880,18 @@ const ReportSelectionModal: React.FC<{
   studentId: string;
   studentName: string;
 }> = ({ isOpen, onClose, studentId, studentName }) => {
-  const [selectedPeriod, setSelectedPeriod] = useState<"daily" | "monthly" | "yearly" | "all">("monthly");
+  const [selectedPeriod, setSelectedPeriod] = useState<
+    "daily" | "monthly" | "yearly" | "all"
+  >("monthly");
 
   if (!isOpen) return null;
 
   const handleGenerate = () => {
     onClose();
-    window.open(`/students/${studentId}/report?period=${selectedPeriod}`, "_blank");
+    window.open(
+      `/students/${studentId}/report?period=${selectedPeriod}`,
+      "_blank",
+    );
   };
 
   const options = [
@@ -2798,10 +2926,20 @@ const ReportSelectionModal: React.FC<{
   ] as const;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Generate Player Report" size="md">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Generate Player Report"
+      size="md"
+    >
       <div className="space-y-4">
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Choose an evaluation timeframe for <span className="font-semibold text-slate-800 dark:text-slate-200">{studentName}</span>. The generated report includes interactive analytics graphs, attendance metrics, and print-ready formatting.
+          Choose an evaluation timeframe for{" "}
+          <span className="font-semibold text-slate-800 dark:text-slate-200">
+            {studentName}
+          </span>
+          . The generated report includes interactive analytics graphs,
+          attendance metrics, and print-ready formatting.
         </p>
 
         <div className="grid grid-cols-1 gap-2.5">
@@ -2816,7 +2954,7 @@ const ReportSelectionModal: React.FC<{
                   "p-3.5 rounded-xl border cursor-pointer transition-all duration-150 flex items-start gap-3.5",
                   isSelected
                     ? "border-volt-500 bg-volt-500/5 dark:bg-volt-400/10 ring-1 ring-volt-500/30"
-                    : "border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-pitch-950/40 hover:border-slate-300 dark:hover:border-white/20"
+                    : "border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-pitch-950/40 hover:border-slate-300 dark:hover:border-white/20",
                 )}
               >
                 <div
@@ -2824,7 +2962,7 @@ const ReportSelectionModal: React.FC<{
                     "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
                     isSelected
                       ? "bg-volt-400 text-pitch-950 font-bold"
-                      : "bg-slate-200/70 dark:bg-white/5 text-slate-600 dark:text-slate-400"
+                      : "bg-slate-200/70 dark:bg-white/5 text-slate-600 dark:text-slate-400",
                   )}
                 >
                   <Icon size={18} />
@@ -2839,7 +2977,7 @@ const ReportSelectionModal: React.FC<{
                         "px-2 py-0.5 rounded text-3xs font-mono font-bold uppercase",
                         isSelected
                           ? "bg-volt-400 text-pitch-950"
-                          : "bg-slate-100 dark:bg-pitch-800 text-slate-500 dark:text-slate-400"
+                          : "bg-slate-100 dark:bg-pitch-800 text-slate-500 dark:text-slate-400",
                       )}
                     >
                       {opt.badge}

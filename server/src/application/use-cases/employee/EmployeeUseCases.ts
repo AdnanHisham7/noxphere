@@ -290,7 +290,14 @@ export class EmployeeUseCases {
     if (dto.phone !== undefined) employee.phone = dto.phone;
     if (dto.email !== undefined) employee.email = dto.email;
     if (dto.designation !== undefined) employee.designation = dto.designation;
-    if (dto.salaryAmount !== undefined) employee.salaryAmount = dto.salaryAmount;
+    if (dto.salaryAmount !== undefined) {
+      employee.salaryAmount = dto.salaryAmount;
+      // When an employee's salary is updated, update all pending (yet to be paid) salary records to the new amount
+      await SalaryPaymentModel.updateMany(
+        { employeeId: employee._id, status: "pending" },
+        { amount: dto.salaryAmount },
+      );
+    }
     if (dto.notes !== undefined) employee.notes = dto.notes;
     await employee.save();
 
@@ -330,19 +337,22 @@ export class EmployeeUseCases {
   async logSalaryForPeriod(employeeId: string, period: string) {
     const employee = await EmployeeModel.findById(employeeId).lean();
     if (!employee) throw new NotFoundError("Employee");
-    return SalaryPaymentModel.findOneAndUpdate(
-      { employeeId, period },
-      {
-        $setOnInsert: {
-          employeeId,
-          academyId: employee.academyId,
-          period,
-          amount: employee.salaryAmount,
-          status: "pending",
-        },
-      },
-      { upsert: true, new: true },
-    );
+    const existing = await SalaryPaymentModel.findOne({ employeeId, period });
+    if (!existing) {
+      return SalaryPaymentModel.create({
+        employeeId,
+        academyId: employee.academyId,
+        period,
+        amount: employee.salaryAmount,
+        status: "pending",
+      });
+    }
+    // If record is still pending and amount differs from current employee salary, keep it in sync
+    if (existing.status === "pending" && existing.amount !== employee.salaryAmount) {
+      existing.amount = employee.salaryAmount;
+      await existing.save();
+    }
+    return existing;
   }
 
   async markSalaryPaid(salaryPaymentId: string, paidBy: string, notes?: string, amount?: number) {

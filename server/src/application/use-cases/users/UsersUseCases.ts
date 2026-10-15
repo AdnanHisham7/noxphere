@@ -8,6 +8,7 @@ import { FranchiseModel } from "../../../infrastructure/database/models/Franchis
 import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { EmployeeModel } from "../../../infrastructure/database/models/Employee.model";
 import { EmployeeRoleModel } from "../../../infrastructure/database/models/EmployeeRole.model";
+import { SalaryPaymentModel } from "../../../infrastructure/database/models/SalaryPayment.model";
 import { normalizePhone, getPhoneMatchVariants } from "../../../shared/utils/phone";
 
 export interface RequestingUser {
@@ -284,7 +285,13 @@ export class UsersUseCases {
       if (dto.phone) empUpdates.phone = dto.phone;
       if (dto.salaryAmount !== undefined) empUpdates.salaryAmount = dto.salaryAmount;
       try {
-        await EmployeeModel.findOneAndUpdate({ userId: id }, empUpdates);
+        const updatedEmp = await EmployeeModel.findOneAndUpdate({ userId: id }, empUpdates, { new: true });
+        if (updatedEmp && dto.salaryAmount !== undefined) {
+          await SalaryPaymentModel.updateMany(
+            { employeeId: updatedEmp._id, status: "pending" },
+            { amount: dto.salaryAmount },
+          );
+        }
       } catch (empErr) {
         console.error("Failed to sync employee details for user update:", empErr);
       }

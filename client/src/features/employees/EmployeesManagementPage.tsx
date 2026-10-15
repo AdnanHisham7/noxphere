@@ -429,7 +429,7 @@ const EmployeesManagementPage: React.FC = () => {
                 employeeId: editEmployee.id,
                 data,
               }).unwrap();
-              toast.success("Employee details updated");
+              toast.success("Employee details & pending salary records updated");
               setEditEmployee(null);
             } catch (err: any) {
               toast.error(err?.data?.message || "Couldn't update employee — try again");
@@ -865,15 +865,20 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
           placeholder="e.g. Coach, Physiotherapist, Operational Manager"
         />
 
-        <Input
-          label="Monthly Salary (₹)"
-          type="number"
-          min="0"
-          step="1"
-          required
-          value={salaryAmount}
-          onChange={(e) => setSalaryAmount(e.target.value)}
-        />
+        <div>
+          <Input
+            label="Monthly Salary (₹)"
+            type="number"
+            min="0"
+            step="1"
+            required
+            value={salaryAmount}
+            onChange={(e) => setSalaryAmount(e.target.value)}
+          />
+          <p className="mt-1 text-3xs text-slate-500 dark:text-slate-400">
+            Updating this salary will automatically update all pending (yet to be paid) salary records for this employee.
+          </p>
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <Input
