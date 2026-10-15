@@ -150,8 +150,14 @@ export const FranchiseDashboardPage: React.FC = () => {
   );
   const [attendanceDays, setAttendanceDays] = useState<number>(7);
   const [showAllActivityModal, setShowAllActivityModal] = useState<boolean>(false);
-  const [activitySearchTerm, setActivitySearchTerm] = useState<string>("all");
+  const [activitySearchTerm, setActivitySearchTerm] = useState<string>("");
   const [activityTypeFilter, setActivityTypeFilter] = useState<string>("all");
+
+  const handleOpenAllActivityModal = () => {
+    setActivitySearchTerm("");
+    setActivityTypeFilter("all");
+    setShowAllActivityModal(true);
+  };
 
   const { data: attendanceTrend, isLoading: trendLoading } =
     useGetAttendanceTrendQuery({ ...queryParams, days: attendanceDays }, { skip });
@@ -493,7 +499,7 @@ export const FranchiseDashboardPage: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={() => setShowAllActivityModal(true)}
+                onClick={handleOpenAllActivityModal}
                 className="text-xs text-volt-600 dark:text-volt-400 hover:underline font-semibold flex items-center gap-1"
               >
                 <span>View all history</span>
@@ -538,7 +544,7 @@ export const FranchiseDashboardPage: React.FC = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowAllActivityModal(true)}
+                  onClick={handleOpenAllActivityModal}
                   className="w-full pt-3 text-center text-xs text-volt-600 dark:text-volt-400 hover:underline font-semibold border-t border-slate-100 dark:border-white/5 block"
                 >
                   View full franchise activity history →

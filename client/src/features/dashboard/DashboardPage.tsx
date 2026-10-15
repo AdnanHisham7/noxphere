@@ -517,62 +517,62 @@ const DashboardPage: React.FC = () => {
               <table className="w-full min-w-[680px] text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200/80 dark:border-white/5 pb-2">
-                    <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="py-2.5 px-3.5 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       Franchise
                     </th>
-                    <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">
+                    <th className="py-2.5 px-3 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">
                       Players
                     </th>
-                    <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">
+                    <th className="py-2.5 px-3 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">
                       Teams
                     </th>
-                    <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">
+                    <th className="py-2.5 px-3 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">
                       Sessions
                     </th>
-                    <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">
+                    <th className="py-2.5 px-3 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">
                       Collected
                     </th>
-                    <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">
+                    <th className="py-2.5 px-3 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">
                       Outstanding
                     </th>
-                    <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">
+                    <th className="py-2.5 px-3 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">
                       Status
                     </th>
-                    <th className="py-2 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">
+                    <th className="py-2.5 px-3.5 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">
                       Action
                     </th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                   {stats.franchisePerformance.map((fp) => (
                     <tr
                       key={fp.id}
-                      className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50/80 dark:hover:bg-white/2 transition-colors"
+                      className="group transition-colors duration-150 hover:bg-slate-100/70 dark:hover:bg-pitch-700/40 dark:hover:bg-white/[0.04]"
                     >
-                      <td className="py-3">
-                        <p className="font-semibold text-slate-900 dark:text-white text-sm">
+                      <td className="py-3 px-3.5">
+                        <p className="font-semibold text-slate-900 dark:text-white text-sm group-hover:text-volt-600 dark:group-hover:text-volt-400 transition-colors">
                           {fp.name}
                         </p>
-                        <p className="text-2xs text-slate-500 font-mono mt-0.5">
+                        <p className="text-2xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
                           {fp.code} · {fp.location ?? "No location"}
                         </p>
                       </td>
-                      <td className="py-3 text-center text-slate-700 dark:text-slate-300 text-sm">
+                      <td className="py-3 px-3 text-center text-slate-700 dark:text-slate-300 text-sm">
                         {fp.totalPlayers}
                       </td>
-                      <td className="py-3 text-center text-slate-700 dark:text-slate-300 text-sm">
+                      <td className="py-3 px-3 text-center text-slate-700 dark:text-slate-300 text-sm">
                         {fp.totalTeams}
                       </td>
-                      <td className="py-3 text-center text-slate-700 dark:text-slate-300 text-sm">
+                      <td className="py-3 px-3 text-center text-slate-700 dark:text-slate-300 text-sm">
                         {fp.totalSessions}
                       </td>
-                      <td className="py-3 text-right text-emerald-600 dark:text-field-400 font-mono text-sm">
+                      <td className="py-3 px-3 text-right text-emerald-600 dark:text-field-400 font-mono text-sm">
                         ₹{fp.feesCollected.toLocaleString("en-IN")}
                       </td>
-                      <td className="py-3 text-right text-amber-600 dark:text-ember-400 font-mono text-sm">
+                      <td className="py-3 px-3 text-right text-amber-600 dark:text-ember-400 font-mono text-sm">
                         ₹{fp.feesOutstanding.toLocaleString("en-IN")}
                       </td>
-                      <td className="py-3 text-center">
+                      <td className="py-3 px-3 text-center">
                         <span
                           className={clsx(
                             "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
@@ -584,7 +584,7 @@ const DashboardPage: React.FC = () => {
                           {fp.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
-                      <td className="py-3 text-center">
+                      <td className="py-3 px-3.5 text-center">
                         <Button
                           size="sm"
                           onClick={() => {
