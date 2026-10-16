@@ -185,8 +185,11 @@ const StudentSchema = new Schema<StudentDocument>(
 );
 
 StudentSchema.pre(
-  /^find/,
+  /^(find|countDocuments)/,
   function (this: mongoose.Query<unknown, StudentDocument>, next) {
+    if (this.getOptions()?.includeDeleted) {
+      return next();
+    }
     this.where({ deletedAt: { $exists: false } });
     next();
   },

@@ -1,8 +1,17 @@
 // src/interfaces/http/routes/employee.routes.ts
 import { Router } from "express";
 import { authenticate, requirePermission } from "../middleware/auth.middleware";
+import { ForbiddenError } from "../../../shared/errors/AppError";
 
 export const employeeRouter = Router();
+
+// Operational managers are strictly prohibited from accessing Employee management to prevent self-management
+employeeRouter.use(authenticate, (req, _res, next) => {
+  if (req.user?.role === "operational_manager") {
+    return next(new ForbiddenError("Operational managers are not permitted to access employee management"));
+  }
+  next();
+});
 
 employeeRouter.get("/:academyId/roles", authenticate, requirePermission("canManageUsers"), (req, res, next) => {
   req.app.locals.controllers.employee.listRoles(req, res, next);

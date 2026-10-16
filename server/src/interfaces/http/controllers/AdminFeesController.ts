@@ -108,4 +108,22 @@ export class AdminFeesController {
       next(err);
     }
   };
+
+  verifyPayment = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { action, rejectionReason, adjustedAmount } = req.body;
+      if (!action || (action !== "approve" && action !== "reject")) {
+        throw new BadRequestError("Action must be either 'approve' or 'reject'");
+      }
+      const fee = await this.feesUseCases.verifyPayment(
+        req.params.id,
+        Number(req.params.installmentNumber),
+        { action, rejectionReason, adjustedAmount },
+        req.user!.sub,
+      );
+      ResponseHandler.success(res, fee, action === "approve" ? "Payment verified and recorded" : "Payment proof rejected");
+    } catch (err) {
+      next(err);
+    }
+  };
 }

@@ -12,6 +12,8 @@ import {
   Check,
   X,
   Plus,
+  Sparkles,
+  RotateCcw,
 } from "lucide-react";
 import { Button, Input, Modal, Badge } from "../../components/ui";
 import {
@@ -25,11 +27,16 @@ import {
   useSetPlatformTrialDefaultsMutation,
   useGetPlatformTransferWallQuery,
   useSetPlatformTransferWallMutation,
+  useGetPlatformAiPromptQuery,
+  useSetPlatformAiPromptMutation,
   type CurrencyPricing,
 } from "../../store/api/academySubscriptionApi";
 
+const DEFAULT_AI_PROMPT_TEMPLATE =
+  "Professional athletic sports photography portrait of youth football player [PlayerName], age category [AgeCategory], playing as [Position] for [TeamName]. Match face and hair details from the player reference photo, and kit details from the jersey reference image [JerseyRef]. Dramatic stadium rim lighting, athletic stance, crisp textures, highly detailed authentic skin, 8k resolution, cinematic trading card aesthetics.";
+
 export const PlatformBillingCard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"currencies" | "trials" | "wall">("currencies");
+  const [activeTab, setActiveTab] = useState<"currencies" | "trials" | "wall" | "ai_prompt">("currencies");
 
   // Multi-Currency Queries & Mutations
   const { data: currencies = [], isLoading: currenciesLoading } = useGetPlatformCurrenciesQuery();
@@ -56,6 +63,37 @@ export const PlatformBillingCard: React.FC = () => {
   // Transfer Wall
   const { data: transferWallEnabled, isLoading: transferWallLoading } = useGetPlatformTransferWallQuery();
   const [setPlatformTransferWall, { isLoading: togglingTransferWall }] = useSetPlatformTransferWallMutation();
+
+  // AI Prompt Template
+  const { data: platformAiPrompt, isLoading: aiPromptLoading } = useGetPlatformAiPromptQuery();
+  const [setPlatformAiPrompt, { isLoading: savingAiPrompt }] = useSetPlatformAiPromptMutation();
+  const [aiPromptText, setAiPromptText] = useState("");
+
+  useEffect(() => {
+    if (platformAiPrompt) {
+      setAiPromptText(platformAiPrompt);
+    } else {
+      setAiPromptText(DEFAULT_AI_PROMPT_TEMPLATE);
+    }
+  }, [platformAiPrompt]);
+
+  const handleSaveAiPrompt = async () => {
+    if (!aiPromptText.trim()) {
+      toast.error("AI Prompt template cannot be empty");
+      return;
+    }
+    try {
+      await setPlatformAiPrompt({ prompt: aiPromptText.trim() }).unwrap();
+      toast.success("AI Player Avatar prompt template saved globally");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to save AI Prompt template");
+    }
+  };
+
+  const handleResetAiPrompt = () => {
+    setAiPromptText(DEFAULT_AI_PROMPT_TEMPLATE);
+    toast.success("Template reset to default (click Save to persist)");
+  };
 
   const handleEditCurrency = (curr: CurrencyPricing) => {
     setEditingCurrency(curr);
@@ -173,6 +211,16 @@ export const PlatformBillingCard: React.FC = () => {
             }`}
           >
             <Repeat2 size={13} /> Transfer Wall
+          </button>
+          <button
+            onClick={() => setActiveTab("ai_prompt")}
+            className={`px-3 py-1 text-2xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
+              activeTab === "ai_prompt"
+                ? "bg-volt-400 text-pitch-900 shadow-sm"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <Sparkles size={13} /> AI Player Prompt
           </button>
         </div>
       </div>
@@ -356,6 +404,102 @@ export const PlatformBillingCard: React.FC = () => {
             >
               {transferWallEnabled !== false ? "Disable Globally" : "Enable Globally"}
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 4: AI Player Prompt Template Engine */}
+      {activeTab === "ai_prompt" && (
+        <div className="space-y-5 animate-fade-in">
+          <div className="p-4 rounded-xl bg-slate-900/60 dark:bg-pitch-950/60 border border-slate-700/40 dark:border-white/5 space-y-2">
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-volt-400" />
+              <h3 className="text-xs font-bold text-slate-100 uppercase tracking-wider">
+                Global AI Player Avatar Prompt Configuration
+              </h3>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Configure the default prompt template provided to Academy Managers when they enroll or update players. Managers can copy this prompt and paste it into Midjourney or ChatGPT / DALL-E alongside the player&apos;s face photo and official jersey reference to generate professional trading card portraits.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-200">
+                Prompt Template
+              </label>
+              <button
+                type="button"
+                onClick={handleResetAiPrompt}
+                className="text-2xs font-semibold text-slate-400 hover:text-volt-400 flex items-center gap-1 transition-colors"
+              >
+                <RotateCcw size={11} /> Reset to Default Template
+              </button>
+            </div>
+
+            <textarea
+              rows={4}
+              value={aiPromptText}
+              onChange={(e) => setAiPromptText(e.target.value)}
+              className="w-full p-3.5 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs leading-relaxed border border-slate-700/80 dark:border-white/10 focus:outline-hidden focus:border-volt-400/80 transition-colors resize-y"
+              placeholder="Enter AI prompt template with placeholders..."
+            />
+
+            {/* Variable Placeholders Legend */}
+            <div className="p-3.5 rounded-xl bg-pitch-950/80 border border-white/5 space-y-2">
+              <p className="text-2xs font-bold uppercase tracking-wider text-slate-400">
+                Available Dynamic Placeholders
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-3xs font-mono">
+                <div className="p-2 rounded-lg bg-white/5 border border-white/5">
+                  <span className="text-volt-400 font-bold">[PlayerName]</span>
+                  <p className="text-slate-400 mt-0.5 font-sans">Full player name</p>
+                </div>
+                <div className="p-2 rounded-lg bg-white/5 border border-white/5">
+                  <span className="text-volt-400 font-bold">[AgeCategory]</span>
+                  <p className="text-slate-400 mt-0.5 font-sans">e.g. U-13, U-15</p>
+                </div>
+                <div className="p-2 rounded-lg bg-white/5 border border-white/5">
+                  <span className="text-volt-400 font-bold">[Position]</span>
+                  <p className="text-slate-400 mt-0.5 font-sans">e.g. Forward, Midfielder</p>
+                </div>
+                <div className="p-2 rounded-lg bg-white/5 border border-white/5">
+                  <span className="text-volt-400 font-bold">[TeamName]</span>
+                  <p className="text-slate-400 mt-0.5 font-sans">Enrolled squad name</p>
+                </div>
+                <div className="p-2 rounded-lg bg-white/5 border border-white/5">
+                  <span className="text-volt-400 font-bold">[JerseyRef]</span>
+                  <p className="text-slate-400 mt-0.5 font-sans">Kit &amp; jersey reference notes</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Live Sample Preview */}
+            <div className="space-y-1.5 pt-1">
+              <p className="text-2xs font-bold uppercase tracking-wider text-slate-500">
+                Live Resolution Preview (Sample: Arjun Mehta · U-13 Midfielder · Phoenix FC)
+              </p>
+              <div className="p-3.5 rounded-xl bg-slate-950 text-slate-300 font-mono text-3xs leading-relaxed border border-white/5">
+                {aiPromptText
+                  .replace(/\[PlayerName\]/gi, "Arjun Mehta")
+                  .replace(/\[AgeCategory\]/gi, "U-13")
+                  .replace(/\[Position\]/gi, "Midfielder")
+                  .replace(/\[TeamName\]/gi, "Phoenix FC")
+                  .replace(/\[JerseyRef\]/gi, "(Official jersey #10 reference image attached)")}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button
+                variant="primary"
+                size="sm"
+                loading={savingAiPrompt}
+                onClick={handleSaveAiPrompt}
+                className="font-bold text-xs"
+              >
+                Save AI Prompt Template
+              </Button>
+            </div>
           </div>
         </div>
       )}

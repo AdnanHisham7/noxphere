@@ -9,6 +9,9 @@ import { FranchiseModel } from "../../../infrastructure/database/models/Franchis
 import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { SessionModel } from "../../../infrastructure/database/models/Session.model";
 import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
+import { AcademySubscriptionModel } from "../../../infrastructure/database/models/AcademySubscription.model";
+import { NfcCardRequestModel } from "../../../infrastructure/database/models/NfcCardRequest.model";
+import { PlatformTicketModel } from "../../../infrastructure/database/models/PlatformTicket.model";
 import { BadRequestError } from "../../../shared/errors/AppError";
 
 function round1(n: number): number {
@@ -141,100 +144,148 @@ export class DashboardUseCases {
   async getAttendanceTrend(params: { franchiseId?: string; academyId?: string }, days = 7) {
     const franchiseIds = await this.getQueryFranchiseIds(params);
 
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentDate = now.getDate();
+
     if (days === 365 || days === 0 || days >= 1000) {
       // Monthly aggregation for 1 year or overall
       const isOverall = days === 0 || days >= 1000;
-      let since: Date;
+      let startYear = currentYear;
+      let startMonth = currentMonth - 11; // Default to last 12 months
+
       if (isOverall) {
         const earliest = await AttendanceModel.findOne({ franchiseId: { $in: franchiseIds } })
           .sort({ sessionDate: 1 })
           .select("sessionDate")
           .lean();
+
         if (earliest && earliest.sessionDate) {
-          since = new Date(earliest.sessionDate);
-          since.setDate(1);
-          since.setHours(0, 0, 0, 0);
+          const eDate = new Date(earliest.sessionDate);
+          const eYear = eDate.getUTCFullYear();
+          const eMonth = eDate.getUTCMonth();
+          // Provide at least 6 months of historical context
+          const minContextMonth = currentMonth - 5;
+          let minContextYear = currentYear;
+          let normMinMonth = minContextMonth;
+          while (normMinMonth < 0) {
+            normMinMonth += 12;
+            minContextYear -= 1;
+          }
+          if (eYear < minContextYear || (eYear === minContextYear && eMonth <= normMinMonth)) {
+            startYear = eYear;
+            startMonth = eMonth;
+          } else {
+            startYear = minContextYear;
+            startMonth = normMinMonth;
+          }
         } else {
-          since = new Date();
-          since.setMonth(since.getMonth() - 11);
-          since.setDate(1);
-          since.setHours(0, 0, 0, 0);
+          // If no records, provide last 6 months
+          startMonth = currentMonth - 5;
         }
-      } else {
-        // Last 12 months
-        since = new Date();
-        since.setMonth(since.getMonth() - 11);
-        since.setDate(1);
-        since.setHours(0, 0, 0, 0);
       }
+
+      while (startMonth < 0) {
+        startMonth += 12;
+        startYear -= 1;
+      }
+
+      const buckets = new Map<string, { present: number; total: number; label: string }>();
+      let curYear = startYear;
+      let curMonth = startMonth;
+
+      while (
+        curYear < currentYear ||
+        (curYear === currentYear && curMonth <= currentMonth)
+      ) {
+        const monthNum = curMonth + 1;
+        const key = `${curYear}-${String(monthNum).padStart(2, "0")}`;
+        const dObj = new Date(Date.UTC(curYear, curMonth, 1));
+        const label = dObj.toLocaleDateString("en-IN", {
+          timeZone: "UTC",
+          month: "short",
+          year: isOverall || curYear !== currentYear ? "2-digit" : undefined,
+        });
+
+        buckets.set(key, { present: 0, total: 0, label });
+
+        curMonth++;
+        if (curMonth > 11) {
+          curMonth = 0;
+          curYear++;
+        }
+      }
+
+      const since = new Date(Date.UTC(startYear, startMonth, 1, 0, 0, 0, 0));
+      const until = new Date(Date.UTC(currentYear, currentMonth + 1, 0, 23, 59, 59, 999));
 
       const records = await AttendanceModel.find({
         franchiseId: { $in: franchiseIds },
-        sessionDate: { $gte: since },
+        sessionDate: { $gte: since, $lte: until },
       }).select("sessionDate status");
 
-      const buckets = new Map<string, { present: number; total: number; label: string }>();
-      const cursor = new Date(since);
-      const now = new Date();
-
-      while (cursor <= now || cursor.getMonth() === now.getMonth()) {
-        const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
-        const label = cursor.toLocaleDateString("en-IN", { month: "short", year: isOverall ? "2-digit" : undefined });
-        buckets.set(key, { present: 0, total: 0, label });
-        cursor.setMonth(cursor.getMonth() + 1);
-      }
-
       for (const r of records) {
+        if (!r.sessionDate) continue;
         const rd = new Date(r.sessionDate);
-        const key = `${rd.getFullYear()}-${String(rd.getMonth() + 1).padStart(2, "0")}`;
+        const key = `${rd.getUTCFullYear()}-${String(rd.getUTCMonth() + 1).padStart(2, "0")}`;
         const bucket = buckets.get(key);
         if (!bucket) continue;
         bucket.total += 1;
-        if (r.status === "present" || r.status === "late") bucket.present += 1;
+        if (r.status === "present" || r.status === "late") {
+          bucket.present += 1;
+        }
       }
 
       return Array.from(buckets.entries()).map(([dateKey, b]) => ({
         date: dateKey,
         day: b.label,
         rate: b.total > 0 ? round1((b.present / b.total) * 100) : 0,
+        present: b.present,
+        total: b.total,
       }));
     }
 
-    // Daily aggregation for 7 days, 14 days, or 30 days
+    // Daily aggregation for 7 days or 30 days
     const numDays = Math.max(1, days);
-    const since = new Date();
-    since.setDate(since.getDate() - (numDays - 1));
-    since.setHours(0, 0, 0, 0);
-
-    const records = await AttendanceModel.find({
-      franchiseId: { $in: franchiseIds },
-      sessionDate: { $gte: since },
-    }).select("sessionDate status");
-
     const buckets = new Map<string, { present: number; total: number; label: string }>();
+
     for (let i = 0; i < numDays; i++) {
-      const d = new Date(since);
-      d.setDate(d.getDate() + i);
+      const offset = (numDays - 1) - i;
+      const d = new Date(Date.UTC(currentYear, currentMonth, currentDate - offset));
       const dateKey = d.toISOString().split("T")[0];
       const label =
         numDays <= 7
-          ? d.toLocaleDateString("en-IN", { weekday: "short" })
-          : d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+          ? d.toLocaleDateString("en-IN", { timeZone: "UTC", weekday: "short" })
+          : d.toLocaleDateString("en-IN", { timeZone: "UTC", day: "numeric", month: "short" });
       buckets.set(dateKey, { present: 0, total: 0, label });
     }
 
+    const since = new Date(Date.UTC(currentYear, currentMonth, currentDate - (numDays - 1), 0, 0, 0, 0));
+    const until = new Date(Date.UTC(currentYear, currentMonth, currentDate, 23, 59, 59, 999));
+
+    const records = await AttendanceModel.find({
+      franchiseId: { $in: franchiseIds },
+      sessionDate: { $gte: since, $lte: until },
+    }).select("sessionDate status");
+
     for (const r of records) {
+      if (!r.sessionDate) continue;
       const key = new Date(r.sessionDate).toISOString().split("T")[0];
       const bucket = buckets.get(key);
       if (!bucket) continue;
       bucket.total += 1;
-      if (r.status === "present" || r.status === "late") bucket.present += 1;
+      if (r.status === "present" || r.status === "late") {
+        bucket.present += 1;
+      }
     }
 
     return Array.from(buckets.entries()).map(([date, b]) => ({
       date,
       day: b.label,
       rate: b.total > 0 ? round1((b.present / b.total) * 100) : 0,
+      present: b.present,
+      total: b.total,
     }));
   }
 
@@ -345,5 +396,351 @@ export class DashboardUseCases {
     return events
       .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
       .slice(0, limit);
+  }
+
+  async getSuperAdminAnalytics() {
+    const [
+      academies,
+      franchises,
+      subscriptions,
+      nfcOrders,
+      sessionsCount,
+      teamsCount,
+      openTicketsCount,
+      studentAgg,
+      coachAgg,
+    ] = await Promise.all([
+      AcademyModel.find({ deletedAt: { $exists: false } }).lean(),
+      FranchiseModel.find({ deletedAt: { $exists: false } }).select("_id academyId name").lean(),
+      AcademySubscriptionModel.find().lean(),
+      NfcCardRequestModel.find({ status: { $in: ["paid", "dispatched", "delivered"] } }).lean(),
+      SessionModel.countDocuments({ deletedAt: { $exists: false } }),
+      TeamModel.countDocuments({ deletedAt: { $exists: false } }),
+      PlatformTicketModel.countDocuments({ status: { $in: ["open", "in_progress"] } }),
+      StudentModel.aggregate([
+        { $match: { isActive: true, deletedAt: { $exists: false } } },
+        { $group: { _id: "$franchiseId", count: { $sum: 1 } } },
+      ]),
+      UserModel.aggregate([
+        { $match: { role: "coach", isActive: true, deletedAt: { $exists: false } } },
+        { $group: { _id: "$academyId", count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    // Map student counts per franchise
+    const franchiseStudentMap = new Map<string, number>();
+    let totalStudents = 0;
+    for (const item of studentAgg) {
+      if (item._id) {
+        const c = item.count || 0;
+        franchiseStudentMap.set(item._id.toString(), c);
+        totalStudents += c;
+      }
+    }
+
+    // Map coach counts per academy
+    const academyCoachMap = new Map<string, number>();
+    let totalCoaches = 0;
+    for (const item of coachAgg) {
+      if (item._id) {
+        const c = item.count || 0;
+        academyCoachMap.set(item._id.toString(), c);
+        totalCoaches += c;
+      }
+    }
+
+    // Map franchises per academy and student total per academy
+    const academyFranchisesMap = new Map<string, string[]>();
+    const academyStudentMap = new Map<string, number>();
+    for (const f of franchises) {
+      if (f.academyId) {
+        const acId = f.academyId.toString();
+        const list = academyFranchisesMap.get(acId) || [];
+        list.push(f._id.toString());
+        academyFranchisesMap.set(acId, list);
+
+        const currentStCount = academyStudentMap.get(acId) || 0;
+        const fCount = franchiseStudentMap.get(f._id.toString()) || 0;
+        academyStudentMap.set(acId, currentStCount + fCount);
+      }
+    }
+
+    const subMap = new Map<string, any>();
+    for (const s of subscriptions) {
+      if (s.academyId) {
+        subMap.set(s.academyId.toString(), s);
+      }
+    }
+
+    const now = new Date();
+    let activeAcademies = 0;
+    let trialingAcademies = 0;
+    let expiredAcademies = 0;
+    let totalProvisionedCapacity = 0;
+
+    const academyStatusList: Array<{
+      id: string;
+      name: string;
+      country?: string;
+      currency?: string;
+      isTrial: boolean;
+      status: string;
+      totalFranchises: number;
+      activeStudents: number;
+      capacity: number;
+      utilizationPercentage: number;
+      coachesCount: number;
+      currentPeriodEnd: Date | null;
+    }> = [];
+
+    const currencyMap = new Map<string, { count: number }>();
+
+    for (const a of academies) {
+      const aId = a._id.toString();
+      const sub = subMap.get(aId);
+      const isTrial = Boolean(sub?.isTrial || a.isTrial);
+      const trialEndsAt = sub?.trialEndsAt || a.trialEndsAt;
+      const isTrialActive = Boolean(isTrial && trialEndsAt && now <= new Date(trialEndsAt));
+      const isTrialExpired = Boolean(isTrial && trialEndsAt && now > new Date(trialEndsAt));
+      const isPaidExpired = Boolean(
+        !isTrial && sub?.currentPeriodEnd && now > new Date(sub.currentPeriodEnd)
+      );
+
+      let effectiveStatus = "incomplete";
+      if (isTrialActive) {
+        effectiveStatus = "trialing";
+        trialingAcademies++;
+      } else if (isTrialExpired) {
+        effectiveStatus = "trial_expired";
+        expiredAcademies++;
+      } else if (isPaidExpired) {
+        effectiveStatus = "past_due";
+        expiredAcademies++;
+      } else if (sub?.status === "active") {
+        effectiveStatus = "active";
+        activeAcademies++;
+      } else {
+        effectiveStatus = (sub?.status as string) || "incomplete";
+      }
+
+      const capacity = isTrialActive
+        ? (sub?.provisionedCapacity || a.trialCapacity || 50)
+        : (sub?.provisionedCapacity || 0);
+
+      totalProvisionedCapacity += capacity;
+      const stCount = academyStudentMap.get(aId) || 0;
+      const util = capacity > 0 ? Math.min(100, Math.round((stCount / capacity) * 100)) : 0;
+      const cur = (a.currency || sub?.currency || "INR").toUpperCase();
+
+      const currEntry = currencyMap.get(cur) || { count: 0 };
+      currEntry.count++;
+      currencyMap.set(cur, currEntry);
+
+      academyStatusList.push({
+        id: aId,
+        name: a.name,
+        country: a.country || "IN",
+        currency: cur,
+        isTrial,
+        status: effectiveStatus,
+        totalFranchises: (academyFranchisesMap.get(aId) || []).length,
+        activeStudents: stCount,
+        capacity,
+        utilizationPercentage: util,
+        coachesCount: academyCoachMap.get(aId) || 0,
+        currentPeriodEnd: sub?.currentPeriodEnd || trialEndsAt || null,
+      });
+    }
+
+    // Revenue calculations
+    let totalSubscriptionRevenue = 0;
+    for (const s of subscriptions) {
+      if (s.status === "active") {
+        const days =
+          s.billingInterval === "year"
+            ? 365
+            : s.billingInterval === "half_year"
+            ? 180
+            : s.billingInterval === "quarter"
+            ? 90
+            : 30;
+        const months =
+          s.billingInterval === "year"
+            ? 12
+            : s.billingInterval === "half_year"
+            ? 6
+            : s.billingInterval === "quarter"
+            ? 3
+            : 1;
+        const studentTotal = (s.ratePerStudentPerDay || 0) * (s.provisionedCapacity || 0) * days;
+        const staffTotal = (s.staffRatePerStaffPerMonth || 0) * (s.provisionedStaffCapacity || 0) * months;
+        totalSubscriptionRevenue += Math.round(studentTotal + staffTotal);
+      }
+    }
+
+    let totalNfcRevenue = 0;
+    for (const o of nfcOrders) {
+      totalNfcRevenue += o.totalAmount || 0;
+    }
+    const totalPlatformRevenue = Math.round(totalSubscriptionRevenue + totalNfcRevenue);
+
+    // Monthly breakdown (last 6 months)
+    const monthlyRevenue: Array<{
+      month: string;
+      label: string;
+      subscriptions: number;
+      nfc: number;
+      total: number;
+    }> = [];
+
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = `${monthNames[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
+
+      let subMonth = 0;
+      for (const s of subscriptions) {
+        const updated = s.updatedAt || s.createdAt;
+        if (
+          updated &&
+          `${updated.getFullYear()}-${String(updated.getMonth() + 1).padStart(2, "0")}` === key &&
+          s.status === "active"
+        ) {
+          const days =
+            s.billingInterval === "year"
+              ? 365
+              : s.billingInterval === "half_year"
+              ? 180
+              : s.billingInterval === "quarter"
+              ? 90
+              : 30;
+          const months =
+            s.billingInterval === "year"
+              ? 12
+              : s.billingInterval === "half_year"
+              ? 6
+              : s.billingInterval === "quarter"
+              ? 3
+              : 1;
+          subMonth += Math.round(
+            (s.ratePerStudentPerDay || 0) * (s.provisionedCapacity || 0) * days +
+              (s.staffRatePerStaffPerMonth || 0) * (s.provisionedStaffCapacity || 0) * months
+          );
+        }
+      }
+
+      let nfcMonth = 0;
+      for (const o of nfcOrders) {
+        const pd = o.paidAt || o.createdAt;
+        if (pd && `${pd.getFullYear()}-${String(pd.getMonth() + 1).padStart(2, "0")}` === key) {
+          nfcMonth += o.totalAmount || 0;
+        }
+      }
+
+      monthlyRevenue.push({
+        month: key,
+        label,
+        subscriptions: subMonth,
+        nfc: nfcMonth,
+        total: Math.round(subMonth + nfcMonth),
+      });
+    }
+
+    // Currency distribution
+    const currencyDistribution = Array.from(currencyMap.entries()).map(([currency, data]) => ({
+      currency,
+      count: data.count,
+    }));
+
+    // Top utilized academies sorted by active students / utilization
+    const topAcademies = academyStatusList
+      .sort((a, b) => b.activeStudents - a.activeStudents || b.utilizationPercentage - a.utilizationPercentage)
+      .slice(0, 8);
+
+    // Recent events across the platform
+    const recentAcademies = await AcademyModel.find({ deletedAt: { $exists: false } })
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .select("name createdAt currency")
+      .lean();
+
+    const recentNfc = await NfcCardRequestModel.find()
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .populate("academyId", "name")
+      .select("quantity totalAmount status createdAt academyId")
+      .lean();
+
+    const recentTickets = await PlatformTicketModel.find()
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .populate("academyId", "name")
+      .select("ticketNumber subject priority status createdAt")
+      .lean();
+
+    const activityFeed: Array<{
+      id: string;
+      type: "academy" | "nfc" | "ticket";
+      title: string;
+      description: string;
+      time: Date;
+    }> = [
+      ...recentAcademies.map((a: any) => ({
+        id: a._id.toString(),
+        type: "academy" as const,
+        title: "New Academy Onboarded",
+        description: `${a.name} registered on the platform (${a.currency || "INR"})`,
+        time: a.createdAt,
+      })),
+      ...recentNfc.map((n: any) => ({
+        id: n._id.toString(),
+        type: "nfc" as const,
+        title: `NFC Order: ${n.quantity} Cards`,
+        description: `${(n.academyId as any)?.name || "Academy"} — Status: ${n.status}`,
+        time: n.createdAt,
+      })),
+      ...recentTickets.map((t: any) => ({
+        id: t._id.toString(),
+        type: "ticket" as const,
+        title: `Support: ${t.ticketNumber}`,
+        description: `${t.subject} (${t.priority} priority)`,
+        time: t.createdAt,
+      })),
+    ]
+      .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+      .slice(0, 8);
+
+    return {
+      kpi: {
+        totalAcademies: academies.length,
+        activeAcademies,
+        trialingAcademies,
+        expiredAcademies,
+        totalFranchises: franchises.length,
+        totalStudents,
+        totalCoaches,
+        totalTeams: teamsCount,
+        totalSessions: sessionsCount,
+        totalPlatformRevenue,
+        subscriptionRevenue: Math.round(totalSubscriptionRevenue),
+        nfcRevenue: Math.round(totalNfcRevenue),
+        totalCapacity: totalProvisionedCapacity,
+        overallCapacityUtilization:
+          totalProvisionedCapacity > 0
+            ? Math.round((totalStudents / totalProvisionedCapacity) * 100)
+            : 0,
+        openTicketsCount,
+      },
+      monthlyRevenue,
+      statusDistribution: [
+        { status: "Active SaaS", count: activeAcademies, color: "#10b981" },
+        { status: "Trialing", count: trialingAcademies, color: "#f59e0b" },
+        { status: "Expired / Past Due", count: expiredAcademies, color: "#ef4444" },
+      ],
+      currencyDistribution,
+      topAcademies,
+      activityFeed,
+    };
   }
 }

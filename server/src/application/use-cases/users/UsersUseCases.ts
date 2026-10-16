@@ -2,12 +2,13 @@
 import bcrypt from "bcryptjs";
 import { IUserRepository } from "../../../domain/repositories/IUserRepository";
 import { UserEntity, UserRole, UserPermissions, defaultPermissions } from "../../../domain/entities/User.entity";
-import { NotFoundError, ConflictError, BadRequestError } from "../../../shared/errors/AppError";
+import { NotFoundError, ConflictError, BadRequestError, ForbiddenError } from "../../../shared/errors/AppError";
 import { CreateUserDto, UpdateUserDto, ResetPasswordDto } from "../../dtos/users.dto";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
 import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { EmployeeModel } from "../../../infrastructure/database/models/Employee.model";
 import { EmployeeRoleModel } from "../../../infrastructure/database/models/EmployeeRole.model";
+import { SalaryPaymentModel } from "../../../infrastructure/database/models/SalaryPayment.model";
 import { normalizePhone, getPhoneMatchVariants } from "../../../shared/utils/phone";
 
 export interface RequestingUser {
@@ -117,15 +118,14 @@ export class UsersUseCases {
       dto.phone = cleanPhone;
     }
 
-    // A coach belongs to an academy, not to a single franchise within it —
-    // this is what lets them operate across every franchise of that
-    // academy without ever being bound to one branch. A manager's own
-    // academy is resolved automatically from their franchise; a
-    // super_admin (who isn't tied to any single academy) must supply
-    // academyId explicitly.
+    if (requester?.role === "operational_manager" && (dto.role === "manager" || dto.role === "operational_manager" || dto.role === "super_admin")) {
+      throw new ForbiddenError("Operational managers are not permitted to create managerial accounts");
+    }
+
+    // A coach or operational manager belongs to an academy, not necessarily to a single franchise
     let academyId: string | undefined;
     let franchiseId: string | undefined = dto.franchiseId;
-    if (dto.role === "coach") {
+    if (dto.role === "coach" || dto.role === "operational_manager") {
       academyId = dto.academyId || requester?.academyId;
       if (!academyId && requester?.role === "manager") {
         if (requester.franchiseId) {
@@ -136,7 +136,7 @@ export class UsersUseCases {
         }
       }
       if (!academyId) {
-        throw new BadRequestError("Your account isn't linked to a franchise, so a coach's academy can't be resolved");
+        throw new BadRequestError(`Your account isn't linked to an academy, so the ${dto.role}'s academy can't be resolved`);
       }
       if (!franchiseId || franchiseId === "") {
         franchiseId = undefined;
@@ -184,6 +184,7 @@ export class UsersUseCases {
             lastName: dto.lastName,
             phone: dto.phone,
             email: dto.email.toLowerCase(),
+            designation: "Coach",
             employeeType: "staff",
             userId: user.id as any,
             roleId: coachRole._id,
@@ -194,6 +195,7 @@ export class UsersUseCases {
         } else {
           existingEmp.userId = user.id as any;
           existingEmp.roleId = coachRole._id as any;
+          existingEmp.designation = "Coach";
           existingEmp.employeeType = "staff";
           if (dto.salaryAmount !== undefined) {
             existingEmp.salaryAmount = dto.salaryAmount;
@@ -202,6 +204,43 @@ export class UsersUseCases {
         }
       } catch (empErr) {
         console.error("Failed to auto-create employee profile for coach:", empErr);
+      }
+    }
+
+    // If an operational manager was created, automatically ensure an Employee record exists
+    // so the academy manager can manage the operational manager's salary.
+    if (dto.role === "operational_manager" && academyId) {
+      try {
+        const existingEmp = await EmployeeModel.findOne({
+          academyId,
+          $or: [{ userId: user.id }, { email: dto.email.toLowerCase() }],
+        });
+
+        if (!existingEmp) {
+          await EmployeeModel.create({
+            academyId,
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            phone: dto.phone,
+            email: dto.email.toLowerCase(),
+            designation: "Operational Manager",
+            employeeType: "staff",
+            userId: user.id as any,
+            salaryAmount: dto.salaryAmount ?? 0,
+            joinDate: new Date(),
+            isActive: true,
+          });
+        } else {
+          existingEmp.userId = user.id as any;
+          existingEmp.designation = "Operational Manager";
+          existingEmp.employeeType = "staff";
+          if (dto.salaryAmount !== undefined) {
+            existingEmp.salaryAmount = dto.salaryAmount;
+          }
+          await existingEmp.save();
+        }
+      } catch (empErr) {
+        console.error("Failed to auto-create employee profile for operational manager:", empErr);
       }
     }
 
@@ -246,7 +285,13 @@ export class UsersUseCases {
       if (dto.phone) empUpdates.phone = dto.phone;
       if (dto.salaryAmount !== undefined) empUpdates.salaryAmount = dto.salaryAmount;
       try {
-        await EmployeeModel.findOneAndUpdate({ userId: id }, empUpdates);
+        const updatedEmp = await EmployeeModel.findOneAndUpdate({ userId: id }, empUpdates, { new: true });
+        if (updatedEmp && dto.salaryAmount !== undefined) {
+          await SalaryPaymentModel.updateMany(
+            { employeeId: updatedEmp._id, status: "pending" },
+            { amount: dto.salaryAmount },
+          );
+        }
       } catch (empErr) {
         console.error("Failed to sync employee details for user update:", empErr);
       }

@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { useHighlightEffect } from "../../hooks/useEntityHighlight";
 import {
   CalendarDays,
   Plus,
@@ -17,9 +18,11 @@ import {
   X,
   CheckCircle2,
   UserCheck,
+  ExternalLink,
+  Navigation,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { Button, Badge, Modal, Input, Skeleton, EmptyState, DocumentUploadField, PageHeader, Card } from "../../components/ui";
+import { Button, Badge, Modal, Input, Skeleton, EmptyState, DocumentUploadField, PageHeader, Card, Select, getMapsLink } from "../../components/ui";
 import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
@@ -81,9 +84,13 @@ const SchedulePage: React.FC = () => {
   const { user } = useSelector((s: RootState) => s.auth);
   const isCoach = user?.role === "coach";
   const canBroadcast = user?.permissions?.canSendNotifications === true;
-  const canHardDelete = user?.role === "super_admin" || user?.role === "manager";
+  const canHardDelete = user?.role === "super_admin" || user?.role === "manager" || user?.role === "operational_manager";
 
   // State
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get("highlightId");
+  useHighlightEffect();
+
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -132,6 +139,14 @@ const SchedulePage: React.FC = () => {
   );
 
   const sessionsList = Array.isArray(sessions) ? sessions : [];
+
+  useEffect(() => {
+    if (!highlightId || !sessionsList.length) return;
+    const match = sessionsList.find((s) => s.id === highlightId);
+    if (match && selectedDate && match.date !== selectedDate) {
+      setSelectedDate("");
+    }
+  }, [highlightId, sessionsList, selectedDate]);
 
   // Mutations
   const [createSession, { isLoading: creating }] = useCreateSessionMutation();
@@ -212,8 +227,8 @@ const SchedulePage: React.FC = () => {
     return (
       <EmptyState
         icon={<CalendarDays size={32} />}
-        title="No franchise selected"
-        description="Select an active franchise from the header bar to manage operational schedules."
+        title="No branch selected"
+        description="Select an active branch from the header bar to manage operational schedules."
       />
     );
   }
@@ -297,29 +312,31 @@ const SchedulePage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-xs text-slate-700 dark:text-slate-300 focus:outline-none"
-          >
-            <option value="all">All Types</option>
-            <option value="training">Training</option>
-            <option value="match">Match</option>
-            <option value="trial">Trial</option>
-            <option value="fitness">Fitness</option>
-          </select>
+          <div className="w-32">
+            <Select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+            >
+              <option value="all">All Types</option>
+              <option value="training">Training</option>
+              <option value="match">Match</option>
+              <option value="trial">Trial</option>
+              <option value="fitness">Fitness</option>
+            </Select>
+          </div>
 
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-xs text-slate-700 dark:text-slate-300 focus:outline-none"
-          >
-            <option value="all">All Statuses</option>
-            <option value="upcoming">Upcoming</option>
-            <option value="ongoing">Ongoing</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+          <div className="w-36">
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">All Statuses</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="ongoing">Ongoing</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -364,7 +381,12 @@ const SchedulePage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-white/5 font-mono">
                 {filteredSessions.map((session) => (
-                  <tr key={session.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                  <tr
+                    key={session.id}
+                    id={`entity-${session.id}`}
+                    data-highlight-id={session.id}
+                    className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
+                  >
                     {/* Date & Time */}
                     <td className="py-3.5 px-4 text-slate-900 dark:text-white font-medium whitespace-nowrap">
                       <div className="flex flex-col gap-0.5">
@@ -424,11 +446,32 @@ const SchedulePage: React.FC = () => {
 
                     {/* Location */}
                     <td className="py-3.5 px-4 font-sans text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <MapPin size={13} className="text-slate-400 dark:text-slate-500" />
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <MapPin size={13} className="text-slate-400 dark:text-slate-500 shrink-0" />
                         <span>
                           {session.location} {session.fieldNumber ? `(${session.fieldNumber})` : ""}
                         </span>
+                        {(() => {
+                          const mapsUrl = getMapsLink({
+                            googleMapsUrl: session.googleMapsUrl,
+                            latitude: session.latitude,
+                            longitude: session.longitude,
+                            location: session.location,
+                            fieldNumber: session.fieldNumber,
+                          });
+                          return mapsUrl ? (
+                            <a
+                              href={mapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-volt-600 dark:text-volt-400 hover:underline ml-1"
+                              title="Open venue in Google Maps"
+                            >
+                              <span>Maps</span>
+                              <ExternalLink size={10} />
+                            </a>
+                          ) : null;
+                        })()}
                       </div>
                     </td>
 
@@ -503,7 +546,7 @@ const SchedulePage: React.FC = () => {
             <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs">
               <AlertTriangle size={18} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
               <p>
-                This action will send an immediate push notification to <strong>all registered guardians</strong> across the franchise. Use only for schedule delays or emergency announcements.
+                This action will send an immediate push notification to <strong>all registered guardians</strong> across the branch. Use only for schedule delays or emergency announcements.
               </p>
             </div>
             <div className="flex justify-end gap-2">
@@ -701,7 +744,7 @@ const CreateSessionModal: React.FC<{
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFranchiseId) return toast.error("Select a franchise");
+    if (!selectedFranchiseId) return toast.error("Select a branch");
     if (targetType === "team" && !teamId) return toast.error("Select a team");
     if (targetType === "category" && categoriesState.length === 0) return toast.error("Select at least one category");
     if (targetType === "batch" && playerIds.length === 0) return toast.error("Select at least one player for the custom batch session");
@@ -710,6 +753,11 @@ const CreateSessionModal: React.FC<{
     if (!location) return toast.error("Location is required");
 
     const finalType = selectedTypeOpt === "custom" ? customType.trim() : selectedTypeOpt;
+
+    const matchingPitch =
+      selectedPitchId !== "manual"
+        ? academyPitches.find((p) => p.id === selectedPitchId)
+        : academyPitches.find((p) => p.name.toLowerCase() === location.trim().toLowerCase());
 
     onCreate({
       franchiseId: selectedFranchiseId,
@@ -729,6 +777,10 @@ const CreateSessionModal: React.FC<{
       dailyEndTime: isMultiDay ? dailyEndTime : endTime,
       location,
       fieldNumber: fieldNumber || undefined,
+      pitchId: matchingPitch?.id,
+      googleMapsUrl: matchingPitch?.googleMapsUrl,
+      latitude: matchingPitch?.latitude,
+      longitude: matchingPitch?.longitude,
       notes: notes || undefined,
       playerIds: playerIds.length > 0 ? playerIds : undefined,
       documents: documents.length > 0 ? documents : undefined,
@@ -742,17 +794,16 @@ const CreateSessionModal: React.FC<{
         {/* Franchise Selector (Academy Overview Only) */}
         {!franchiseId && academyFranchises && (
           <div>
-            <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1">Franchise</label>
-            <select
+            <Select
+              label="Branch"
               value={selectedFranchiseId}
               onChange={(e) => setSelectedFranchiseId(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none"
             >
-              <option value="" disabled>Select Franchise</option>
+              <option value="" disabled>Select Branch</option>
               {academyFranchises.map((f) => (
                 <option key={f.id} value={f.id}>{f.name}</option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
 
@@ -784,17 +835,16 @@ const CreateSessionModal: React.FC<{
         {/* Team, Categories, or Batch Selection */}
         {targetType === "team" ? (
           <div>
-            <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1">Team</label>
-            <select
+            <Select
+              label="Team"
               value={teamId}
               onChange={(e) => handleTeamChange(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none"
             >
               <option value="">Select Team</option>
               {activeTeams.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
-            </select>
+            </Select>
           </div>
         ) : targetType === "category" ? (
           <div>
@@ -803,7 +853,7 @@ const CreateSessionModal: React.FC<{
             </label>
             {categories.length === 0 ? (
               <div className="p-3 rounded border border-amber-500/20 bg-amber-500/10 text-amber-500 text-xs">
-                No players with assigned age categories exist in this franchise yet. Age categories are automatically registered when players enroll with their birthdates.
+                No players with assigned age categories exist in this branch yet. Age categories are automatically registered when players enroll with their birthdates.
               </div>
             ) : (
               <div className="flex flex-wrap gap-1.5 mt-1 border border-slate-200 dark:border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-slate-50 dark:bg-pitch-900">
@@ -887,7 +937,7 @@ const CreateSessionModal: React.FC<{
 
             <div className="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto border border-slate-200 dark:border-white/10 rounded p-2 bg-slate-50 dark:bg-pitch-900">
               {availableStudents.length === 0 ? (
-                <p className="text-2xs text-slate-400 dark:text-slate-500 italic p-1">No players found in this franchise.</p>
+                <p className="text-2xs text-slate-400 dark:text-slate-500 italic p-1">No players found in this branch.</p>
               ) : (
                 availableStudents
                   .filter((s) =>
@@ -972,18 +1022,17 @@ const CreateSessionModal: React.FC<{
         {/* Extensible Session Type */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1">Session Type</label>
-            <select
+            <Select
+              label="Session Type"
               value={selectedTypeOpt}
               onChange={(e) => setSelectedTypeOpt(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none"
             >
               <option value="training">Training</option>
               <option value="match">Match</option>
               <option value="trial">Trial</option>
               <option value="fitness">Fitness</option>
               <option value="custom">Custom (Specify...)</option>
-            </select>
+            </Select>
           </div>
           {selectedTypeOpt === "custom" && (
             <Input label="Custom Type Name" value={customType} onChange={(e) => setCustomType(e.target.value)} placeholder="e.g. Friendly Match" required />
@@ -1029,15 +1078,8 @@ const CreateSessionModal: React.FC<{
         <div className="space-y-2">
           {academyPitches.length > 0 && (
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
-                  Venue / Pitch Picker
-                </label>
-                <span className="text-[10px] text-volt-500 dark:text-volt-400 font-medium">
-                  {academyPitches.length} academy {academyPitches.length === 1 ? "venue" : "venues"} available
-                </span>
-              </div>
-              <select
+              <Select
+                label="Venue / Pitch Picker"
                 value={selectedPitchId}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -1050,7 +1092,6 @@ const CreateSessionModal: React.FC<{
                     }
                   }
                 }}
-                className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-volt-400 text-xs"
               >
                 <option value="manual">Enter Manually / Custom Venue</option>
                 <optgroup label="Registered Academy Pitches & Venues">
@@ -1060,7 +1101,7 @@ const CreateSessionModal: React.FC<{
                     </option>
                   ))}
                 </optgroup>
-              </select>
+              </Select>
             </div>
           )}
 
@@ -1087,6 +1128,38 @@ const CreateSessionModal: React.FC<{
               placeholder="e.g. Field B, Pitch 2"
             />
           </div>
+
+          {(() => {
+            const selectedPitch = academyPitches.find((p) => p.id === selectedPitchId);
+            const mapsUrl = getMapsLink({
+              googleMapsUrl: selectedPitch?.googleMapsUrl,
+              latitude: selectedPitch?.latitude,
+              longitude: selectedPitch?.longitude,
+              address: selectedPitch?.address,
+              location,
+              fieldNumber,
+            });
+            return mapsUrl ? (
+              <div className="flex items-center gap-1.5 pt-0.5 text-2xs">
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-semibold text-volt-600 dark:text-volt-400 hover:underline"
+                  title="Open venue in Google Maps"
+                >
+                  <Navigation size={11} className="text-volt-500" />
+                  <span>Preview Venue in Google Maps</span>
+                  <ExternalLink size={10} />
+                </a>
+                {selectedPitch?.address && (
+                  <span className="text-slate-400 dark:text-slate-500 truncate max-w-xs">
+                    · {selectedPitch.address}
+                  </span>
+                )}
+              </div>
+            ) : null;
+          })()}
         </div>
 
         {/* Notes */}
@@ -1103,20 +1176,17 @@ const CreateSessionModal: React.FC<{
         {/* Custom Overrides / Player List Selector */}
         <div className="border-t border-slate-200 dark:border-white/5 pt-3 space-y-3">
           <div>
-            <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1">
-              Cross-Franchise / Custom Player List (Optional)
-            </label>
-            <p className="text-[10px] text-slate-500 mb-2">Select a different franchise to invite players from.</p>
-            <select
+            <Select
+              label="Cross-Branch / Custom Player List (Optional)"
+              helperText="Select a different branch to invite players from."
               value={crossFranchiseId}
               onChange={(e) => setCrossFranchiseId(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-volt-400"
             >
-              <option value="">-- Choose a Franchise --</option>
+              <option value="">-- Choose a Branch --</option>
               {otherFranchises.map((f) => (
                 <option key={f.id} value={f.id}>{f.name}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {crossFranchiseId && (
@@ -1125,7 +1195,7 @@ const CreateSessionModal: React.FC<{
                 Available Players in {otherFranchises.find(f => f.id === crossFranchiseId)?.name}
               </p>
               {crossStudents.length === 0 ? (
-                <p className="text-2xs text-slate-400 dark:text-slate-500 italic">No players registered under this franchise.</p>
+                <p className="text-2xs text-slate-400 dark:text-slate-500 italic">No players registered under this branch.</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto border border-slate-200 dark:border-white/10 rounded p-2 bg-slate-50 dark:bg-pitch-900">
                   {crossStudents.map((s) => {
@@ -1315,6 +1385,11 @@ const EditSessionModal: React.FC<{
 
     const finalType = selectedTypeOpt === "custom" ? customType.trim() : selectedTypeOpt;
 
+    const matchingPitch =
+      selectedPitchId !== "manual"
+        ? academyPitches.find((p) => p.id === selectedPitchId)
+        : academyPitches.find((p) => p.name.toLowerCase() === location.trim().toLowerCase());
+
     onUpdate({
       categories: session.targetType === "category" ? categoriesState : undefined,
       coachIds: isCoach ? undefined : coachIds,
@@ -1328,6 +1403,10 @@ const EditSessionModal: React.FC<{
       dailyEndTime: isMultiDay ? dailyEndTime : endTime,
       location,
       fieldNumber: fieldNumber || undefined,
+      pitchId: matchingPitch?.id,
+      googleMapsUrl: matchingPitch?.googleMapsUrl,
+      latitude: matchingPitch?.latitude,
+      longitude: matchingPitch?.longitude,
       notes: notes || undefined,
       playerIds,
       documents,
@@ -1358,7 +1437,7 @@ const EditSessionModal: React.FC<{
             </label>
             {Array.from(new Set([...categories, ...categoriesState])).length === 0 ? (
               <div className="p-3 rounded border border-amber-500/20 bg-amber-500/10 text-amber-500 text-xs">
-                No players with assigned age categories exist in this franchise yet.
+                No players with assigned age categories exist in this branch yet.
               </div>
             ) : (
               <div className="flex flex-wrap gap-1.5 mt-1 border border-slate-200 dark:border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-slate-50 dark:bg-pitch-900">
@@ -1450,18 +1529,17 @@ const EditSessionModal: React.FC<{
         {/* Extensible Session Type */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1">Session Type</label>
-            <select
+            <Select
+              label="Session Type"
               value={selectedTypeOpt}
               onChange={(e) => setSelectedTypeOpt(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-volt-400"
             >
               <option value="training">Training</option>
               <option value="match">Match</option>
               <option value="trial">Trial</option>
               <option value="fitness">Fitness</option>
               <option value="custom">Custom (Specify...)</option>
-            </select>
+            </Select>
           </div>
           {selectedTypeOpt === "custom" && (
             <Input label="Custom Type Name" value={customType} onChange={(e) => setCustomType(e.target.value)} placeholder="e.g. Friendly Match" required />
@@ -1507,15 +1585,8 @@ const EditSessionModal: React.FC<{
         <div className="space-y-2">
           {academyPitches.length > 0 && (
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
-                  Venue / Pitch Picker
-                </label>
-                <span className="text-[10px] text-volt-500 dark:text-volt-400 font-medium">
-                  {academyPitches.length} academy {academyPitches.length === 1 ? "venue" : "venues"} available
-                </span>
-              </div>
-              <select
+              <Select
+                label="Venue / Pitch Picker"
                 value={selectedPitchId}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -1528,7 +1599,6 @@ const EditSessionModal: React.FC<{
                     }
                   }
                 }}
-                className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-volt-400 text-xs"
               >
                 <option value="manual">Enter Manually / Custom Venue</option>
                 <optgroup label="Registered Academy Pitches & Venues">
@@ -1538,7 +1608,7 @@ const EditSessionModal: React.FC<{
                     </option>
                   ))}
                 </optgroup>
-              </select>
+              </Select>
             </div>
           )}
 
@@ -1565,6 +1635,38 @@ const EditSessionModal: React.FC<{
               placeholder="e.g. Field B, Pitch 2"
             />
           </div>
+
+          {(() => {
+            const selectedPitch = academyPitches.find((p) => p.id === selectedPitchId);
+            const mapsUrl = getMapsLink({
+              googleMapsUrl: selectedPitch?.googleMapsUrl || session.googleMapsUrl,
+              latitude: selectedPitch?.latitude || session.latitude,
+              longitude: selectedPitch?.longitude || session.longitude,
+              address: selectedPitch?.address,
+              location,
+              fieldNumber,
+            });
+            return mapsUrl ? (
+              <div className="flex items-center gap-1.5 pt-0.5 text-2xs">
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-semibold text-volt-600 dark:text-volt-400 hover:underline"
+                  title="Open venue in Google Maps"
+                >
+                  <Navigation size={11} className="text-volt-500" />
+                  <span>Preview Venue in Google Maps</span>
+                  <ExternalLink size={10} />
+                </a>
+                {selectedPitch?.address && (
+                  <span className="text-slate-400 dark:text-slate-500 truncate max-w-xs">
+                    · {selectedPitch.address}
+                  </span>
+                )}
+              </div>
+            ) : null;
+          })()}
         </div>
 
         {/* Notes */}
@@ -1581,20 +1683,17 @@ const EditSessionModal: React.FC<{
         {/* Custom Overrides / Player List Selector */}
         <div className="border-t border-slate-200 dark:border-white/5 pt-3 space-y-3">
           <div>
-            <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1">
-              Cross-Franchise / Custom Player List (Optional)
-            </label>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-2">Select a different franchise to invite players from.</p>
-            <select
+            <Select
+              label="Cross-Branch / Custom Player List (Optional)"
+              helperText="Select a different branch to invite players from."
               value={crossFranchiseId}
               onChange={(e) => setCrossFranchiseId(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-volt-400"
             >
-              <option value="">-- Choose a Franchise --</option>
+              <option value="">-- Choose a Branch --</option>
               {otherFranchises.map((f) => (
                 <option key={f.id} value={f.id}>{f.name}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {crossFranchiseId && (
@@ -1603,7 +1702,7 @@ const EditSessionModal: React.FC<{
                 Available Players in {otherFranchises.find(f => f.id === crossFranchiseId)?.name}
               </p>
               {crossStudents.length === 0 ? (
-                <p className="text-2xs text-slate-500 italic">No players registered under this franchise.</p>
+                <p className="text-2xs text-slate-500 italic">No players registered under this branch.</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto border border-slate-200 dark:border-white/10 rounded p-2 bg-slate-50 dark:bg-pitch-900">
                   {crossStudents.map((s) => {

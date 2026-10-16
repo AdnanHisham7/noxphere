@@ -210,7 +210,7 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
           {/* Squad Details Summary */}
           <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
             <div>
-              <p className="text-slate-400 uppercase font-mono text-[10px]">Club / Franchise</p>
+              <p className="text-slate-400 uppercase font-mono text-[10px]">Club / Branch</p>
               <p className="font-semibold text-slate-800 dark:text-white truncate">
                 {franchiseName || academyName}
               </p>

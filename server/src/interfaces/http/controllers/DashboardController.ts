@@ -1,7 +1,7 @@
-// src/interfaces/http/controllers/DashboardController.ts
 import { Request, Response, NextFunction } from "express";
 import { DashboardUseCases } from "../../../application/use-cases/dashboard/DashboardUseCases";
 import { ResponseHandler } from "../../../shared/utils/ResponseHandler";
+import { ForbiddenError } from "../../../shared/errors/AppError";
 
 export class DashboardController {
   constructor(private readonly dashboardUseCases: DashboardUseCases) {}
@@ -29,7 +29,7 @@ export class DashboardController {
           franchiseId: franchiseId as string | undefined,
           academyId: academyId as string | undefined,
         },
-        days ? parseInt(days as string) : undefined,
+        days !== undefined && !isNaN(Number(days)) ? parseInt(days as string, 10) : 7,
       );
       ResponseHandler.success(res, data, "Attendance trend retrieved");
     } catch (err) {
@@ -90,6 +90,18 @@ export class DashboardController {
         limit ? parseInt(limit as string) : undefined,
       );
       ResponseHandler.success(res, data, "Recent activity retrieved");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  getSuperAdminAnalytics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (req.user?.role !== "super_admin") {
+        throw new ForbiddenError("Super Admin privileges required");
+      }
+      const data = await this.dashboardUseCases.getSuperAdminAnalytics();
+      ResponseHandler.success(res, data, "Super admin platform analytics retrieved");
     } catch (err) {
       next(err);
     }

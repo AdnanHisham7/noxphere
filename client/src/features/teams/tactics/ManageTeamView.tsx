@@ -14,7 +14,7 @@ import {
   getAptitudeMultiplier,
 } from "./types";
 import { TacticalCard } from "./TacticalCard";
-import { Avatar } from "../../../components/ui";
+import { Avatar, Select } from "../../../components/ui";
 import { PlayerPlaceholder } from "../../../components/ui/PlayerPlaceholder";
 import mannequinPng from "../../../assets/players/mannequin.png";
 import {
@@ -220,20 +220,22 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
   return (
     <div className="h-full text-slate-800 dark:text-slate-100 font-sans relative flex flex-col gap-3">
       {/* ── Top bar ── */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 z-10">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-white/10 pb-3 z-10">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
             onClick={onBack}
-            className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider px-3 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 transition flex items-center gap-1.5 shrink-0"
+            className="bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-xs font-display font-bold text-slate-700 dark:text-slate-200 hover:text-pitch-950 dark:hover:text-volt-400 hover:bg-slate-100 dark:hover:bg-pitch-800 uppercase tracking-wider px-3 py-1.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5 shrink-0"
           >
             <ArrowLeft size={13} /> Back
           </button>
           <h2
-            className="text-sm sm:text-base font-black uppercase text-slate-900 dark:text-white tracking-wide truncate min-w-0 flex-1"
+            className="text-base sm:text-lg font-display font-black uppercase text-slate-900 dark:text-white tracking-wide truncate min-w-0 flex-1"
             title={`${teamName} Management Console`}
           >
             <span className="truncate">{teamName}</span>{" "}
-            <span className="text-slate-400 font-normal hidden sm:inline">Management Console</span>
+            <span className="text-slate-400 dark:text-slate-500 font-mono text-xs font-normal hidden sm:inline ml-1.5">
+              Management Console
+            </span>
           </h2>
         </div>
 
@@ -241,7 +243,7 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
           {/* Sidebar toggle — mobile only */}
           <button
             onClick={() => setIsSidebarOpen((v) => !v)}
-            className="lg:hidden bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase px-3 py-1.5 rounded flex items-center gap-1.5"
+            className="lg:hidden bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition-colors"
           >
             {isSidebarOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
             Controls
@@ -249,14 +251,14 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
           {/* Substitutes drawer trigger */}
           <button
             onClick={() => setIsDrawerOpen(true)}
-            className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs uppercase px-3 py-1.5 rounded flex items-center gap-1.5 shadow-sm shadow-cyan-900/30"
+            className="bg-pitch-900 hover:bg-pitch-800 dark:bg-volt-400 dark:hover:bg-volt-500 text-white dark:text-pitch-950 font-display font-bold text-xs uppercase px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <ArrowLeftRight size={13} /> Subs ({reservePlayers.length})
           </button>
           {onGenerateReport && (
             <button
               onClick={onGenerateReport}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase px-3 py-1.5 rounded flex items-center gap-1.5 shadow-sm shadow-emerald-900/30"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-display font-bold text-xs uppercase px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm shadow-emerald-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
               title="Generate Team Report and Export PDF"
             >
               <FileSpreadsheet size={13} /> Report
@@ -272,14 +274,14 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
         <div
           className={`lg:col-span-3 flex-col gap-4 ${isSidebarOpen ? "flex" : "hidden lg:flex"}`}
         >
-          <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-4 flex flex-col gap-4">
+          <div className="bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-sm">
             {/* Team Format Switcher */}
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                <label className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                   Format
                 </label>
-                <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-mono font-bold">
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-volt-400/10 text-volt-600 dark:text-volt-400 border border-volt-400/20">
                   {FORMATIONS_BY_FORMAT[teamFormat]?.playerCount} Players
                 </span>
               </div>
@@ -289,10 +291,10 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                     key={fmt}
                     type="button"
                     onClick={() => handleFormatChange(fmt)}
-                    className={`py-1 px-1 rounded text-2xs font-bold font-mono transition-all text-center ${
+                    className={`py-1 px-1 rounded-lg text-2xs font-bold font-mono transition-all text-center ${
                       teamFormat === fmt
-                        ? "bg-volt-400 text-pitch-950 shadow-sm ring-1 ring-volt-300"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white"
+                        ? "bg-volt-400 text-pitch-950 font-display font-black shadow-xs ring-1 ring-volt-400/40"
+                        : "bg-slate-100 dark:bg-pitch-950 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-pitch-800 hover:text-slate-900 dark:hover:text-white border border-slate-200/60 dark:border-white/5"
                     }`}
                     title={FORMATIONS_BY_FORMAT[fmt].label}
                   >
@@ -300,7 +302,7 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-slate-400 font-medium mt-1 truncate">
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1 truncate">
                 {FORMATIONS_BY_FORMAT[teamFormat]?.pitchName}
               </p>
             </div>
@@ -308,14 +310,14 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
             {/* Formation selector */}
             <div>
               <div className="flex justify-between items-end mb-1.5">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                <label className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                   Formation ({teamFormat})
                 </label>
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={handleClearPitch}
-                    className="text-[10px] font-bold text-slate-500 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded border border-slate-200 dark:border-white/10"
+                    className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors bg-slate-100 dark:bg-pitch-950 px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/10"
                     title="Clear all players to make all slots empty"
                   >
                     Clear
@@ -323,45 +325,46 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                   <button
                     type="button"
                     onClick={handleAutopick}
-                    className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 transition-colors bg-cyan-50 dark:bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-200 dark:border-cyan-400/20"
+                    className="text-[10px] font-mono font-bold text-volt-600 dark:text-volt-400 hover:text-volt-500 transition-colors bg-volt-400/10 hover:bg-volt-400/20 px-2.5 py-0.5 rounded-md border border-volt-400/25"
                     title="Auto-fill slots with best players"
                   >
                     Autopick
                   </button>
                 </div>
               </div>
-              <select
+              <Select
                 value={formation}
                 onChange={(e) => applyFormationReset(e.target.value as FormationType)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:ring-1 focus:ring-cyan-500 outline-none font-mono"
+                className="font-mono text-xs"
               >
                 {FORMATIONS_BY_FORMAT[teamFormat]?.formations.map((f) => (
                   <option key={f} value={f}>{f}</option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             {/* Save formation */}
-            <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
-              <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+            <div className="border-t border-slate-200/80 dark:border-white/10 pt-3">
+              <label className="block text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
                 Save formation as
               </label>
               <div className="flex gap-1.5 mb-3">
-                <select
+                <Select
                   value={labelInput}
                   onChange={(e) => setLabelInput(e.target.value)}
-                  className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-1 text-xs text-slate-700 dark:text-slate-300"
+                  className="text-xs"
+                  wrapperClassName="flex-1"
                 >
                   <option value="Friendly Match">Friendly Match</option>
                   <option value="Tournament Run">Tournament Run</option>
                   <option value="Local Derby">Local Derby</option>
                   <option value="Championship Final">Championship Final</option>
                   <option value="Training Match">Training Match</option>
-                </select>
+                </Select>
                 <button
                   onClick={saveFormationPreset}
                   disabled={isSaving}
-                  className="bg-lime-500 hover:bg-lime-600 disabled:opacity-50 text-slate-950 font-bold px-3 py-1 rounded text-2xs uppercase tracking-wide"
+                  className="bg-volt-400 hover:bg-volt-500 disabled:opacity-50 text-pitch-950 font-display font-black px-3.5 py-1.5 rounded-lg text-2xs uppercase tracking-wider transition-all shadow-xs"
                 >
                   {isSaving ? "..." : "Save"}
                 </button>
@@ -369,14 +372,14 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
 
               <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                 {savedFormations.length === 0 && (
-                  <p className="text-2xs text-slate-400">
+                  <p className="text-2xs text-slate-400 dark:text-slate-500 font-mono">
                     No saved formations yet — save one to persist across sessions.
                   </p>
                 )}
                 {savedFormations.map((sf) => (
                   <div
                     key={sf.id}
-                    className="flex justify-between items-center bg-slate-50 dark:bg-slate-950 p-2 rounded border border-slate-200 dark:border-slate-800 text-2xs"
+                    className="flex justify-between items-center bg-slate-50 dark:bg-pitch-950 p-2.5 rounded-xl border border-slate-200 dark:border-white/10 text-2xs transition-colors"
                   >
                     <div>
                       <div className="flex items-center gap-1.5">
@@ -384,26 +387,26 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                           {sf.label}
                         </span>
                         {sf.teamFormat && (
-                          <span className="px-1 py-0.2 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded text-[9px] font-mono font-bold">
+                          <span className="px-1.5 py-0.5 bg-slate-200/80 dark:bg-pitch-800 text-slate-700 dark:text-slate-300 rounded font-mono font-bold text-[9px]">
                             {sf.teamFormat}
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-slate-400 font-mono">{sf.formationType}</p>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">{sf.formationType}</p>
                     </div>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => applyPreset(sf)}
-                        className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/50 px-2 py-0.5 rounded border border-cyan-200 dark:border-cyan-900/40 hover:bg-cyan-100 dark:hover:bg-cyan-900/30"
+                        className="text-[10px] font-mono font-bold text-volt-700 dark:text-volt-400 bg-volt-400/10 hover:bg-volt-400/20 px-2.5 py-1 rounded-md border border-volt-400/25 transition-colors"
                       >
                         Load
                       </button>
                       <button
                         onClick={() => deleteFormationPreset(sf.id)}
-                        className="text-[10px] text-slate-400 hover:text-red-500 p-0.5 rounded transition-colors"
+                        className="text-[10px] text-slate-400 hover:text-rose-500 p-1 rounded-md transition-colors"
                         title="Delete preset"
                       >
-                        <Trash2 size={11} />
+                        <Trash2 size={12} />
                       </button>
                     </div>
                   </div>
@@ -412,7 +415,7 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
             </div>
 
             {/* Coach card */}
-            <div className="mt-auto bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-3">
+            <div className="mt-auto bg-slate-50 dark:bg-pitch-950 p-3.5 rounded-xl border border-slate-200 dark:border-white/10 flex items-center gap-3">
               <Avatar
                 name={coach ? `${coach.firstName} ${coach.lastName}` : "?"}
                 size="md"
@@ -421,14 +424,14 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                 <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
                   {coach ? `${coach.firstName} ${coach.lastName}` : "No coach assigned"}
                 </p>
-                <p className="text-xs text-slate-400">Head Coach</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-mono">Head Coach</p>
               </div>
               <button
                 onClick={onEditColors}
-                className="w-9 h-9 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl flex items-center justify-center transition-all active:scale-95 shrink-0"
+                className="w-9 h-9 bg-white dark:bg-pitch-900 hover:bg-slate-100 dark:hover:bg-pitch-800 border border-slate-200 dark:border-white/15 rounded-xl flex items-center justify-center transition-all shadow-xs active:scale-95 shrink-0"
                 title="Edit team colors"
               >
-                <Palette size={16} className="text-slate-500 dark:text-slate-300" />
+                <Palette size={16} className="text-slate-600 dark:text-slate-300" />
               </button>
             </div>
           </div>
@@ -437,24 +440,24 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
         {/* ── Pitch ── */}
         <div className="lg:col-span-6 flex flex-col items-center justify-start lg:justify-center gap-2">
           {/* Tactical Pitch Header Badge */}
-          <div className="flex items-center gap-2 bg-slate-900/80 backdrop-blur-sm text-white border border-white/10 px-3.5 py-1 rounded-full text-xs shadow-md">
-            <span className="font-bold text-volt-400 uppercase tracking-wider font-mono">
+          <div className="flex items-center gap-2 bg-white/95 dark:bg-pitch-950/90 backdrop-blur-md text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 px-4 py-1.5 rounded-full text-xs shadow-md">
+            <span className="font-bold text-volt-600 dark:text-volt-400 uppercase tracking-wider font-mono">
               {teamFormat}
             </span>
-            <span className="text-white/30">·</span>
-            <span className="text-slate-200 font-medium">
+            <span className="text-slate-300 dark:text-white/30">·</span>
+            <span className="text-slate-700 dark:text-slate-200 font-medium">
               {FORMATIONS_BY_FORMAT[teamFormat]?.pitchName}
             </span>
-            <span className="text-white/30">·</span>
-            <span className="font-mono text-cyan-300 font-bold">{formation}</span>
+            <span className="text-slate-300 dark:text-white/30">·</span>
+            <span className="font-mono text-volt-600 dark:text-volt-400 font-bold">{formation}</span>
           </div>
 
-          <div className="relative w-full max-w-xs sm:max-w-sm aspect-[4/5] bg-emerald-900 border-[3px] border-white/20 rounded-lg shadow-2xl overflow-hidden bg-gradient-to-b from-emerald-800 via-emerald-900 to-emerald-950">
-            <div className="absolute inset-x-0 top-0 h-1/2 border-b border-white/10" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 border border-white/10 rounded-full" />
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-44 h-16 border-b border-x border-white/10" />
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-44 h-16 border-t border-x border-white/10" />
-            <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-24 h-2.5 bg-slate-950/60 border-t border-x border-white/30 z-10" />
+          <div className="relative w-full max-w-xs sm:max-w-sm aspect-[4/5] bg-emerald-950 border-[3px] border-emerald-700/60 dark:border-white/20 rounded-2xl shadow-2xl overflow-hidden bg-gradient-to-b from-emerald-800 via-emerald-900 to-emerald-950">
+            <div className="absolute inset-x-0 top-0 h-1/2 border-b border-white/15" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 border border-white/15 rounded-full" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-44 h-16 border-b border-x border-white/15" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-44 h-16 border-t border-x border-white/15" />
+            <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-24 h-2.5 bg-pitch-950/80 border-t border-x border-white/30 z-10" />
 
             {(FORMATION_PRESETS[formation] || []).map((slot) => {
               const assignedPlayerId = squad[slot.id];
@@ -480,24 +483,24 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
         {/* ── Right: Strength + Inspector ── */}
         <div className="lg:col-span-3 flex flex-row lg:flex-col gap-3 lg:gap-4">
           {/* Collective Strength */}
-          <div className="flex-1 lg:flex-none bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-4 text-center shadow-sm">
-            <h4 className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-widest mb-1">
+          <div className="flex-1 lg:flex-none bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-center shadow-sm">
+            <h4 className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">
               Collective Strength
             </h4>
-            <p className="text-3xl font-mono font-black text-lime-500 dark:text-lime-400 tracking-tight">
+            <p className="text-3xl font-mono font-black text-volt-600 dark:text-volt-400 tracking-tight">
               {collectiveStrength}
             </p>
           </div>
 
           {/* Player Inspector */}
-          <div className="flex-1 lg:flex-none bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-4 flex flex-col shadow-sm">
-            <h4 className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-widest mb-3">
+          <div className="flex-1 lg:flex-none bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-5 flex flex-col shadow-sm">
+            <h4 className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
               Player Inspector
             </h4>
             {selectedPlayer ? (
               <div className="space-y-3 flex-1">
                 <div
-                  className="relative aspect-[2/3] w-full max-w-[140px] mx-auto rounded-2xl overflow-hidden border border-white/10 bg-black shadow-2xl"
+                  className="relative aspect-[2/3] w-full max-w-[140px] mx-auto rounded-2xl overflow-hidden border border-white/15 bg-black shadow-2xl"
                   style={cardBackground}
                 >
                   <div className="absolute inset-0">
@@ -536,7 +539,7 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                     </span>
                   </div>
                 </div>
-                <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-white/5">
+                <div className="bg-slate-50 dark:bg-pitch-950 p-3 rounded-xl border border-slate-200 dark:border-white/10">
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 italic leading-relaxed">
                     Role: {selectedPlayer.position} specialist <br />
                     Squad number: {selectedPlayer.squadNumber}
@@ -556,7 +559,7 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                           setSelectedPlayer(null);
                           toast.success(`${selectedPlayer.name} moved to bench (slot emptied)`);
                         }}
-                        className="w-full mt-2.5 text-2xs font-bold text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded py-1.5 transition flex items-center justify-center gap-1 uppercase"
+                        className="w-full mt-2.5 text-2xs font-mono font-bold text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 rounded-lg py-1.5 transition flex items-center justify-center gap-1.5 uppercase"
                       >
                         <UserMinus size={12} />
                         <span>Bench Player (Empty Slot)</span>
@@ -566,8 +569,8 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="h-full min-h-[100px] flex items-center justify-center border-2 border-dashed border-slate-200 dark:border-white/5 rounded-2xl p-6 text-center">
-                <p className="text-xs text-slate-400 font-medium">
+              <div className="h-full min-h-[100px] flex items-center justify-center border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl p-6 text-center">
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
                   Tap a player on the pitch to inspect
                 </p>
               </div>
@@ -580,27 +583,27 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
       {/* Backdrop */}
       {isDrawerOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:bg-transparent lg:pointer-events-none"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:bg-transparent lg:pointer-events-none"
           onClick={() => setIsDrawerOpen(false)}
         />
       )}
       <div
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDropOnBench}
-        className={`fixed inset-y-0 right-0 w-72 sm:w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-50 transform ${isDrawerOpen ? "translate-x-0" : "translate-x-full"} transition-transform duration-300 ease-in-out p-4 flex flex-col`}
+        className={`fixed inset-y-0 right-0 w-72 sm:w-80 bg-white dark:bg-pitch-900 border-l border-slate-200 dark:border-white/10 shadow-2xl z-50 transform ${isDrawerOpen ? "translate-x-0" : "translate-x-full"} transition-transform duration-300 ease-in-out p-4 sm:p-5 flex flex-col`}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 mb-4">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3 mb-4">
           <div>
-            <h3 className="text-sm font-black uppercase text-slate-900 dark:text-white tracking-wide">
+            <h3 className="text-sm font-display font-black uppercase text-slate-900 dark:text-white tracking-wide">
               Substitutes &amp; Reserves
             </h3>
-            <p className="text-[10px] text-slate-400 mt-0.5">
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 font-mono">
               Drag a player onto a pitch slot
             </p>
           </div>
           <button
             onClick={() => setIsDrawerOpen(false)}
-            className="text-slate-500 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-950 px-2 py-1 rounded text-xs border border-slate-200 dark:border-slate-800 transition-colors"
+            className="text-slate-500 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-pitch-950 p-1.5 rounded-lg border border-slate-200 dark:border-white/10 transition-colors"
           >
             <X size={14} />
           </button>
@@ -608,7 +611,7 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
 
         <div className="flex-1 overflow-y-auto grid grid-cols-3 gap-3 content-start pr-1">
           {reservePlayers.length === 0 && (
-            <p className="col-span-3 text-2xs text-slate-400 dark:text-slate-500 text-center pt-6">
+            <p className="col-span-3 text-2xs text-slate-400 dark:text-slate-500 text-center pt-6 font-mono">
               Every player is on the pitch.
             </p>
           )}
@@ -628,7 +631,7 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                   setSelectedPlayer(player);
                   setIsDrawerOpen(false);
                 }}
-                className="relative aspect-[2/3] rounded-xl border border-white/5 bg-black overflow-hidden group cursor-grab hover:border-volt-400/30 transition-all shadow-lg"
+                className="relative aspect-[2/3] rounded-xl border border-white/10 bg-black overflow-hidden group cursor-grab hover:border-volt-400 transition-all shadow-lg hover:scale-[1.03]"
                 style={cardBackground}
               >
                 <div className="absolute inset-0">
@@ -664,7 +667,7 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                     {player.name.split(" ").pop()}
                   </p>
                 </div>
-                <div className="absolute inset-0 border-2 border-volt-400/0 group-hover:border-volt-400/20 rounded-xl transition-all pointer-events-none" />
+                <div className="absolute inset-0 border-2 border-volt-400/0 group-hover:border-volt-400/30 rounded-xl transition-all pointer-events-none" />
               </div>
             );
           })}

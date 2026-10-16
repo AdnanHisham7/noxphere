@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { CalendarCheck, Users } from "lucide-react";
-import { Badge, Skeleton, EmptyState } from "../../components/ui";
+import { Badge, Skeleton, EmptyState, Select } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
 import { useGetSessionsQuery } from "../../store/api/scheduleApi";
@@ -21,8 +21,8 @@ const AttendancePage: React.FC = () => {
     return (
       <EmptyState
         icon={<Users size={28} />}
-        title="No franchise selected"
-        description="Select a franchise from the top bar to manage attendance."
+        title="No branch selected"
+        description="Select a branch from the top bar to manage attendance."
       />
     );
   }
@@ -39,12 +39,14 @@ const AttendancePage: React.FC = () => {
             Attendance can only be marked against a scheduled session — pick one below
           </p>
         </div>
-        <select className="input !w-auto" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-          <option value="">All teams</option>
-          {(teams ?? []).map((t) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
+        <div className="w-48">
+          <Select value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+            <option value="">All teams</option>
+            {(teams ?? []).map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </Select>
+        </div>
       </div>
 
       {isLoading && (

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -43,6 +43,7 @@ import {
   Button,
   PageHeader,
 } from "../../components/ui";
+import { SuperAdminDashboardView } from "./SuperAdminDashboardView";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useTransferWallEnabled } from "../../hooks/useTransferWallEnabled";
 import { RootState } from "../../store";
@@ -54,14 +55,28 @@ import {
   useGetTeamHealthQuery,
   useGetTopPerformersQuery,
   useGetRecentActivityQuery,
+  type AttendanceTrendPoint,
 } from "../../store/api/dashboardApi";
 
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
+  const item = payload[0].payload as AttendanceTrendPoint;
+  const hasSessions = (item?.total ?? 0) > 0;
   return (
-    <div className="bg-pitch-800 border border-white/10 rounded px-3 py-2 text-xs">
-      <p className="text-slate-400">{label}</p>
-      <p className="text-volt-400 font-bold">{payload[0].value}%</p>
+    <div className="bg-white dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs shadow-md">
+      <p className="text-slate-500 dark:text-slate-400 font-medium">{label}</p>
+      {hasSessions ? (
+        <div className="mt-0.5 space-y-0.5">
+          <p className="text-volt-600 dark:text-volt-400 font-bold text-sm">
+            {payload[0].value}%
+          </p>
+          <p className="text-3xs text-slate-400 font-mono">
+            {item.present ?? 0} of {item.total ?? 0} present
+          </p>
+        </div>
+      ) : (
+        <p className="text-slate-400 italic mt-0.5 text-2xs">No sessions recorded</p>
+      )}
     </div>
   );
 };
@@ -92,7 +107,7 @@ const DashboardPage: React.FC = () => {
   const academyId = user?.academyId;
 
   const isSuperAdmin = user?.role === "super_admin";
-  const isOwnerManager = user?.role === "manager" && !user?.franchiseId;
+  const isOwnerManager = (user?.role === "manager" || user?.role === "operational_manager") && !user?.franchiseId;
 
   // The plain /dashboard route always shows the academy-wide overview for
   // an owner-manager, regardless of any franchise picked earlier while
@@ -115,13 +130,28 @@ const DashboardPage: React.FC = () => {
 
   const { data: stats, isLoading: statsLoading } = useGetDashboardStatsQuery(
     queryParams,
-    { skip },
+    { skip: skip || isSuperAdmin },
   );
   const { data: attendanceTrend, isLoading: trendLoading } =
     useGetAttendanceTrendQuery(
       { ...queryParams, days: attendanceDays },
       { skip: skip || isSuperAdmin },
     );
+
+  const activeTrendSummary = useMemo(() => {
+    if (!attendanceTrend || attendanceTrend.length === 0) return null;
+    const withSessions = attendanceTrend.filter((d) => (d.total ?? 0) > 0);
+    if (withSessions.length === 0) return null;
+    const totalPresent = withSessions.reduce((acc, d) => acc + (d.present ?? 0), 0);
+    const totalSessions = withSessions.reduce((acc, d) => acc + (d.total ?? 0), 0);
+    const rate = totalSessions > 0 ? Math.round((totalPresent / totalSessions) * 1000) / 10 : 0;
+    return {
+      rate,
+      present: totalPresent,
+      total: totalSessions,
+      sessionDays: withSessions.length,
+    };
+  }, [attendanceTrend]);
   const { data: radarData, isLoading: radarLoading } = useGetSkillRadarQuery(
     queryParams,
     { skip: skip || isSuperAdmin },
@@ -145,8 +175,8 @@ const DashboardPage: React.FC = () => {
     return (
       <EmptyState
         icon={<LayoutDashboard size={28} />}
-        title="No franchise selected"
-        description="Select a franchise from the top bar or log in as an academy manager to see its dashboard."
+        title="No branch selected"
+        description="Select a branch from the top bar or log in as an academy manager to see its dashboard."
       />
     );
   }
@@ -182,148 +212,116 @@ const DashboardPage: React.FC = () => {
               ? "Super Admin Active"
               : isConsolidated
                 ? "Academy-wide"
-                : "Franchise Active"}
+                : "Branch Active"}
           </span>
         }
       />
 
-      {/* KPI Stats Row */}
-      {statsLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-lg" />
-          ))}
-        </div>
-      ) : isSuperAdmin ? (
-        /* Super Admin Stats Layout */
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          <StatCard
-            label="Total Academies"
-            value={stats?.totalAcademies ?? 0}
-            sublabel="Registered academies"
-            icon={<School className="h-5 w-5" />}
-            accent="volt"
-          />
-
-          <StatCard
-            label="Total Franchises"
-            value={stats?.totalFranchises ?? 0}
-            sublabel="Operational branches"
-            icon={<Building2 className="h-5 w-5" />}
-            accent="field"
-          />
-
-          <StatCard
-            label="Total Players"
-            value={stats?.totalStudents ?? 0}
-            sublabel="Registered squad members"
-            icon={<Shirt className="h-5 w-5" />}
-            accent="ice"
-          />
-
-          <StatCard
-            label="Total Coaches"
-            value={stats?.totalCoaches ?? 0}
-            sublabel="Active staff"
-            icon={<Users className="h-5 w-5" />}
-            accent="ember"
-          />
-
-          <StatCard
-            label="Total Teams"
-            value={stats?.totalTeams ?? 0}
-            sublabel="Squad groups"
-            icon={<Shield className="h-5 w-5" />}
-            accent="volt"
-          />
-        </div>
-      ) : isConsolidated ? (
-        /* Consolidated (academy-wide) Stats Layout */
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-          <StatCard
-            label="Total Franchises"
-            value={stats?.franchisePerformance?.length ?? 0}
-            sublabel="Operational branches"
-            icon={<Building2 className="h-5 w-5" />}
-            accent="field"
-          />
-
-          <StatCard
-            label="Total Players"
-            value={stats?.totalStudents ?? 0}
-            sublabel={`${stats?.pendingEnrollment ?? 0} pending`}
-            icon={<Shirt className="h-5 w-5" />}
-            accent="volt"
-          />
-
-          <StatCard
-            label="Total Coaches"
-            value={stats?.totalCoaches ?? 0}
-            sublabel="Active staff"
-            icon={<Users className="h-5 w-5" />}
-            accent="ice"
-          />
-
-          <StatCard
-            label="Total Teams"
-            value={stats?.totalTeams ?? 0}
-            sublabel="Squad groups"
-            icon={<Shield className="h-5 w-5" />}
-            accent="ember"
-          />
-
-          <StatCard
-            label="Total Sessions"
-            value={stats?.totalSessions ?? 0}
-            sublabel="Completed & upcoming"
-            icon={<CalendarClock className="h-5 w-5" />}
-            accent="field"
-          />
-
-          <StatCard
-            label="Total Fees"
-            value={formatCurrency(stats?.feesCollected ?? 0)}
-            sublabel={`${formatCurrency(stats?.feesOutstanding ?? 0)} unpaid`}
-            icon={<CreditCard className="h-5 w-5" />}
-            accent="volt"
-          />
-        </div>
+      {/* Super Admin Master Analytics or Manager/Coach Dashboard */}
+      {isSuperAdmin ? (
+        <SuperAdminDashboardView />
       ) : (
-        /* Single Franchise Stats Layout */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <StatCard
-            label="Total Students"
-            value={stats?.totalStudents ?? 0}
-            sublabel={`${stats?.pendingEnrollment ?? 0} pending enrollment`}
-            icon={<Shirt className="h-5 w-5" />}
-            accent="volt"
-          />
+        <>
+          {/* KPI Stats Row - 2 cards per row on mobile screen (Total Sessions hidden on mobile) */}
+          {statsLoading ? (
+            <div
+              className={clsx(
+                "grid gap-2.5 sm:gap-4",
+                isConsolidated
+                  ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"
+                  : "grid-cols-2 sm:grid-cols-2 lg:grid-cols-4",
+              )}
+            >
+              {Array.from({ length: isConsolidated ? 5 : 4 }).map((_, i) => (
+                <Skeleton
+                  key={i}
+                  className={clsx(
+                    "h-28 rounded-lg",
+                    isConsolidated && i === 4 && "hidden sm:block",
+                  )}
+                />
+              ))}
+            </div>
+          ) : isConsolidated ? (
+            /* Consolidated (academy-wide) Stats Layout - Total Sessions hidden on mobile */
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
+              <StatCard
+                label="Total Branches"
+                value={stats?.franchisePerformance?.length ?? 0}
+                sublabel="Operational branches"
+                icon={<Building2 className="h-5 w-5" />}
+                accent="field"
+              />
 
-          <StatCard
-            label="Avg Attendance"
-            value={`${stats?.avgAttendance ?? 0}%`}
-            sublabel="This week"
-            icon={<CheckCircle2 className="h-5 w-5" />}
-            accent="field"
-          />
+              <StatCard
+                label="Total Players"
+                value={stats?.totalStudents ?? 0}
+                sublabel={`${stats?.pendingEnrollment ?? 0} pending`}
+                icon={<Shirt className="h-5 w-5" />}
+                accent="volt"
+              />
 
-          <StatCard
-            label="Fees Collected"
-            value={formatCurrency(stats?.feesCollected ?? 0)}
-            sublabel={`${formatCurrency(stats?.feesOutstanding ?? 0)} outstanding`}
-            icon={<CreditCard className="h-5 w-5" />}
-            accent="ice"
-          />
+              <StatCard
+                label="Total Coaches"
+                value={stats?.totalCoaches ?? 0}
+                sublabel="Active staff"
+                icon={<Users className="h-5 w-5" />}
+                accent="ice"
+              />
 
-          <StatCard
-            label="Avg Rating"
-            value={stats?.avgRating ?? 0}
-            sublabel="Out of 10.0"
-            icon={<Star className="h-5 w-5" />}
-            accent="ember"
-          />
-        </div>
-      )}
+              <StatCard
+                label="Total Fees"
+                value={formatCurrency(stats?.feesCollected ?? 0)}
+                sublabel={`${formatCurrency(stats?.feesOutstanding ?? 0)} unpaid`}
+                icon={<CreditCard className="h-5 w-5" />}
+                accent="volt"
+              />
+
+              <StatCard
+                label="Total Sessions"
+                value={stats?.totalSessions ?? 0}
+                sublabel="Completed & upcoming"
+                icon={<CalendarClock className="h-5 w-5" />}
+                accent="field"
+                className="hidden sm:flex"
+              />
+            </div>
+          ) : (
+            /* Single Franchise Stats Layout - 2 cards in one row on mobile */
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+              <StatCard
+                label="Total Students"
+                value={stats?.totalStudents ?? 0}
+                sublabel={`${stats?.pendingEnrollment ?? 0} pending enrollment`}
+                icon={<Shirt className="h-5 w-5" />}
+                accent="volt"
+              />
+
+              <StatCard
+                label="Avg Attendance"
+                value={`${stats?.avgAttendance ?? 0}%`}
+                sublabel="This week"
+                icon={<CheckCircle2 className="h-5 w-5" />}
+                accent="field"
+              />
+
+              <StatCard
+                label="Fees Collected"
+                value={formatCurrency(stats?.feesCollected ?? 0)}
+                sublabel={`${formatCurrency(stats?.feesOutstanding ?? 0)} outstanding`}
+                icon={<CreditCard className="h-5 w-5" />}
+                accent="ice"
+              />
+
+              <StatCard
+                label="Avg Rating"
+                value={stats?.avgRating ?? 0}
+                sublabel="Out of 10.0"
+                icon={<Star className="h-5 w-5" />}
+                accent="ember"
+              />
+            </div>
+          )}
 
       {/* Main content grid */}
       {!isSuperAdmin && (
@@ -334,9 +332,9 @@ const DashboardPage: React.FC = () => {
               <div>
                 <p className="section-title">Attendance Trend</p>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {attendanceDays === 7 && `Last 7 days — ${isConsolidated ? "consolidated academy view" : "all teams"}`}
-                  {attendanceDays === 30 && `Last 30 days (Month) — ${isConsolidated ? "consolidated academy view" : "all teams"}`}
-                  {attendanceDays === 365 && `Last 12 months (Year) — ${isConsolidated ? "consolidated academy view" : "all teams"}`}
+                  {attendanceDays === 7 && `Last 7 days daily — ${isConsolidated ? "consolidated academy view" : "all teams"}`}
+                  {attendanceDays === 30 && `Last 30 days daily — ${isConsolidated ? "consolidated academy view" : "all teams"}`}
+                  {attendanceDays === 365 && `Last 12 months — ${isConsolidated ? "consolidated academy view" : "all teams"}`}
                   {attendanceDays === 0 && `Overall historical trend — ${isConsolidated ? "consolidated academy view" : "all teams"}`}
                 </p>
               </div>
@@ -344,9 +342,9 @@ const DashboardPage: React.FC = () => {
                 <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-800 p-0.5 rounded-lg border border-slate-200 dark:border-white/5">
                   {[
                     { label: "7D", title: "Last 7 Days", value: 7 },
-                    { label: "1M", title: "Last Month", value: 30 },
-                    { label: "1Y", title: "Last Year", value: 365 },
-                    { label: "All", title: "Overall", value: 0 },
+                    { label: "1M", title: "Last Month (30 Days)", value: 30 },
+                    { label: "1Y", title: "Last 12 Months", value: 365 },
+                    { label: "All", title: "Overall Historical", value: 0 },
                   ].map((t) => (
                     <button
                       key={t.value}
@@ -364,18 +362,31 @@ const DashboardPage: React.FC = () => {
                     </button>
                   ))}
                 </div>
-                <span className="text-volt-400 font-display font-extrabold text-xl">
-                  {stats?.avgAttendance ?? 0}%
-                </span>
+                <div className="text-right shrink-0">
+                  <span className="text-volt-400 font-display font-extrabold text-xl block leading-tight">
+                    {activeTrendSummary ? `${activeTrendSummary.rate}%` : `${stats?.avgAttendance ?? 0}%`}
+                  </span>
+                  <span className="text-3xs text-slate-500 font-mono block">
+                    {activeTrendSummary
+                      ? `${activeTrendSummary.present}/${activeTrendSummary.total} present`
+                      : "period avg"}
+                  </span>
+                </div>
               </div>
             </div>
             {trendLoading ? (
               <Skeleton className="h-40 rounded" />
             ) : !attendanceTrend?.length ||
-              attendanceTrend.every((d) => d.rate === 0) ? (
+              attendanceTrend.every((d) => (d.total ?? 0) === 0) ? (
               <EmptyState
-                title="No attendance recorded yet"
-                description="Mark attendance to see the trend here."
+                title="No attendance recorded for this timeframe"
+                description={
+                  attendanceDays === 7
+                    ? "No sessions conducted in the last 7 days. Try switching to 1M, 1Y, or All."
+                    : attendanceDays === 30
+                      ? "No sessions conducted in the last 30 days. Try switching to 1Y or All."
+                      : "Mark attendance in sessions to populate trend data."
+                }
               />
             ) : (
               <ResponsiveContainer width="100%" height={160}>
@@ -392,6 +403,13 @@ const DashboardPage: React.FC = () => {
                   </defs>
                   <XAxis
                     dataKey="day"
+                    interval={
+                      attendanceDays === 30
+                        ? 4
+                        : attendanceDays === 0 && (attendanceTrend?.length ?? 0) > 12
+                          ? "preserveStartEnd"
+                          : 0
+                    }
                     tick={{ fill: "#64748b", fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
@@ -421,11 +439,11 @@ const DashboardPage: React.FC = () => {
           <div className="card p-5 space-y-4">
             <div>
               <p className="section-title">
-                {isConsolidated ? "Overall Avg Skills" : "Franchise Avg Skills"}
+                {isConsolidated ? "Overall Avg Skills" : "Branch Avg Skills"}
               </p>
               <p className="text-xs text-slate-500 mt-0.5">
                 {isConsolidated
-                  ? "All franchises aggregate"
+                  ? "All branches aggregate"
                   : "All players aggregate"}
               </p>
             </div>
@@ -490,7 +508,7 @@ const DashboardPage: React.FC = () => {
         stats.franchisePerformance.length > 0 && (
           <div className="card p-3.5 sm:p-5 space-y-4 animate-fade-in">
             <div>
-              <p className="section-title">Franchise Performance</p>
+              <p className="section-title">Branch Performance</p>
               <p className="text-xs text-slate-500 mt-0.5">
                 Consolidated overview of all operational branches
               </p>
@@ -498,75 +516,75 @@ const DashboardPage: React.FC = () => {
             <div className="table-responsive">
               <table className="w-full min-w-[680px] text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-white/5 pb-2">
-                    <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider">
-                      Franchise
+                  <tr className="border-b border-slate-200/80 dark:border-white/5 pb-2">
+                    <th className="py-2.5 px-3.5 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Branch
                     </th>
-                    <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-center">
+                    <th className="py-2.5 px-3 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">
                       Players
                     </th>
-                    <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-center">
+                    <th className="py-2.5 px-3 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">
                       Teams
                     </th>
-                    <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-center">
+                    <th className="py-2.5 px-3 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">
                       Sessions
                     </th>
-                    <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-right">
+                    <th className="py-2.5 px-3 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">
                       Collected
                     </th>
-                    <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-right">
+                    <th className="py-2.5 px-3 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">
                       Outstanding
                     </th>
-                    <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-center">
+                    <th className="py-2.5 px-3 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">
                       Status
                     </th>
-                    <th className="py-2 text-2xs font-semibold text-slate-400 uppercase tracking-wider text-center">
+                    <th className="py-2.5 px-3.5 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">
                       Action
                     </th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                   {stats.franchisePerformance.map((fp) => (
                     <tr
                       key={fp.id}
-                      className="border-b border-white/5 hover:bg-white/2 transition-colors"
+                      className="group transition-colors duration-150 hover:bg-slate-100/70 dark:hover:bg-pitch-700/40 dark:hover:bg-white/[0.04]"
                     >
-                      <td className="py-3">
-                        <p className="font-semibold text-slate-900 dark:text-white text-sm">
+                      <td className="py-3 px-3.5">
+                        <p className="font-semibold text-slate-900 dark:text-white text-sm group-hover:text-volt-600 dark:group-hover:text-volt-400 transition-colors">
                           {fp.name}
                         </p>
-                        <p className="text-2xs text-slate-500 font-mono mt-0.5">
+                        <p className="text-2xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
                           {fp.code} · {fp.location ?? "No location"}
                         </p>
                       </td>
-                      <td className="py-3 text-center text-slate-300 text-sm">
+                      <td className="py-3 px-3 text-center text-slate-700 dark:text-slate-300 text-sm">
                         {fp.totalPlayers}
                       </td>
-                      <td className="py-3 text-center text-slate-300 text-sm">
+                      <td className="py-3 px-3 text-center text-slate-700 dark:text-slate-300 text-sm">
                         {fp.totalTeams}
                       </td>
-                      <td className="py-3 text-center text-slate-300 text-sm">
+                      <td className="py-3 px-3 text-center text-slate-700 dark:text-slate-300 text-sm">
                         {fp.totalSessions}
                       </td>
-                      <td className="py-3 text-right text-field-400 font-mono text-sm">
+                      <td className="py-3 px-3 text-right text-emerald-600 dark:text-field-400 font-mono text-sm">
                         ₹{fp.feesCollected.toLocaleString("en-IN")}
                       </td>
-                      <td className="py-3 text-right text-ember-400 font-mono text-sm">
+                      <td className="py-3 px-3 text-right text-amber-600 dark:text-ember-400 font-mono text-sm">
                         ₹{fp.feesOutstanding.toLocaleString("en-IN")}
                       </td>
-                      <td className="py-3 text-center">
+                      <td className="py-3 px-3 text-center">
                         <span
                           className={clsx(
                             "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
                             fp.isActive
-                              ? "bg-field-400/10 text-field-400"
-                              : "bg-slate-800 text-slate-400",
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-field-400 border border-emerald-500/20"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400",
                           )}
                         >
                           {fp.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
-                      <td className="py-3 text-center">
+                      <td className="py-3 px-3.5 text-center">
                         <Button
                           size="sm"
                           onClick={() => {
@@ -594,7 +612,7 @@ const DashboardPage: React.FC = () => {
               <p className="section-title">Team Health</p>
               <Link
                 to="/teams"
-                className="text-xs text-volt-400 hover:underline"
+                className="text-xs text-volt-600 dark:text-volt-400 hover:underline"
               >
                 View all →
               </Link>
@@ -615,7 +633,7 @@ const DashboardPage: React.FC = () => {
                 {teamHealth.map((team) => (
                   <div
                     key={team.name}
-                    className="flex items-center gap-3 p-3 bg-pitch-700 rounded"
+                    className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-pitch-700 rounded border border-slate-200/80 dark:border-transparent"
                   >
                     <div
                       className="w-8 h-8 rounded flex items-center justify-center text-xs font-display font-extrabold text-pitch-900 flex-shrink-0"
@@ -642,13 +660,13 @@ const DashboardPage: React.FC = () => {
                       <div className="flex items-center gap-3 mt-1">
                         <span className="text-2xs text-slate-500">
                           Att:{" "}
-                          <span className="text-volt-400 font-semibold">
+                          <span className="text-volt-600 dark:text-volt-400 font-semibold">
                             {team.attendance}%
                           </span>
                         </span>
                         <span className="text-2xs text-slate-500">
                           Perf:{" "}
-                          <span className="text-ice-400 font-semibold">
+                          <span className="text-sky-600 dark:text-ice-400 font-semibold">
                             {team.performance}
                           </span>
                         </span>
@@ -666,7 +684,7 @@ const DashboardPage: React.FC = () => {
               <p className="section-title">Top Performers</p>
               <Link
                 to="/students"
-                className="text-xs text-volt-400 hover:underline"
+                className="text-xs text-volt-600 dark:text-volt-400 hover:underline"
               >
                 Full rankings →
               </Link>
@@ -690,10 +708,10 @@ const DashboardPage: React.FC = () => {
                       className={clsx(
                         "font-display font-900 text-sm w-5 text-center",
                         i === 0
-                          ? "text-volt-400"
+                          ? "text-volt-600 dark:text-volt-400"
                           : i === 1
-                            ? "text-slate-300"
-                            : "text-slate-500",
+                            ? "text-slate-400 dark:text-slate-300"
+                            : "text-slate-400 dark:text-slate-500",
                       )}
                     >
                       {i + 1}
@@ -707,7 +725,7 @@ const DashboardPage: React.FC = () => {
                         {player.team} · {player.position}
                       </p>
                     </div>
-                    <span className="font-display font-extrabold text-volt-400 text-sm">
+                    <span className="font-display font-extrabold text-volt-600 dark:text-volt-400 text-sm">
                       {player.rating}
                     </span>
                   </div>
@@ -728,7 +746,7 @@ const DashboardPage: React.FC = () => {
             ) : !recentActivity?.length ? (
               <EmptyState
                 title="No recent activity"
-                description="Actions across the franchise will show up here."
+                description="Actions across the branch will show up here."
               />
             ) : (
               <div className="space-y-0">
@@ -738,17 +756,17 @@ const DashboardPage: React.FC = () => {
                     className={clsx(
                       "flex gap-3 py-3",
                       i < recentActivity.length - 1 &&
-                        "border-b border-white/4",
+                        "border-b border-slate-100 dark:border-white/5",
                     )}
                   >
-                    <div className="w-7 h-7 rounded bg-pitch-700 flex items-center justify-center flex-shrink-0">
+                    <div className="w-7 h-7 rounded bg-slate-100 dark:bg-pitch-700 flex items-center justify-center flex-shrink-0">
                       {renderActivityIcon(item.type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-slate-300 leading-tight">
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-tight">
                         {item.message}
                       </p>
-                      <p className="text-2xs text-slate-600 mt-1">
+                      <p className="text-2xs text-slate-400 dark:text-slate-500 mt-1">
                         {formatDistanceToNowStrict(new Date(item.time), {
                           addSuffix: true,
                         })}
@@ -768,7 +786,7 @@ const DashboardPage: React.FC = () => {
           <p className="text-2xs font-mono uppercase tracking-widest text-slate-500 font-bold px-1">
             Operational Shortcuts
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
             {[
               {
                 label: "Register Player",
@@ -864,6 +882,8 @@ const DashboardPage: React.FC = () => {
             })}
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

@@ -19,7 +19,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
   onClose,
   report,
   academyName = "Noxphere Football Academy",
-  franchiseName = "All Franchises",
+  franchiseName = "All Branches",
 }) => {
   const printAreaRef = useRef<HTMLDivElement>(null);
 
@@ -38,7 +38,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
       // Header
       rows.push(["NOXPHERE FINANCIAL & EXPENSE AUDIT REPORT"]);
       rows.push(["Academy:", academyName]);
-      rows.push(["Franchise:", franchiseName]);
+      rows.push(["Branch:", franchiseName]);
       rows.push(["Timeframe:", period.timeframe.toUpperCase()]);
       rows.push(["Period Range:", `${format(new Date(period.startDate), "dd MMM yyyy")} to ${format(new Date(period.endDate), "dd MMM yyyy")}`]);
       rows.push(["Generated At:", format(new Date(), "dd MMM yyyy, hh:mm a")]);
@@ -92,7 +92,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
 
       // Itemized Inflows
       rows.push(["ITEMIZED INFLOWS (STUDENT FEES & OTHER REVENUES)"]);
-      rows.push(["Date", "Type", "Source / Student", "Franchise", "Amount (INR)", "Payment Method", "Ref / Txn ID"]);
+      rows.push(["Date", "Type", "Source / Student", "Branch", "Amount (INR)", "Payment Method", "Ref / Txn ID"]);
       feeInflows.forEach((f) => {
         rows.push([
           format(new Date(f.paidAt), "yyyy-MM-dd"),
@@ -202,7 +202,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                 NOXPHERE
               </span>
               <p className="text-sm font-bold text-slate-800">{academyName}</p>
-              <p className="text-xs text-slate-500">Franchise: {franchiseName}</p>
+              <p className="text-xs text-slate-500">Branch: {franchiseName}</p>
             </div>
             <div className="text-right">
               <span className="inline-block bg-slate-900 text-white font-bold px-2.5 py-1 rounded text-[11px] uppercase tracking-wider">

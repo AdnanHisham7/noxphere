@@ -1,7 +1,7 @@
 // src/store/api/usersApi.ts
 import { baseApi } from "./baseApi";
 
-export type UserRole = "super_admin" | "manager" | "coach" | "student" | "guardian";
+export type UserRole = "super_admin" | "manager" | "coach" | "student" | "guardian" | "operational_manager";
 
 export interface WeeklyAvailability {
   dayOfWeek: number;

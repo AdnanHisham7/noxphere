@@ -1,5 +1,5 @@
-// src/features/complaints/ComplaintsInboxPage.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { clsx } from "clsx";
 import { toast } from "react-hot-toast";
 import {
@@ -24,8 +24,10 @@ import {
   EmptyState,
   PageHeader,
   Tabs,
+  Select,
 } from "../../components/ui";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
+import { useHighlightEffect } from "../../hooks/useEntityHighlight";
 import {
   useListAcademyComplaintsQuery,
   useRespondToComplaintMutation,
@@ -43,13 +45,15 @@ const STATUS_VARIANT: Record<Complaint["status"], "yellow" | "blue" | "green"> =
 };
 
 const ComplaintsInboxPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const academyId = useCurrentAcademyId();
   const user = useSelector((s: RootState) => s.auth.user);
   const isCoach = user?.role === "coach";
 
+  const initialTab = searchParams.get("tab") === "platform_support" ? "platform_support" : "academy_inquiries";
   const [activeTab, setActiveTab] = useState<
     "academy_inquiries" | "platform_support"
-  >("academy_inquiries");
+  >(initialTab);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [selected, setSelected] = useState<Complaint | null>(null);
 
@@ -57,6 +61,21 @@ const ComplaintsInboxPage: React.FC = () => {
     { academyId: academyId ?? "", status: statusFilter || undefined },
     { skip: !academyId },
   );
+
+  const highlightId = useHighlightEffect();
+
+  useEffect(() => {
+    if (highlightId && complaints && complaints.length > 0) {
+      const match = complaints.find((c) => c.id === highlightId);
+      if (match) setSelected(match);
+    }
+  }, [highlightId, complaints]);
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "platform_support") setActiveTab("platform_support");
+    else if (tabParam === "academy_inquiries") setActiveTab("academy_inquiries");
+  }, [searchParams]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -108,21 +127,22 @@ const ComplaintsInboxPage: React.FC = () => {
         <EmptyState
           icon={<MessageSquareWarning size={28} />}
           title="No academy context"
-          description="Select a franchise to view its academy's complaints."
+          description="Select a branch to view its academy's complaints."
         />
       ) : (
         <>
           <div className="flex justify-end">
-            <select
+            <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="input text-xs py-1.5 px-3 w-full sm:w-auto"
+              className="!text-xs !py-1.5 !px-3"
+              wrapperClassName="w-full sm:w-auto"
             >
               <option value="">All statuses</option>
               <option value="open">Open</option>
               <option value="in_progress">In Progress</option>
               <option value="resolved">Resolved</option>
-            </select>
+            </Select>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -145,12 +165,14 @@ const ComplaintsInboxPage: React.FC = () => {
                 complaints.map((c) => (
                   <button
                     key={c.id}
+                    id={`entity-${c.id}`}
+                    data-highlight-id={c.id}
                     onClick={() => setSelected(c)}
                     className={clsx(
-                      "w-full text-left card p-4 space-y-2 transition-colors border",
+                      "w-full text-left card p-4 space-y-2 transition-all border",
                       selected?.id === c.id
-                        ? "border-volt-500 dark:border-volt-400/40 bg-volt-500/5 dark:bg-pitch-900/90 shadow-sm"
-                        : "border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/50 hover:border-slate-300 dark:hover:border-white/20",
+                        ? "border-volt-500 dark:border-volt-400 bg-volt-500/5 dark:bg-pitch-800 shadow-sm ring-1 ring-volt-500/20"
+                        : "border-slate-200/80 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/15 hover:shadow-md",
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -314,7 +336,7 @@ const ComplaintDetail: React.FC<{
   };
 
   return (
-    <div className="card p-5 space-y-5 bg-white dark:bg-pitch-900 border-slate-200 dark:border-white/10 shadow-sm">
+    <div className="card p-5 space-y-5 border-slate-200/80 dark:border-white/5 shadow-sm">
       {/* Header */}
       <div>
         <div className="flex items-center justify-between mb-1 gap-2">
@@ -343,7 +365,7 @@ const ComplaintDetail: React.FC<{
         <label className="label text-2xs uppercase tracking-wider text-slate-400">
           Complaint Details
         </label>
-        <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded-lg p-3.5 leading-relaxed whitespace-pre-wrap">
+        <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-pitch-700/40 border border-slate-200/80 dark:border-white/5 rounded-lg p-3.5 leading-relaxed whitespace-pre-wrap">
           {complaint.message}
         </p>
       </div>
@@ -391,7 +413,7 @@ const ComplaintDetail: React.FC<{
             {complaint.coachResponses.map((cr, idx) => (
               <div
                 key={idx}
-                className="bg-slate-50 dark:bg-pitch-800/70 border border-slate-200 dark:border-white/10 rounded-lg p-3 space-y-1"
+                className="bg-slate-50 dark:bg-pitch-700/50 border border-slate-200/80 dark:border-white/5 rounded-lg p-3 space-y-1"
               >
                 <div className="flex items-center justify-between text-2xs text-slate-500 dark:text-slate-400">
                   <span className="font-semibold text-slate-900 dark:text-white">
@@ -457,7 +479,7 @@ const ComplaintDetail: React.FC<{
           </div>
 
           {showForwardPanel && (
-            <div className="bg-slate-50 dark:bg-pitch-800/50 border border-slate-200 dark:border-white/10 rounded-xl p-4 space-y-3 animate-fade-in">
+            <div className="bg-slate-50 dark:bg-pitch-700/40 border border-slate-200/80 dark:border-white/5 rounded-xl p-4 space-y-3 animate-fade-in">
               <label className="block text-2xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Select Coaches to Notify
               </label>
@@ -474,7 +496,7 @@ const ComplaintDetail: React.FC<{
                         className={`w-full flex items-center justify-between p-2.5 rounded-lg border text-left text-xs transition-colors ${
                           isSelected
                             ? "bg-volt-400/10 border-volt-400 text-slate-900 dark:text-white font-semibold"
-                            : "bg-white dark:bg-pitch-900 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
+                            : "bg-white dark:bg-pitch-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0 pr-2">
@@ -554,7 +576,7 @@ const ComplaintDetail: React.FC<{
                   <label className="label text-2xs uppercase tracking-wider text-slate-400">
                     Official Response Sent {complaint.respondedByName ? `by ${complaint.respondedByName}` : ""}
                   </label>
-                  <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 rounded-lg p-3 leading-relaxed whitespace-pre-wrap">
+                  <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-pitch-700/40 border border-slate-200/80 dark:border-white/5 rounded-lg p-3 leading-relaxed whitespace-pre-wrap">
                     {complaint.response}
                   </p>
                 </div>

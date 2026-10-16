@@ -13,8 +13,10 @@ import {
   XCircle,
   Layers,
   Sparkles,
+  Navigation,
+  ExternalLink,
 } from "lucide-react";
-import { Button, Input, Card, Badge, Skeleton, EmptyState, Modal, ConfirmModal, ImageUploadField, PageHeader } from "../../components/ui";
+import { Button, Input, Card, Badge, Skeleton, EmptyState, Modal, ConfirmModal, ImageUploadField, PageHeader, Select, LocationPicker, getMapsLink } from "../../components/ui";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import { academyApi } from "../../store/api/academyApi";
 import type { Location, AcademyPitch } from "../academies/types";
@@ -48,11 +50,23 @@ const AcademySettingsPage: React.FC = () => {
   // Pitch Add/Edit Modal state
   const [isPitchModalOpen, setIsPitchModalOpen] = useState(false);
   const [editingPitchId, setEditingPitchId] = useState<string | null>(null);
-  const [pitchForm, setPitchForm] = useState({
+  const [pitchForm, setPitchForm] = useState<{
+    name: string;
+    fieldNumber: string;
+    surfaceType: string;
+    address: string;
+    googleMapsUrl: string;
+    latitude: number;
+    longitude: number;
+    isActive: boolean;
+  }>({
     name: "",
     fieldNumber: "",
     surfaceType: "Artificial Turf",
     address: "",
+    googleMapsUrl: "",
+    latitude: 0,
+    longitude: 0,
     isActive: true,
   });
 
@@ -110,11 +124,18 @@ const AcademySettingsPage: React.FC = () => {
 
   const openAddPitch = () => {
     setEditingPitchId(null);
+    const initialMapsUrl =
+      location?.latitude && location?.longitude
+        ? `https://www.google.com/maps?q=${location.latitude},${location.longitude}`
+        : "";
     setPitchForm({
       name: "",
       fieldNumber: "",
       surfaceType: "Artificial Turf",
       address: location?.address || "",
+      googleMapsUrl: initialMapsUrl,
+      latitude: location?.latitude || 0,
+      longitude: location?.longitude || 0,
       isActive: true,
     });
     setIsPitchModalOpen(true);
@@ -122,11 +143,19 @@ const AcademySettingsPage: React.FC = () => {
 
   const openEditPitch = (pitch: AcademyPitch) => {
     setEditingPitchId(pitch.id);
+    const existingMapsUrl =
+      pitch.googleMapsUrl ||
+      (pitch.latitude && pitch.longitude
+        ? `https://www.google.com/maps?q=${pitch.latitude},${pitch.longitude}`
+        : "");
     setPitchForm({
       name: pitch.name,
       fieldNumber: pitch.fieldNumber || "",
       surfaceType: pitch.surfaceType || "Artificial Turf",
       address: pitch.address || "",
+      googleMapsUrl: existingMapsUrl,
+      latitude: pitch.latitude || 0,
+      longitude: pitch.longitude || 0,
       isActive: pitch.isActive !== false,
     });
     setIsPitchModalOpen(true);
@@ -139,6 +168,13 @@ const AcademySettingsPage: React.FC = () => {
       return;
     }
 
+    const trimmedMapsUrl = pitchForm.googleMapsUrl.trim();
+    const finalMapsUrl =
+      trimmedMapsUrl ||
+      (pitchForm.latitude && pitchForm.longitude
+        ? `https://www.google.com/maps?q=${pitchForm.latitude},${pitchForm.longitude}`
+        : undefined);
+
     let updatedPitches: AcademyPitch[];
     if (editingPitchId) {
       updatedPitches = pitches.map((p) =>
@@ -149,6 +185,9 @@ const AcademySettingsPage: React.FC = () => {
               fieldNumber: pitchForm.fieldNumber.trim() || undefined,
               surfaceType: pitchForm.surfaceType || "Artificial Turf",
               address: pitchForm.address.trim() || undefined,
+              googleMapsUrl: finalMapsUrl,
+              latitude: pitchForm.latitude || undefined,
+              longitude: pitchForm.longitude || undefined,
               isActive: pitchForm.isActive,
             }
           : p
@@ -160,6 +199,9 @@ const AcademySettingsPage: React.FC = () => {
         fieldNumber: pitchForm.fieldNumber.trim() || undefined,
         surfaceType: pitchForm.surfaceType || "Artificial Turf",
         address: pitchForm.address.trim() || undefined,
+        googleMapsUrl: finalMapsUrl,
+        latitude: pitchForm.latitude || undefined,
+        longitude: pitchForm.longitude || undefined,
         isActive: pitchForm.isActive,
       };
       updatedPitches = [...pitches, newPitch];
@@ -229,6 +271,12 @@ const AcademySettingsPage: React.FC = () => {
       fieldNumber: location.fieldNumber?.trim() || undefined,
       surfaceType: "Artificial Turf",
       address: location.address?.trim() || undefined,
+      googleMapsUrl:
+        location.latitude && location.longitude
+          ? `https://www.google.com/maps?q=${location.latitude},${location.longitude}`
+          : undefined,
+      latitude: location.latitude || undefined,
+      longitude: location.longitude || undefined,
       isActive: true,
     };
 
@@ -281,7 +329,7 @@ const AcademySettingsPage: React.FC = () => {
       <PageHeader
         eyebrow="Configuration"
         title="Academy settings"
-        subtitle={`These apply academy-wide, across every franchise of ${academy.name}.`}
+        subtitle={`These apply academy-wide, across every branch of ${academy.name}.`}
         actions={
           <Button icon={<Save size={15} />} loading={saving} onClick={handleSave} className="w-full sm:w-auto justify-center">
             Save changes
@@ -316,20 +364,15 @@ const AcademySettingsPage: React.FC = () => {
             value={location?.address}
             onChange={(e) => setLocation((prev) => ({ ...prev, address: e.target.value }))}
           />
-          <Input
-            label="Latitude"
-            type="number"
-            step="any"
-            value={location?.latitude}
-            onChange={(e) => setLocation((prev) => ({ ...prev, latitude: parseFloat(e.target.value) || 0 }))}
-          />
-          <Input
-            label="Longitude"
-            type="number"
-            step="any"
-            value={location?.longitude}
-            onChange={(e) => setLocation((prev) => ({ ...prev, longitude: parseFloat(e.target.value) || 0 }))}
-          />
+          <div className="sm:col-span-2">
+            <LocationPicker
+              latitude={location?.latitude ?? 0}
+              longitude={location?.longitude ?? 0}
+              onChange={({ latitude, longitude }) =>
+                setLocation((prev) => ({ ...prev, latitude, longitude }))
+              }
+            />
+          </div>
           <Input
             label="Field number (optional)"
             value={location?.fieldNumber ?? ""}
@@ -404,73 +447,116 @@ const AcademySettingsPage: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {pitches.map((pitch) => (
-              <div
-                key={pitch.id}
-                className="p-3.5 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 shadow-sm transition-all flex flex-col justify-between group"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-volt-400 shrink-0" />
-                        <h3 className="font-sans font-bold text-sm text-slate-900 dark:text-white truncate" title={pitch.name}>
-                          {pitch.name}
-                        </h3>
+            {pitches.map((pitch) => {
+              const mapsUrl = getMapsLink({
+                googleMapsUrl: pitch.googleMapsUrl,
+                latitude: pitch.latitude,
+                longitude: pitch.longitude,
+                address: pitch.address,
+                location: pitch.name,
+                fieldNumber: pitch.fieldNumber,
+              });
+
+              return (
+                <div
+                  key={pitch.id}
+                  className="p-3.5 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 shadow-sm transition-all flex flex-col justify-between group"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-volt-400 shrink-0" />
+                          <h3 className="font-sans font-bold text-sm text-slate-900 dark:text-white truncate" title={pitch.name}>
+                            {pitch.name}
+                          </h3>
+                        </div>
+                        {pitch.address && (
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate pl-3.5" title={pitch.address}>
+                            {pitch.address}
+                          </p>
+                        )}
                       </div>
-                      {pitch.address && (
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate pl-3.5" title={pitch.address}>
-                          {pitch.address}
-                        </p>
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePitchActive(pitch)}
+                        title={pitch.isActive !== false ? "Click to deactivate" : "Click to activate"}
+                        className="shrink-0 transition-opacity"
+                      >
+                        <Badge variant={pitch.isActive !== false ? "green" : "gray"} size="sm">
+                          {pitch.isActive !== false ? "Active" : "Inactive"}
+                        </Badge>
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2.5 pl-3.5">
+                      {pitch.fieldNumber && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-volt-400/10 text-volt-600 dark:text-volt-300 border border-volt-400/20">
+                          Field: {pitch.fieldNumber}
+                        </span>
+                      )}
+                      {pitch.surfaceType && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/5">
+                          {pitch.surfaceType}
+                        </span>
+                      )}
+                      {mapsUrl && (
+                        <a
+                          href={mapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors"
+                          title="Open venue in Google Maps"
+                        >
+                          <Navigation size={10} className="text-emerald-500" />
+                          <span>Google Maps</span>
+                          <ExternalLink size={9} />
+                        </a>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleTogglePitchActive(pitch)}
-                      title={pitch.isActive !== false ? "Click to deactivate" : "Click to activate"}
-                      className="shrink-0 transition-opacity"
-                    >
-                      <Badge variant={pitch.isActive !== false ? "green" : "gray"} size="sm">
-                        {pitch.isActive !== false ? "Active" : "Inactive"}
-                      </Badge>
-                    </button>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2.5 pl-3.5">
-                    {pitch.fieldNumber && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-volt-400/10 text-volt-600 dark:text-volt-300 border border-volt-400/20">
-                        Field: {pitch.fieldNumber}
-                      </span>
-                    )}
-                    {pitch.surfaceType && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/5">
-                        {pitch.surfaceType}
-                      </span>
-                    )}
+                  <div className="flex items-center justify-between gap-1.5 pt-3 mt-3 border-t border-slate-100 dark:border-white/5">
+                    <div>
+                      {mapsUrl ? (
+                        <a
+                          href={mapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-volt-600 dark:text-volt-400 hover:underline"
+                          title="Open venue in Google Maps"
+                        >
+                          <Navigation size={11} className="text-volt-500" />
+                          <span>Open in Maps</span>
+                          <ExternalLink size={10} />
+                        </a>
+                      ) : (
+                        <span className="text-[11px] text-slate-400 dark:text-slate-600 italic">No link</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<Edit2 size={12} />}
+                        onClick={() => openEditPitch(pitch)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        icon={<Trash2 size={12} />}
+                        onClick={() => setPitchToDelete(pitch)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="flex items-center justify-end gap-1.5 pt-3 mt-3 border-t border-white/5">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={<Edit2 size={12} />}
-                    onClick={() => openEditPitch(pitch)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                    icon={<Trash2 size={12} />}
-                    onClick={() => setPitchToDelete(pitch)}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>
@@ -541,22 +627,13 @@ const AcademySettingsPage: React.FC = () => {
                 onChange={(e) => setPitchForm({ ...pitchForm, fieldNumber: e.target.value })}
               />
 
-              <div>
-                <label className="block text-2xs font-semibold text-slate-400 uppercase tracking-wide mb-1">
-                  Surface Type
-                </label>
-                <select
-                  value={pitchForm.surfaceType}
-                  onChange={(e) => setPitchForm({ ...pitchForm, surfaceType: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-pitch-900 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-volt-500 dark:focus:border-volt-400 text-xs"
-                >
-                  {SURFACE_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label="Surface Type"
+                value={pitchForm.surfaceType}
+                onChange={(e) => setPitchForm({ ...pitchForm, surfaceType: e.target.value })}
+                className="text-xs"
+                options={SURFACE_TYPES}
+              />
             </div>
 
             <Input
@@ -565,6 +642,24 @@ const AcademySettingsPage: React.FC = () => {
               value={pitchForm.address}
               onChange={(e) => setPitchForm({ ...pitchForm, address: e.target.value })}
             />
+
+            <div className="pt-1">
+              <LocationPicker
+                label="Venue Map Location & Coordinates"
+                latitude={pitchForm.latitude}
+                longitude={pitchForm.longitude}
+                mapsUrl={pitchForm.googleMapsUrl}
+                onChange={({ latitude, longitude, mapsUrl }) => {
+                  setPitchForm((prev) => ({
+                    ...prev,
+                    latitude,
+                    longitude,
+                    googleMapsUrl: mapsUrl || (latitude && longitude ? `https://www.google.com/maps?q=${latitude},${longitude}` : ""),
+                  }));
+                }}
+                helperText="Paste a Google Maps share link, enter coordinates, or click Detect Location so players and guardians can navigate to the venue directly."
+              />
+            </div>
 
             <div className="flex items-center gap-2 pt-1">
               <input

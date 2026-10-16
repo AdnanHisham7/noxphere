@@ -2,7 +2,7 @@ import { baseApi } from './baseApi';
 
 export type SelectionStatus = 'pending' | 'shortlisted' | 'on_hold' | 'selected' | 'not_selected' | 'released';
 export type TransferStatus = 'not_listed' | 'listed' | 'sold';
-export type StudentStatus = 'active' | 'inactive' | 'on_leave' | 'graduated' | 'dropped_out';
+export type StudentStatus = 'active' | 'inactive' | 'on_leave' | 'graduated' | 'dropped_out' | 'archived';
 
 export interface MedicalInfo {
   bloodGroup?: string;
@@ -60,6 +60,7 @@ export interface Student {
   transferNote?: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
 }
 
 export interface CreateStudentBody {
@@ -159,11 +160,41 @@ export const studentsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getStudents: builder.query<
       { items: Student[]; total: number },
-      { franchiseId: string; page?: number; limit?: number; search?: string; teamId?: string; ageGroup?: string; selectionStatus?: string }
+      {
+        franchiseId: string;
+        page?: number;
+        limit?: number;
+        search?: string;
+        teamId?: string;
+        ageGroup?: string;
+        selectionStatus?: string;
+        status?: string;
+        deleted?: boolean;
+      }
     >({
-      query: ({ franchiseId, page = 1, limit = 20, search, teamId, ageGroup, selectionStatus }) => ({
+      query: ({
+        franchiseId,
+        page = 1,
+        limit = 20,
+        search,
+        teamId,
+        ageGroup,
+        selectionStatus,
+        status,
+        deleted,
+      }) => ({
         url: '/students',
-        params: { franchiseId, page, limit, search, teamId, ageGroup, selectionStatus },
+        params: {
+          franchiseId,
+          page,
+          limit,
+          search,
+          teamId,
+          ageGroup,
+          selectionStatus,
+          status,
+          deleted,
+        },
       }),
       transformResponse: (res: { data: { items: Student[]; total: number } }) => res.data,
       providesTags: (result) =>
@@ -179,7 +210,7 @@ export const studentsApi = baseApi.injectEndpoints({
     createStudent: builder.mutation<Student, CreateStudentBody>({
       query: (body) => ({ url: '/students', method: 'POST', body }),
       transformResponse: (res: { data: Student }) => res.data,
-      invalidatesTags: [{ type: 'Student', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Student', id: 'LIST' }, 'Academy'],
     }),
     updateStudent: builder.mutation<Student, { id: string; data: Omit<Partial<CreateStudentBody>, "teamId" | "franchiseId"> & { teamId?: string | null } }>({
       query: ({ id, data }) => ({ url: `/students/${id}`, method: 'PUT', body: data }),
@@ -193,7 +224,20 @@ export const studentsApi = baseApi.injectEndpoints({
     }),
     deleteStudent: builder.mutation<void, string>({
       query: (id) => ({ url: `/students/${id}`, method: 'DELETE' }),
-      invalidatesTags: (_, __, id) => [{ type: 'Student', id }, { type: 'Student', id: 'LIST' }],
+      invalidatesTags: (_, __, id) => [
+        { type: 'Student', id },
+        { type: 'Student', id: 'LIST' },
+        'Academy',
+      ],
+    }),
+    restoreStudent: builder.mutation<Student, string>({
+      query: (id) => ({ url: `/students/${id}/restore`, method: 'POST' }),
+      transformResponse: (res: { data: Student }) => res.data,
+      invalidatesTags: (_, __, id) => [
+        { type: 'Student', id },
+        { type: 'Student', id: 'LIST' },
+        'Academy',
+      ],
     }),
     // NOTE: addPerformance/markAttendance used to live here as freeform
     // per-student writes. Attendance/performance are now only recorded
@@ -216,7 +260,11 @@ export const studentsApi = baseApi.injectEndpoints({
     updateStudentStatus: builder.mutation<Student, { id: string; status: StudentStatus }>({
       query: ({ id, status }) => ({ url: `/students/${id}/status`, method: 'PATCH', body: { status } }),
       transformResponse: (res: { data: Student }) => res.data,
-      invalidatesTags: (_, __, { id }) => [{ type: 'Student', id }, { type: 'Student', id: 'LIST' }],
+      invalidatesTags: (_, __, { id }) => [
+        { type: 'Student', id },
+        { type: 'Student', id: 'LIST' },
+        'Academy',
+      ],
     }),
     transferStudentFranchise: builder.mutation<Student, { id: string; toFranchiseId: string; reason?: string }>({
       query: ({ id, toFranchiseId, reason }) => ({
@@ -381,6 +429,7 @@ export const {
   useUpdateStudentMutation,
   useUpdateStudentPhotoMutation,
   useDeleteStudentMutation,
+  useRestoreStudentMutation,
   useAddCoachRemarkMutation,
   useGetPlayerCardQuery,
   useGetStudentReportQuery,

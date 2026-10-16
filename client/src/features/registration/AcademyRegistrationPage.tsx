@@ -10,7 +10,7 @@ import {
 } from "@/store/api/registrationApi";
 import { useLazyCheckAvailabilityQuery } from "@/store/api/authApi";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
-import { ImageUploadField } from "@/components/ui";
+import { ImageUploadField, Select } from "@/components/ui";
 import {
   Building2,
   CheckCircle2,
@@ -101,7 +101,7 @@ export const AcademyRegistrationPage: React.FC = () => {
 
   const validateStep1 = () => {
     if (!selectedFranchiseId && academyInfo?.franchises?.length) {
-      toast.error("Please select a preferred training branch/franchise");
+      toast.error("Please select a preferred training branch");
       return false;
     }
     if (!studentDetails.firstName.trim() || !studentDetails.lastName.trim()) {
@@ -267,7 +267,7 @@ export const AcademyRegistrationPage: React.FC = () => {
     e.preventDefault();
 
     if (!selectedFranchiseId) {
-      toast.error("Please choose your preferred training branch / franchise");
+      toast.error("Please choose your preferred training branch");
       document.getElementById("franchise-select")?.focus();
       return;
     }
@@ -645,19 +645,11 @@ export const AcademyRegistrationPage: React.FC = () => {
 
                   {/* Franchise selection */}
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="label" htmlFor="franchise-select">
-                        Select Preferred Branch / Franchise *
-                      </label>
-                      <span className="text-2xs font-semibold text-amber-500 uppercase tracking-wide">
-                        Required
-                      </span>
-                    </div>
-                    <select
+                    <Select
                       id="franchise-select"
+                      label="Select Preferred Branch *"
                       value={selectedFranchiseId}
                       onChange={(e) => setSelectedFranchiseId(e.target.value)}
-                      className="input"
                       required
                     >
                       <option value="" disabled>
@@ -674,7 +666,7 @@ export const AcademyRegistrationPage: React.FC = () => {
                           </option>
                         );
                       })}
-                    </select>
+                    </Select>
                   </div>
 
                   {/* Player Details */}
@@ -743,8 +735,8 @@ export const AcademyRegistrationPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="label">Gender</label>
-                        <select
+                        <Select
+                          label="Gender"
                           value={studentDetails.gender}
                           onChange={(e) =>
                             setStudentDetails({
@@ -752,16 +744,15 @@ export const AcademyRegistrationPage: React.FC = () => {
                               gender: e.target.value,
                             })
                           }
-                          className="input"
                         >
                           <option value="male">Male</option>
                           <option value="female">Female</option>
                           <option value="other">Other</option>
-                        </select>
+                        </Select>
                       </div>
                       <div>
-                        <label className="label">Age Group *</label>
-                        <select
+                        <Select
+                          label="Age Group *"
                           value={studentDetails.ageGroup}
                           onChange={(e) =>
                             setStudentDetails({
@@ -769,21 +760,20 @@ export const AcademyRegistrationPage: React.FC = () => {
                               ageGroup: e.target.value,
                             })
                           }
-                          className="input"
                         >
                           {AGE_GROUPS.map((ag) => (
                             <option key={ag} value={ag}>
                               {ag}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
-                        <label className="label">Preferred Position</label>
-                        <select
+                        <Select
+                          label="Preferred Position"
                           value={studentDetails.position}
                           onChange={(e) =>
                             setStudentDetails({
@@ -791,14 +781,13 @@ export const AcademyRegistrationPage: React.FC = () => {
                               position: e.target.value,
                             })
                           }
-                          className="input"
                         >
                           {POSITIONS.map((p) => (
                             <option key={p} value={p}>
                               {p}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                       <div>
                         <label className="label">Preferred Jersey #</label>
@@ -818,8 +807,8 @@ export const AcademyRegistrationPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="label">Jersey Size</label>
-                        <select
+                        <Select
+                          label="Jersey Size"
                           value={studentDetails.jerseySize}
                           onChange={(e) =>
                             setStudentDetails({
@@ -827,14 +816,13 @@ export const AcademyRegistrationPage: React.FC = () => {
                               jerseySize: e.target.value,
                             })
                           }
-                          className="input"
                         >
                           <option value="XS">XS</option>
                           <option value="S">S</option>
                           <option value="M">M</option>
                           <option value="L">L</option>
                           <option value="XL">XL</option>
-                        </select>
+                        </Select>
                       </div>
                     </div>
                   </div>
@@ -882,8 +870,8 @@ export const AcademyRegistrationPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="label">Relation to Player</label>
-                        <select
+                        <Select
+                          label="Relation to Player"
                           value={guardianDetails.relation}
                           onChange={(e) =>
                             setGuardianDetails({
@@ -891,13 +879,12 @@ export const AcademyRegistrationPage: React.FC = () => {
                               relation: e.target.value,
                             })
                           }
-                          className="input"
                         >
                           <option value="Father">Father</option>
                           <option value="Mother">Mother</option>
                           <option value="Guardian">Legal Guardian</option>
                           <option value="Other">Other</option>
-                        </select>
+                        </Select>
                       </div>
                     </div>
 

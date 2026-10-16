@@ -1,6 +1,7 @@
 // src/features/student-portal/StudentProgressPage.tsx
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { useHighlightEffect } from "../../hooks/useEntityHighlight";
 import {
   Compass,
   ArrowRight,
@@ -17,6 +18,7 @@ import {
   UserCheck,
   Activity,
   FileText,
+  ExternalLink,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -33,6 +35,7 @@ import {
   NoxStatusBadge,
   NoxStatCard,
 } from "../../components/portal-ui";
+import { getMapsLink } from "../../components/ui";
 import { Badge } from "../../components/ui";
 
 type Tab = "attendance" | "schedule" | "fees" | "performance";
@@ -45,7 +48,24 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 ];
 
 const StudentProgressPage: React.FC = () => {
-  const [tab, setTab] = useState<Tab>("attendance");
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get("highlightId");
+  const queryTab = searchParams.get("tab") as Tab | null;
+  const [tab, setTab] = useState<Tab>(
+    queryTab && ["attendance", "schedule", "fees", "performance"].includes(queryTab)
+      ? queryTab
+      : "attendance",
+  );
+
+  useEffect(() => {
+    const t = searchParams.get("tab") as any;
+    if (t && ["attendance", "schedule", "fees", "performance"].includes(t)) {
+      setTab(t);
+    }
+  }, [searchParams]);
+
+  useHighlightEffect();
+
   const { data: dashboard, isLoading: isDashLoading } =
     useGetMyDashboardQuery();
 
@@ -221,6 +241,8 @@ const AttendanceTab: React.FC = () => {
         {data.records.map((r) => (
           <div
             key={r._id}
+            id={`entity-${(r as any).sessionId || r._id}`}
+            data-highlight-id={(r as any).sessionId || r._id}
             className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.01] transition-colors"
           >
             <div>
@@ -298,6 +320,8 @@ const ScheduleTab: React.FC = () => {
               return (
                 <div
                   key={sId}
+                  id={`entity-${sId}`}
+                  data-highlight-id={sId}
                   className="nox-card p-4 space-y-3 hover:border-white/15 transition-all"
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -335,7 +359,7 @@ const ScheduleTab: React.FC = () => {
                     </div>
 
                     {session.location && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <MapPin
                           size={12}
                           className="text-emerald-400 shrink-0"
@@ -346,6 +370,27 @@ const ScheduleTab: React.FC = () => {
                             ? `(Pitch #${session.fieldNumber})`
                             : ""}
                         </span>
+                        {(() => {
+                          const mapsUrl = getMapsLink({
+                            googleMapsUrl: (session as any).googleMapsUrl,
+                            latitude: (session as any).latitude,
+                            longitude: (session as any).longitude,
+                            location: session.location,
+                            fieldNumber: session.fieldNumber,
+                          });
+                          return mapsUrl ? (
+                            <a
+                              href={mapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-2xs font-semibold text-volt-500 hover:text-volt-400 hover:underline px-1.5 py-0.5 rounded bg-volt-400/10 border border-volt-400/20 transition-colors ml-1"
+                              title="Open venue in Google Maps"
+                            >
+                              <span>Open in Google Maps</span>
+                              <ExternalLink size={10} />
+                            </a>
+                          ) : null;
+                        })()}
                       </div>
                     )}
 
@@ -382,6 +427,8 @@ const ScheduleTab: React.FC = () => {
               return (
                 <div
                   key={sId}
+                  id={`entity-${sId}`}
+                  data-highlight-id={sId}
                   className="p-4 flex items-center justify-between text-xs hover:bg-white/[0.01]"
                 >
                   <div>
@@ -429,7 +476,12 @@ const FeesTab: React.FC = () => {
   return (
     <div className="space-y-5">
       {data.map((fee) => (
-        <div key={fee._id} className="nox-card p-5">
+        <div
+          key={fee._id}
+          id={`entity-${fee._id}`}
+          data-highlight-id={fee._id}
+          className="nox-card p-5"
+        >
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="font-orbital text-sm font-medium text-nox-high capitalize">
@@ -492,6 +544,8 @@ const PerformanceTab: React.FC = () => {
             {data.performance.map((p) => (
               <div
                 key={p._id}
+                id={`entity-${p._id}`}
+                data-highlight-id={p._id}
                 className="px-5 py-4 flex items-center justify-between hover:bg-white/[0.01]"
               >
                 <div>

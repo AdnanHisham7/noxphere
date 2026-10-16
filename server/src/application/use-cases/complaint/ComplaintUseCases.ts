@@ -5,6 +5,7 @@ import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { StudentModel } from "../../../infrastructure/database/models/Student.model";
 import { TeamModel } from "../../../infrastructure/database/models/Team.model";
 import { SessionModel } from "../../../infrastructure/database/models/Session.model";
+import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
 import { NotFoundError, ForbiddenError, BadRequestError } from "../../../shared/errors/AppError";
 import { notificationService } from "../../../infrastructure/services/NotificationService";
 
@@ -52,24 +53,105 @@ export class ComplaintUseCases {
       message: dto.message,
     });
 
-    // 1. Notify academy managers about the new complaint
+    // 1. Identify academy owner and managers
+    const academy = await AcademyModel.findById(dto.academyId).select("managerId name").lean();
+    let ownerId: string | undefined;
+
+    if (academy?.managerId) {
+      ownerId = academy.managerId.toString();
+    } else {
+      // Fallback: Head Office manager (manager without franchiseId or first active manager)
+      const headManager = await UserModel.findOne({
+        academyId: dto.academyId,
+        role: "manager",
+        franchiseId: { $in: [null, undefined] },
+        isActive: true,
+      })
+        .select("_id")
+        .lean();
+      if (headManager) {
+        ownerId = headManager._id.toString();
+      }
+    }
+
+    const managerIdSet = new Set<string>();
+    if (ownerId) {
+      managerIdSet.add(ownerId);
+    }
+
     const managers = await UserModel.find({
-      academyId: dto.academyId,
-      role: "manager",
-      isActive: true,
+      $or: [
+        { academyId: dto.academyId, role: "manager", isActive: true },
+        ...(ownerId ? [{ _id: new mongoose.Types.ObjectId(ownerId), isActive: true }] : []),
+      ],
     })
       .select("_id")
       .lean();
 
-    if (managers.length > 0) {
-      const managerIds = managers.map((m) => m._id.toString());
-      await notificationService.send({
-        userIds: managerIds,
-        type: "complaint_received",
-        title: "New Complaint Submitted",
-        body: `${complaint.raisedByName} submitted a complaint${studentName ? ` regarding ${studentName}` : ""}: "${dto.subject}"`,
-        channels: ["push", "email"],
-      }).catch(() => undefined);
+    managers.forEach((m) => managerIdSet.add(m._id.toString()));
+    const allManagerIds = Array.from(managerIdSet);
+
+    // In-app / Push notifications to managers
+    if (allManagerIds.length > 0) {
+      await notificationService
+        .send({
+          userIds: allManagerIds,
+          type: "complaint_received",
+          title: "New Complaint Submitted",
+          body: `${complaint.raisedByName} submitted a complaint${studentName ? ` regarding ${studentName}` : ""}: "${dto.subject}"`,
+          data: {
+            complaintId: complaint.id || complaint._id.toString(),
+            ...(dto.studentId ? { studentId: dto.studentId } : {}),
+          },
+          channels: ["push"],
+        })
+        .catch(() => undefined);
+    }
+
+    // Email alert: ONLY when complaint is registered by a guardian, and ONLY to the academy owner
+    if (user.role === "guardian" && ownerId) {
+      const academyName = academy?.name || "Football Academy";
+      const emailSubject = `[${academyName}] New Guardian Complaint: ${dto.subject}`;
+      const emailHtml = `
+        <div style="font-family: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+          <div style="background: #0a0a0f; padding: 22px 24px; text-align: center;">
+            <h1 style="color: #ccff00; margin: 0; font-size: 20px; font-weight: 800; letter-spacing: 1px;">${academyName.toUpperCase()}</h1>
+            <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Guardian Complaint Alert</p>
+          </div>
+          <div style="padding: 24px; color: #1e293b;">
+            <h2 style="font-size: 16px; font-weight: 700; margin-top: 0; color: #0f172a;">A new complaint has been filed by a guardian</h2>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 16px; margin: 16px 0; font-size: 13px; line-height: 1.6;">
+              <p style="margin: 0 0 6px 0;"><strong>Filed by:</strong> ${complaint.raisedByName} (Guardian)</p>
+              ${studentName ? `<p style="margin: 0 0 6px 0;"><strong>Student / Player:</strong> ${studentName}</p>` : ""}
+              <p style="margin: 0 0 6px 0;"><strong>Subject:</strong> ${dto.subject}</p>
+              <p style="margin: 0 0 4px 0;"><strong>Message:</strong></p>
+              <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; color: #334155; white-space: pre-wrap;">${dto.message}</div>
+            </div>
+            <p style="font-size: 12px; color: #64748b; line-height: 1.5; margin-top: 20px;">
+              Please log in to your academy management portal to review this complaint, assign it to coaches, or post a response.
+            </p>
+            <div style="font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 16px; margin-top: 20px;">
+              Sent via Noxphere Platform to the Academy Owner.
+            </div>
+          </div>
+        </div>
+      `;
+
+      await notificationService
+        .send({
+          userIds: [ownerId],
+          type: "complaint_received",
+          title: "New Guardian Complaint Submitted",
+          body: `${complaint.raisedByName} submitted a complaint${studentName ? ` regarding ${studentName}` : ""}: "${dto.subject}"`,
+          emailSubject,
+          emailHtml,
+          data: {
+            complaintId: complaint.id || complaint._id.toString(),
+            ...(dto.studentId ? { studentId: dto.studentId } : {}),
+          },
+          channels: ["email"],
+        })
+        .catch(() => undefined);
     }
 
     // 2. Notify the filer (Guardian) that their complaint has been registered
@@ -78,6 +160,10 @@ export class ComplaintUseCases {
       type: "complaint_received",
       title: "Complaint Received",
       body: `Your complaint${studentName ? ` regarding ${studentName}` : ""} ("${dto.subject}") has been registered with academy management.`,
+      data: {
+        complaintId: complaint.id || complaint._id.toString(),
+        ...(dto.studentId ? { studentId: dto.studentId } : {}),
+      },
       channels: ["push"],
     }).catch(() => undefined);
 
@@ -268,7 +354,11 @@ export class ComplaintUseCases {
         type: "complaint_forwarded",
         title: `Complaint Forwarded: ${complaint.subject}`,
         body: `Manager ${managerName} forwarded a complaint${complaint.studentName ? ` regarding ${complaint.studentName}` : ""}: "${complaint.subject}".${notes ? ` Manager Note: "${notes}"` : ""}`,
-        channels: ["push", "email"],
+        data: {
+          complaintId: complaint.id || complaint._id.toString(),
+          ...(complaint.studentId ? { studentId: complaint.studentId.toString() } : {}),
+        },
+        channels: ["push"],
       }).catch(() => undefined);
     }
 
@@ -279,6 +369,10 @@ export class ComplaintUseCases {
       type: "complaint_forwarded",
       title: "Complaint Forwarded to Coaching Staff",
       body: `Your complaint ("${complaint.subject}")${complaint.studentName ? ` regarding ${complaint.studentName}` : ""} has been forwarded to ${coachNamesStr} for direct review.`,
+      data: {
+        complaintId: complaint.id || complaint._id.toString(),
+        ...(complaint.studentId ? { studentId: complaint.studentId.toString() } : {}),
+      },
       channels: ["push"],
     }).catch(() => undefined);
 
@@ -335,7 +429,11 @@ export class ComplaintUseCases {
         type: "complaint_coach_response",
         title: `Coach Response: ${complaint.subject}`,
         body: `Coach ${coachName} responded to complaint${complaint.studentName ? ` regarding ${complaint.studentName}` : ""}: "${response}"`,
-        channels: ["push", "email"],
+        data: {
+          complaintId: complaint.id || complaint._id.toString(),
+          ...(complaint.studentId ? { studentId: complaint.studentId.toString() } : {}),
+        },
+        channels: ["push"],
       }).catch(() => undefined);
     }
 
@@ -345,6 +443,10 @@ export class ComplaintUseCases {
       type: "complaint_response",
       title: `Coach Responded: ${complaint.subject}`,
       body: `Coach ${coachName} provided feedback on your complaint: "${response}"`,
+      data: {
+        complaintId: complaint.id || complaint._id.toString(),
+        ...(complaint.studentId ? { studentId: complaint.studentId.toString() } : {}),
+      },
       channels: ["push"],
     }).catch(() => undefined);
 
@@ -386,7 +488,11 @@ export class ComplaintUseCases {
       type: "complaint_response",
       title: `Complaint ${status === "resolved" ? "Resolved" : "Updated"}: ${complaint.subject}`,
       body: `Your complaint has been marked as ${status.replace("_", " ")}. Management response: "${response}"`,
-      channels: ["push", "email"],
+      data: {
+        complaintId: complaint.id || complaint._id.toString(),
+        ...(complaint.studentId ? { studentId: complaint.studentId.toString() } : {}),
+      },
+      channels: ["push"],
     }).catch(() => undefined);
 
     // 2. If forwarded to coaches, inform them of manager's response / resolution
@@ -397,6 +503,10 @@ export class ComplaintUseCases {
         type: "complaint_response",
         title: `Complaint ${status === "resolved" ? "Resolved" : "Updated"}: ${complaint.subject}`,
         body: `Manager ${responderName} responded to complaint${complaint.studentName ? ` regarding ${complaint.studentName}` : ""}: "${response}" (${status.replace("_", " ")})`,
+        data: {
+          complaintId: complaint.id || complaint._id.toString(),
+          ...(complaint.studentId ? { studentId: complaint.studentId.toString() } : {}),
+        },
         channels: ["push"],
       }).catch(() => undefined);
     }

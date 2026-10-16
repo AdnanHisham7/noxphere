@@ -16,6 +16,7 @@ import {
   EmptyState,
   ImageUploadField,
   PageHeader,
+  Select,
 } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
@@ -41,7 +42,7 @@ const TeamsPage: React.FC = () => {
   const { user } = useSelector((s: RootState) => s.auth);
   const navigate = useNavigate();
   const franchiseId = useCurrentFranchiseId();
-  const isHeadOffice = user?.role === "manager" && !franchiseId;
+  const isHeadOffice = (user?.role === "manager" || user?.role === "operational_manager") && !franchiseId;
   const academyId = useCurrentAcademyId();
   const {
     data: teams,
@@ -160,8 +161,8 @@ const TeamsPage: React.FC = () => {
     return (
       <EmptyState
         icon={<Users size={28} />}
-        title="No franchise selected"
-        description="Select a franchise from the top bar to manage teams."
+        title="No branch selected"
+        description="Select a branch from the top bar to manage teams."
       />
     );
   }
@@ -173,8 +174,8 @@ const TeamsPage: React.FC = () => {
         title={isHeadOffice ? "Academy Teams" : "Teams"}
         subtitle={
           isHeadOffice
-            ? "All squads across all franchises of the academy"
-            : "Batches and squads for this franchise"
+            ? "All squads across all branches of the academy"
+            : "Batches and squads for this branch"
         }
         actions={
           !isHeadOffice && (
@@ -294,10 +295,11 @@ const TeamsPage: React.FC = () => {
                     : "No coach assigned"}
                 </p>
                 {!isHeadOffice && (
-                  <select
+                  <Select
                     value={team.coach?._id ?? ""}
                     onChange={(e) => handleAssignCoach(team.id, e.target.value)}
-                    className="input !w-full !text-xs mt-2"
+                    className="!text-xs"
+                    wrapperClassName="mt-2"
                   >
                     <option value="">No coach assigned</option>
                     {coaches.map((c) => (
@@ -305,7 +307,7 @@ const TeamsPage: React.FC = () => {
                         {c.firstName} {c.lastName}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 )}
                 <div className="mt-4 flex items-center justify-between flex-wrap gap-2">
                   <span className="text-xs text-slate-500 font-mono">
@@ -363,68 +365,50 @@ const TeamsPage: React.FC = () => {
             placeholder="e.g. U-15 Eagles"
             required
           />
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-              Age group
-            </label>
-            <select
-              value={ageGroup}
-              onChange={(e) => setAgeGroup(e.target.value)}
-              className="input !w-full"
-              required
-            >
-              <option value="" disabled>
-                {categories.length === 0
-                  ? "No categories set up yet"
-                  : "Select a category"}
+          <Select
+            label="Age group"
+            value={ageGroup}
+            onChange={(e) => setAgeGroup(e.target.value)}
+            required
+            helperText={categories.length === 0 ? "Add categories from Settings first." : undefined}
+          >
+            <option value="" disabled>
+              {categories.length === 0
+                ? "No categories set up yet"
+                : "Select a category"}
+            </option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
               </option>
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-            {categories.length === 0 && (
-              <p className="text-2xs text-slate-500 mt-1">
-                Add categories from Settings first.
-              </p>
-            )}
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-              Squad / Match Format
-            </label>
-            <select
-              value={teamFormat}
-              onChange={(e) => setTeamFormat(e.target.value)}
-              className="input !w-full font-mono text-xs"
-            >
-              <option value="5s">5s — 5-a-side (Futsal / Turf / 5 on Pitch)</option>
-              <option value="6s">6s — 6-a-side (Turf / 6 on Pitch)</option>
-              <option value="7s">7s — 7-a-side (Mini Football / 7 on Pitch)</option>
-              <option value="8s">8s — 8-a-side (8 on Pitch)</option>
-              <option value="9s">9s — 9-a-side (Youth Academy / 9 on Pitch)</option>
-              <option value="10s">10s — 10-a-side (10 on Pitch)</option>
-              <option value="11s">11s — 11-a-side (Full Regulation / 11 on Pitch)</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-              Coach (optional)
-            </label>
-            <select
-              value={coachId}
-              onChange={(e) => setCoachId(e.target.value)}
-              className="input !w-full"
-            >
-              <option value="">Assign later</option>
-              {coaches.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.firstName} {c.lastName}
-                </option>
-              ))}
-            </select>
-          </div>
+            ))}
+          </Select>
+          <Select
+            label="Squad / Match Format"
+            value={teamFormat}
+            onChange={(e) => setTeamFormat(e.target.value)}
+            className="font-mono text-xs"
+          >
+            <option value="5s">5s — 5-a-side (Futsal / Turf / 5 on Pitch)</option>
+            <option value="6s">6s — 6-a-side (Turf / 6 on Pitch)</option>
+            <option value="7s">7s — 7-a-side (Mini Football / 7 on Pitch)</option>
+            <option value="8s">8s — 8-a-side (8 on Pitch)</option>
+            <option value="9s">9s — 9-a-side (Youth Academy / 9 on Pitch)</option>
+            <option value="10s">10s — 10-a-side (10 on Pitch)</option>
+            <option value="11s">11s — 11-a-side (Full Regulation / 11 on Pitch)</option>
+          </Select>
+          <Select
+            label="Coach (optional)"
+            value={coachId}
+            onChange={(e) => setCoachId(e.target.value)}
+          >
+            <option value="">Assign later</option>
+            {coaches.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.firstName} {c.lastName}
+              </option>
+            ))}
+          </Select>
 
           <div className="grid grid-cols-2 gap-4">
             <ImageUploadField
@@ -522,7 +506,7 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
 }) => {
   const { user } = useSelector((s: RootState) => s.auth);
   const activeFranchiseId = useCurrentFranchiseId();
-  const isHeadOffice = user?.role === "manager" && !activeFranchiseId;
+  const isHeadOffice = (user?.role === "manager" || user?.role === "operational_manager") && !activeFranchiseId;
   const currentAcademyId = useCurrentAcademyId();
   const { data: team, isLoading: teamLoading } = useGetTeamByIdQuery(teamId);
   const [updateStudent] = useUpdateStudentMutation();
@@ -700,26 +684,26 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
                 </h4>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="col-span-1">
-                    <select
+                    <Select
                       value={selectedFranchiseId}
                       onChange={(e) => setSelectedFranchiseId(e.target.value)}
-                      className="input !text-[11px] !py-1 !px-2 !w-full"
+                      className="!text-[11px] !py-1 !px-2"
                     >
                       <option value="" disabled>
-                        Select Franchise
+                        Select Branch
                       </option>
                       {(franchises ?? []).map((f) => (
                         <option key={f.id} value={f.id}>
                           {f.name}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                   <div className="col-span-1">
-                    <select
+                    <Select
                       value={selectedAgeGroup}
                       onChange={(e) => setSelectedAgeGroup(e.target.value)}
-                      className="input !text-[11px] !py-1 !px-2 !w-full"
+                      className="!text-[11px] !py-1 !px-2"
                     >
                       <option value="">All Ages</option>
                       {categoriesList.map((c) => (
@@ -727,7 +711,7 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
                           {c}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                   <div className="col-span-1">
                     <input
@@ -845,31 +829,26 @@ const TeamBrandingModal: React.FC<{
           onChange={(e) => setName(e.target.value)}
           required
         />
-        <div>
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-            Age group
-          </label>
-          <select
-            value={ageGroup}
-            onChange={(e) => setAgeGroup(e.target.value)}
-            className="input !w-full"
-          >
-            <option value="" disabled>
-              Select a category
+        <Select
+          label="Age group"
+          value={ageGroup}
+          onChange={(e) => setAgeGroup(e.target.value)}
+        >
+          <option value="" disabled>
+            Select a category
+          </option>
+          {/* The team's current category is always offered even if it was
+              since removed from academy settings, so switching away is
+              the only way to lose it — never a silent forced blank. */}
+          {(categories.includes(ageGroup)
+            ? categories
+            : [ageGroup, ...categories]
+          ).map((c) => (
+            <option key={c} value={c}>
+              {c}
             </option>
-            {/* The team's current category is always offered even if it was
-                since removed from academy settings, so switching away is
-                the only way to lose it — never a silent forced blank. */}
-            {(categories.includes(ageGroup)
-              ? categories
-              : [ageGroup, ...categories]
-            ).map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
+          ))}
+        </Select>
         <div className="grid grid-cols-2 gap-4">
           <ImageUploadField
             label="Team logo"

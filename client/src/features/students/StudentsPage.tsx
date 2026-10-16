@@ -1,7 +1,8 @@
 // src/features/students/StudentsPage.tsx
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { clsx } from "clsx";
+import { useHighlightEffect } from "../../hooks/useEntityHighlight";
 import {
   Shuffle,
   Users,
@@ -14,6 +15,11 @@ import {
   CreditCard,
   LayoutGrid,
   List,
+  Archive,
+  RotateCcw,
+  Eye,
+  AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 import {
   Button,
@@ -26,6 +32,7 @@ import {
   ImageUploadField,
   DocumentUploadField,
   PageHeader,
+  Select,
 } from "../../components/ui";
 import { toast } from "react-hot-toast";
 import mannequinPng from "../../assets/players/mannequin.png";
@@ -43,10 +50,12 @@ import { useGetFranchiseConsentStatusQuery } from "../../store/api/consentApi";
 import { ShareRegistrationLinkModal } from "./ShareRegistrationLinkModal";
 import { RegistrationRequestsTab } from "./RegistrationRequestsTab";
 import { InviteUnattachedStudentModal } from "./ClaimUnattachedStudentModal";
+import { PlayerAiPromptModal } from "./PlayerAiPromptModal";
 import {
   useGetStudentsQuery,
   useCreateStudentMutation,
   useDeleteStudentMutation,
+  useRestoreStudentMutation,
   useGetRegistrationRequestsQuery,
   type Student,
   type SelectionStatus,
@@ -80,9 +89,16 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
 
       <div className="absolute top-2.5 left-2.5 right-2.5 z-20 flex items-start justify-between">
         <div>
-          <p className="text-[9px] uppercase tracking-[0.5px] text-slate-500 dark:text-white/50 font-bold">
-            {student.position ?? "—"}
-          </p>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[9px] uppercase tracking-[0.5px] text-slate-500 dark:text-white/50 font-bold">
+              {student.position ?? "—"}
+            </span>
+            {student.transferStatus === "listed" && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-sky-500 text-white shadow-xs drop-shadow-xs">
+                ↔ LISTED
+              </span>
+            )}
+          </div>
           <h3 className="font-display font-black uppercase leading-none text-slate-900 dark:text-white text-base mt-1 drop-shadow-xs">
             {student.firstName}
             <br />
@@ -104,12 +120,6 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
           </div>
         </div>
       </div>
-
-      {/* <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
-        <span className="font-display font-black text-[64px] sm:text-[100px] leading-none text-slate-900/[0.04] dark:text-white/[0.06] select-none">
-          {student.jerseyNumber ?? "—"}
-        </span>
-      </div> */}
 
       <div className="absolute bottom-0 left-0 right-0 z-20 p-2.5">
         <div className="mb-2">
@@ -146,7 +156,7 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
         </div>
 
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <Badge
               variant={selectionBadge[student.selectionStatus]?.variant}
               size="sm"
@@ -159,9 +169,13 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
               </Badge>
             )}
             {hasConsent === false && (
-              <Badge variant="yellow" size="sm">
-                Consent pending
-              </Badge>
+              <span
+                title="Guardian consent pending"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-tight bg-amber-400/20 text-amber-800 dark:text-amber-300 border border-amber-400/30 shrink-0"
+              >
+                <AlertTriangle size={9} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>Consent</span>
+              </span>
             )}
           </div>
 
@@ -175,12 +189,6 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
           </div>
         </div>
       </div>
-
-      {student.transferStatus === "listed" && (
-        <div className="absolute top-2.5 right-2.5 z-30">
-          <span className="pill-blue text-2xs font-bold">↔ LISTED</span>
-        </div>
-      )}
     </>
   );
 };
@@ -259,6 +267,7 @@ const StudentsPage: React.FC = () => {
 
   const [createStudent, { isLoading: creating }] = useCreateStudentMutation();
   const [deleteStudent] = useDeleteStudentMutation();
+  const [restoreStudent, { isLoading: restoring }] = useRestoreStudentMutation();
   const { confirm, ConfirmDialog } = useConfirm();
   const academyId = useCurrentAcademyId();
   const { data: franchises } = useGetFranchisesQuery(
@@ -269,13 +278,34 @@ const StudentsPage: React.FC = () => {
   const isCoach = user?.role === "coach";
   const canManageSquad =
     user?.role === "manager" ||
+    user?.role === "operational_manager" ||
     user?.role === "super_admin" ||
     !!user?.permissions?.canManageFranchises;
   const [subscriptionModalMode, setSubscriptionModalMode] = useState<
     "subscribe" | "upgrade" | null
   >(null);
 
-  const [activeTab, setActiveTab] = useState<"squad" | "requests">("squad");
+  const [searchParams] = useSearchParams();
+  const queryTab = searchParams.get("tab") as
+    | "squad"
+    | "requests"
+    | "archived"
+    | null;
+  const [activeTab, setActiveTab] = useState<"squad" | "requests" | "archived">(
+    queryTab && ["squad", "requests", "archived"].includes(queryTab)
+      ? queryTab
+      : "squad",
+  );
+
+  useEffect(() => {
+    const t = searchParams.get("tab") as any;
+    if (t && ["squad", "requests", "archived"].includes(t)) {
+      setActiveTab(t);
+    }
+  }, [searchParams]);
+
+  useHighlightEffect();
+
   const [showShareLinkModal, setShowShareLinkModal] = useState(false);
   const [showClaimModal, setShowClaimModal] = useState(false);
 
@@ -285,6 +315,20 @@ const StudentsPage: React.FC = () => {
       { skip: !academyId || isCoach || !canManageSquad },
     );
   const pendingRequestsCount = pendingRequestsData?.requests?.length ?? 0;
+
+  const {
+    data: archivedData,
+    isLoading: archivedLoading,
+  } = useGetStudentsQuery(
+    {
+      franchiseId: franchiseId ?? "",
+      deleted: true,
+      search: search || undefined,
+      limit: 100,
+    },
+    { skip: !franchiseId || activeTab !== "archived" },
+  );
+  const archivedStudents = archivedData?.items ?? [];
 
   useEffect(() => {
     if ((isCoach || !canManageSquad) && activeTab !== "squad") {
@@ -332,17 +376,36 @@ const StudentsPage: React.FC = () => {
 
   const handleDelete = async (id: string, name: string) => {
     const ok = await confirm({
-      title: "Remove player",
-      message: `Remove ${name} from the franchise? This cannot be undone.`,
-      confirmLabel: "Remove",
+      title: "Remove player from roster",
+      message: `Remove ${name} from the active branch players? This will release 1 student subscription slot immediately. The player's profile and historical stats are safely archived and can be restored anytime from the Archived tab.`,
+      confirmLabel: "Archive Player",
       danger: true,
     });
     if (!ok) return;
     try {
       await deleteStudent(id).unwrap();
-      toast.success("Player removed");
+      toast.success("Player archived and slot released");
     } catch {
       toast.error("Couldn't remove player — try again");
+    }
+  };
+
+  const handleRestore = async (id: string, name: string) => {
+    const ok = await confirm({
+      title: "Restore player to branch",
+      message: `Restore ${name} back to active players? This will occupy 1 student capacity slot in your subscription plan.`,
+      confirmLabel: "Restore Player",
+    });
+    if (!ok) return;
+    try {
+      await restoreStudent(id).unwrap();
+      toast.success(`${name} restored to active players!`);
+    } catch (err: any) {
+      const msg = err?.data?.message || "Failed to restore player. Check subscription capacity.";
+      toast.error(msg);
+      if (err?.data?.code === "SUBSCRIPTION_CAPACITY_EXCEEDED" || err?.data?.code === "SUBSCRIPTION_REQUIRED") {
+        setSubscriptionModalMode("upgrade");
+      }
     }
   };
 
@@ -350,8 +413,8 @@ const StudentsPage: React.FC = () => {
     return (
       <EmptyState
         icon={<Users size={28} />}
-        title="No franchise selected"
-        description="Select a franchise from the top bar to manage its squad."
+        title="No branch selected"
+        description="Select a branch from the top bar to manage its players."
         action={
           franchises && franchises.length > 0 ? (
             <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
@@ -377,7 +440,7 @@ const StudentsPage: React.FC = () => {
       {/* Header */}
       <PageHeader
         eyebrow="Management"
-        title="Squad & Players"
+        title="Players"
         subtitle={isLoading ? "Loading…" : `${data?.total ?? 0} players enrolled`}
         actions={
           canManageSquad ? (
@@ -393,12 +456,13 @@ const StudentsPage: React.FC = () => {
                   Registration Link
                 </Button>
               )}
-              <Link to="/nfc-cards" className="flex-1 sm:flex-none">
+              {/* NFC Cards button - desktop only */}
+              <Link to="/nfc-cards" className="hidden md:inline-flex">
                 <Button
                   size="sm"
                   variant="secondary"
                   icon={<CreditCard size={14} />}
-                  className="text-xs w-full justify-center"
+                  className="text-xs justify-center"
                 >
                   NFC Cards
                 </Button>
@@ -457,6 +521,24 @@ const StudentsPage: React.FC = () => {
               </span>
             )}
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("archived")}
+            className={clsx(
+              "px-3.5 sm:px-4 py-2 text-xs font-display uppercase tracking-wider font-bold rounded-t-lg transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0",
+              activeTab === "archived"
+                ? "bg-slate-200 dark:bg-pitch-800 text-slate-900 dark:text-volt-400 border-b-2 border-volt-400"
+                : "text-slate-500 hover:text-slate-900 dark:hover:text-white",
+            )}
+          >
+            <Archive size={13} />
+            <span>Archived Players</span>
+            {archivedData?.total !== undefined && archivedData.total > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-slate-500/20 text-slate-700 dark:text-slate-300 font-mono text-2xs">
+                {archivedData.total}
+              </span>
+            )}
+          </button>
         </div>
       )}
 
@@ -469,10 +551,140 @@ const StudentsPage: React.FC = () => {
             refetchRequests();
           }}
         />
+      ) : canManageSquad && activeTab === "archived" ? (
+        <div className="space-y-4">
+          <div className="card p-3.5 sm:p-4 bg-slate-50 dark:bg-pitch-900/40 border border-slate-200 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <Archive size={16} className="text-volt-400" />
+                Archived & Dropped-Out Players
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Archived players do not occupy student slots in your subscription plan. Their profiles and match records are preserved and can be restored back to the active squad whenever capacity allows.
+              </p>
+            </div>
+            <div className="w-full sm:w-64">
+              <Input
+                placeholder="Search archived..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                icon={<Search className="h-4 w-4 text-muted-foreground" />}
+              />
+            </div>
+          </div>
+
+          {archivedLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="card p-4 flex items-center gap-4">
+                  <Skeleton className="w-12 h-12 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                  <Skeleton className="h-8 w-24 rounded-lg" />
+                </div>
+              ))}
+            </div>
+          ) : archivedStudents.length === 0 ? (
+            <EmptyState
+              icon={<Archive size={28} />}
+              title="No archived players"
+              description="No deleted or archived players found for this branch."
+            />
+          ) : (
+            <div className="card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-white/10 text-2xs uppercase tracking-wider text-slate-400">
+                      <th className="px-4 py-3">Player</th>
+                      <th className="px-4 py-3 hidden sm:table-cell">Position</th>
+                      <th className="px-4 py-3 hidden md:table-cell">Age Group</th>
+                      <th className="px-4 py-3 hidden lg:table-cell">Guardian Contact</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                    {archivedStudents.map((student) => (
+                      <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-pitch-800/50 transition-colors">
+                        <td className="px-4 py-3">
+                          <Link
+                            to={`/students/${student.id}`}
+                            className="flex items-center gap-3 group"
+                          >
+                            <Avatar
+                              name={`${student.firstName} ${student.lastName}`}
+                              src={student.photo}
+                              size="sm"
+                            />
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-volt-400 transition-colors">
+                                {student.firstName} {student.lastName}
+                              </p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <Badge variant="red" className="!py-0 !px-1.5 text-[9px] uppercase tracking-wider font-bold">
+                                  Archived
+                                </Badge>
+                                {student.jerseyNumber !== undefined && (
+                                  <span className="text-2xs text-slate-500 font-mono">
+                                    #{student.jerseyNumber}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 hidden sm:table-cell">
+                          {student.position ?? "—"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 hidden md:table-cell">
+                          <Badge variant="gray">{student.ageGroup}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-500 hidden lg:table-cell">
+                          {student.guardian?.name ? (
+                            <div>
+                              <p className="font-medium text-slate-700 dark:text-slate-300">{student.guardian.name}</p>
+                              <p className="text-2xs">{student.guardian.phone || student.guardian.email || "No phone"}</p>
+                            </div>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Link
+                              to={`/students/${student.id}`}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-pitch-800 transition-colors border border-slate-200 dark:border-white/10"
+                              title="View full player profile and history"
+                            >
+                              <Eye size={13} className="text-volt-400" />
+                              <span className="hidden sm:inline">View Profile</span>
+                            </Link>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              icon={<RotateCcw size={13} className="text-volt-400" />}
+                              onClick={() => handleRestore(student.id, `${student.firstName} ${student.lastName}`)}
+                              disabled={restoring}
+                              className="text-xs"
+                            >
+                              Restore to Squad
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
         <>
           {/* Filters + view toggle */}
-          <div className="card p-3.5 sm:p-4 flex flex-col sm:flex-row flex-wrap gap-2.5 sm:gap-3 sm:items-end">
+          <div className="card p-3 sm:p-4 space-y-2 sm:space-y-0 sm:flex sm:flex-row sm:flex-wrap sm:gap-3 sm:items-end">
             <div className="w-full sm:flex-1 sm:min-w-48">
               <Input
                 placeholder="Search players..."
@@ -481,48 +693,52 @@ const StudentsPage: React.FC = () => {
                 icon={<Search className="h-4 w-4 text-muted-foreground" />}
               />
             </div>
-            <div className="w-full sm:w-auto sm:min-w-32">
-              <select
-                className="input w-full"
-                value={filterTeam}
-                onChange={(e) => setFilterTeam(e.target.value)}
-              >
-                <option value="">All Teams</option>
-                {(teams ?? []).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="w-full sm:w-auto sm:min-w-32">
-              <select
-                className="input w-full"
-                value={filterAge}
-                onChange={(e) => setFilterAge(e.target.value)}
-              >
-                <option value="">All Ages</option>
-                {categoriesList.map((a) => (
-                  <option key={a}>{a}</option>
-                ))}
-              </select>
-            </div>
-            <div className="w-full sm:w-auto sm:min-w-40">
-              <select
-                className="input w-full"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <option value="">All Statuses</option>
-                <option value="selected">Selected</option>
-                <option value="shortlisted">Shortlisted</option>
-                <option value="pending">Pending</option>
-                <option value="on_hold">On Hold</option>
-                <option value="not_selected">Not Selected</option>
-              </select>
+
+            {/* Mobile 3-column filter grid / desktop flex row */}
+            <div className="grid grid-cols-3 gap-1.5 sm:flex sm:w-auto sm:gap-3 w-full sm:w-auto">
+              <div className="w-full sm:w-auto sm:min-w-32">
+                <Select
+                  value={filterTeam}
+                  onChange={(e) => setFilterTeam(e.target.value)}
+                  className="!text-xs !py-2 !px-2 truncate"
+                >
+                  <option value="">All Teams</option>
+                  {(teams ?? []).map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="w-full sm:w-auto sm:min-w-28">
+                <Select
+                  value={filterAge}
+                  onChange={(e) => setFilterAge(e.target.value)}
+                  className="!text-xs !py-2 !px-2 truncate"
+                >
+                  <option value="">All Ages</option>
+                  {categoriesList.map((a) => (
+                    <option key={a}>{a}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="w-full sm:w-auto sm:min-w-36">
+                <Select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="!text-xs !py-2 !px-2 truncate"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="selected">Selected</option>
+                  <option value="shortlisted">Shortlisted</option>
+                  <option value="pending">Pending</option>
+                  <option value="on_hold">On Hold</option>
+                  <option value="not_selected">Not Selected</option>
+                </Select>
+              </div>
             </div>
 
-            <div className="w-full sm:w-auto sm:ml-auto flex items-center justify-between sm:justify-start gap-2 pt-1 sm:pt-0">
+            <div className="w-full sm:w-auto sm:ml-auto flex items-center justify-between sm:justify-start gap-2 pt-0.5 sm:pt-0">
               <button
                 onClick={() => setShowPhotoCards((prev) => !prev)}
                 className="h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-volt-500 dark:hover:border-volt-400/30 hover:bg-slate-50 dark:hover:bg-pitch-600 transition-all duration-300 shadow-xs"
@@ -626,28 +842,57 @@ const StudentsPage: React.FC = () => {
           {!isLoading && viewMode === "grid" && students.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
               {students.map((student) => (
-                <Link
+                <div
                   key={student.id}
-                  to={`/students/${student.id}`}
-                  className="relative aspect-[2/3] [perspective:2000px] overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-pitch-950 group transition-all duration-300 hover:border-volt-500 dark:hover:border-volt-400/30 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-2xl dark:hover:shadow-volt-400/10"
+                  id={`entity-${student.id}`}
+                  data-highlight-id={student.id}
+                  className="relative group/card"
                 >
-                  <div
-                    className="relative h-full w-full [transform-style:preserve-3d] transition-transform duration-700"
-                    style={{
-                      transform: showPhotoCards
-                        ? "rotateY(0deg)"
-                        : "rotateY(180deg)",
-                    }}
+                  <Link
+                    to={`/students/${student.id}`}
+                    className="block relative aspect-[2/3] [perspective:2000px] overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-pitch-950 group transition-all duration-300 hover:border-volt-500 dark:hover:border-volt-400/30 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-2xl dark:hover:shadow-volt-400/10"
                   >
-                    <div className="absolute inset-0 rounded-3xl overflow-hidden [backface-visibility:hidden] bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-pitch-900 dark:via-pitch-950 dark:to-black">
-                      <div className="absolute inset-0">
-                        {student.photo ? (
-                          <img
-                            src={student.photo}
-                            alt={`${student.firstName} ${student.lastName}`}
-                            className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
-                          />
-                        ) : (
+                    <div
+                      className="relative h-full w-full [transform-style:preserve-3d] transition-transform duration-700"
+                      style={{
+                        transform: showPhotoCards
+                          ? "rotateY(0deg)"
+                          : "rotateY(180deg)",
+                      }}
+                    >
+                      <div className="absolute inset-0 rounded-3xl overflow-hidden [backface-visibility:hidden] bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-pitch-900 dark:via-pitch-950 dark:to-black">
+                        <div className="absolute inset-0">
+                          {student.photo ? (
+                            <img
+                              src={student.photo}
+                              alt={`${student.firstName} ${student.lastName}`}
+                              className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <PlayerPlaceholder
+                              image={mannequinPng}
+                              name={`${student.firstName} ${student.lastName}`}
+                              number={student.jerseyNumber ?? 0}
+                              className="h-full w-full px-6 pb-14"
+                              nameTop="28%"
+                              numberTop="34%"
+                              nameSize="11px"
+                              numberSize="55px"
+                              nameWidth="75%"
+                            />
+                          )}
+                        </div>
+                        <PlayerCardContent
+                          student={student}
+                          teamName={teamNameOf(student.teamId)}
+                          getRatingColor={getRatingColor}
+                          selectionBadge={selectionBadge}
+                          hasConsent={consentStatus?.[student.id]}
+                        />
+                      </div>
+
+                      <div className="absolute inset-0 rounded-3xl overflow-hidden [transform:rotateY(180deg)] [backface-visibility:hidden] bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-pitch-900 dark:via-pitch-950 dark:to-black">
+                        <div className="absolute inset-0">
                           <PlayerPlaceholder
                             image={mannequinPng}
                             name={`${student.firstName} ${student.lastName}`}
@@ -659,41 +904,37 @@ const StudentsPage: React.FC = () => {
                             numberSize="55px"
                             nameWidth="75%"
                           />
-                        )}
-                      </div>
-                      <PlayerCardContent
-                        student={student}
-                        teamName={teamNameOf(student.teamId)}
-                        getRatingColor={getRatingColor}
-                        selectionBadge={selectionBadge}
-                        hasConsent={consentStatus?.[student.id]}
-                      />
-                    </div>
-
-                    <div className="absolute inset-0 rounded-3xl overflow-hidden [transform:rotateY(180deg)] [backface-visibility:hidden] bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-pitch-900 dark:via-pitch-950 dark:to-black">
-                      <div className="absolute inset-0">
-                        <PlayerPlaceholder
-                          image={mannequinPng}
-                          name={`${student.firstName} ${student.lastName}`}
-                          number={student.jerseyNumber ?? 0}
-                          className="h-full w-full px-6 pb-14"
-                          nameTop="28%"
-                          numberTop="34%"
-                          nameSize="11px"
-                          numberSize="55px"
-                          nameWidth="75%"
+                        </div>
+                        <PlayerCardContent
+                          student={student}
+                          teamName={teamNameOf(student.teamId)}
+                          getRatingColor={getRatingColor}
+                          selectionBadge={selectionBadge}
+                          hasConsent={consentStatus?.[student.id]}
                         />
                       </div>
-                      <PlayerCardContent
-                        student={student}
-                        teamName={teamNameOf(student.teamId)}
-                        getRatingColor={getRatingColor}
-                        selectionBadge={selectionBadge}
-                        hasConsent={consentStatus?.[student.id]}
-                      />
                     </div>
-                  </div>
-                </Link>
+                  </Link>
+
+                  {canManageSquad && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDelete(
+                          student.id,
+                          `${student.firstName} ${student.lastName}`,
+                        );
+                      }}
+                      className="absolute top-12 right-2.5 z-30 opacity-0 group-hover/card:opacity-100 p-1.5 rounded-lg bg-pitch-950/85 hover:bg-rose-600 text-slate-300 hover:text-white transition-all shadow-md border border-white/15 backdrop-blur-sm"
+                      title="Archive player & release roster slot"
+                      aria-label="Archive player"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -729,6 +970,8 @@ const StudentsPage: React.FC = () => {
                   {students.map((student, i) => (
                     <tr
                       key={student.id}
+                      id={`entity-${student.id}`}
+                      data-highlight-id={student.id}
                       className={clsx(
                         "border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors",
                         i % 2 === 0 && "bg-slate-50/30 dark:bg-white/[0.01]",
@@ -817,8 +1060,9 @@ const StudentsPage: React.FC = () => {
                                   `${student.firstName} ${student.lastName}`,
                                 )
                               }
-                              className="text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-ember-400 transition-colors"
-                              aria-label="Remove player"
+                              className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 dark:text-slate-500 dark:hover:text-ember-400 transition-colors"
+                              aria-label="Archive player"
+                              title="Archive player & release roster slot"
                             >
                               <Trash2 size={14} />
                             </button>
@@ -972,6 +1216,7 @@ const AddPlayerModal: React.FC<{
   const [guardian, setGuardian] = useState(emptyGuardian);
   const [medical, setMedical] = useState(emptyMedical);
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [showAiPrompt, setShowAiPrompt] = useState(false);
   const [checkAvailability, { isFetching: checkingAvailability }] =
     useLazyCheckAvailabilityQuery();
 
@@ -1177,14 +1422,29 @@ const AddPlayerModal: React.FC<{
         {/* STEP 1: Player Profile */}
         {step === 1 && (
           <div className="space-y-4 animate-fade-in">
-            <ImageUploadField
-              label="Player photo (optional)"
-              category="player_photo"
-              value={photo}
-              onChange={setPhoto}
-              shape="circle"
-              helperText="Shown on the player's card throughout the app. Can be added later too."
-            />
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-400 uppercase tracking-wide">
+                  Player Photo (optional)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAiPrompt(true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-volt-600 dark:text-volt-400 bg-volt-400/10 hover:bg-volt-400/20 border border-volt-400/25 transition-all self-start sm:self-auto cursor-pointer"
+                >
+                  <Sparkles size={12} />
+                  <span>AI Photo Prompt Helper</span>
+                </button>
+              </div>
+              <ImageUploadField
+                label=""
+                category="player_photo"
+                value={photo}
+                onChange={setPhoto}
+                shape="circle"
+                helperText="Shown on the player's card throughout the app. Can be added later too."
+              />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="First Name"
@@ -1210,18 +1470,12 @@ const AddPlayerModal: React.FC<{
                 onChange={(e) => handleDobChange(e.target.value)}
                 required
               />
-              <div>
-                <label className="label">Age Group</label>
-                <select
-                  className="input w-full"
-                  value={ageGroup}
-                  onChange={(e) => setAgeGroup(e.target.value)}
-                >
-                  {categoriesList.map((a) => (
-                    <option key={a}>{a}</option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label="Age Group"
+                value={ageGroup}
+                onChange={(e) => setAgeGroup(e.target.value)}
+                options={categoriesList}
+              />
             </div>
 
             <div>
@@ -1277,21 +1531,18 @@ const AddPlayerModal: React.FC<{
         {step === 2 && (
           <div className="space-y-4 animate-fade-in">
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Team / Squad (optional)</label>
-                <select
-                  className="input w-full"
-                  value={teamId}
-                  onChange={(e) => setTeamId(e.target.value)}
-                >
-                  <option value="">Assign later</option>
-                  {teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label="Team / Squad (optional)"
+                value={teamId}
+                onChange={(e) => setTeamId(e.target.value)}
+              >
+                <option value="">Assign later</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </Select>
               <Input
                 label="Jersey Number (optional)"
                 type="number"
@@ -1511,6 +1762,16 @@ const AddPlayerModal: React.FC<{
           </form>
         )}
       </div>
+
+      <PlayerAiPromptModal
+        isOpen={showAiPrompt}
+        onClose={() => setShowAiPrompt(false)}
+        playerName={`${firstName} ${lastName}`}
+        ageGroup={ageGroup}
+        position={positions.join(", ") || "Player"}
+        teamName={teams.find((t) => t.id === teamId)?.name}
+        jerseyNumber={jerseyNumber}
+      />
     </Modal>
   );
 };

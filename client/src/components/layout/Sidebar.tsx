@@ -26,6 +26,7 @@ import {
   LifeBuoy,
   X,
   Receipt,
+  Sliders,
   type LucideIcon,
 } from 'lucide-react';
 import { RootState } from '../../store';
@@ -68,8 +69,8 @@ interface NavItem {
 
 const EMPLOYEE_NAV: NavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/franchises', label: 'Franchise', icon: Building2, requiredPermission: 'canManageFranchises' },
-  { path: '/students', label: 'Squad', icon: Shirt, requiredPermission: 'canManageAttendance' },
+  { path: '/franchises', label: 'Branch', icon: Building2, requiredPermission: 'canManageFranchises' },
+  { path: '/students', label: 'Players', icon: Shirt, requiredPermission: 'canManageAttendance' },
   { path: '/teams', label: 'Team', icon: Shield, requiredPermission: 'canManagePerformance' },
   { path: '/schedule', label: 'Sessions', icon: CalendarClock, requiredPermission: 'canManageSessions' },
   { path: '/coaches', label: 'Coaches', icon: UserCog, requiredPermission: 'canManageUsers' },
@@ -83,17 +84,17 @@ const navConfig: Record<string, NavItem[]> = {
   super_admin: [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/academies', label: 'Academies', icon: School },
-    { path: '/franchises', label: 'Franchises', icon: Building2 },
+    { path: '/franchises', label: 'Branches', icon: Building2 },
     { path: '/users', label: 'Users', icon: Users },
     { path: '/finance', label: 'Finance', icon: Wallet },
-    { path: '/expenses', label: 'Expenses & Stocks', icon: Receipt },
+    { path: '/platform-settings', label: 'Platform Engine', icon: Sliders },
     { path: '/nfc-cards', label: 'NFC Cards', icon: CreditCard },
     { path: '/admin/support', label: 'Platform Issues', icon: LifeBuoy },
   ],
   manager: [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/franchises', label: 'Franchise', icon: Building2 },
-    { path: '/students', label: 'Squad', icon: Shirt },
+    { path: '/franchises', label: 'Branch', icon: Building2 },
+    { path: '/students', label: 'Players', icon: Shirt },
     { path: '/teams', label: 'Team', icon: Shield },
     { path: '/schedule', label: 'Sessions', icon: CalendarClock },
     { path: '/coaches', label: 'Coaches', icon: UserCog },
@@ -107,9 +108,25 @@ const navConfig: Record<string, NavItem[]> = {
     { path: '/subscription', label: 'Subscription', icon: Wallet },
     { path: '/settings', label: 'Settings', icon: Settings },
   ],
+  operational_manager: [
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/franchises', label: 'Branch', icon: Building2 },
+    { path: '/students', label: 'Players', icon: Shirt },
+    { path: '/teams', label: 'Team', icon: Shield },
+    { path: '/schedule', label: 'Sessions', icon: CalendarClock },
+    { path: '/coaches', label: 'Coaches', icon: UserCog },
+    { path: '/fees', label: 'Fees', icon: CreditCard },
+    { path: '/expenses', label: 'Expenses & Stocks', icon: Receipt },
+    { path: '/nfc-cards', label: 'NFC Cards', icon: CreditCard },
+    { path: '/notifications', label: 'Alerts', icon: Bell },
+    { path: '/complaints', label: 'Complaints', icon: MessageSquareWarning },
+    { path: '/resources', label: 'Resources', icon: FolderOpen },
+    { path: '/subscription', label: 'Subscription', icon: Wallet },
+    { path: '/settings', label: 'Settings', icon: Settings },
+  ],
   coach: [
     { path: '/coach/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/students', label: 'Squad', icon: Shirt },
+    { path: '/students', label: 'Players', icon: Shirt },
     { path: '/schedule', label: 'Sessions', icon: CalendarClock },
     { path: '/complaints', label: 'Complaints', icon: MessageSquareWarning },
     { path: '/resources', label: 'Resources', icon: FolderOpen },
@@ -130,7 +147,7 @@ export const Sidebar: React.FC = () => {
   }));
   const transferWallEnabled = useTransferWallEnabled();
 
-  const isHeadOfficeUser = user?.role === 'manager' && !user?.franchiseId;
+  const isHeadOfficeUser = (user?.role === 'manager' || user?.role === 'operational_manager') && !user?.franchiseId;
   const activeAcademyId = useCurrentAcademyId();
   const { data: franchises } = useGetFranchisesQuery(
     activeAcademyId ? { academyId: activeAcademyId, isActive: true } : undefined,
@@ -143,13 +160,13 @@ export const Sidebar: React.FC = () => {
 
   const { data: openComplaints } = useListAcademyComplaintsQuery(
     { academyId: activeAcademyId!, status: 'open' },
-    { skip: !activeAcademyId || user?.role !== 'manager' }
+    { skip: !activeAcademyId || (user?.role !== 'manager' && user?.role !== 'operational_manager') }
   );
   const openComplaintsCount = openComplaints?.length || 0;
 
   const { data: pendingRequestsData } = useGetRegistrationRequestsQuery(
     { academyId: activeAcademyId || undefined, franchiseId: activeFranchiseId || undefined, status: 'pending' },
-    { skip: !activeAcademyId || !['manager', 'coach', 'employee'].includes(user?.role || '') }
+    { skip: !activeAcademyId || !['manager', 'operational_manager', 'coach', 'employee'].includes(user?.role || '') }
   );
   const pendingRequestsCount = pendingRequestsData?.total ?? pendingRequestsData?.requests?.length ?? 0;
 
@@ -288,7 +305,7 @@ export const Sidebar: React.FC = () => {
                       {openComplaintsCount}
                     </span>
                   )}
-                  {item.label === 'Squad' && pendingRequestsCount > 0 && (
+                  {(item.label === 'Players' || item.label === 'Squad') && pendingRequestsCount > 0 && (
                     <span
                       className={clsx(
                         'ml-auto bg-rose-600 text-white text-2xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center shadow-xs',

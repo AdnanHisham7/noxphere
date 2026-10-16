@@ -53,7 +53,14 @@ export class GuardianUseCases {
         lateFees: [],
         pendingFees: [],
         upcomingFees: [],
+        verificationPendingFees: [],
         overdueFees: [],
+        sessions: {
+          today: [],
+          tomorrow: [],
+          upcoming: [],
+          recentCompleted: [],
+        },
       };
     }
 
@@ -65,18 +72,155 @@ export class GuardianUseCases {
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
-    const [todayAttendance, fees] = await Promise.all([
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const tomorrowDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowStr = `${tomorrowDate.getFullYear()}-${pad(tomorrowDate.getMonth() + 1)}-${pad(tomorrowDate.getDate())}`;
+    const currentTimeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    // Collect conditions for all children to fetch their sessions
+    const allConditions: Array<Record<string, unknown>> = [];
+    const franchiseIds = Array.from(
+      new Set(students.map((s) => s.franchiseId?.toString()).filter(Boolean)),
+    ).map((id) => new mongoose.Types.ObjectId(id));
+
+    for (const s of students) {
+      allConditions.push({ playerIds: s._id });
+      allConditions.push({ rosterPlayerIds: s._id });
+      if (s.teamId) {
+        allConditions.push({ targetType: "team", teamId: s.teamId });
+      }
+      if (s.ageGroup) {
+        allConditions.push(
+          { targetType: "category", category: s.ageGroup },
+          { targetType: "category", categories: s.ageGroup },
+        );
+      }
+    }
+
+    const [todayAttendance, fees, upcomingRawSessions, attendedRecords] = await Promise.all([
       AttendanceModel.find({
         studentId: { $in: studentIds },
         sessionDate: { $gte: todayStart, $lte: todayEnd },
       }).lean(),
       FeeModel.find({ studentId: { $in: studentIds } }).lean(),
+      SessionModel.find({
+        franchiseId: { $in: franchiseIds },
+        deletedAt: { $exists: false },
+        date: { $gte: todayStr },
+        status: { $ne: "cancelled" },
+        ...(allConditions.length > 0 ? { $or: allConditions } : {}),
+      })
+        .populate("teamId", "name ageGroup")
+        .populate("coachId", "firstName lastName")
+        .populate("coachIds", "firstName lastName")
+        .sort({ date: 1, startTime: 1 })
+        .limit(25)
+        .lean(),
+      AttendanceModel.find({
+        studentId: { $in: studentIds },
+        sessionId: { $exists: true },
+      })
+        .select("sessionId studentId status remarks")
+        .sort({ sessionDate: -1 })
+        .limit(20)
+        .lean(),
     ]);
+
+    const attendedSessionIds = Array.from(
+      new Set(attendedRecords.map((a) => a.sessionId?.toString()).filter(Boolean)),
+    ).map((id) => new mongoose.Types.ObjectId(id));
+
+    const pastRawSessions = attendedSessionIds.length > 0
+      ? await SessionModel.find({
+          _id: { $in: attendedSessionIds },
+          deletedAt: { $exists: false },
+        })
+          .populate("teamId", "name ageGroup")
+          .populate("coachId", "firstName lastName")
+          .populate("coachIds", "firstName lastName")
+          .sort({ date: -1 })
+          .limit(10)
+          .lean()
+      : [];
+
+    const mapSessionCard = (s: any, isPast = false) => {
+      const matchingChildren = students.filter((child) => {
+        if (s.playerIds?.some((p: any) => p.toString() === child._id.toString())) return true;
+        if (s.rosterPlayerIds?.some((p: any) => p.toString() === child._id.toString())) return true;
+        if (s.targetType === "team" && child.teamId && (s.teamId?._id?.toString() === child.teamId.toString() || s.teamId?.toString() === child.teamId.toString())) return true;
+        if (s.targetType === "category") {
+          if (s.category && s.category === child.ageGroup) return true;
+          if (s.categories && s.categories.includes(child.ageGroup)) return true;
+        }
+        return false;
+      });
+
+      const isLive = s.date === todayStr && s.startTime <= currentTimeStr && s.endTime >= currentTimeStr && s.status !== "cancelled" && s.status !== "completed";
+
+      const coachName = s.coachId
+        ? `${s.coachId.firstName} ${s.coachId.lastName}`
+        : s.coachIds?.[0]
+          ? `${s.coachIds[0].firstName} ${s.coachIds[0].lastName}`
+          : undefined;
+
+      const teamName = s.targetType === "category"
+        ? (s.category || (Array.isArray(s.categories) ? s.categories.join(", ") : "Category"))
+        : (s.teamId?.name || "Team");
+
+      const childNames = matchingChildren.map((c) => `${c.firstName} ${c.lastName}`.trim()).filter(Boolean);
+      const studentName = childNames.join(", ") || (students[0] ? `${students[0].firstName} ${students[0].lastName}`.trim() : "Student");
+      const venue = s.location || (s.fieldNumber ? `Field ${s.fieldNumber}` : "Academy Pitch");
+      const title = s.notes || (s.type ? `${s.type.charAt(0).toUpperCase() + s.type.slice(1)} Session` : "Training Session");
+
+      return {
+        id: s._id.toString(),
+        title,
+        type: s.type || "training",
+        date: s.date,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        location: venue,
+        venue,
+        fieldNumber: s.fieldNumber,
+        pitch: s.fieldNumber ? `Field ${s.fieldNumber}` : undefined,
+        pitchId: s.pitchId,
+        googleMapsUrl: s.googleMapsUrl,
+        latitude: s.latitude,
+        longitude: s.longitude,
+        status: s.status,
+        notes: s.notes,
+        isLive,
+        coachName,
+        teamName,
+        studentName,
+        children: matchingChildren.map((c) => ({
+          id: c._id.toString(),
+          name: `${c.firstName} ${c.lastName}`.trim(),
+          photo: c.photo,
+        })),
+      };
+    };
+
+    const todaySessions = upcomingRawSessions
+      .filter((s) => s.date === todayStr)
+      .map((s) => mapSessionCard(s));
+
+    const tomorrowSessions = upcomingRawSessions
+      .filter((s) => s.date === tomorrowStr)
+      .map((s) => mapSessionCard(s));
+
+    const upcomingFutureSessions = upcomingRawSessions
+      .filter((s) => s.date > tomorrowStr)
+      .map((s) => mapSessionCard(s));
+
+    const recentCompletedSessions = pastRawSessions.map((s) => mapSessionCard(s, true));
 
     const lateFees: Array<any> = [];
     const pendingFees: Array<any> = [];
     const upcomingFees: Array<any> = [];
-    const now = new Date();
+    const verificationPendingFees: Array<any> = [];
     const in14Days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
     for (const fee of fees) {
@@ -102,13 +246,16 @@ export class GuardianUseCases {
           totalAmount: inst.amount,
           paidAmount: inst.paidAmount,
           dueDate: inst.dueDate,
-          status: isLate ? "overdue" : inst.status,
-          urgency: isLate ? "late" : isDueSoon ? "due_soon" : "upcoming",
+          status: inst.status === "pending_verification" ? "pending_verification" : (isLate ? "overdue" : inst.status),
+          urgency: inst.status === "pending_verification" ? "under_review" : (isLate ? "late" : isDueSoon ? "due_soon" : "upcoming"),
           daysDiff,
           currency: fee.currency || "INR",
+          verificationProof: (inst as any).verificationProof,
         };
 
-        if (isLate) {
+        if (inst.status === "pending_verification") {
+          verificationPendingFees.push(entry);
+        } else if (isLate) {
           lateFees.push(entry);
         } else if (isDueSoon) {
           pendingFees.push(entry);
@@ -121,6 +268,7 @@ export class GuardianUseCases {
     lateFees.sort((a, b) => a.daysDiff - b.daysDiff);
     pendingFees.sort((a, b) => a.daysDiff - b.daysDiff);
     upcomingFees.sort((a, b) => a.daysDiff - b.daysDiff);
+    verificationPendingFees.sort((a, b) => a.daysDiff - b.daysDiff);
 
     return {
       children: students.map((s) => ({
@@ -138,7 +286,14 @@ export class GuardianUseCases {
       lateFees,
       pendingFees,
       upcomingFees,
+      verificationPendingFees,
       overdueFees: lateFees, // backwards compatible
+      sessions: {
+        today: todaySessions,
+        tomorrow: tomorrowSessions,
+        upcoming: upcomingFutureSessions,
+        recentCompleted: recentCompletedSessions,
+      },
     };
   }
 
@@ -230,14 +385,14 @@ export class GuardianUseCases {
     // Verify ownership of the child
     await this.assertOwnsStudent(guardianUserId, fee.studentId.toString());
 
-    return this.feesUseCases.recordPayment(
+    return this.feesUseCases.submitPaymentProof(
       feeId,
       installmentNumber,
       {
         amount: payload.amount,
         paymentMethod: payload.paymentMethod || "upi",
         transactionId: payload.transactionId,
-        paymentBreakdown: payload.paymentBreakdown,
+        notes: payload.notes,
       },
       guardianUserId,
     );

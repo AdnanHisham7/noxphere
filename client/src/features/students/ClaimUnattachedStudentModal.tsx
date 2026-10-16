@@ -10,7 +10,7 @@ import {
   useCancelSquadInvitationMutation,
   type SquadInvitation,
 } from "@/store/api/squadInvitationApi";
-import { Button, Modal, Badge, EmptyState, Input } from "@/components/ui";
+import { Button, Modal, Badge, EmptyState, Input, Select } from "@/components/ui";
 import {
   Search,
   UserPlus,
@@ -318,8 +318,8 @@ export const InviteUnattachedStudentModal: React.FC<InviteUnattachedStudentModal
                 )}
               </div>
               <div className="w-36">
-                <select
-                  className="input text-xs"
+                <Select
+                  className="text-xs"
                   value={ageFilter}
                   onChange={(e) => setAgeFilter(e.target.value)}
                 >
@@ -329,7 +329,7 @@ export const InviteUnattachedStudentModal: React.FC<InviteUnattachedStudentModal
                       {ag}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
 
@@ -466,39 +466,35 @@ export const InviteUnattachedStudentModal: React.FC<InviteUnattachedStudentModal
 
             <form onSubmit={handleConfirmInvite} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">Target Team</label>
-                  <select
-                    value={assignmentForm.teamId}
-                    onChange={(e) => setAssignmentForm({ ...assignmentForm, teamId: e.target.value })}
-                    className="input text-xs"
-                    disabled={isCapacityReached}
-                  >
-                    <option value="">Unassigned Team</option>
-                    {teams.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Offered Position</label>
-                  <select
-                    value={assignmentForm.position}
-                    onChange={(e) => setAssignmentForm({ ...assignmentForm, position: e.target.value })}
-                    className="input text-xs"
-                    disabled={isCapacityReached}
-                  >
-                    <option value="Forward">Forward</option>
-                    <option value="Winger">Winger</option>
-                    <option value="Midfielder">Midfielder</option>
-                    <option value="Defensive Midfielder">Defensive Midfielder</option>
-                    <option value="Defender">Defender</option>
-                    <option value="Full Back">Full Back</option>
-                    <option value="Goalkeeper">Goalkeeper</option>
-                  </select>
-                </div>
+                <Select
+                  label="Target Team"
+                  value={assignmentForm.teamId}
+                  onChange={(e) => setAssignmentForm({ ...assignmentForm, teamId: e.target.value })}
+                  className="text-xs"
+                  disabled={isCapacityReached}
+                >
+                  <option value="">Unassigned Team</option>
+                  {teams.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </Select>
+                <Select
+                  label="Offered Position"
+                  value={assignmentForm.position}
+                  onChange={(e) => setAssignmentForm({ ...assignmentForm, position: e.target.value })}
+                  className="text-xs"
+                  disabled={isCapacityReached}
+                >
+                  <option value="Forward">Forward</option>
+                  <option value="Winger">Winger</option>
+                  <option value="Midfielder">Midfielder</option>
+                  <option value="Defensive Midfielder">Defensive Midfielder</option>
+                  <option value="Defender">Defender</option>
+                  <option value="Full Back">Full Back</option>
+                  <option value="Goalkeeper">Goalkeeper</option>
+                </Select>
               </div>
 
               <div>

@@ -259,6 +259,11 @@ export class TransferUseCases {
         type: "transfer_request",
         title: "New transfer request",
         body: `You have a new offer of ${listing.currency} ${input.offeredPrice} for a listed player.`,
+        data: {
+          requestId: request.id || (request as any)._id?.toString(),
+          listingId: listing.id || (listing as any)._id?.toString(),
+          studentId: listing.studentId.toString(),
+        },
         channels: ["push", "email"],
       })
       .catch(() => undefined);
@@ -309,6 +314,11 @@ export class TransferUseCases {
         type: action === "accept" ? "transfer_accepted" : "transfer_rejected",
         title: `Transfer request ${action}ed`,
         body: responseNote || `Your transfer request has been ${action}ed.`,
+        data: {
+          requestId: request.id || (request as any)._id?.toString(),
+          listingId: request.listingId.toString(),
+          studentId: request.studentId.toString(),
+        },
         channels: ["push", "email"],
       })
       .catch(() => undefined);

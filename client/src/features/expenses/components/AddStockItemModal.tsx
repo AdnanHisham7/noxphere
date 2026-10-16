@@ -1,6 +1,6 @@
 // src/features/expenses/components/AddStockItemModal.tsx
 import React, { useState } from "react";
-import { Modal, Button, Input } from "../../../components/ui";
+import { Modal, Button, Input, Select } from "../../../components/ui";
 import { useCreateStockMutation } from "../../../store/api/expenseApi";
 import toast from "react-hot-toast";
 
@@ -92,13 +92,10 @@ export const AddStockItemModal: React.FC<AddStockItemModalProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Category *
-            </label>
-            <select
+            <Select
+              label="Category *"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="input w-full text-sm"
               required
             >
               {STOCK_CATEGORIES.map((c) => (
@@ -106,7 +103,7 @@ export const AddStockItemModal: React.FC<AddStockItemModalProps> = ({
                   {c}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div>

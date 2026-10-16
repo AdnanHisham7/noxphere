@@ -26,6 +26,7 @@ export interface Employee {
   lastName: string;
   phone?: string;
   email?: string;
+  designation?: string;
   employeeType: "external" | "staff";
   userId?: string;
   roleId?: EmployeeRole | string;
@@ -37,12 +38,13 @@ export interface Employee {
 
 export interface SalaryPayment {
   id: string;
-  employeeId: string | { firstName: string; lastName: string; employeeType: string; roleId?: { name: string } | string };
+  employeeId: string | { firstName: string; lastName: string; designation?: string; employeeType: string; roleId?: { name: string } | string; phone?: string; email?: string };
   academyId: string;
   period: string;
   amount: number;
   status: "pending" | "paid";
   paidAt?: string;
+  paidBy?: string | { firstName?: string; lastName?: string; email?: string };
   notes?: string;
 }
 
@@ -87,7 +89,8 @@ export const employeeApi = baseApi.injectEndpoints({
         lastName: string;
         phone?: string;
         email?: string;
-        employeeType: "external" | "staff";
+        designation?: string;
+        employeeType?: "external" | "staff";
         roleId?: string;
         salaryAmount: number;
         joinDate?: string;
@@ -95,7 +98,7 @@ export const employeeApi = baseApi.injectEndpoints({
       }
     >({
       query: ({ academyId, ...body }) => ({ url: `/employees/${academyId}`, method: "POST", body }),
-      invalidatesTags: ["Employee", { type: "User", id: "LIST" }],
+      invalidatesTags: ["Employee", { type: "User", id: "LIST" }, "SalaryPayment"],
     }),
     updateEmployee: builder.mutation<
       Employee,
@@ -106,7 +109,7 @@ export const employeeApi = baseApi.injectEndpoints({
         method: "PUT",
         body: data,
       }),
-      invalidatesTags: ["Employee", { type: "User", id: "LIST" }],
+      invalidatesTags: ["Employee", { type: "User", id: "LIST" }, "SalaryPayment"],
     }),
     setEmployeeActive: builder.mutation<Employee, { academyId: string; employeeId: string; isActive: boolean }>({
       query: ({ academyId, employeeId, isActive }) => ({
@@ -118,7 +121,7 @@ export const employeeApi = baseApi.injectEndpoints({
     }),
     deleteEmployee: builder.mutation<void, { academyId: string; employeeId: string }>({
       query: ({ academyId, employeeId }) => ({ url: `/employees/${academyId}/${employeeId}`, method: "DELETE" }),
-      invalidatesTags: ["Employee"],
+      invalidatesTags: ["Employee", "SalaryPayment"],
     }),
 
     listSalaryForPeriod: builder.query<SalaryPayment[], { academyId: string; period: string }>({
@@ -126,11 +129,14 @@ export const employeeApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: SalaryPayment[] }) => res.data,
       providesTags: ["SalaryPayment"],
     }),
-    markSalaryPaid: builder.mutation<SalaryPayment, { academyId: string; salaryPaymentId: string; notes?: string }>({
-      query: ({ academyId, salaryPaymentId, notes }) => ({
+    markSalaryPaid: builder.mutation<
+      SalaryPayment,
+      { academyId: string; salaryPaymentId: string; amount?: number; notes?: string }
+    >({
+      query: ({ academyId, salaryPaymentId, amount, notes }) => ({
         url: `/employees/${academyId}/salary/${salaryPaymentId}/paid`,
         method: "PATCH",
-        body: { notes },
+        body: { amount, notes },
       }),
       invalidatesTags: ["SalaryPayment"],
     }),

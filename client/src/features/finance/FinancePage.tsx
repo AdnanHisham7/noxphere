@@ -33,6 +33,7 @@ import {
   Badge,
   Button,
   PageHeader,
+  Select,
 } from "../../components/ui";
 import { academyApi } from "../../store/api/academyApi";
 import {
@@ -149,8 +150,8 @@ const FinancePage: React.FC = () => {
         title="Platform Financial Ledger"
         subtitle="Super Admin revenue derived strictly from Academy SaaS Subscriptions and Smart NFC Card sales."
         actions={
-          <select
-            className="input w-full sm:!w-auto text-xs"
+          <Select
+            className="w-full sm:!w-auto"
             value={academyId}
             onChange={(e) => setAcademyId(e.target.value)}
           >
@@ -160,7 +161,7 @@ const FinancePage: React.FC = () => {
                 {a.name}
               </option>
             ))}
-          </select>
+          </Select>
         }
       />
 

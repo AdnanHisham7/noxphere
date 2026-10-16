@@ -31,9 +31,45 @@ export interface GuardianFeeUrgencyItem {
   paidAmount: number;
   dueDate: string;
   status: string;
-  urgency: "late" | "due_soon" | "upcoming";
+  urgency: "late" | "due_soon" | "upcoming" | "under_review";
   daysDiff: number;
   currency: string;
+  verificationProof?: {
+    claimedAmount?: number;
+    paymentMethod?: string;
+    transactionId?: string;
+    notes?: string;
+    submittedAt?: string;
+  };
+}
+
+export interface GuardianDashboardSession {
+  id: string;
+  title?: string;
+  type: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location?: string;
+  venue?: string;
+  fieldNumber?: string;
+  pitch?: string;
+  pitchId?: string;
+  googleMapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
+  status: string;
+  notes?: string;
+  isLive?: boolean;
+  coachName?: string;
+  teamName?: string;
+  studentId?: string;
+  studentName?: string;
+  children?: {
+    id: string;
+    name: string;
+    photo?: string;
+  }[];
 }
 
 export interface AcademyBankDetails {
@@ -76,7 +112,14 @@ export interface GuardianDashboard {
   lateFees: GuardianFeeUrgencyItem[];
   pendingFees: GuardianFeeUrgencyItem[];
   upcomingFees: GuardianFeeUrgencyItem[];
+  verificationPendingFees?: GuardianFeeUrgencyItem[];
   overdueFees?: GuardianFeeUrgencyItem[];
+  sessions?: {
+    today: GuardianDashboardSession[];
+    tomorrow: GuardianDashboardSession[];
+    upcoming: GuardianDashboardSession[];
+    recentCompleted: GuardianDashboardSession[];
+  };
 }
 
 export interface AttendanceRecord {
@@ -105,6 +148,16 @@ export interface FeeInstallment {
   paidAmount: number;
   paidAt?: string;
   status: string;
+  paymentMethod?: string;
+  transactionId?: string;
+  receiptUrl?: string;
+  verificationProof?: {
+    claimedAmount?: number;
+    paymentMethod?: string;
+    transactionId?: string;
+    notes?: string;
+    submittedAt?: string;
+  };
 }
 
 export interface FeeRecord {

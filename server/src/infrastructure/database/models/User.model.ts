@@ -37,7 +37,7 @@ const UserSchema = new Schema<UserDocument>(
     passwordHash: { type: String, required: true, select: false },
     role: {
       type: String,
-      enum: ["super_admin", "manager", "coach", "student", "guardian", "employee"],
+      enum: ["super_admin", "manager", "coach", "student", "guardian", "employee", "operational_manager"],
       required: true,
       index: true,
     },

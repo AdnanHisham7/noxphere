@@ -1,6 +1,6 @@
 // src/features/expenses/components/AddMiscExpenseModal.tsx
 import React, { useState } from "react";
-import { Modal, Button, Input } from "../../../components/ui";
+import { Modal, Button, Input, Select } from "../../../components/ui";
 import { useCreateExpenseMutation } from "../../../store/api/expenseApi";
 import toast from "react-hot-toast";
 import { Receipt, Info } from "lucide-react";
@@ -117,13 +117,10 @@ export const AddMiscExpenseModal: React.FC<AddMiscExpenseModalProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Category *
-            </label>
-            <select
+            <Select
+              label="Category *"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="input w-full text-sm"
               required
             >
               {MISC_CATEGORIES.map((c) => (
@@ -131,7 +128,7 @@ export const AddMiscExpenseModal: React.FC<AddMiscExpenseModalProps> = ({
                   {c}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div>
@@ -188,20 +185,17 @@ export const AddMiscExpenseModal: React.FC<AddMiscExpenseModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Payment Mode
-            </label>
-            <select
+            <Select
+              label="Payment Mode"
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
-              className="input w-full text-sm"
             >
               {PAYMENT_METHODS.map((m) => (
                 <option key={m.value} value={m.value}>
                   {m.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
 

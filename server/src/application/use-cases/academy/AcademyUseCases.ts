@@ -373,10 +373,15 @@ export class AcademyUseCases {
     const academy = await this.academyRepository.findById(id);
     if (!academy) throw new NotFoundError("Academy");
 
+    const newIsActive = !academy.isActive;
     const updated = await this.academyRepository.update(id, {
-      isActive: !academy.isActive,
+      isActive: newIsActive,
     });
     if (!updated) throw new NotFoundError("Academy");
+
+    // Keep all franchises under this academy in sync with the academy's active status
+    await FranchiseModel.updateMany({ academyId: id }, { isActive: newIsActive });
+
     return updated;
   }
 
@@ -397,6 +402,8 @@ export class AcademyUseCases {
 
     const deleted = await this.academyRepository.softDelete(id);
     if (!deleted) throw new BadRequestError("Could not delete academy");
+
+    await FranchiseModel.updateMany({ academyId: id }, { isActive: false, deletedAt: new Date() });
   }
 
   async updateTrial(academyId: string, dto: UpdateTrialDto): Promise<AcademyEntity> {

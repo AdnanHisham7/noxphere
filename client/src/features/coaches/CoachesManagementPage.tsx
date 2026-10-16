@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { clsx } from "clsx";
 import { UserCog, Plus, KeyRound, Power, Search, Pencil, Clock, Trash2, Wallet } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { Button, Input, Badge, Avatar, Modal, Skeleton, EmptyState, PageHeader } from "../../components/ui";
+import { Button, Input, Badge, Avatar, Modal, Skeleton, EmptyState, PageHeader, Select } from "../../components/ui";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
 import { useGetFranchisesQuery } from "../../store/api/franchiseApi";
@@ -67,8 +67,8 @@ const CoachesManagementPage: React.FC = () => {
     return (
       <EmptyState
         icon={<UserCog size={28} />}
-        title="No franchise selected"
-        description="Select a franchise from the top bar to manage coaches."
+        title="No branch selected"
+        description="Select a branch from the top bar to manage coaches."
       />
     );
   }
@@ -128,7 +128,7 @@ const CoachesManagementPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <p className="text-2xs text-slate-500 uppercase tracking-wide mb-1">Franchise Assignment</p>
+                  <p className="text-2xs text-slate-500 uppercase tracking-wide mb-1">Branch Assignment</p>
                   {c.franchiseId && franchiseMap.has(c.franchiseId) ? (
                     <span className="pill-blue text-2xs bg-emerald-950/80 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider font-semibold">
                       In-Charge: {franchiseMap.get(c.franchiseId)}
@@ -294,21 +294,18 @@ const EditCoachModal: React.FC<{ coach: ManagedUser; franchises: any[]; onClose:
           placeholder="e.g. 25000"
         />
         <div>
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-            Franchise in-charge (Optional)
-          </label>
-          <select
+          <Select
+            label="Branch in-charge (Optional)"
             value={franchiseId}
             onChange={(e) => setFranchiseId(e.target.value)}
-            className="input !w-full"
           >
-            <option value="">No franchise assigned (General Coach)</option>
+            <option value="">No branch assigned (General Coach)</option>
             {franchises.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="flex gap-3 pt-2">
           <Button loading={saving} onClick={handleSave} className="flex-1">Save changes</Button>
@@ -377,24 +374,19 @@ const CreateCoachModal: React.FC<{
         </div>
 
         <div className="sm:col-span-2">
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-            Franchise in-charge (Optional)
-          </label>
-          <select
+          <Select
+            label="Branch in-charge (Optional)"
             value={franchiseId}
             onChange={(e) => setFranchiseId(e.target.value)}
-            className="input !w-full"
+            helperText="If selected, this coach will be marked as in-charge of the chosen branch."
           >
-            <option value="">No franchise assigned (General Coach)</option>
+            <option value="">No branch assigned (General Coach)</option>
             {franchises.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.name}
               </option>
             ))}
-          </select>
-          <p className="text-2xs text-slate-500 mt-1">
-            If selected, this coach will be marked as in-charge of the chosen franchise.
-          </p>
+          </Select>
         </div>
 
         <div className="sm:col-span-2 flex gap-3 pt-2">

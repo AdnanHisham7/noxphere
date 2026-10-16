@@ -199,7 +199,7 @@ export const TeamReportModal: React.FC<TeamReportModalProps> = ({
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     Coach: <strong className="text-slate-700 dark:text-slate-200">{team.coachId ? `${team.coachId.firstName} ${team.coachId.lastName}` : "Unassigned"}</strong>
-                    {team.franchise?.name ? ` · Franchise: ${team.franchise.name}` : ""}
+                    {team.franchise?.name ? ` · Branch: ${team.franchise.name}` : ""}
                   </p>
                   <p className="text-2xs text-slate-400 font-mono">
                     Generated on {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}

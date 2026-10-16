@@ -1,6 +1,8 @@
 // src/features/fees/FeesPage.tsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { clsx } from "clsx";
+import { useHighlightEffect } from "../../hooks/useEntityHighlight";
 import {
   Wallet,
   Plus,
@@ -25,6 +27,9 @@ import {
   ArrowUpRight,
   History,
   X,
+  ShieldCheck,
+  CheckCircle,
+  User,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
@@ -38,6 +43,7 @@ import {
   Avatar,
   ImageUploadField,
   PageHeader,
+  Select,
 } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
@@ -50,6 +56,7 @@ import {
   useUpdatePaymentMutation,
   useUndoPaymentMutation,
   useSendInstallmentReminderMutation,
+  useVerifyPaymentMutation,
   type CreateFeeBody,
   type AdminFeeRecord,
   type FeeInstallment,
@@ -63,6 +70,7 @@ const STATUS_VARIANT: Record<string, "green" | "red" | "yellow" | "gray"> = {
   partial: "yellow",
   pending: "gray",
   refunded: "gray",
+  pending_verification: "yellow",
 };
 
 const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
@@ -171,7 +179,7 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
       : !!qrImageUrl || !!(bankForm.accountNumber && bankForm.ifscCode);
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/60 overflow-hidden mb-6 transition-all shadow-xs">
+    <div className="card rounded-xl border border-slate-200/80 dark:border-white/5 overflow-hidden mb-6 shadow-sm">
       <button
         type="button"
         onClick={onToggle}
@@ -213,7 +221,7 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
       </button>
 
       {isOpen && (
-        <div className="p-4 pt-3 border-t border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-pitch-950/40 space-y-4">
+        <div className="p-4 pt-3 border-t border-slate-200 dark:border-white/5 bg-slate-50/60 dark:bg-pitch-900/60 space-y-4">
           {/* Method selector */}
           <div>
             <label className="block text-2xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
@@ -248,7 +256,7 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
                     "p-3 rounded-lg border text-left transition-all",
                     method === opt.id
                       ? "border-volt-400 bg-volt-400/10 dark:bg-volt-400/5 text-slate-900 dark:text-white ring-1 ring-volt-400/50"
-                      : "border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/10",
+                      : "border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/10",
                   )}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -266,7 +274,7 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
             {/* QR Code Section */}
             {(method === "qr" || method === "both") && (
-              <div className="p-3.5 rounded-lg border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 space-y-3">
+              <div className="p-3.5 rounded-lg border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-800 space-y-3">
                 <div className="flex items-center gap-2">
                   <QrCode size={16} className="text-sky-400" />
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-white">
@@ -295,7 +303,7 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
             {(method === "bank_transfer" || method === "both") && (
               <form
                 onSubmit={handleSaveBankDetails}
-                className="p-3.5 rounded-lg border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-900 space-y-3"
+                className="p-3.5 rounded-lg border border-slate-200 dark:border-white/5 bg-white dark:bg-pitch-800 space-y-3"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -402,6 +410,10 @@ const FeesPage: React.FC = () => {
     transactionId?: string;
     paymentBreakdown?: PaymentBreakdownItem[];
   } | null>(null);
+  const [verifyTarget, setVerifyTarget] = useState<{
+    fee: AdminFeeRecord;
+    installment: FeeInstallment;
+  } | null>(null);
 
   // Accordion expansion tracking
   const [expandedStudents, setExpandedStudents] = useState<Set<string>>(
@@ -409,6 +421,10 @@ const FeesPage: React.FC = () => {
   );
   const [expandedFees, setExpandedFees] = useState<Set<string>>(new Set());
   const [expandedAudits, setExpandedAudits] = useState<Set<string>>(new Set());
+
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get("highlightId");
+  useHighlightEffect();
 
   const {
     data: fees,
@@ -418,6 +434,28 @@ const FeesPage: React.FC = () => {
     { franchiseId: franchiseId ?? "" },
     { skip: !franchiseId },
   );
+
+  useEffect(() => {
+    if (!highlightId || !fees) return;
+    const matchedFee = fees.find(
+      (f) =>
+        f._id === highlightId ||
+        (typeof f.studentId === "object" && f.studentId?._id === highlightId) ||
+        (typeof f.studentId === "string" && f.studentId === highlightId),
+    );
+    if (matchedFee) {
+      const studentId =
+        typeof matchedFee.studentId === "object"
+          ? matchedFee.studentId._id
+          : matchedFee.studentId;
+      if (studentId) {
+        setExpandedStudents((prev) => new Set([...prev, studentId]));
+      }
+      setExpandedFees((prev) => new Set([...prev, matchedFee._id]));
+    } else {
+      setExpandedStudents((prev) => new Set([...prev, highlightId]));
+    }
+  }, [highlightId, fees]);
   const { data: studentsResult } = useGetStudentsQuery(
     { franchiseId: franchiseId ?? "", limit: 200 },
     { skip: !franchiseId },
@@ -499,12 +537,14 @@ const FeesPage: React.FC = () => {
       pending: 0,
       partial: 0,
       paid: 0,
+      pending_verification: 0,
     };
     for (const f of fees ?? []) {
       if (f.overallStatus === "overdue") counts.overdue++;
       else if (f.overallStatus === "pending") counts.pending++;
       else if (f.overallStatus === "partial") counts.partial++;
       else if (f.overallStatus === "paid") counts.paid++;
+      else if (f.overallStatus === "pending_verification") counts.pending_verification++;
     }
     return counts;
   }, [fees]);
@@ -664,8 +704,8 @@ const FeesPage: React.FC = () => {
     return (
       <EmptyState
         icon={<Wallet size={28} />}
-        title="No franchise selected"
-        description="Select a franchise from the top bar to manage fees."
+        title="No branch selected"
+        description="Select a branch from the top bar to manage fees."
       />
     );
   }
@@ -692,7 +732,7 @@ const FeesPage: React.FC = () => {
 
       {/* KPI Overview Metrics Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="card p-3.5 bg-white dark:bg-pitch-900/60 border-slate-200 dark:border-white/10 relative overflow-hidden">
+        <div className="card p-3.5 relative overflow-hidden">
           <p className="text-2xs font-semibold uppercase tracking-wider text-slate-400">
             Total Invoiced
           </p>
@@ -704,7 +744,7 @@ const FeesPage: React.FC = () => {
           </span>
         </div>
 
-        <div className="card p-3.5 bg-white dark:bg-pitch-900/60 border-slate-200 dark:border-white/10 relative overflow-hidden">
+        <div className="card p-3.5 relative overflow-hidden">
           <div className="flex items-center justify-between">
             <p className="text-2xs font-semibold uppercase tracking-wider text-emerald-400">
               Collected
@@ -725,7 +765,7 @@ const FeesPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="card p-3.5 bg-white dark:bg-pitch-900/60 border-slate-200 dark:border-white/10 relative overflow-hidden">
+        <div className="card p-3.5 relative overflow-hidden">
           <p className="text-2xs font-semibold uppercase tracking-wider text-amber-400">
             Outstanding Due
           </p>
@@ -738,7 +778,7 @@ const FeesPage: React.FC = () => {
           </span>
         </div>
 
-        <div className="card p-3.5 bg-white dark:bg-pitch-900/60 border-slate-200 dark:border-white/10 relative overflow-hidden">
+        <div className="card p-3.5 relative overflow-hidden">
           <div className="flex items-center justify-between">
             <p className="text-2xs font-semibold uppercase tracking-wider text-rose-400">
               Overdue Amount
@@ -763,7 +803,7 @@ const FeesPage: React.FC = () => {
       />
 
       {/* Control & Filter Toolbar */}
-      <div className="card p-3.5 space-y-3 bg-white dark:bg-pitch-900/80 border-slate-200 dark:border-white/10">
+      <div className="card p-3.5 space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-3">
           {/* Search input */}
           <div className="relative flex-1 min-w-[220px]">
@@ -773,7 +813,7 @@ const FeesPage: React.FC = () => {
               placeholder="Search by student name, fee type..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input !pl-9 !py-1.5 text-xs w-full bg-slate-50 dark:bg-pitch-950/60"
+              className="input !pl-9 !py-1.5 text-xs w-full bg-slate-50 dark:bg-pitch-800"
             />
             {searchQuery && (
               <button
@@ -787,7 +827,7 @@ const FeesPage: React.FC = () => {
 
           {/* View mode toggle & expand controls */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center bg-slate-100 dark:bg-pitch-950/80 rounded-lg p-0.5 border border-slate-200 dark:border-white/10">
+            <div className="flex items-center bg-slate-100 dark:bg-pitch-800 rounded-lg p-0.5 border border-slate-200 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setViewMode("student")}
@@ -858,6 +898,12 @@ const FeesPage: React.FC = () => {
               id: "partial",
               label: "Partial",
               count: statusCounts.partial,
+              variant: "yellow",
+            },
+            {
+              id: "pending_verification",
+              label: "Under Verification",
+              count: statusCounts.pending_verification,
               variant: "yellow",
             },
             {
@@ -962,7 +1008,9 @@ const FeesPage: React.FC = () => {
               return (
                 <div
                   key={group.student._id}
-                  className="card border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/70 overflow-hidden transition-all shadow-xs"
+                  id={`entity-${group.student._id}`}
+                  data-highlight-id={group.student._id}
+                  className="card border-slate-200/80 dark:border-white/5 overflow-hidden transition-all shadow-sm"
                 >
                   {/* Student Header Bar */}
                   <div
@@ -1076,7 +1124,7 @@ const FeesPage: React.FC = () => {
 
                   {/* Expanded Fee Details for this Student */}
                   {isExpanded && (
-                    <div className="border-t border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-pitch-950/50 p-3.5 sm:p-4 space-y-4">
+                    <div className="border-t border-slate-200/80 dark:border-white/5 bg-slate-50/70 dark:bg-pitch-900/60 p-3.5 sm:p-4 space-y-4">
                       {group.fees.map((fee) => (
                         <FeePlanDetailBlock
                           key={fee._id}
@@ -1086,6 +1134,7 @@ const FeesPage: React.FC = () => {
                           onUndoPayment={handleUndoPayment}
                           onRecordPayment={(target) => setPayTarget(target)}
                           onEditPayment={(target) => setEditTarget(target)}
+                          onVerifyPayment={(target) => setVerifyTarget(target)}
                           isAuditExpanded={expandedAudits.has(fee._id)}
                           onToggleAudit={() => toggleAuditExpanded(fee._id)}
                         />
@@ -1103,7 +1152,7 @@ const FeesPage: React.FC = () => {
         !isError &&
         filteredFees.length > 0 &&
         viewMode === "table" && (
-          <div className="card overflow-hidden border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900/80">
+          <div className="card overflow-hidden border-slate-200/80 dark:border-white/5 shadow-sm">
             <div className="table-responsive">
               <table className="w-full min-w-[680px] text-left text-xs border-collapse">
                 <thead>
@@ -1133,6 +1182,8 @@ const FeesPage: React.FC = () => {
                     return (
                       <React.Fragment key={fee._id}>
                         <tr
+                          id={`entity-${fee._id}`}
+                          data-highlight-id={fee._id}
                           onClick={() => toggleFeeExpanded(fee._id)}
                           className={clsx(
                             "cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors border-b border-slate-100 dark:border-white/5",
@@ -1199,7 +1250,7 @@ const FeesPage: React.FC = () => {
 
                         {/* Expanded Installment Table */}
                         {isExpanded && (
-                          <tr className="bg-slate-50/70 dark:bg-pitch-950/70">
+                          <tr className="bg-slate-50/70 dark:bg-pitch-900/60">
                             <td
                               colSpan={8}
                               className="p-3.5 border-t border-b border-slate-200 dark:border-white/10"
@@ -1214,6 +1265,9 @@ const FeesPage: React.FC = () => {
                                 }
                                 onEditPayment={(target) =>
                                   setEditTarget(target)
+                                }
+                                onVerifyPayment={(target) =>
+                                  setVerifyTarget(target)
                                 }
                                 isAuditExpanded={expandedAudits.has(fee._id)}
                                 onToggleAudit={() =>
@@ -1294,6 +1348,13 @@ const FeesPage: React.FC = () => {
           onClose={() => setEditTarget(null)}
         />
       )}
+      {verifyTarget && (
+        <VerifyPaymentModal
+          fee={verifyTarget.fee}
+          installment={verifyTarget.installment}
+          onClose={() => setVerifyTarget(null)}
+        />
+      )}
       {ConfirmDialog}
     </div>
   );
@@ -1319,6 +1380,10 @@ interface FeePlanDetailBlockProps {
     transactionId?: string;
     paymentBreakdown?: PaymentBreakdownItem[];
   }) => void;
+  onVerifyPayment?: (target: {
+    fee: AdminFeeRecord;
+    installment: FeeInstallment;
+  }) => void;
   isAuditExpanded: boolean;
   onToggleAudit: () => void;
 }
@@ -1330,11 +1395,16 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
   onUndoPayment,
   onRecordPayment,
   onEditPayment,
+  onVerifyPayment,
   isAuditExpanded,
   onToggleAudit,
 }) => {
   return (
-    <div className="rounded-lg border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-pitch-900/50 p-3.5 space-y-3">
+    <div
+      id={`entity-${fee._id}`}
+      data-highlight-id={fee._id}
+      className="rounded-lg border border-slate-200/80 dark:border-white/5 bg-white dark:bg-pitch-800 p-3.5 space-y-3 shadow-xs"
+    >
       {/* Plan Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
@@ -1377,7 +1447,9 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
           return (
             <div
               key={inst.installmentNumber}
-              className="flex items-center justify-between text-xs bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 rounded-lg px-3 py-2 flex-wrap gap-2 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors shadow-2xs"
+              id={`entity-${fee._id}-${inst.installmentNumber}`}
+              data-highlight-id={`${fee._id}-${inst.installmentNumber}`}
+              className="flex items-center justify-between text-xs bg-slate-50 dark:bg-pitch-700/50 border border-slate-200/80 dark:border-white/5 rounded-lg px-3 py-2 flex-wrap gap-2 hover:bg-slate-100 dark:hover:bg-pitch-700/80 transition-colors shadow-2xs"
             >
               {/* Left Info: Milestone #, Due Date, Payment Details */}
               <div className="flex flex-col min-w-0">
@@ -1462,11 +1534,15 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
 
                 <Badge
                   variant={
-                    STATUS_VARIANT[inst.status] ?? (isPastDue ? "red" : "gray")
+                    inst.status === "pending_verification"
+                      ? "yellow"
+                      : (STATUS_VARIANT[inst.status] ?? (isPastDue ? "red" : "gray"))
                   }
                   size="sm"
                 >
-                  {isPastDue && inst.status !== "paid"
+                  {inst.status === "pending_verification"
+                    ? "verification pending"
+                    : isPastDue && inst.status !== "paid"
                     ? "overdue"
                     : inst.status}
                 </Badge>
@@ -1504,7 +1580,17 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                     </>
                   )}
 
-                  {inst.status !== "paid" && (
+                  {inst.status === "pending_verification" ? (
+                    <button
+                      type="button"
+                      onClick={() => onVerifyPayment?.({ fee, installment: inst })}
+                      className="flex items-center gap-1.5 text-[11px] font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 px-3 py-1 rounded shadow-sm transition-colors animate-pulse"
+                      title="Guardian submitted proof. Click to verify."
+                    >
+                      <ShieldCheck size={12} />
+                      <span>Verify Payment</span>
+                    </button>
+                  ) : inst.status !== "paid" ? (
                     <>
                       <button
                         type="button"
@@ -1540,7 +1626,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                         Record Pay
                       </button>
                     </>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -1746,8 +1832,7 @@ const CreateFeeModal: React.FC<{
           </div>
 
           {selectionMode === "single" && (
-            <select
-              className="input text-xs !w-full"
+            <Select
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
               required
@@ -1759,7 +1844,7 @@ const CreateFeeModal: React.FC<{
                   {s.ageGroup ? `· ${s.ageGroup}` : ""}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
 
           {selectionMode === "all" && (
@@ -1768,14 +1853,13 @@ const CreateFeeModal: React.FC<{
               <strong className="text-volt-600 dark:text-volt-400">
                 {students.length} active players
               </strong>{" "}
-              in this franchise.
+              in this branch.
             </div>
           )}
 
           {selectionMode === "category" && (
             <div className="space-y-2">
-              <select
-                className="input text-xs !w-full"
+              <Select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 required
@@ -1787,7 +1871,7 @@ const CreateFeeModal: React.FC<{
                     players)
                   </option>
                 ))}
-              </select>
+              </Select>
               {selectedCategory && (
                 <p className="text-2xs text-slate-500">
                   Targeting{" "}
@@ -1802,7 +1886,7 @@ const CreateFeeModal: React.FC<{
           )}
 
           {selectionMode === "custom" && (
-            <div className="space-y-2 border border-slate-200 dark:border-white/10 rounded-lg p-3 bg-slate-50/50 dark:bg-pitch-900/30">
+            <div className="space-y-2 border border-slate-200 dark:border-white/10 rounded-lg p-3 bg-slate-50/50 dark:bg-pitch-800/60">
               <div className="flex items-center justify-between gap-2">
                 <input
                   type="text"
@@ -1889,7 +1973,7 @@ const CreateFeeModal: React.FC<{
                   "flex-1 px-3 py-2 rounded border text-xs font-semibold uppercase tracking-wide transition-colors",
                   feeType === t
                     ? "bg-volt-400 text-pitch-900 border-volt-400"
-                    : "bg-slate-50 dark:bg-pitch-900 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/25",
+                    : "bg-slate-50 dark:bg-pitch-800 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/25",
                 )}
               >
                 {t === "one_time"
@@ -2012,6 +2096,209 @@ const CreateFeeModal: React.FC<{
   );
 };
 
+const VerifyPaymentModal: React.FC<{
+  fee: AdminFeeRecord;
+  installment: FeeInstallment;
+  onClose: () => void;
+}> = ({ fee, installment, onClose }) => {
+  const [verifyPayment, { isLoading }] = useVerifyPaymentMutation();
+  const [showRejectInput, setShowRejectInput] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+
+  const proof = installment.verificationProof;
+  const claimedAmount = proof?.claimedAmount ?? (installment.amount - installment.paidAmount);
+  const studentName = `${fee.studentId?.firstName || ""} ${fee.studentId?.lastName || ""}`.trim() || "Student";
+
+  const handleApprove = async () => {
+    try {
+      await verifyPayment({
+        feeId: fee._id,
+        installmentNumber: installment.installmentNumber,
+        action: "approve",
+        adjustedAmount: claimedAmount,
+      }).unwrap();
+      toast.success("Payment verified and marked as paid! Receipt created.");
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to verify payment");
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectionReason.trim()) {
+      toast.error("Please enter a reason for rejecting the payment proof");
+      return;
+    }
+    try {
+      await verifyPayment({
+        feeId: fee._id,
+        installmentNumber: installment.installmentNumber,
+        action: "reject",
+        rejectionReason: rejectionReason.trim(),
+      }).unwrap();
+      toast.success("Payment proof rejected");
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to reject payment proof");
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title="Verify Guardian Payment Proof"
+      size="md"
+    >
+      <div className="space-y-4">
+        {/* Info Card */}
+        <div className="bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <User size={16} className="text-volt-500" />
+              <span className="font-semibold text-slate-900 dark:text-white text-sm">
+                {studentName}
+              </span>
+            </div>
+            <span className="text-2xs font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold">
+              Pending Verification
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-200 dark:border-white/10 pt-3">
+            <div>
+              <span className="text-slate-500 block text-2xs uppercase tracking-wider font-mono">
+                Installment Milestone
+              </span>
+              <span className="font-medium text-slate-800 dark:text-slate-200">
+                Installment #{installment.installmentNumber}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-2xs uppercase tracking-wider font-mono">
+                Milestone Due Date
+              </span>
+              <span className="font-mono text-slate-800 dark:text-slate-200">
+                {new Date(installment.dueDate).toLocaleDateString()}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Claimed Payment Proof Box */}
+        <div className="border border-amber-500/30 bg-amber-500/[0.04] rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+              Submitted Payment Proof
+            </span>
+            <span className="font-orbital text-lg font-bold text-slate-900 dark:text-white">
+              ₹{claimedAmount.toLocaleString("en-IN")}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+            <div>
+              <span className="text-slate-500 text-2xs block uppercase font-mono">Payment Mode:</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200 uppercase">
+                {proof?.paymentMethod || "UPI"}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-500 text-2xs block uppercase font-mono">Reference / UTR ID:</span>
+              <span className="font-mono font-semibold text-slate-900 dark:text-white truncate block">
+                {proof?.transactionId || "—"}
+              </span>
+            </div>
+            {proof?.submittedAt && (
+              <div className="sm:col-span-2">
+                <span className="text-slate-500 text-2xs block uppercase font-mono">Submitted On:</span>
+                <span className="font-mono text-slate-700 dark:text-slate-300">
+                  {new Date(proof.submittedAt).toLocaleString()}
+                </span>
+              </div>
+            )}
+            {proof?.notes && (
+              <div className="sm:col-span-2 pt-1 border-t border-amber-500/20">
+                <span className="text-slate-500 text-2xs block uppercase font-mono">Guardian Notes:</span>
+                <p className="text-slate-700 dark:text-slate-300 italic text-xs mt-0.5">
+                  "{proof.notes}"
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Reject Reason Form if active */}
+        {showRejectInput && (
+          <div className="space-y-2 border border-rose-500/30 bg-rose-500/[0.04] rounded-xl p-3 animate-fade-in">
+            <label className="block text-xs font-semibold text-rose-600 dark:text-rose-400">
+              Rejection Reason (will be shown to guardian)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. UTR number not found in academy bank account, incorrect amount"
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              className="w-full text-xs rounded-lg bg-white dark:bg-white/5 border border-rose-300 dark:border-rose-500/30 px-3 py-2 text-slate-900 dark:text-white outline-none focus:border-rose-500"
+            />
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="pt-2 flex items-center justify-between gap-3 border-t border-slate-200 dark:border-white/10">
+          {!showRejectInput ? (
+            <button
+              type="button"
+              onClick={() => setShowRejectInput(true)}
+              className="text-xs text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 font-semibold px-3 py-2 rounded hover:bg-rose-500/10 transition-colors"
+            >
+              Reject Proof
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleReject}
+                disabled={isLoading}
+                className="btn-danger text-xs py-2 px-3"
+              >
+                Confirm Reject
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowRejectInput(false)}
+                className="btn-secondary text-xs py-2 px-3"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isLoading}
+              className="btn-secondary text-xs py-2 px-3"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              onClick={handleApprove}
+              disabled={isLoading}
+              className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
+            >
+              <CheckCircle size={14} />
+              <span>Approve &amp; Mark Paid</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
 const RecordPaymentModal: React.FC<{
   target: { feeId: string; installmentNumber: number; amount: number };
   onClose: () => void;
@@ -2109,7 +2396,7 @@ const RecordPaymentModal: React.FC<{
     <Modal isOpen onClose={onClose} title="Record Payment" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Toggle Mode: Single vs Mixed */}
-        <div className="flex p-1 bg-slate-100 dark:bg-pitch-950 rounded-lg border border-slate-200 dark:border-white/5">
+        <div className="flex p-1 bg-slate-100 dark:bg-pitch-800 rounded-lg border border-slate-200 dark:border-white/5">
           <button
             type="button"
             onClick={() => setIsMixed(false)}
@@ -2148,20 +2435,17 @@ const RecordPaymentModal: React.FC<{
               onChange={(e) => setSingleAmount(e.target.value)}
               required
             />
-            <div>
-              <label className="label text-xs">Payment Method</label>
-              <select
-                className="input text-xs !w-full"
-                value={singleMethod}
-                onChange={(e) => setSingleMethod(e.target.value)}
-              >
-                <option value="cash">Cash</option>
-                <option value="upi">UPI / GPay / PhonePe</option>
-                <option value="card">Credit / Debit Card</option>
-                <option value="bank_transfer">Bank Transfer / NEFT</option>
-                <option value="cheque">Cheque</option>
-              </select>
-            </div>
+            <Select
+              label="Payment Method"
+              value={singleMethod}
+              onChange={(e) => setSingleMethod(e.target.value)}
+            >
+              <option value="cash">Cash</option>
+              <option value="upi">UPI / GPay / PhonePe</option>
+              <option value="card">Credit / Debit Card</option>
+              <option value="bank_transfer">Bank Transfer / NEFT</option>
+              <option value="cheque">Cheque</option>
+            </Select>
             <Input
               label="Transaction ID / Ref (optional)"
               value={singleTxnId}
@@ -2191,17 +2475,18 @@ const RecordPaymentModal: React.FC<{
                   key={idx}
                   className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5"
                 >
-                  <select
-                    className="input text-xs !w-32 shrink-0"
-                    value={row.method}
-                    onChange={(e) => updateSplitRow(idx, "method", e.target.value)}
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="upi">UPI</option>
-                    <option value="card">Card</option>
-                    <option value="bank_transfer">Bank Txn</option>
-                    <option value="cheque">Cheque</option>
-                  </select>
+                  <div className="w-32 shrink-0">
+                    <Select
+                      value={row.method}
+                      onChange={(e) => updateSplitRow(idx, "method", e.target.value)}
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="upi">UPI</option>
+                      <option value="card">Card</option>
+                      <option value="bank_transfer">Bank Txn</option>
+                      <option value="cheque">Cheque</option>
+                    </Select>
+                  </div>
 
                   <div className="flex-1 relative">
                     <input
@@ -2241,7 +2526,7 @@ const RecordPaymentModal: React.FC<{
             </div>
 
             {/* Allocation summary banner */}
-            <div className="p-2.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-pitch-900 flex items-center justify-between text-xs">
+            <div className="p-2.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-pitch-800 flex items-center justify-between text-xs">
               <div>
                 <span className="text-slate-500 dark:text-slate-400">Total Allocated: </span>
                 <span className="font-mono font-bold text-slate-900 dark:text-white">
@@ -2407,7 +2692,7 @@ const EditPaymentModal: React.FC<{
     <Modal isOpen onClose={onClose} title="Edit Payment Details" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Toggle Mode */}
-        <div className="flex p-1 bg-slate-100 dark:bg-pitch-950 rounded-lg border border-slate-200 dark:border-white/5">
+        <div className="flex p-1 bg-slate-100 dark:bg-pitch-800 rounded-lg border border-slate-200 dark:border-white/5">
           <button
             type="button"
             onClick={() => setIsMixed(false)}
@@ -2446,20 +2731,17 @@ const EditPaymentModal: React.FC<{
               onChange={(e) => setSingleAmount(e.target.value)}
               required
             />
-            <div>
-              <label className="label text-xs">Payment Method</label>
-              <select
-                className="input text-xs !w-full"
-                value={singleMethod}
-                onChange={(e) => setSingleMethod(e.target.value)}
-              >
-                <option value="cash">Cash</option>
-                <option value="upi">UPI / GPay / PhonePe</option>
-                <option value="card">Credit / Debit Card</option>
-                <option value="bank_transfer">Bank Transfer / NEFT</option>
-                <option value="cheque">Cheque</option>
-              </select>
-            </div>
+            <Select
+              label="Payment Method"
+              value={singleMethod}
+              onChange={(e) => setSingleMethod(e.target.value)}
+            >
+              <option value="cash">Cash</option>
+              <option value="upi">UPI / GPay / PhonePe</option>
+              <option value="card">Credit / Debit Card</option>
+              <option value="bank_transfer">Bank Transfer / NEFT</option>
+              <option value="cheque">Cheque</option>
+            </Select>
             <Input
               label="Transaction ID / Ref (optional)"
               value={singleTxnId}
@@ -2489,17 +2771,18 @@ const EditPaymentModal: React.FC<{
                   key={idx}
                   className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5"
                 >
-                  <select
-                    className="input text-xs !w-32 shrink-0"
-                    value={row.method}
-                    onChange={(e) => updateSplitRow(idx, "method", e.target.value)}
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="upi">UPI</option>
-                    <option value="card">Card</option>
-                    <option value="bank_transfer">Bank Txn</option>
-                    <option value="cheque">Cheque</option>
-                  </select>
+                  <div className="w-32 shrink-0">
+                    <Select
+                      value={row.method}
+                      onChange={(e) => updateSplitRow(idx, "method", e.target.value)}
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="upi">UPI</option>
+                      <option value="card">Card</option>
+                      <option value="bank_transfer">Bank Txn</option>
+                      <option value="cheque">Cheque</option>
+                    </Select>
+                  </div>
 
                   <div className="flex-1">
                     <input
@@ -2539,7 +2822,7 @@ const EditPaymentModal: React.FC<{
             </div>
 
             {/* Allocation summary banner */}
-            <div className="p-2.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-pitch-900 flex items-center justify-between text-xs">
+            <div className="p-2.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-pitch-800 flex items-center justify-between text-xs">
               <div>
                 <span className="text-slate-500 dark:text-slate-400">Total Updated Amount: </span>
                 <span className="font-mono font-bold text-slate-900 dark:text-white">

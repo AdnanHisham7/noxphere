@@ -22,8 +22,15 @@ export class StudentRepository implements IStudentRepository {
     return this.toEntity(doc);
   }
 
-  async findById(id: string): Promise<StudentEntity | null> {
-    const doc = await StudentModel.findById(id).lean();
+  async findById(
+    id: string,
+    options?: { includeDeleted?: boolean },
+  ): Promise<StudentEntity | null> {
+    const query = StudentModel.findById(id);
+    if (options?.includeDeleted !== false) {
+      query.setOptions({ includeDeleted: true });
+    }
+    const doc = await query.lean();
     return doc ? this.toEntity(doc) : null;
   }
 
@@ -31,14 +38,17 @@ export class StudentRepository implements IStudentRepository {
     filter: any,
     page: number,
     limit: number,
+    options?: { includeDeleted?: boolean },
   ): Promise<{ items: StudentEntity[]; total: number }> {
     const query: FilterQuery<StudentDocument> = { ...filter };
+    const queryOptions = options?.includeDeleted ? { includeDeleted: true } : {};
     const [items, total] = await Promise.all([
       StudentModel.find(query)
+        .setOptions(queryOptions)
         .skip((page - 1) * limit)
         .limit(limit)
         .lean(),
-      StudentModel.countDocuments(query),
+      StudentModel.countDocuments(query).setOptions(queryOptions),
     ]);
     return { items: items.map((doc) => this.toEntity(doc)), total };
   }
@@ -49,15 +59,45 @@ export class StudentRepository implements IStudentRepository {
   ): Promise<StudentEntity | null> {
     const doc = await StudentModel.findByIdAndUpdate(id, data, {
       new: true,
-    }).lean();
+    })
+      .setOptions({ includeDeleted: true })
+      .lean();
     return doc ? this.toEntity(doc) : null;
   }
 
   async delete(id: string): Promise<boolean> {
     const result = await StudentModel.findByIdAndUpdate(id, {
       deletedAt: new Date(),
+      isActive: false,
     });
     return !!result;
+  }
+
+  async findDeletedById(id: string): Promise<StudentEntity | null> {
+    const doc = await StudentModel.findOne({
+      _id: id,
+      $or: [{ deletedAt: { $exists: true } }, { status: "dropped_out" }],
+    })
+      .setOptions({ includeDeleted: true })
+      .lean();
+    return doc ? this.toEntity(doc) : null;
+  }
+
+  async restore(id: string): Promise<StudentEntity | null> {
+    const doc = await StudentModel.findOneAndUpdate(
+      {
+        _id: id,
+        $or: [{ deletedAt: { $exists: true } }, { status: "dropped_out" }],
+      },
+      {
+        $unset: { deletedAt: 1 },
+        $set: { isActive: true, status: "active" },
+      },
+      { new: true },
+    )
+      .setOptions({ includeDeleted: true })
+      .lean();
+    return doc ? this.toEntity(doc) : null;
   }
 
   // Performance

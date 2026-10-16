@@ -24,3 +24,6 @@ dashboardRouter.get("/top-performers", (req, res, next) => {
 dashboardRouter.get("/recent-activity", (req, res, next) => {
   req.app.locals.controllers.dashboard.getRecentActivity(req, res, next);
 });
+dashboardRouter.get("/super-admin", (req, res, next) => {
+  req.app.locals.controllers.dashboard.getSuperAdminAnalytics(req, res, next);
+});

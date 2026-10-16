@@ -6,7 +6,7 @@ import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { setActiveFranchise } from "../../store/slices/uiSlice";
-import { Button, Input, Badge, Modal, Skeleton, EmptyState, PageHeader } from "../../components/ui";
+import { Button, Input, Badge, Modal, Skeleton, EmptyState, PageHeader, Select, LocationPicker } from "../../components/ui";
 import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useConfirm } from "../../hooks/useConfirm";
@@ -28,7 +28,7 @@ const FranchiseManagementPage: React.FC = () => {
   const { confirm, ConfirmDialog } = useConfirm();
   const { user } = useSelector((s: RootState) => s.auth);
   const isSuperAdmin = user?.role === "super_admin";
-  const isHeadOfficeRole = isSuperAdmin || (user?.role === "manager" && !user?.franchiseId);
+  const isHeadOfficeRole = isSuperAdmin || ((user?.role === "manager" || user?.role === "operational_manager") && !user?.franchiseId);
 
   // Manager: resolve their own academy via their user record, fallback to current franchise.
   const currentFranchiseId = useCurrentFranchiseId();
@@ -66,16 +66,16 @@ const FranchiseManagementPage: React.FC = () => {
   const handleToggle = async (id: string, isActive: boolean) => {
     try {
       await toggleActive(id).unwrap();
-      toast.success(isActive ? "Franchise deactivated" : "Franchise activated");
+      toast.success(isActive ? "Branch deactivated" : "Branch activated");
     } catch {
-      toast.error("Couldn't update franchise — try again");
+      toast.error("Couldn't update branch — try again");
     }
   };
 
   const handleDelete = async (f: Franchise) => {
     if (!activeAcademyId) return;
     const ok = await confirm({
-      title: "Remove franchise",
+      title: "Remove branch",
       message: `Remove "${f.name}"? This cannot be undone.`,
       confirmLabel: "Remove",
       danger: true,
@@ -83,9 +83,9 @@ const FranchiseManagementPage: React.FC = () => {
     if (!ok) return;
     try {
       await deleteFranchise({ id: f.id, academyId: activeAcademyId }).unwrap();
-      toast.success("Franchise removed");
+      toast.success("Branch removed");
     } catch (err: any) {
-      toast.error(err?.data?.message || "Couldn't remove franchise — try again");
+      toast.error(err?.data?.message || "Couldn't remove branch — try again");
     }
   };
 
@@ -101,15 +101,15 @@ const FranchiseManagementPage: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         eyebrow="Structure"
-        title="Franchises"
+        title="Branches"
         subtitle={
           isSuperAdmin
-            ? "Manage the operational franchises under any academy"
-            : "Manage the franchises under your academy"
+            ? "Manage the operational branches under any academy"
+            : "Manage the branches under your academy"
         }
         actions={
           activeAcademyId && canCreateFranchise ? (
-            <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)} className="w-full sm:w-auto">New franchise</Button>
+            <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)} className="w-full sm:w-auto">New branch</Button>
           ) : undefined
         }
       />
@@ -117,13 +117,12 @@ const FranchiseManagementPage: React.FC = () => {
       {isSuperAdmin && (
         <div className="card p-4 flex items-end gap-3">
           <div className="w-full sm:w-64">
-            <label className="label">Academy</label>
-            <select className="input" value={selectedAcademyId} onChange={(e) => setSelectedAcademyId(e.target.value)}>
+            <Select label="Academy" value={selectedAcademyId} onChange={(e) => setSelectedAcademyId(e.target.value)}>
               <option value="">Select an academy…</option>
               {academies.map((a) => (
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
       )}
@@ -132,7 +131,7 @@ const FranchiseManagementPage: React.FC = () => {
         <EmptyState
           icon={<Building2 size={28} />}
           title={isSuperAdmin ? "Select an academy" : "No academy found"}
-          description={isSuperAdmin ? "Choose an academy above to see its franchises." : "Your account isn't linked to an academy yet."}
+          description={isSuperAdmin ? "Choose an academy above to see its branches." : "Your account isn't linked to an academy yet."}
         />
       )}
 
@@ -142,60 +141,18 @@ const FranchiseManagementPage: React.FC = () => {
         </div>
       )}
 
-      {/* Academy Purchased Student Capacity Banner */}
-      {activeAcademyId && subStatus && (
-        <div className="card p-4 bg-gradient-to-r from-volt-400/[0.08] via-transparent to-transparent border-volt-400/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-volt-400/15 text-volt-500 flex items-center justify-center flex-shrink-0 border border-volt-400/30">
-              <Users size={20} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-display font-bold text-sm text-slate-900 dark:text-white">
-                  Purchased Student Capacity
-                </span>
-                <span className="pill pill-green text-2xs">
-                  {subStatus.provisionedCapacity > 0 ? "Active Plan" : "No Active Quota"}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {subStatus.provisionedCapacity > 0 ? (
-                  <>
-                    <strong className="text-slate-800 dark:text-slate-200">
-                      {subStatus.activeStudentCount}
-                    </strong>{" "}
-                    of{" "}
-                    <strong className="text-slate-800 dark:text-slate-200">
-                      {subStatus.provisionedCapacity}
-                    </strong>{" "}
-                    purchased athlete slots used across all branches ({subStatus.remainingInviteSlots ?? 0} slots remaining)
-                  </>
-                ) : (
-                  "Student capacity across all branches is governed by your purchased subscription tier."
-                )}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate("/subscription")}
-            className="btn-secondary text-xs py-1.5 px-3 whitespace-nowrap self-start sm:self-auto"
-          >
-            Manage Subscription Quota
-          </button>
-        </div>
-      )}
+
 
       {activeAcademyId && isError && (
-        <EmptyState title="Couldn't load franchises" description="Please try again shortly." />
+        <EmptyState title="Couldn't load branches" description="Please try again shortly." />
       )}
 
       {activeAcademyId && !isLoading && franchises?.length === 0 && (
         <EmptyState
           icon={<Building2 size={28} />}
-          title="No franchises yet"
-          description="Every academy needs at least one franchise for students, teams, and sessions to belong to."
-          action={canCreateFranchise ? <Button onClick={() => setShowCreate(true)}>Create franchise</Button> : undefined}
+          title="No branches yet"
+          description="Every academy needs at least one branch for students, teams, and sessions to belong to."
+          action={canCreateFranchise ? <Button onClick={() => setShowCreate(true)}>Create branch</Button> : undefined}
         />
       )}
 
@@ -221,11 +178,11 @@ const FranchiseManagementPage: React.FC = () => {
               </div>
               <p className="text-xs text-slate-400">{f.location?.name}</p>
               <div className="flex items-center gap-2 text-2xs text-slate-500">
-                <span className="font-semibold text-slate-700 dark:text-slate-300">
-                  {subStatus && subStatus.provisionedCapacity > 0
-                    ? `Academy Plan: Max ${subStatus.provisionedCapacity} students`
-                    : `Purchased Max: ${f.maxStudents || 100} students`}
-                </span>
+                {subStatus && subStatus.provisionedCapacity > 0 && (
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                    Academy Quota: {subStatus.provisionedCapacity} students
+                  </span>
+                )}
                 {f.ageGroups?.length > 0 && <span>· {f.ageGroups.join(", ")}</span>}
               </div>
               <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -247,17 +204,17 @@ const FranchiseManagementPage: React.FC = () => {
                 <LayoutDashboard size={13} />
                 View Dashboard
               </button>
-              <div className="flex items-center gap-3 pt-2 border-t border-white/5">
+              <div className="flex items-center gap-3 pt-2 border-t border-slate-200/80 dark:border-white/5">
                 <button
                   onClick={() => handleToggle(f.id, f.isActive)}
-                  className={clsx("flex items-center gap-1.5 text-xs transition-colors", f.isActive ? "text-slate-400 hover:text-volt-400" : "text-field-400 hover:text-field-300")}
+                  className={clsx("flex items-center gap-1.5 text-xs transition-colors", f.isActive ? "text-slate-500 hover:text-volt-500 dark:text-slate-400 dark:hover:text-volt-400" : "text-emerald-600 dark:text-field-400 hover:text-emerald-500")}
                 >
                   <Power size={13} />
                   {f.isActive ? "Deactivate" : "Activate"}
                 </button>
                 <button
                   onClick={() => handleDelete(f)}
-                  className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-ember-400 transition-colors ml-auto"
+                  className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-red-500 dark:hover:text-ember-400 transition-colors ml-auto"
                 >
                   <Trash2 size={13} />
                   Remove
@@ -273,27 +230,23 @@ const FranchiseManagementPage: React.FC = () => {
       {showCreate && activeAcademyId && (
         <CreateFranchiseModal
           academyId={activeAcademyId}
-          purchasedCapacity={subStatus?.provisionedCapacity}
           onClose={() => setShowCreate(false)}
           creating={creating}
           onCreate={async (body) => {
             try {
               await createFranchise(body).unwrap();
-              toast.success("Franchise created");
+              toast.success("Branch created");
               setShowCreate(false);
             } catch (err: any) {
-              toast.error(err?.data?.message || "Couldn't create franchise — try again");
+              toast.error(err?.data?.message || "Couldn't create branch — try again");
             }
           }}
         />
       )}
 
-
-
       {detailsFranchise && (
         <FranchiseDetailsModal
           franchise={detailsFranchise}
-          purchasedCapacity={subStatus?.provisionedCapacity}
           onClose={() => setDetailsFranchise(null)}
         />
       )}
@@ -303,55 +256,54 @@ const FranchiseManagementPage: React.FC = () => {
 
 const CreateFranchiseModal: React.FC<{
   academyId: string;
-  purchasedCapacity?: number;
   onClose: () => void;
   creating: boolean;
   onCreate: (body: {
     academyId: string;
     name: string;
     location: { name: string; address: string; latitude: number; longitude: number; fieldNumber?: string };
-    maxStudents?: number;
   }) => void;
-}> = ({ academyId, purchasedCapacity, onClose, creating, onCreate }) => {
+}> = ({ academyId, onClose, creating, onCreate }) => {
   const [name, setName] = useState("");
   const [locationName, setLocationName] = useState("");
   const [address, setAddress] = useState("");
-  const [maxStudents, setMaxStudents] = useState(purchasedCapacity ? String(purchasedCapacity) : "100");
+  const [latitude, setLatitude] = useState<number>(0);
+  const [longitude, setLongitude] = useState<number>(0);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !locationName || !address) {
+    if (!name.trim() || !locationName.trim() || !address.trim()) {
       toast.error("Fill in all required fields");
       return;
     }
     onCreate({
       academyId,
-      name,
-      location: { name: locationName, address, latitude: 0, longitude: 0 },
-      maxStudents: parseInt(maxStudents, 10) || purchasedCapacity || 100,
+      name: name.trim(),
+      location: {
+        name: locationName.trim(),
+        address: address.trim(),
+        latitude,
+        longitude,
+      },
     });
   };
 
   return (
-    <Modal isOpen onClose={onClose} title="New franchise" size="md">
+    <Modal isOpen onClose={onClose} title="New branch" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input label="Franchise name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Downtown Franchise" required />
+        <Input label="Branch name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Downtown Branch" required />
         <Input label="Location name" value={locationName} onChange={(e) => setLocationName(e.target.value)} placeholder="e.g. Downtown Sports Complex" required />
         <Input label="Address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street address" required />
-        <div className="space-y-1">
-          <Input
-            label="Max students allocation"
-            type="number"
-            min={1}
-            value={maxStudents}
-            onChange={(e) => setMaxStudents(e.target.value)}
-          />
-          <p className="text-2xs text-slate-400">
-            Enforced based on your academy&apos;s purchased plan capacity ({purchasedCapacity || 100} students).
-          </p>
-        </div>
+        <LocationPicker
+          latitude={latitude}
+          longitude={longitude}
+          onChange={({ latitude: lat, longitude: lng }) => {
+            setLatitude(lat);
+            setLongitude(lng);
+          }}
+        />
         <div className="flex gap-3 pt-2">
-          <Button type="submit" className="flex-1" loading={creating}>Create franchise</Button>
+          <Button type="submit" className="flex-1" loading={creating}>Create branch</Button>
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
         </div>
       </form>
@@ -361,19 +313,15 @@ const CreateFranchiseModal: React.FC<{
 
 const FranchiseDetailsModal: React.FC<{
   franchise: Franchise;
-  purchasedCapacity?: number;
   onClose: () => void;
-}> = ({ franchise, purchasedCapacity, onClose }) => {
+}> = ({ franchise, onClose }) => {
   const [updateFranchise, { isLoading }] = useUpdateFranchiseMutation();
   const [name, setName] = useState(franchise.name);
   const [locationName, setLocationName] = useState(franchise.location?.name ?? "");
   const [address, setAddress] = useState(franchise.location?.address ?? "");
-  const [latitude, setLatitude] = useState(String(franchise.location?.latitude ?? 0));
-  const [longitude, setLongitude] = useState(String(franchise.location?.longitude ?? 0));
+  const [latitude, setLatitude] = useState<number>(franchise.location?.latitude ?? 0);
+  const [longitude, setLongitude] = useState<number>(franchise.location?.longitude ?? 0);
   const [fieldNumber, setFieldNumber] = useState(franchise.location?.fieldNumber ?? "");
-  const [maxStudents, setMaxStudents] = useState(
-    String(franchise.maxStudents || purchasedCapacity || 100)
-  );
 
   const handleSave = async () => {
     if (!name.trim() || !locationName.trim() || !address.trim()) {
@@ -388,37 +336,34 @@ const FranchiseDetailsModal: React.FC<{
           location: {
             name: locationName.trim(),
             address: address.trim(),
-            latitude: parseFloat(latitude) || 0,
-            longitude: parseFloat(longitude) || 0,
+            latitude,
+            longitude,
             fieldNumber: fieldNumber.trim() || undefined,
           },
-          maxStudents: parseInt(maxStudents, 10) || franchise.maxStudents,
         },
       }).unwrap();
-      toast.success("Franchise details updated");
+      toast.success("Branch details updated");
       onClose();
     } catch (err: any) {
-      toast.error(err?.data?.message || "Couldn't update franchise — try again");
+      toast.error(err?.data?.message || "Couldn't update branch — try again");
     }
   };
 
   return (
     <Modal isOpen onClose={onClose} title={`Edit ${franchise.name}`} size="md">
       <div className="space-y-4">
-        <Input label="Franchise name" value={name} onChange={(e) => setName(e.target.value)} required />
+        <Input label="Branch name" value={name} onChange={(e) => setName(e.target.value)} required />
         <Input label="Location name" value={locationName} onChange={(e) => setLocationName(e.target.value)} required />
         <Input label="Address" value={address} onChange={(e) => setAddress(e.target.value)} required />
-        <div className="grid grid-cols-2 gap-4">
-          <Input label="Latitude" type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} />
-          <Input label="Longitude" type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} />
-        </div>
+        <LocationPicker
+          latitude={latitude}
+          longitude={longitude}
+          onChange={({ latitude: lat, longitude: lng }) => {
+            setLatitude(lat);
+            setLongitude(lng);
+          }}
+        />
         <Input label="Field number (optional)" value={fieldNumber} onChange={(e) => setFieldNumber(e.target.value)} />
-        <div className="space-y-1">
-          <Input label="Max students allocation" type="number" min={1} value={maxStudents} onChange={(e) => setMaxStudents(e.target.value)} />
-          <p className="text-2xs text-slate-400">
-            Configured based on your academy&apos;s purchased subscription capacity ({purchasedCapacity || 100} students).
-          </p>
-        </div>
         <div className="flex gap-3 pt-2">
           <Button loading={isLoading} onClick={handleSave} className="flex-1">Save changes</Button>
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>

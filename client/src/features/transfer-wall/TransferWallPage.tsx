@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useSearchParams, Link } from 'react-router-dom';
 import { clsx } from 'clsx';
+import { useHighlightEffect } from '../../hooks/useEntityHighlight';
 import {
   useGetTransferListingsQuery,
   useGetListingByIdQuery,
@@ -14,7 +15,7 @@ import {
   type TransferListing,
   type TransferRequest,
 } from '../../store/api/transferApi';
-import { Badge, Button, Input, Modal, Skeleton, EmptyState, Avatar } from '../../components/ui';
+import { Badge, Button, Input, Modal, Skeleton, EmptyState, Avatar, Select } from '../../components/ui';
 import { RootState } from '../../store';
 import { toast } from 'react-hot-toast';
 import { useTransferWallEnabled } from '../../hooks/useTransferWallEnabled';
@@ -62,12 +63,27 @@ const TransferWallPage: React.FC = () => {
   const { isAuthenticated, user } = useSelector((s: RootState) => s.auth);
   const [searchParams, setSearchParams] = useSearchParams();
   const targetListingId = searchParams.get('listingId');
+  const queryTab = searchParams.get('tab') as any;
+  const highlightId = searchParams.get('highlightId');
 
   const { data: platformTransferWall } = useGetPlatformTransferWallQuery();
   const academyTransferWall = useTransferWallEnabled();
   const isTransferWallDisabled = platformTransferWall === false || !academyTransferWall;
 
-  const [activeTab, setActiveTab] = useState<'market' | 'incoming' | 'outgoing' | 'my_listings'>('market');
+  const [activeTab, setActiveTab] = useState<'market' | 'incoming' | 'outgoing' | 'my_listings'>(
+    queryTab && ['market', 'incoming', 'outgoing', 'my_listings'].includes(queryTab)
+      ? queryTab
+      : 'market',
+  );
+
+  useEffect(() => {
+    const t = searchParams.get('tab') as any;
+    if (t && ['market', 'incoming', 'outgoing', 'my_listings'].includes(t)) {
+      setActiveTab(t);
+    }
+  }, [searchParams]);
+
+  useHighlightEffect();
   const [selectedListing, setSelectedListing] = useState<TransferListing | null>(null);
   const [requestModal, setRequestModal] = useState(false);
   const [offeredPrice, setOfferedPrice] = useState('');
@@ -429,22 +445,26 @@ const TransferWallPage: React.FC = () => {
                 />
               </div>
               <div className="min-w-36">
-                <label className="label">Position</label>
-                <select className="input" value={filterPosition} onChange={(e) => setFilterPosition(e.target.value)}>
-                  <option value="">All Positions</option>
-                  {['Forward', 'Midfielder', 'Defender', 'Goalkeeper'].map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
+                <Select
+                  label="Position"
+                  value={filterPosition}
+                  onChange={(e) => setFilterPosition(e.target.value)}
+                  options={[
+                    { value: '', label: 'All Positions' },
+                    ...['Forward', 'Midfielder', 'Defender', 'Goalkeeper'].map((p) => ({ value: p, label: p })),
+                  ]}
+                />
               </div>
               <div className="min-w-36">
-                <label className="label">Age Group</label>
-                <select className="input" value={filterAge} onChange={(e) => setFilterAge(e.target.value)}>
-                  <option value="">All Ages</option>
-                  {['U-13', 'U-15', 'U-17', 'U-19', 'U-21'].map((a) => (
-                    <option key={a} value={a}>{a}</option>
-                  ))}
-                </select>
+                <Select
+                  label="Age Group"
+                  value={filterAge}
+                  onChange={(e) => setFilterAge(e.target.value)}
+                  options={[
+                    { value: '', label: 'All Ages' },
+                    ...['U-13', 'U-15', 'U-17', 'U-19', 'U-21'].map((a) => ({ value: a, label: a })),
+                  ]}
+                />
               </div>
               <Button
                 variant="ghost"
@@ -568,6 +588,8 @@ const TransferWallPage: React.FC = () => {
                   return (
                     <div
                       key={req.id}
+                      id={`entity-${req.id}`}
+                      data-highlight-id={req.id}
                       className={clsx(
                         'card p-5 border transition-all duration-150 space-y-4',
                         req.status === 'pending'
@@ -713,6 +735,8 @@ const TransferWallPage: React.FC = () => {
                   return (
                     <div
                       key={req.id}
+                      id={`entity-${req.id}`}
+                      data-highlight-id={req.id}
                       className="card p-5 border border-slate-200 dark:border-white/5 space-y-3 shadow-xs"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1090,7 +1114,7 @@ const TransferWallPage: React.FC = () => {
       {/* Footer */}
       <footer className="border-t border-slate-200 dark:border-white/5 mt-12 py-6 px-6 text-center">
         <p className="text-2xs text-slate-500">
-          Noxphere Platform · Transfer Wall is a secure verified exchange · All transfers are processed franchise-to-franchise
+          Noxphere Platform · Transfer Wall is a secure verified exchange · All transfers are processed branch-to-branch
         </p>
       </footer>
     </div>

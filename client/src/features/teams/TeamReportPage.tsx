@@ -316,7 +316,7 @@ export const TeamReportPage: React.FC = () => {
                 {team.franchise?.name && (
                   <>
                     <span className="text-slate-300">•</span>
-                    <span>Franchise: <strong className="text-slate-900">{team.franchise.name}</strong></span>
+                    <span>Branch: <strong className="text-slate-900">{team.franchise.name}</strong></span>
                   </>
                 )}
                 <span className="text-slate-300">•</span>

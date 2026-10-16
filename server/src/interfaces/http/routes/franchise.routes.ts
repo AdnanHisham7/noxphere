@@ -4,7 +4,7 @@ import { authenticate, authorize } from "../middleware/auth.middleware";
 
 export const franchiseRouter = Router();
 
-franchiseRouter.use(authenticate, authorize("super_admin", "manager"));
+franchiseRouter.use(authenticate, authorize("super_admin", "manager", "operational_manager"));
 
 franchiseRouter.get("/", (req, res, next) => {
   req.app.locals.controllers.franchise.list(req, res, next);

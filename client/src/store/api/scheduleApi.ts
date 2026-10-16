@@ -24,6 +24,10 @@ export interface Session {
   dailyEndTime?: string;
   location: string;
   fieldNumber?: string;
+  pitchId?: string;
+  googleMapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
   status: "upcoming" | "ongoing" | "completed" | "cancelled";
   notes?: string;
   cancelReason?: string;
@@ -51,6 +55,10 @@ export interface CreateSessionInput {
   dailyEndTime?: string;
   location: string;
   fieldNumber?: string;
+  pitchId?: string;
+  googleMapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
   notes?: string;
   playerIds?: string[];
   documents?: { name: string; url: string }[];
@@ -153,7 +161,16 @@ export const scheduleApi = baseApi.injectEndpoints({
     }),
     changeSessionLocation: builder.mutation<
       Session,
-      { id: string; location: string; fieldNumber?: string; notifyGuardians?: boolean }
+      {
+        id: string;
+        location: string;
+        fieldNumber?: string;
+        pitchId?: string;
+        googleMapsUrl?: string;
+        latitude?: number;
+        longitude?: number;
+        notifyGuardians?: boolean;
+      }
     >({
       query: ({ id, ...body }) => ({ url: `/schedule/${id}/location`, method: "PATCH", body }),
       invalidatesTags: (_r, _e, { id }) => [{ type: "Schedule", id }, { type: "Schedule", id: "LIST" }],

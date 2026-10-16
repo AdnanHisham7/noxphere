@@ -57,6 +57,9 @@ function toPaise(amount: number): number {
   return Math.round(amount * 100);
 }
 
+export const DEFAULT_AI_PROMPT_TEMPLATE =
+  "Professional athletic sports photography portrait of youth football player [PlayerName], age category [AgeCategory], playing as [Position] for [TeamName]. Match face and hair details from the player reference photo, and kit details from the jersey reference image [JerseyRef]. Dramatic stadium rim lighting, athletic stance, crisp textures, highly detailed authentic skin, 8k resolution, cinematic trading card aesthetics.";
+
 export class AcademySubscriptionUseCases {
   // Student documents are scoped by franchiseId, not academyId directly —
   // this resolves every franchise under the academy first so headcount
@@ -64,7 +67,11 @@ export class AcademySubscriptionUseCases {
   private async countActiveStudents(academyId: string): Promise<number> {
     const franchiseIds = await FranchiseModel.find({ academyId }).distinct("_id");
     if (franchiseIds.length === 0) return 0;
-    return StudentModel.countDocuments({ franchiseId: { $in: franchiseIds }, isActive: true });
+    return StudentModel.countDocuments({
+      franchiseId: { $in: franchiseIds },
+      isActive: true,
+      deletedAt: { $exists: false },
+    });
   }
 
   private async countActiveStaff(academyId: string): Promise<number> {
@@ -1025,6 +1032,20 @@ export class AcademySubscriptionUseCases {
       { upsert: true, new: true },
     );
     return updated.transferWallEnabled;
+  }
+
+  async getPlatformAiPromptTemplate(): Promise<string> {
+    const settings = await PlatformSettingsModel.findOne().lean();
+    return settings?.playerAiPromptTemplate || DEFAULT_AI_PROMPT_TEMPLATE;
+  }
+
+  async setPlatformAiPromptTemplate(template: string, updatedBy: string): Promise<string> {
+    const updated = await PlatformSettingsModel.findOneAndUpdate(
+      {},
+      { playerAiPromptTemplate: template, updatedBy },
+      { upsert: true, new: true },
+    );
+    return updated.playerAiPromptTemplate || DEFAULT_AI_PROMPT_TEMPLATE;
   }
 
   async getPlatformCurrencies(): Promise<CurrencyPricing[]> {

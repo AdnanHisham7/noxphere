@@ -45,18 +45,18 @@ export const resourceRouter = Router();
 
 resourceRouter.use(authenticate);
 
-resourceRouter.get("/", authorize("manager", "coach", "super_admin"), (req, res, next) => {
+resourceRouter.get("/", authorize("manager", "operational_manager", "coach", "super_admin"), (req, res, next) => {
   req.app.locals.controllers.resource.list(req, res, next);
 });
 
-resourceRouter.post("/", authorize("manager", "coach"), singleResourceFile, (req, res, next) => {
+resourceRouter.post("/", authorize("manager", "operational_manager", "coach"), singleResourceFile, (req, res, next) => {
   req.app.locals.controllers.resource.upload(req, res, next);
 });
 
-resourceRouter.patch("/:id/verify", authorize("manager"), (req, res, next) => {
+resourceRouter.patch("/:id/verify", authorize("manager", "operational_manager"), (req, res, next) => {
   req.app.locals.controllers.resource.verify(req, res, next);
 });
 
-resourceRouter.delete("/:id", authorize("manager", "coach"), (req, res, next) => {
+resourceRouter.delete("/:id", authorize("manager", "operational_manager", "coach"), (req, res, next) => {
   req.app.locals.controllers.resource.delete(req, res, next);
 });

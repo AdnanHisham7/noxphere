@@ -144,8 +144,8 @@ const SelectionPage: React.FC = () => {
     return (
       <EmptyState
         icon={<Target size={28} />}
-        title="No franchise selected"
-        description="Select a franchise from the top bar to manage selection."
+        title="No branch selected"
+        description="Select a branch from the top bar to manage selection."
       />
     );
   }
@@ -259,7 +259,7 @@ const SelectionPage: React.FC = () => {
         <EmptyState
           icon={<Target size={28} />}
           title="No players in this phase yet"
-          description="Players appear here once added to your franchise roster."
+          description="Players appear here once added to your branch roster."
         />
       )}
 

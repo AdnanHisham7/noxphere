@@ -116,6 +116,11 @@ feeReminderQueue.process(async (job) => {
       academy?.feeQrImageUrl,
       academy?.bankDetails,
       (academy?.feePaymentMethod as any) || 'qr',
+      {
+        studentId: student._id ? student._id.toString() : String(student.id || student),
+        feeId: fee._id ? fee._id.toString() : String(fee.id),
+        installmentNumber: String(installmentNumber),
+      },
     );
 
     installment.reminderSentCount = (installment.reminderSentCount || 0) + 1;
@@ -290,6 +295,11 @@ export class SchedulerService {
                 qrImageUrl,
                 bankDetails,
                 feePaymentMethod,
+                {
+                  studentId: student._id ? student._id.toString() : String(student.id || student),
+                  feeId: fee._id ? fee._id.toString() : String(fee.id),
+                  installmentNumber: String(inst.installmentNumber),
+                },
               );
 
               inst.reminderSentCount = (inst.reminderSentCount || 0) + 1;

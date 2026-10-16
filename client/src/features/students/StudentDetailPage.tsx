@@ -1,6 +1,7 @@
 // src/features/students/StudentDetailPage.tsx
 import React, { useRef, useState, useMemo, useEffect } from "react";
-import { useParams, Link, Navigate } from "react-router-dom";
+import { useParams, Link, Navigate, useSearchParams } from "react-router-dom";
+import { useHighlightEffect } from "../../hooks/useEntityHighlight";
 import {
   RadarChart,
   Radar,
@@ -45,6 +46,10 @@ import {
   Plus,
   MoreVertical,
   BarChart3,
+  Archive,
+  RotateCcw,
+  Trash2,
+  Sparkles,
 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
@@ -56,11 +61,14 @@ import {
   Skeleton,
   EmptyState,
   Input,
+  Select,
   DocumentUploadField,
 } from "../../components/ui";
 import { toast } from "react-hot-toast";
 import { useTransferWallEnabled } from "../../hooks/useTransferWallEnabled";
 import { useConfirm } from "../../hooks/useConfirm";
+import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
+import { SubscriptionModal } from "../subscription/SubscriptionModal";
 import mannequinPng from "../../assets/players/mannequin.png";
 import { PlayerPlaceholder } from "@/components/ui/PlayerPlaceholder";
 import { jsPDF } from "jspdf";
@@ -74,6 +82,8 @@ import {
   useTransferStudentFranchiseMutation,
   useGetTransferHistoryQuery,
   useAddCoachRemarkMutation,
+  useRestoreStudentMutation,
+  useDeleteStudentMutation,
   type Student,
   type StudentStatus,
 } from "../../store/api/studentsApi";
@@ -85,6 +95,7 @@ import { useListTeamsQuery } from "../../store/api/teamsApi";
 import { academyApi } from "../../store/api/academyApi";
 import { useListPlayerMutation } from "../../store/api/transferApi";
 import { useUploadImageMutation } from "../../store/api/uploadApi";
+import { PlayerAiPromptModal } from "./PlayerAiPromptModal";
 
 const getRatingColor = (r: number) =>
   r >= 9
@@ -141,9 +152,30 @@ const isPdf = (url: string) => {
 
 const StudentDetailPage: React.FC = () => {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get("highlightId");
+  const queryTab = searchParams.get("tab") as
+    | "overview"
+    | "attendance"
+    | "performance"
+    | "info"
+    | null;
   const [activeTab, setActiveTab] = useState<
     "overview" | "attendance" | "performance" | "info"
-  >("overview");
+  >(
+    queryTab && ["overview", "attendance", "performance", "info"].includes(queryTab)
+      ? queryTab
+      : "overview",
+  );
+
+  useEffect(() => {
+    const t = searchParams.get("tab") as any;
+    if (t && ["overview", "attendance", "performance", "info"].includes(t)) {
+      setActiveTab(t);
+    }
+  }, [searchParams]);
+
+  useHighlightEffect();
   const [transferModal, setTransferModal] = useState(false);
   const [franchiseTransferModal, setFranchiseTransferModal] = useState(false);
   const [editModal, setEditModal] = useState(false);
@@ -198,6 +230,7 @@ const StudentDetailPage: React.FC = () => {
     data: card,
     isLoading,
     isError,
+    refetch,
   } = useGetPlayerCardQuery(id ?? "", { skip: !id });
   const [listPlayer, { isLoading: listing }] = useListPlayerMutation();
   const [uploadImage, { isLoading: uploadingPhoto }] = useUploadImageMutation();
@@ -209,19 +242,33 @@ const StudentDetailPage: React.FC = () => {
   const transferWallEnabled = useTransferWallEnabled();
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [aiPromptOpen, setAiPromptOpen] = useState(false);
 
-  // Only Head Office (an academy-owner manager, or super_admin) may move a
+  // Only Head Office (an academy-owner manager, operational_manager, or super_admin) may move a
   // player between franchises — matches the backend authorization check.
   const canTransferFranchise =
     user?.role === "super_admin" ||
-    (user?.role === "manager" && !user?.franchiseId);
+    ((user?.role === "manager" || user?.role === "operational_manager") &&
+      !user?.franchiseId);
   const canEditStatus =
-    user?.role === "manager" || user?.role === "super_admin";
+    user?.role === "manager" ||
+    user?.role === "operational_manager" ||
+    user?.role === "super_admin";
   const canManagePerformance =
     user?.role === "super_admin" ||
     user?.role === "manager" ||
+    user?.role === "operational_manager" ||
     user?.role === "coach" ||
     !!user?.permissions?.canManagePerformance;
+  const canManageSquad =
+    user?.role === "manager" ||
+    user?.role === "operational_manager" ||
+    user?.role === "super_admin";
+  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
+  const academyId = useCurrentAcademyId();
+  const [restoreStudent, { isLoading: isRestoring }] =
+    useRestoreStudentMutation();
+  const [deleteStudent, { isLoading: isDeleting }] = useDeleteStudentMutation();
 
   const [newRemarkText, setNewRemarkText] = useState("");
   const [addCoachRemark, { isLoading: isAddingRemark }] =
@@ -244,7 +291,15 @@ const StudentDetailPage: React.FC = () => {
 
   const handleStatusChange = async (status: StudentStatus) => {
     if (!id) return;
-    if (status !== "active") {
+    if (status === "dropped_out") {
+      const ok = await confirm({
+        title: "Mark player as Dropped Out",
+        message: `Mark ${student?.firstName ?? "this player"} as Dropped Out? This will move them to the Archived Players section and release 1 student slot immediately. Their full match, attendance, and fee history are preserved.`,
+        confirmLabel: "Confirm Drop Out",
+        danger: true,
+      });
+      if (!ok) return;
+    } else if (status !== "active") {
       const ok = await confirm({
         title: "Change player status",
         message: `Mark this player as "${status.replace("_", " ")}"? This is visible across the roster and to guardians.`,
@@ -254,7 +309,11 @@ const StudentDetailPage: React.FC = () => {
     }
     try {
       await updateStudentStatus({ id, status }).unwrap();
-      toast.success("Player status updated");
+      toast.success(
+        status === "dropped_out"
+          ? "Player marked as dropped out and archived"
+          : "Player status updated",
+      );
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't update status — try again");
     }
@@ -291,7 +350,86 @@ const StudentDetailPage: React.FC = () => {
   const performances = card?.performances ?? [];
   const attendance = card?.attendance ?? [];
   const remarks = card?.remarks ?? [];
+
+  useEffect(() => {
+    if (!highlightId || !performances.length) return;
+    const match = performances.find(
+      (p) =>
+        p._id === highlightId ||
+        (typeof p.sessionId === "object" &&
+          (p.sessionId?._id === highlightId || p.sessionId?.id === highlightId)) ||
+        p.sessionId === highlightId,
+    );
+    if (match) {
+      setExpandedSessionIds((prev) => ({ ...prev, [match._id]: true }));
+    }
+  }, [highlightId, performances]);
   const student = card?.student;
+  const { data: squadTeams } = useListTeamsQuery(
+    { franchiseId: student?.franchiseId },
+    { skip: !student?.franchiseId },
+  );
+  const studentTeamName = squadTeams?.find(
+    (t) => t.id === student?.teamId,
+  )?.name;
+  const { data: franchise } = useGetFranchiseByIdQuery(
+    student?.franchiseId ?? "",
+    {
+      skip: !student?.franchiseId,
+    },
+  );
+  const isArchived = Boolean(
+    student?.deletedAt ||
+    student?.status === "archived" ||
+    student?.status === "dropped_out",
+  );
+
+  const handleRestoreStudent = async () => {
+    if (!student) return;
+    const ok = await confirm({
+      title: "Restore player to branch",
+      message: `Restore ${student.firstName} ${student.lastName} back to active players? This will occupy 1 student capacity slot in your subscription plan.`,
+      confirmLabel: "Restore Player",
+    });
+    if (!ok) return;
+    try {
+      await restoreStudent(student.id).unwrap();
+      toast.success(
+        `${student.firstName} ${student.lastName} restored to active players!`,
+      );
+    } catch (err: any) {
+      const msg =
+        err?.data?.message ||
+        "Failed to restore player. Check subscription capacity.";
+      toast.error(msg);
+      if (
+        err?.data?.code === "SUBSCRIPTION_CAPACITY_EXCEEDED" ||
+        err?.data?.code === "SUBSCRIPTION_REQUIRED"
+      ) {
+        setSubscriptionModalOpen(true);
+      }
+    }
+  };
+
+  const handleDeleteStudent = async () => {
+    if (!student) return;
+    const ok = await confirm({
+      title: "Archive Player & Release Slot",
+      message: `Remove ${student.firstName} ${student.lastName} from the active branch players? This will release 1 student subscription slot immediately. The player's profile and historical stats are safely archived and can be restored anytime from the Archived tab.`,
+      confirmLabel: "Archive Player",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await deleteStudent(student.id).unwrap();
+      toast.success(
+        `${student.firstName} ${student.lastName} archived and subscription slot released`,
+      );
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to remove player — try again");
+    }
+  };
 
   // Aggregate skill scores across recent performances into a radar profile
   const skillTotals = new Map<string, { sum: number; count: number }>();
@@ -415,7 +553,7 @@ const StudentDetailPage: React.FC = () => {
             to="/students"
             className="inline-flex items-center gap-1.5 text-volt-400 hover:underline text-sm"
           >
-            <ArrowLeft size={14} /> Back to Squad
+            <ArrowLeft size={14} /> Back to Players
           </Link>
         }
       />
@@ -485,259 +623,617 @@ const StudentDetailPage: React.FC = () => {
       : null;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs text-slate-500">
-        <Link to="/students" className="hover:text-volt-400 transition-colors">
-          Squad
-        </Link>
-        <span>›</span>
-        <span className="text-slate-900 dark:text-white font-medium">
-          {student.firstName} {student.lastName}
-        </span>
-      </div>
+    <div className="space-y-3.5 sm:space-y-4 animate-fade-in">
+      {/* Top Utility Bar: Breadcrumb & Quick Actions */}
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+        <div className="flex items-center gap-2">
+          <Link
+            to="/students"
+            className="hover:text-volt-400 transition-colors"
+          >
+            Squad
+          </Link>
+          <span>›</span>
+          {isArchived && (
+            <>
+              <span className="text-rose-500 font-semibold uppercase tracking-wider text-[11px]">
+                Archived
+              </span>
+              <span>›</span>
+            </>
+          )}
+          <span className="text-slate-900 dark:text-white font-medium">
+            {student.firstName} {student.lastName}
+          </span>
+        </div>
 
-      {/* Hero section */}
-      <div className="card overflow-hidden relative shadow-lg border-slate-200 dark:border-white/10 bg-gradient-to-b from-white via-white to-slate-50 dark:from-pitch-900 dark:via-pitch-900 dark:to-pitch-950">
-        <div className="h-1 bg-gradient-to-r from-volt-400 via-emerald-400 to-volt-400" />
-
-        <div className="p-4 sm:p-6 lg:p-7 relative">
-          {/* Top-Right 3-Vertical-Dot Options Button for Mobile & Tablet */}
-          <div className="lg:hidden absolute top-4 right-4 sm:top-6 sm:right-6 z-30" ref={actionsMenuRef}>
-            <button
-              type="button"
-              onClick={() => setActionsMenuOpen((prev) => !prev)}
-              className={clsx(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border shadow-sm transition-all duration-200 select-none",
-                actionsMenuOpen
-                  ? "bg-slate-200 dark:bg-pitch-700 text-slate-900 dark:text-white border-volt-400/60 ring-2 ring-volt-400/20"
-                  : "bg-white hover:bg-slate-100 dark:bg-pitch-800 dark:hover:bg-pitch-700 text-slate-700 dark:text-slate-100 border-slate-200 dark:border-white/15"
-              )}
-              aria-haspopup="true"
-              aria-expanded={actionsMenuOpen}
-              title="Player options & actions"
+        {/* Quick Actions & Actions Dropdown Menu */}
+        <div
+          className="flex items-center gap-1.5 sm:gap-2 relative z-30"
+          ref={actionsMenuRef}
+        >
+          {isArchived && canManageSquad && (
+            <Button
+              size="sm"
+              variant="primary"
+              icon={
+                isRestoring ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <RotateCcw size={13} />
+                )
+              }
+              onClick={handleRestoreStudent}
+              disabled={isRestoring}
+              className="!py-1 !px-2.5 text-xs bg-volt-400 text-pitch-900 hover:bg-volt-300 font-semibold shadow-sm"
             >
-              <MoreVertical size={16} className="text-volt-500 shrink-0" />
-              <span className="font-display font-bold uppercase tracking-wider text-[11px] hidden xs:inline">Options</span>
-              <ChevronDown
-                size={13}
-                className={clsx(
-                  "text-slate-400 transition-transform duration-200 hidden xs:inline",
-                  actionsMenuOpen && "rotate-180 text-volt-500"
-                )}
-              />
-            </button>
+              Restore
+            </Button>
+          )}
 
-            {actionsMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white dark:bg-pitch-800 border border-slate-200 dark:border-white/15 shadow-2xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.85)] z-50 p-1.5 animate-fade-in divide-y divide-slate-100 dark:divide-white/10">
-                <div className="px-2.5 py-1.5 mb-0.5">
-                  <span className="text-3xs font-mono font-bold uppercase tracking-widest text-slate-400 dark:text-slate-400 block">
-                    Player Actions
-                  </span>
-                </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            icon={
+              isDownloading ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <FileText size={13} />
+              )
+            }
+            onClick={handleDownloadCard}
+            disabled={isDownloading}
+            className="!py-1 !px-2.5 text-xs hidden sm:inline-flex"
+          >
+            {isDownloading ? "Generating..." : "Card PDF"}
+          </Button>
 
-                <div className="py-1 space-y-0.5">
+          <Button
+            size="sm"
+            variant="secondary"
+            icon={<Pencil size={13} />}
+            onClick={() => setEditModal(true)}
+            className="!py-1 !px-2.5 text-xs hidden sm:inline-flex"
+          >
+            Edit
+          </Button>
+
+          {/* Actions Dropdown Button */}
+          <button
+            type="button"
+            onClick={() => setActionsMenuOpen((prev) => !prev)}
+            className={clsx(
+              "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border shadow-sm transition-all duration-200 select-none",
+              actionsMenuOpen
+                ? "bg-slate-200 dark:bg-pitch-700 text-slate-900 dark:text-white border-volt-400/60 ring-2 ring-volt-400/20"
+                : "bg-white hover:bg-slate-100 dark:bg-pitch-800 dark:hover:bg-pitch-700 text-slate-700 dark:text-slate-100 border-slate-200 dark:border-white/15",
+            )}
+            aria-haspopup="true"
+            aria-expanded={actionsMenuOpen}
+            title="Player actions"
+          >
+            <MoreVertical size={14} className="text-volt-500 shrink-0" />
+            <span className="font-display font-bold uppercase tracking-wider text-[11px]">
+              Actions
+            </span>
+            <ChevronDown
+              size={12}
+              className={clsx(
+                "text-slate-400 transition-transform duration-200",
+                actionsMenuOpen && "rotate-180 text-volt-500",
+              )}
+            />
+          </button>
+
+          {actionsMenuOpen && (
+            <div className="absolute right-0 top-full mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white dark:bg-pitch-800 border border-slate-200 dark:border-white/15 shadow-2xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.85)] z-50 p-1.5 animate-fade-in divide-y divide-slate-100 dark:divide-white/10">
+              <div className="px-2.5 py-1.5 mb-0.5">
+                <span className="text-3xs font-mono font-bold uppercase tracking-widest text-slate-400 dark:text-slate-400 block">
+                  Player Actions
+                </span>
+              </div>
+
+              <div className="py-1 space-y-0.5">
+                {isArchived && canManageSquad && (
                   <button
                     type="button"
-                    disabled={isDownloading}
+                    disabled={isRestoring}
                     onClick={() => {
                       setActionsMenuOpen(false);
-                      handleDownloadCard();
+                      handleRestoreStudent();
                     }}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 group"
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors group"
                   >
-                    <div className="w-7 h-7 rounded-lg bg-volt-400/10 dark:bg-volt-400/15 text-volt-600 dark:text-volt-400 flex items-center justify-center shrink-0">
-                      {isDownloading ? (
+                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                      {isRestoring ? (
                         <Loader2 size={14} className="animate-spin" />
                       ) : (
-                        <FileText size={14} />
+                        <RotateCcw size={14} />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="font-semibold block truncate text-slate-900 dark:text-white">
-                        {isDownloading ? "Generating..." : "Download Card PDF"}
+                      <span className="font-semibold block truncate">
+                        Restore to Branch
                       </span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
-                        High-res printable scout card
-                      </span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActionsMenuOpen(false);
-                      setEditModal(true);
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors group"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-blue-500/10 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                      <Pencil size={14} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="font-semibold block truncate text-slate-900 dark:text-white">Edit Details</span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
-                        Update squad & profile data
+                      <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-normal block truncate">
+                        Re-add to active roster
                       </span>
                     </div>
                   </button>
+                )}
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActionsMenuOpen(false);
-                      setReportModalOpen(true);
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors group"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <button
+                  type="button"
+                  disabled={isDownloading}
+                  onClick={() => {
+                    setActionsMenuOpen(false);
+                    handleDownloadCard();
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 group"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-volt-400/10 dark:bg-volt-400/15 text-volt-600 dark:text-volt-400 flex items-center justify-center shrink-0">
+                    {isDownloading ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
                       <FileText size={14} />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-semibold block truncate text-slate-900 dark:text-white">
+                      {isDownloading ? "Generating..." : "Download Card PDF"}
+                    </span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
+                      High-res printable scout card
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActionsMenuOpen(false);
+                    setEditModal(true);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors group"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-blue-500/10 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                    <Pencil size={14} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-semibold block truncate text-slate-900 dark:text-white">
+                      Edit Details
+                    </span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
+                      Update squad & profile data
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActionsMenuOpen(false);
+                    setReportModalOpen(true);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors group"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <FileText size={14} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-semibold block truncate text-slate-900 dark:text-white">
+                      Generate Report
+                    </span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
+                      Comprehensive progress dossier
+                    </span>
+                  </div>
+                </button>
+
+                {canTransferFranchise && !isArchived && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActionsMenuOpen(false);
+                      setFranchiseTransferModal(true);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/10 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                      <ArrowLeftRight size={14} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="font-semibold block truncate text-slate-900 dark:text-white">Generate Report</span>
+                      <span className="font-semibold block truncate text-slate-900 dark:text-white">
+                        Transfer Branch
+                      </span>
                       <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
-                        Comprehensive progress dossier
+                        Move to another branch
                       </span>
                     </div>
                   </button>
+                )}
 
-                  {canTransferFranchise && (
+                {!isArchived &&
+                  student.transferStatus !== "listed" &&
+                  student.transferStatus !== "sold" &&
+                  transferWallEnabled && (
                     <button
                       type="button"
                       onClick={() => {
                         setActionsMenuOpen(false);
-                        setFranchiseTransferModal(true);
+                        setTransferModal(true);
                       }}
                       className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors group"
                     >
-                      <div className="w-7 h-7 rounded-lg bg-amber-500/10 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                        <ArrowLeftRight size={14} />
+                      <div className="w-7 h-7 rounded-lg bg-ice-400/10 dark:bg-ice-400/15 text-ice-500 dark:text-ice-400 flex items-center justify-center shrink-0">
+                        <Repeat2 size={14} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="font-semibold block truncate text-slate-900 dark:text-white">Transfer Franchise</span>
+                        <span className="font-semibold block truncate text-slate-900 dark:text-white">
+                          List on Transfer Wall
+                        </span>
                         <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
-                          Move to another franchise
+                          Publish to recruitment market
                         </span>
                       </div>
                     </button>
                   )}
 
-                  {student.transferStatus !== "listed" &&
-                    student.transferStatus !== "sold" &&
-                    transferWallEnabled && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActionsMenuOpen(false);
-                          setTransferModal(true);
-                        }}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors group"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-ice-400/10 dark:bg-ice-400/15 text-ice-500 dark:text-ice-400 flex items-center justify-center shrink-0">
-                          <Repeat2 size={14} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="font-semibold block truncate text-slate-900 dark:text-white">List on Transfer Wall</span>
-                          <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
-                            Publish to recruitment market
-                          </span>
-                        </div>
-                      </button>
+                <a
+                  href={`mailto:${student.guardian.email}`}
+                  onClick={() => setActionsMenuOpen(false)}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors group"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-rose-500/10 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                    <Mail size={14} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-semibold block truncate text-slate-900 dark:text-white">
+                      Message Guardian
+                    </span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
+                      {student.guardian.email}
+                    </span>
+                  </div>
+                </a>
+
+                {canManageSquad && !isArchived && (
+                  <>
+                    <div className="border-t border-slate-100 dark:border-white/5 my-1" />
+                    <button
+                      type="button"
+                      disabled={isDeleting}
+                      onClick={() => {
+                        setActionsMenuOpen(false);
+                        handleDeleteStudent();
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-rose-300 transition-colors group"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-rose-500/10 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                        {isDeleting ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={14} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-semibold block truncate">
+                          Archive / Remove Player
+                        </span>
+                        <span className="text-[10px] text-rose-500/80 dark:text-rose-400/70 font-normal block truncate">
+                          Release slot & move to archived
+                        </span>
+                      </div>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Prominent Archived & Soft-Deleted Player Banner (Compact) */}
+      {isArchived && (
+        <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 dark:bg-rose-950/40 p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 backdrop-blur-sm shadow-sm animate-fade-in">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 ring-1 ring-rose-500/30">
+              <Archive size={18} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-xs sm:text-sm font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wide">
+                  {student.status === "dropped_out"
+                    ? "Dropped Out & Archived Player"
+                    : "Archived & Soft-Deleted Player"}
+                </h3>
+                <Badge
+                  variant="red"
+                  className="font-bold text-[10px] uppercase tracking-wider"
+                >
+                  {student.status === "dropped_out"
+                    ? "Dropped Out"
+                    : "Off-Squad"}
+                </Badge>
+                {student.deletedAt && (
+                  <span className="text-xs text-rose-600/80 dark:text-rose-400/70 font-mono">
+                    Archived on{" "}
+                    {new Date(student.deletedAt).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-rose-600/90 dark:text-rose-300/80 mt-0.5">
+                {student.status === "dropped_out"
+                  ? "This player has dropped out. Slot released, while performance, attendance, notes, and fees are preserved."
+                  : "Removed from active squad. Slot released, but historical records are fully preserved."}
+              </p>
+            </div>
+          </div>
+          {canManageSquad && (
+            <Button
+              size="sm"
+              variant="primary"
+              icon={
+                isRestoring ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <RotateCcw size={13} />
+                )
+              }
+              onClick={handleRestoreStudent}
+              disabled={isRestoring}
+              className="shrink-0 bg-rose-600 hover:bg-rose-500 text-white border-0 shadow-lg shadow-rose-600/20 font-semibold !py-1 !px-3 text-xs"
+            >
+              {isRestoring ? "Restoring..." : "Restore to Squad"}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Executive Athlete Hero Section: Left-Anchored Showcase + Horizontal Telemetry */}
+      <div className="card overflow-hidden relative shadow-lg border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-900">
+        <div className="p-3.5 sm:p-4.5 lg:p-5 relative">
+          <div className="flex flex-col md:flex-row items-center md:items-stretch gap-4 sm:gap-6">
+            {/* LEFT: Athlete Stage (Clean outer wrapper, filled inner card container) */}
+            <div className="relative shrink-0 flex flex-col items-center justify-center">
+              {/* Inner Athlete Capsule: Holds the filled visual and the #0 MIDFIELDER U-15 section */}
+              <div className="relative w-44 sm:w-48 lg:w-52 rounded-2xl bg-slate-100 dark:bg-pitch-950 shadow-md flex flex-col items-center overflow-hidden">
+                {/* Athlete Visual Stage (z-10, filled image flush to edges and dome) */}
+                <div className="relative z-10 flex items-end justify-center w-full h-44 sm:h-48 overflow-hidden">
+                  {student.photo && !studentPhotoError ? (
+                    <img
+                      src={student.photo}
+                      alt={`${student.firstName} ${student.lastName}`}
+                      onError={() => setStudentPhotoError(true)}
+                      className="h-full w-full object-cover object-top select-none pointer-events-none relative z-10"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-end justify-center">
+                      <PlayerPlaceholder
+                        image={mannequinPng}
+                        name={`${student.firstName} ${student.lastName}`}
+                        number={student.jerseyNumber ?? 0}
+                        nameTop="25%"
+                        numberTop="35%"
+                        nameSize="12px"
+                        numberSize="64px"
+                        nameWidth="80%"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+
+                  {/* Jersey Badge Overlay */}
+                  {student.jerseyNumber !== undefined && (
+                    <div className="absolute top-2 left-2 z-30 px-2 py-0.5 rounded-md bg-pitch-950/85 text-volt-400 font-display font-black text-2xs sm:text-xs border border-volt-400/40 backdrop-blur-md shadow-md">
+                      #{student.jerseyNumber}
+                    </div>
+                  )}
+
+                  {/* Top-Right Card Actions: Archived Badge, AI Prompt Generator & Photo Upload */}
+                  <div className="absolute top-2 right-2 z-30 flex items-center gap-1.5">
+                    {isArchived && (
+                      <div className="px-1.5 py-0.5 rounded-md bg-rose-950/90 text-rose-300 font-display font-bold text-3xs border border-rose-500/40 uppercase tracking-wider backdrop-blur-md shadow-md">
+                        {student.status === "dropped_out"
+                          ? "Dropped"
+                          : "Archived"}
+                      </div>
                     )}
 
-                  <a
-                    href={`mailto:${student.guardian.email}`}
-                    onClick={() => setActionsMenuOpen(false)}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-pitch-700 hover:text-slate-900 dark:hover:text-white transition-colors group"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-rose-500/10 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                      <Mail size={14} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="font-semibold block truncate text-slate-900 dark:text-white">Message Guardian</span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
-                        {student.guardian.email}
+                    {/* AI Photo Prompt Helper Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAiPromptOpen(true);
+                      }}
+                      className="bg-pitch-900/90 hover:bg-volt-400 hover:text-pitch-900 text-volt-400 border border-volt-400/40 rounded-full p-1.5 transition-all shadow-md hover:scale-105 active:scale-95 cursor-pointer"
+                      aria-label="Generate AI photo prompt"
+                      title="Generate AI photo prompt"
+                    >
+                      <Sparkles size={12} />
+                    </button>
+
+                    {/* Photo Upload Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        photoInputRef.current?.click();
+                      }}
+                      disabled={uploadingPhoto}
+                      className="bg-pitch-900/90 hover:bg-volt-400 hover:text-pitch-900 text-white border border-white/20 rounded-full p-1.5 transition-all shadow-md disabled:opacity-60 hover:scale-105 active:scale-95 cursor-pointer"
+                      aria-label="Change photo"
+                      title="Upload player photo"
+                    >
+                      {uploadingPhoto ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <Camera size={12} />
+                      )}
+                    </button>
+                  </div>
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => handlePhotoChange(e.target.files?.[0])}
+                  />
+                </div>
+
+                {/* Stadium Hemisphere Podium Pedestal (z-20, bottom of player tucks behind) */}
+                <div className="relative w-full -mt-5 sm:-mt-6 z-20 flex flex-col items-center">
+                  <div className="w-full overflow-visible leading-none">
+                    <svg
+                      viewBox="0 0 300 45"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-full h-6 sm:h-7 block -mb-[1px] overflow-visible"
+                      preserveAspectRatio="none"
+                    >
+                      <defs>
+                        <linearGradient
+                          id="domeRimGlow"
+                          x1="0%"
+                          y1="0%"
+                          x2="100%"
+                          y2="0%"
+                        >
+                          <stop
+                            offset="0%"
+                            stopColor="#ccff00"
+                            stopOpacity="0"
+                          />
+                          <stop
+                            offset="25%"
+                            stopColor="#ccff00"
+                            stopOpacity="0.6"
+                          />
+                          <stop
+                            offset="50%"
+                            stopColor="#ccff00"
+                            stopOpacity="1"
+                          />
+                          <stop
+                            offset="75%"
+                            stopColor="#ccff00"
+                            stopOpacity="0.6"
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor="#ccff00"
+                            stopOpacity="0"
+                          />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Smooth Dome Crest Solid Surface */}
+                      <path
+                        d="M 0,45 Q 150,5 300,45 L 300,45 L 0,45 Z"
+                        className="fill-slate-100 dark:fill-pitch-950"
+                      />
+
+                      {/* Glowing Volt Horizon Arc Line */}
+                      <path
+                        d="M 0,45 Q 150,5 300,45"
+                        stroke="url(#domeRimGlow)"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                      />
+
+                      {/* Technical Horizon Coordinate Markings */}
+                      <path
+                        d="M 0,45 Q 150,5 300,45"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeDasharray="2 12"
+                        className="text-volt-400/40"
+                      />
+                    </svg>
+                  </div>
+
+                  {/* Pedestal Console Bar: #0 MIDFIELDER U-15 */}
+                  <div className="w-full bg-slate-100 dark:bg-pitch-950 px-2.5 py-1.5 text-center">
+                    <div className="flex items-center justify-between text-3xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <span className="text-volt-600 dark:text-volt-400">
+                        #{student.jerseyNumber ?? 0}
                       </span>
+                      <span>{student.position || "Player"}</span>
+                      <span>{student.ageGroup || "All"}</span>
                     </div>
-                  </a>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
 
-          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
-            {/* LEFT / CENTER: Athlete Avatar + Primary Identity + Stats */}
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6 flex-1 min-w-0">
-              {/* Athlete Visual */}
-              <div className="relative shrink-0 flex items-end justify-center w-36 h-48 sm:w-44 sm:h-56 rounded-2xl bg-gradient-to-b from-slate-100 to-slate-200/80 dark:from-pitch-800 dark:to-pitch-950 border border-slate-200 dark:border-volt-400/20 shadow-md overflow-hidden group">
-                {student.photo && !studentPhotoError ? (
-                  <img
-                    src={student.photo}
-                    alt={`${student.firstName} ${student.lastName}`}
-                    onError={() => setStudentPhotoError(true)}
-                    className="h-full w-auto object-contain object-bottom relative z-10 select-none pointer-events-none"
-                  />
-                ) : (
-                  <PlayerPlaceholder
-                    image={mannequinPng}
-                    name={`${student.firstName} ${student.lastName}`}
-                    number={student.jerseyNumber ?? 0}
-                    nameTop="25%"
-                    numberTop="35%"
-                    nameSize="14px"
-                    numberSize="80px"
-                    nameWidth="72%"
-                  />
-                )}
-
-                {/* Jersey Badge Overlay */}
-                {student.jerseyNumber !== undefined && (
-                  <div className="absolute top-2.5 left-2.5 z-20 px-2 py-0.5 rounded-md bg-pitch-950/80 text-volt-400 font-display font-black text-xs border border-volt-400/30 backdrop-blur-sm">
-                    #{student.jerseyNumber}
-                  </div>
-                )}
-
-                {/* Photo Upload Button */}
-                <button
-                  type="button"
-                  onClick={() => photoInputRef.current?.click()}
-                  disabled={uploadingPhoto}
-                  className="absolute bottom-2 right-2 z-20 bg-pitch-900/90 hover:bg-volt-400 hover:text-pitch-900 text-white border border-white/20 rounded-full p-2 transition-all shadow-md disabled:opacity-60"
-                  aria-label="Change photo"
-                  title="Upload player photo"
-                >
-                  {uploadingPhoto ? (
-                    <Loader2 size={13} className="animate-spin" />
-                  ) : (
-                    <Camera size={13} />
-                  )}
-                </button>
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  className="hidden"
-                  onChange={(e) => handlePhotoChange(e.target.files?.[0])}
-                />
-              </div>
-
-              {/* Player Identity, Badges, Metrics & Actions */}
-              <div className="space-y-3.5 text-center sm:text-left flex-1 min-w-0">
+            {/* RIGHT: Executive Profile Information & Key KPI Tiles */}
+            <div className="flex-1 min-w-0 flex flex-col justify-between gap-3 sm:gap-4">
+              {/* Header: Player Name, Position, Squad, Status & Badges */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-slate-200/80 dark:border-white/10">
                 <div>
-                  <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap mb-1">
-                    <span className="text-2xs font-mono font-bold uppercase tracking-wider text-slate-400">
-                      {student.position || "Player"} · {student.ageGroup}
+                  <h1 className="font-display font-black text-xl sm:text-2xl lg:text-3xl uppercase tracking-tight text-slate-900 dark:text-white leading-tight">
+                    {student.firstName}{" "}
+                    <span className="text-volt-600 dark:text-volt-400">
+                      {student.lastName}
                     </span>
-                    {student.selectionPhase && (
-                      <span className="pill pill-blue text-3xs font-mono">
-                        {student.selectionPhase}
-                      </span>
-                    )}
-                  </div>
-                  <h1 className="font-display font-900 text-slate-900 dark:text-white text-2xl sm:text-3xl lg:text-4xl uppercase leading-tight tracking-tight">
-                    {student.firstName} {student.lastName}
                   </h1>
-                  <div className="flex items-center justify-center sm:justify-start gap-2 mt-2 flex-wrap">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5 flex items-center gap-2 flex-wrap">
+                    <span className="text-slate-800 dark:text-slate-200 font-bold uppercase">
+                      {student.position || "Player"}
+                    </span>
+                    <span>•</span>
+                    <span>{student.ageGroup || "All"} Division</span>
+                    <span>•</span>
+                    <span className="text-volt-600 dark:text-volt-400 font-semibold">
+                      {studentTeamName || "Unassigned Squad"}
+                    </span>
+                  </p>
+                </div>
+
+                {/* Status Selector & Badges Row */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Status Dropdown / Badge */}
+                  {isArchived ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-lg text-3xs font-mono font-bold text-rose-500 uppercase bg-rose-500/10 border border-rose-500/25">
+                      {student.status === "dropped_out"
+                        ? "Dropped"
+                        : "Archived"}
+                    </span>
+                  ) : canEditStatus ? (
+                    <div className="inline-block relative">
+                      <Select
+                        value={student.status}
+                        disabled={statusUpdating}
+                        onChange={(e) =>
+                          handleStatusChange(e.target.value as StudentStatus)
+                        }
+                        className={clsx(
+                          "!py-1 !px-2.5 !text-xs font-bold uppercase tracking-wider border rounded-xl inline-block h-[30px] cursor-pointer leading-none shadow-xs",
+                          student.status === "active"
+                            ? "text-field-500 dark:text-field-400 border-field-400/30 bg-field-400/10"
+                            : "text-ember-500 dark:text-ember-400 border-ember-400/30 bg-ember-400/10",
+                        )}
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="on_leave">On Leave</option>
+                        <option value="graduated">Graduated</option>
+                        <option value="dropped_out">Dropped</option>
+                      </Select>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-1 rounded-xl text-xs font-mono font-bold text-field-500 uppercase bg-field-400/10 border border-field-400/25">
+                      {student.status.replace("_", " ")}
+                    </span>
+                  )}
+
+                  {/* Selection Status Badge */}
+                  {student.selectionStatus && (
                     <Badge
                       variant={
                         student.selectionStatus === "selected"
@@ -746,335 +1242,42 @@ const StudentDetailPage: React.FC = () => {
                             ? "blue"
                             : "gray"
                       }
+                      className="!text-xs uppercase font-bold !py-1 !px-2.5 rounded-xl"
                     >
                       {student.selectionStatus.replace("_", " ")}
                     </Badge>
-                    {student.transferStatus === "listed" && (
-                      <Badge variant="blue">↔ On Transfer</Badge>
-                    )}
-                    {student.transferStatus === "sold" && (
-                      <Badge variant="green">Transferred</Badge>
-                    )}
-                    {canEditStatus ? (
-                      <select
-                        value={student.status}
-                        disabled={statusUpdating}
-                        onChange={(e) =>
-                          handleStatusChange(e.target.value as StudentStatus)
-                        }
-                        className={clsx(
-                          "text-2xs font-bold uppercase tracking-wide rounded px-2 py-1 border bg-slate-100 dark:bg-pitch-800",
-                          student.status === "active"
-                            ? "text-field-500 dark:text-field-400 border-field-400/30"
-                            : "text-ember-500 dark:text-ember-400 border-ember-400/30",
-                        )}
-                      >
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                        <option value="on_leave">On Leave</option>
-                        <option value="graduated">Graduated</option>
-                        <option value="dropped_out">Dropped Out</option>
-                      </select>
-                    ) : (
-                      <Badge
-                        variant={student.status === "active" ? "green" : "gray"}
-                      >
-                        {student.status.replace("_", " ")}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-
-              {/* Quick stat chips (Desktop only) */}
-              <div className="hidden lg:flex flex-wrap items-center gap-3 mt-4">
-                <span className="stat-badge text-field-400 flex items-center gap-1.5">
-                  <Check size={12} className="text-field-400" />
-                  {student.attendancePercentage}% attendance
-                </span>
-                <span className="stat-badge text-slate-400">
-                  Enrolled{" "}
-                  {new Date(student.enrollmentDate).toLocaleDateString(
-                    "en-IN",
-                    { month: "short", year: "numeric" },
                   )}
-                </span>
+
+                  {/* Transfer Status Badges */}
+                  {student.transferStatus === "listed" && (
+                    <Badge
+                      variant="blue"
+                      className="!text-xs !py-1 !px-2.5 rounded-xl"
+                    >
+                      ↔ Transfer Wall
+                    </Badge>
+                  )}
+                  {student.transferStatus === "sold" && (
+                    <Badge
+                      variant="green"
+                      className="!text-xs !py-1 !px-2.5 rounded-xl"
+                    >
+                      Transferred
+                    </Badge>
+                  )}
+                </div>
               </div>
 
-                {/* Desktop Action buttons */}
-                <div className="hidden lg:flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-slate-200/70 dark:border-white/5">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  icon={
-                    isDownloading ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <FileText size={14} />
-                    )
-                  }
-                  onClick={handleDownloadCard}
-                  disabled={isDownloading}
-                >
-                  {isDownloading ? "Generating..." : "Download Card PDF"}
-                </Button>
-
-                {/* HIDDEN CARD TEMPLATE FOR PDF */}
-                <div className="fixed left-[-9999px] top-0 bg-black">
-                  <div ref={cardRef} className="w-[800px] font-display">
-                    {/* FRONT OF CARD: ELITE PERFORMANCE VIEW */}
-                    <div
-                      className="card-page bg-[#050505] w-[800px] h-[1130px] relative overflow-hidden flex flex-col items-center border-[20px] border-volt-400 p-12"
-                      style={{ pageBreakAfter: "always", breakAfter: "page" }}
-                    >
-                      <div
-                        className="absolute inset-0 opacity-10"
-                        style={{
-                          backgroundImage:
-                            "radial-gradient(#ccff00 0.5px, transparent 0.5px)",
-                          backgroundSize: "24px 24px",
-                        }}
-                      />
-                      <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-volt-400/20 rounded-full blur-[120px]" />
-
-                      <div className="z-20 w-full flex justify-between items-start mb-6">
-                        <div className="bg-volt-400 h-12 px-6 flex items-center justify-center">
-                          <span className="text-black font-black italic text-2xl leading-none relative top-[1px]">
-                            ELITE SERIES
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-volt-400 font-black text-6xl leading-none">
-                            {student.overallRating.toFixed(1)}
-                          </p>
-                          <p className="text-white/50 text-lg uppercase tracking-widest font-thin mt-1">
-                            OVR Rating
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="relative flex-1 flex items-center justify-center w-full">
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-[420px] font-900 text-white/[0.03] italic leading-none select-none">
-                            {student.jerseyNumber ?? ""}
-                          </span>
-                        </div>
-                        <div className="relative z-10 p-2">
-                          <div className="absolute inset-0 border-2 border-volt-400/30 skew-x-[-3deg] scale-105" />
-                          <div className="absolute inset-0 border border-volt-400 skew-x-[3deg] scale-100" />
-                          <div className="relative bg-gradient-to-b from-white/5 to-transparent p-1 backdrop-blur-sm overflow-hidden">
-                            <img
-                              src={student.photo ?? mannequinPng}
-                              crossOrigin="anonymous"
-                              className="h-[550px] relative z-10 drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)] object-contain"
-                              alt="Player"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="w-full z-20 text-center pb-10">
-                        <h1 className="text-8xl font-900 text-white uppercase tracking-tighter leading-none mb-2">
-                          {student.lastName}
-                        </h1>
-                        <p className="text-volt-400 font-900 text-3xl uppercase italic tracking-widest mb-6">
-                          {student.firstName}
-                        </p>
-                        <div className="flex justify-center gap-16">
-                          <div className="text-center">
-                            <p className="text-white font-900 text-2xl uppercase italic">
-                              {student.position ?? "—"}
-                            </p>
-                            <p className="text-white/40 text-[10px] uppercase font-bold tracking-[0.3em]">
-                              Position
-                            </p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-white font-900 text-2xl uppercase italic">
-                              #{student.jerseyNumber ?? "—"}
-                            </p>
-                            <p className="text-white/40 text-[10px] uppercase font-bold tracking-[0.3em]">
-                              Squad No
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* BACK OF CARD: ANALYTICS VIEW */}
-                    <div
-                      className="card-page bg-[#0a0a0a] w-[800px] h-[1130px] relative overflow-hidden flex flex-col border-[20px] border-white/10 p-12"
-                      style={{ pageBreakBefore: "always", breakBefore: "page" }}
-                    >
-                      <div className="flex justify-between items-end border-b-2 border-white/10 pb-8">
-                        <div>
-                          <h3 className="text-5xl text-white font-900 uppercase tracking-tighter leading-none">
-                            Technical{" "}
-                            <span className="text-volt-400">Breakdown</span>
-                          </h3>
-                          <p className="text-white/30 font-bold uppercase tracking-[0.4em] mt-2 text-[10px]">
-                            Verified Franchise Data • {new Date().getFullYear()}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-volt-400 font-mono text-xl">
-                            ID-{student.id.slice(-6).toUpperCase()}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="mt-12 space-y-8">
-                        {skillScores.length === 0 && (
-                          <p className="text-white/30 text-lg italic">
-                            No performance data logged yet.
-                          </p>
-                        )}
-                        {skillScores.map((skill) => (
-                          <div key={skill.parameter} className="group">
-                            <div className="flex justify-between items-end mb-2">
-                              <span className="text-white font-900 uppercase tracking-widest text-lg">
-                                {skill.parameter}
-                              </span>
-                              <span className="text-volt-400 font-900 text-2xl italic">
-                                {Math.round(skill.score * 10)}
-                              </span>
-                            </div>
-                            <div className="h-4 bg-white/5 rounded-full overflow-hidden flex">
-                              <div
-                                className="h-full bg-volt-400 shadow-[0_0_15px_rgba(204,255,0,0.5)]"
-                                style={{ width: `${skill.score * 10}%` }}
-                              />
-                              <div className="h-full bg-white/10 flex-1" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="mt-auto grid grid-cols-12 gap-8 pt-12 border-t border-white/10">
-                        <div className="col-span-8 grid grid-cols-2 gap-6">
-                          <div>
-                            <p className="text-white/20 text-[10px] uppercase font-black tracking-widest mb-1">
-                              Guardian
-                            </p>
-                            <p className="text-white font-bold text-lg">
-                              {student.guardian.name}
-                            </p>
-                            <p className="text-volt-400 font-mono text-sm">
-                              {student.guardian.phone}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-white/20 text-[10px] uppercase font-black tracking-widest mb-1">
-                              Bio Metrics
-                            </p>
-                            <p className="text-white font-bold text-lg">
-                              Group: {student.medicalInfo.bloodGroup ?? "N/A"}
-                            </p>
-                            <p className="text-white/40 text-sm italic">
-                              {student.ageGroup} Division
-                            </p>
-                          </div>
-                        </div>
-                        <div className="col-span-4 flex flex-col items-end">
-                          {publicProfileUrl ? (
-                            <>
-                              <div className="bg-white p-2 rounded-xl">
-                                <QRCode
-                                  value={publicProfileUrl}
-                                  size={110}
-                                  level="H"
-                                  bgColor="#FFFFFF"
-                                  fgColor="#000000"
-                                />
-                              </div>
-                              <p className="text-white/30 text-[9px] uppercase font-black mt-3 tracking-tighter text-right">
-                                Scan for player profile
-                              </p>
-                            </>
-                          ) : (
-                            <div className="border border-dashed border-white/15 rounded-xl px-3 py-4 w-[130px] text-center">
-                              <p className="text-white/30 text-[8px] uppercase font-black tracking-tighter leading-relaxed">
-                                Public page not yet enabled by guardian
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-10">
-                        <p className="text-[8px] font-black uppercase tracking-[1em] text-white whitespace-nowrap">
-                          AUTHENTIC SCOUT CARD
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  icon={<Pencil size={14} />}
-                  onClick={() => setEditModal(true)}
-                >
-                  Edit details
-                </Button>
-
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  icon={<FileText size={14} />}
-                  onClick={() => setReportModalOpen(true)}
-                >
-                  Generate Report
-                </Button>
-
-                {canTransferFranchise && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    icon={<ArrowLeftRight size={14} />}
-                    onClick={() => setFranchiseTransferModal(true)}
-                  >
-                    Transfer Franchise
-                  </Button>
-                )}
-
-                {student.transferStatus !== "listed" &&
-                  student.transferStatus !== "sold" &&
-                  transferWallEnabled && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      icon={<Repeat2 size={14} />}
-                      onClick={() => setTransferModal(true)}
-                    >
-                      List on Transfer Wall
-                    </Button>
-                  )}
-
-                <a
-                  href={`mailto:${student.guardian.email}`}
-                  className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2"
-                >
-                  <Mail size={13} /> Message Guardian
-                </a>
-                </div>
-
-                {/* Mobile & Tablet Full-Width Metrics Grid (Eliminates empty side space) */}
-                <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full mt-4 pt-4 border-t border-slate-200/70 dark:border-white/10 lg:hidden">
-                  {/* Overall Rating Card */}
-                  <div className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-gradient-to-b from-volt-400/10 to-volt-400/5 dark:from-volt-400/15 dark:to-pitch-800 border border-volt-400/30 dark:border-volt-400/30 shadow-xs text-center">
-                    <span className="flex items-center gap-1 text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
-                      <Star size={11} className="text-volt-500 fill-volt-500" /> OVR
+              {/* 3 Executive KPI Cards Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 items-stretch">
+                {/* KPI 1: Overall Rating (OVR) */}
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-pitch-950/70 border border-slate-200/80 dark:border-white/10 shadow-xs flex flex-col justify-between hover:border-volt-400/40 dark:hover:border-volt-400/30 transition-all">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="flex items-center gap-1.5 text-3xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <Star size={12} className="text-volt-500 fill-volt-500" />{" "}
+                      Overall Rating
                     </span>
-                    <span
-                      className={clsx(
-                        "font-display font-black text-2xl sm:text-3xl tabular-nums leading-none tracking-tight",
-                        getRatingColor(student.overallRating),
-                      )}
-                    >
-                      {student.overallRating.toFixed(1)}
-                    </span>
-                    <span className="mt-1 px-1.5 py-0.5 rounded-full text-3xs font-mono font-bold uppercase tracking-wider bg-volt-400/20 text-volt-700 dark:text-volt-300 border border-volt-400/30 truncate max-w-full">
+                    <span className="px-1.5 py-0.5 rounded text-3xs font-mono font-bold uppercase tracking-wider bg-volt-400/10 text-volt-600 dark:text-volt-400 border border-volt-400/20">
                       {student.overallRating >= 8.5
                         ? "Elite"
                         : student.overallRating >= 7
@@ -1083,57 +1286,293 @@ const StudentDetailPage: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Attendance Card */}
-                  <div className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-slate-50 dark:bg-pitch-800 border border-slate-200/80 dark:border-white/10 shadow-xs text-center">
-                    <span className="flex items-center gap-1 text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
-                      <Check size={11} className="text-field-500" /> Attendance
+                  <div className="flex items-baseline gap-1.5 my-1">
+                    <span
+                      className={clsx(
+                        "font-display font-black text-2xl sm:text-3xl tabular-nums leading-none tracking-tight",
+                        getRatingColor(student.overallRating),
+                      )}
+                    >
+                      {student.overallRating.toFixed(1)}
                     </span>
-                    <span className="font-display font-black text-2xl sm:text-3xl text-field-500 dark:text-field-400 tabular-nums leading-none tracking-tight">
-                      {student.attendancePercentage}%
-                    </span>
-                    <span className="mt-1 text-3xs font-mono text-slate-400 dark:text-slate-400 uppercase tracking-wider">
-                      Verified
+                    <span className="text-3xs text-slate-400 font-mono">
+                      / 10.0 OVR
                     </span>
                   </div>
 
-                  {/* Enrolled Card */}
-                  <div className="flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-slate-50 dark:bg-pitch-800 border border-slate-200/80 dark:border-white/10 shadow-xs text-center">
-                    <span className="flex items-center gap-1 text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
-                      <Calendar size={11} className="text-ice-400" /> Enrolled
+                  <div>
+                    <div className="w-full bg-slate-200 dark:bg-pitch-800 h-1.5 rounded-full overflow-hidden mb-1">
+                      <div
+                        className="h-full bg-gradient-to-r from-volt-500 to-volt-400 rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min(100, (student.overallRating / 10) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-3xs font-mono text-slate-400 block truncate">
+                      {performances.length} Evaluations Logged
                     </span>
-                    <span className="font-display font-black text-xs sm:text-sm text-slate-800 dark:text-slate-100 uppercase tracking-tight leading-none mt-1">
-                      {new Date(student.enrollmentDate).toLocaleDateString(
-                        "en-IN",
-                        {
-                          month: "short",
-                          year: "numeric",
-                        },
-                      )}
+                  </div>
+                </div>
+
+                {/* KPI 2: Attendance & Reliability */}
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-pitch-950/70 border border-slate-200/80 dark:border-white/10 shadow-xs flex flex-col justify-between hover:border-field-400/40 dark:hover:border-field-400/30 transition-all">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="flex items-center gap-1.5 text-3xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <Check size={12} className="text-field-500" /> Attendance
                     </span>
-                    <span className="mt-1 text-3xs font-mono text-slate-400 dark:text-slate-400 uppercase tracking-wider">
-                      Active Squad
+                    <span className="px-1.5 py-0.5 rounded text-3xs font-mono font-bold uppercase tracking-wider bg-field-400/10 text-field-600 dark:text-field-400 border border-field-400/20">
+                      Reliable
+                    </span>
+                  </div>
+
+                  <div className="flex items-baseline gap-1.5 my-1">
+                    <span className="font-display font-black text-2xl sm:text-3xl text-field-500 dark:text-field-400 tabular-nums leading-none tracking-tight">
+                      {student.attendancePercentage}%
+                    </span>
+                    <span className="text-3xs text-slate-400 font-mono">
+                      Reliability
+                    </span>
+                  </div>
+
+                  <div>
+                    <div className="w-full bg-slate-200 dark:bg-pitch-800 h-1.5 rounded-full overflow-hidden mb-1">
+                      <div
+                        className="h-full bg-gradient-to-r from-field-500 to-field-400 rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min(100, student.attendancePercentage)}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-3xs font-mono text-slate-400 block truncate">
+                      {attendance.length} Total Sessions
+                    </span>
+                  </div>
+                </div>
+
+                {/* KPI 3: Branch & Squad Roster */}
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-pitch-950/70 border border-slate-200/80 dark:border-white/10 shadow-xs flex flex-col justify-between hover:border-volt-400/40 dark:hover:border-volt-400/30 transition-all">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="flex items-center gap-1.5 text-3xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <MapPin size={12} className="text-volt-500" /> Club &
+                      Branch
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-3xs font-mono font-bold uppercase tracking-wider bg-volt-400/10 text-volt-600 dark:text-volt-400 border border-volt-400/20">
+                      Branch
+                    </span>
+                  </div>
+
+                  <div className="my-1">
+                    <p className="font-display font-black text-base sm:text-lg text-slate-900 dark:text-white truncate">
+                      {franchise?.name || "Main Academy"}
+                    </p>
+                    <p className="text-3xs text-slate-500 dark:text-slate-400 font-mono truncate">
+                      Squad:{" "}
+                      <span className="text-slate-800 dark:text-slate-200 font-semibold">
+                        {studentTeamName || "Unassigned"}
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="pt-1 border-t border-slate-200/60 dark:border-white/5">
+                    <span className="text-3xs font-mono text-slate-400 block truncate">
+                      Phase:{" "}
+                      <span className="text-slate-700 dark:text-slate-300 font-medium">
+                        {student.selectionPhase ||
+                          student.selectionStatus.replace("_", " ")}
+                      </span>
                     </span>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* RIGHT SIDE: FUT-Style Overall Rating Card (Desktop only) */}
-            <div className="hidden lg:flex flex-col items-end gap-3 shrink-0 self-start">
-              <div className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-pitch-950/70 border border-slate-200/80 dark:border-white/10 shadow-sm text-center min-w-[140px]">
-                <div className="flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 mb-1">
-                  <Star size={12} className="text-volt-500 fill-volt-500" /> Overall Rating
+          {/* HIDDEN CARD TEMPLATE FOR PDF */}
+          <div className="fixed left-[-9999px] top-0 bg-black">
+            <div ref={cardRef} className="w-[800px] font-display">
+              {/* FRONT OF CARD: ELITE PERFORMANCE VIEW */}
+              <div
+                className="card-page bg-[#050505] w-[800px] h-[1130px] relative overflow-hidden flex flex-col items-center border-[20px] border-volt-400 p-12"
+                style={{ pageBreakAfter: "always", breakAfter: "page" }}
+              >
+                <div
+                  className="absolute inset-0 opacity-10"
+                  style={{
+                    backgroundImage:
+                      "radial-gradient(#ccff00 0.5px, transparent 0.5px)",
+                    backgroundSize: "24px 24px",
+                  }}
+                />
+                <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-volt-400/20 rounded-full blur-[120px]" />
+
+                <div className="z-20 w-full flex justify-between items-start mb-6">
+                  <div className="bg-volt-400 h-12 px-6 flex items-center justify-center">
+                    <span className="text-black font-black italic text-2xl leading-none relative top-[1px]">
+                      ELITE SERIES
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-volt-400 font-black text-6xl leading-none">
+                      {student.overallRating.toFixed(1)}
+                    </p>
+                    <p className="text-white/50 text-lg uppercase tracking-widest font-thin mt-1">
+                      OVR Rating
+                    </p>
+                  </div>
                 </div>
-                <p
-                  className={clsx(
-                    "font-display font-black text-4xl sm:text-5xl tabular-nums leading-none tracking-tight",
-                    getRatingColor(student.overallRating),
+
+                <div className="relative flex-1 flex items-center justify-center w-full">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-[420px] font-900 text-white/[0.03] italic leading-none select-none">
+                      {student.jerseyNumber ?? ""}
+                    </span>
+                  </div>
+                  <div className="relative z-10 p-2">
+                    <div className="absolute inset-0 border-2 border-volt-400/30 skew-x-[-3deg] scale-105" />
+                    <div className="absolute inset-0 border border-volt-400 skew-x-[3deg] scale-100" />
+                    <div className="relative bg-gradient-to-b from-white/5 to-transparent p-1 backdrop-blur-sm overflow-hidden">
+                      <img
+                        src={student.photo ?? mannequinPng}
+                        crossOrigin="anonymous"
+                        className="h-[550px] relative z-10 drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)] object-contain"
+                        alt="Player"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="w-full z-20 text-center pb-10">
+                  <h1 className="text-8xl font-900 text-white uppercase tracking-tighter leading-none mb-2">
+                    {student.lastName}
+                  </h1>
+                  <p className="text-volt-400 font-900 text-3xl uppercase italic tracking-widest mb-6">
+                    {student.firstName}
+                  </p>
+                  <div className="flex justify-center gap-16">
+                    <div className="text-center">
+                      <p className="text-white font-900 text-2xl uppercase italic">
+                        {student.position ?? "—"}
+                      </p>
+                      <p className="text-white/40 text-[10px] uppercase font-bold tracking-[0.3em]">
+                        Position
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-white font-900 text-2xl uppercase italic">
+                        #{student.jerseyNumber ?? "—"}
+                      </p>
+                      <p className="text-white/40 text-[10px] uppercase font-bold tracking-[0.3em]">
+                        Squad No
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* BACK OF CARD: ANALYTICS VIEW */}
+              <div
+                className="card-page bg-[#0a0a0a] w-[800px] h-[1130px] relative overflow-hidden flex flex-col border-[20px] border-white/10 p-12"
+                style={{ pageBreakBefore: "always", breakBefore: "page" }}
+              >
+                <div className="flex justify-between items-end border-b-2 border-white/10 pb-8">
+                  <div>
+                    <h3 className="text-5xl text-white font-900 uppercase tracking-tighter leading-none">
+                      Technical <span className="text-volt-400">Breakdown</span>
+                    </h3>
+                    <p className="text-white/30 font-bold uppercase tracking-[0.4em] mt-2 text-[10px]">
+                      Verified Branch Data • {new Date().getFullYear()}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-volt-400 font-mono text-xl">
+                      ID-{student.id.slice(-6).toUpperCase()}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-12 space-y-8">
+                  {skillScores.length === 0 && (
+                    <p className="text-white/30 text-lg italic">
+                      No performance data logged yet.
+                    </p>
                   )}
-                >
-                  {student.overallRating.toFixed(1)}
-                </p>
-                <div className="mt-2 px-2.5 py-0.5 rounded-full text-3xs font-mono font-bold uppercase tracking-wider bg-volt-400/10 text-volt-600 dark:text-volt-400 border border-volt-400/20">
-                  {student.overallRating >= 8.5 ? "Elite Tier" : student.overallRating >= 7 ? "Standout" : "Developing"}
+                  {skillScores.map((skill) => (
+                    <div key={skill.parameter} className="group">
+                      <div className="flex justify-between items-end mb-2">
+                        <span className="text-white font-900 uppercase tracking-widest text-lg">
+                          {skill.parameter}
+                        </span>
+                        <span className="text-volt-400 font-900 text-2xl italic">
+                          {Math.round(skill.score * 10)}
+                        </span>
+                      </div>
+                      <div className="h-4 bg-white/5 rounded-full overflow-hidden flex">
+                        <div
+                          className="h-full bg-volt-400 shadow-[0_0_15px_rgba(204,255,0,0.5)]"
+                          style={{ width: `${skill.score * 10}%` }}
+                        />
+                        <div className="h-full bg-white/10 flex-1" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-auto grid grid-cols-12 gap-8 pt-12 border-t border-white/10">
+                  <div className="col-span-8 grid grid-cols-2 gap-6">
+                    <div>
+                      <p className="text-white/20 text-[10px] uppercase font-black tracking-widest mb-1">
+                        Guardian
+                      </p>
+                      <p className="text-white font-bold text-lg">
+                        {student.guardian.name}
+                      </p>
+                      <p className="text-volt-400 font-mono text-sm">
+                        {student.guardian.phone}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-white/20 text-[10px] uppercase font-black tracking-widest mb-1">
+                        Bio Metrics
+                      </p>
+                      <p className="text-white font-bold text-lg">
+                        Group: {student.medicalInfo.bloodGroup ?? "N/A"}
+                      </p>
+                      <p className="text-white/40 text-sm italic">
+                        {student.ageGroup} Division
+                      </p>
+                    </div>
+                  </div>
+                  <div className="col-span-4 flex flex-col items-end">
+                    {publicProfileUrl ? (
+                      <>
+                        <div className="bg-white p-2 rounded-xl">
+                          <QRCode
+                            value={publicProfileUrl}
+                            size={110}
+                            level="H"
+                            bgColor="#FFFFFF"
+                            fgColor="#000000"
+                          />
+                        </div>
+                        <p className="text-white/30 text-[9px] uppercase font-black mt-3 tracking-tighter text-right">
+                          Scan for player profile
+                        </p>
+                      </>
+                    ) : (
+                      <div className="border border-dashed border-white/15 rounded-xl px-3 py-4 w-[130px] text-center">
+                        <p className="text-white/30 text-[8px] uppercase font-black tracking-tighter leading-relaxed">
+                          Public page not yet enabled by guardian
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-10">
+                  <p className="text-[8px] font-black uppercase tracking-[1em] text-white whitespace-nowrap">
+                    AUTHENTIC SCOUT CARD
+                  </p>
                 </div>
               </div>
             </div>
@@ -1341,6 +1780,8 @@ const StudentDetailPage: React.FC = () => {
               {attendance.map((entry, i) => (
                 <div
                   key={i}
+                  id={`entity-${(entry as any).sessionId || (entry as any)._id || i}`}
+                  data-highlight-id={(entry as any).sessionId || (entry as any)._id}
                   className="flex items-center gap-3 py-2 border-b border-white/4"
                 >
                   <div
@@ -1772,10 +2213,17 @@ const StudentDetailPage: React.FC = () => {
                   const topHighlights = sortedSessionSkills.slice(0, 2);
 
                   const tier = getRatingTier(session.overallScore);
+                  const targetHighlightId =
+                    session._id ||
+                    (typeof session.sessionId === "object"
+                      ? session.sessionId?._id || session.sessionId?.id
+                      : session.sessionId);
 
                   return (
                     <div
                       key={session._id}
+                      id={`entity-${targetHighlightId}`}
+                      data-highlight-id={targetHighlightId}
                       className="bg-slate-50 dark:bg-pitch-900/40 hover:bg-slate-100 dark:hover:bg-pitch-900/70 transition-colors"
                     >
                       {/* Compact Primary Row */}
@@ -2219,7 +2667,7 @@ const StudentDetailPage: React.FC = () => {
                 toFranchiseId,
                 reason,
               }).unwrap();
-              toast.success("Player transferred to new franchise");
+              toast.success("Player transferred to new branch");
               setFranchiseTransferModal(false);
             } catch (err: any) {
               toast.error(
@@ -2295,6 +2743,28 @@ const StudentDetailPage: React.FC = () => {
           studentName={`${student.firstName} ${student.lastName}`}
         />
       )}
+
+      {subscriptionModalOpen && academyId && (
+        <SubscriptionModal
+          academyId={academyId}
+          onClose={() => setSubscriptionModalOpen(false)}
+          mode="upgrade"
+        />
+      )}
+
+      {aiPromptOpen && student && (
+        <PlayerAiPromptModal
+          isOpen={aiPromptOpen}
+          onClose={() => setAiPromptOpen(false)}
+          playerName={`${student.firstName} ${student.lastName}`}
+          ageGroup={student.ageGroup}
+          position={student.position}
+          teamName={studentTeamName}
+          jerseyNumber={student.jerseyNumber}
+        />
+      )}
+
+      {ConfirmDialog}
     </div>
   );
 };
@@ -2330,7 +2800,9 @@ const TransferListingModal: React.FC<{
         <div className="flex items-center gap-3 bg-pitch-700 rounded p-3">
           <Avatar name={studentName} size="md" />
           <div>
-            <p className="font-display font-bold text-slate-900 dark:text-white">{studentName}</p>
+            <p className="font-display font-bold text-slate-900 dark:text-white">
+              {studentName}
+            </p>
             <p className="text-xs text-slate-500">
               {position ?? "—"} · Rating {rating.toFixed(1)}
             </p>
@@ -2394,7 +2866,7 @@ const FranchiseTransferHistoryCard: React.FC<{ studentId: string }> = ({
     return (
       <div className="card p-5 space-y-3">
         <p className="section-title text-volt-400">
-          Franchise Transfer History
+          Branch Transfer History
         </p>
         <Skeleton className="h-10 rounded" />
       </div>
@@ -2405,7 +2877,7 @@ const FranchiseTransferHistoryCard: React.FC<{ studentId: string }> = ({
 
   return (
     <div className="card p-5 space-y-4">
-      <p className="section-title text-volt-400">Franchise Transfer History</p>
+      <p className="section-title text-volt-400">Branch Transfer History</p>
       <div className="space-y-3">
         {history.map((h) => (
           <div
@@ -2453,13 +2925,18 @@ const ReportSelectionModal: React.FC<{
   studentId: string;
   studentName: string;
 }> = ({ isOpen, onClose, studentId, studentName }) => {
-  const [selectedPeriod, setSelectedPeriod] = useState<"daily" | "monthly" | "yearly" | "all">("monthly");
+  const [selectedPeriod, setSelectedPeriod] = useState<
+    "daily" | "monthly" | "yearly" | "all"
+  >("monthly");
 
   if (!isOpen) return null;
 
   const handleGenerate = () => {
     onClose();
-    window.open(`/students/${studentId}/report?period=${selectedPeriod}`, "_blank");
+    window.open(
+      `/students/${studentId}/report?period=${selectedPeriod}`,
+      "_blank",
+    );
   };
 
   const options = [
@@ -2494,10 +2971,20 @@ const ReportSelectionModal: React.FC<{
   ] as const;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Generate Player Report" size="md">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Generate Player Report"
+      size="md"
+    >
       <div className="space-y-4">
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Choose an evaluation timeframe for <span className="font-semibold text-slate-800 dark:text-slate-200">{studentName}</span>. The generated report includes interactive analytics graphs, attendance metrics, and print-ready formatting.
+          Choose an evaluation timeframe for{" "}
+          <span className="font-semibold text-slate-800 dark:text-slate-200">
+            {studentName}
+          </span>
+          . The generated report includes interactive analytics graphs,
+          attendance metrics, and print-ready formatting.
         </p>
 
         <div className="grid grid-cols-1 gap-2.5">
@@ -2512,7 +2999,7 @@ const ReportSelectionModal: React.FC<{
                   "p-3.5 rounded-xl border cursor-pointer transition-all duration-150 flex items-start gap-3.5",
                   isSelected
                     ? "border-volt-500 bg-volt-500/5 dark:bg-volt-400/10 ring-1 ring-volt-500/30"
-                    : "border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-pitch-950/40 hover:border-slate-300 dark:hover:border-white/20"
+                    : "border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-pitch-950/40 hover:border-slate-300 dark:hover:border-white/20",
                 )}
               >
                 <div
@@ -2520,7 +3007,7 @@ const ReportSelectionModal: React.FC<{
                     "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
                     isSelected
                       ? "bg-volt-400 text-pitch-950 font-bold"
-                      : "bg-slate-200/70 dark:bg-white/5 text-slate-600 dark:text-slate-400"
+                      : "bg-slate-200/70 dark:bg-white/5 text-slate-600 dark:text-slate-400",
                   )}
                 >
                   <Icon size={18} />
@@ -2535,7 +3022,7 @@ const ReportSelectionModal: React.FC<{
                         "px-2 py-0.5 rounded text-3xs font-mono font-bold uppercase",
                         isSelected
                           ? "bg-volt-400 text-pitch-950"
-                          : "bg-slate-100 dark:bg-pitch-800 text-slate-500 dark:text-slate-400"
+                          : "bg-slate-100 dark:bg-pitch-800 text-slate-500 dark:text-slate-400",
                       )}
                     >
                       {opt.badge}
@@ -2590,39 +3077,36 @@ const FranchiseTransferModal: React.FC<{
   const [reason, setReason] = useState("");
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Transfer Franchise" size="sm">
+    <Modal isOpen={true} onClose={onClose} title="Transfer Branch" size="sm">
       <div className="space-y-4">
         <div>
-          <label className="label">Current Franchise</label>
+          <label className="label">Current Branch</label>
           <p className="text-sm text-slate-300">
             {currentFranchise?.name ?? "—"}
           </p>
         </div>
-        <div>
-          <label className="label">Move to</label>
-          <select
-            value={toFranchiseId}
-            onChange={(e) => setToFranchiseId(e.target.value)}
-            className="input !w-full"
-          >
-            <option value="">Select destination franchise…</option>
-            {destinationOptions.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-          {destinationOptions.length === 0 && (
-            <p className="text-2xs text-slate-500 mt-1.5">
-              No other active franchises in this academy to transfer into.
-            </p>
-          )}
-        </div>
+        <Select
+          label="Move to"
+          value={toFranchiseId}
+          onChange={(e) => setToFranchiseId(e.target.value)}
+          helperText={
+            destinationOptions.length === 0
+              ? "No other active branches in this academy to transfer into."
+              : undefined
+          }
+        >
+          <option value="">Select destination branch…</option>
+          {destinationOptions.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name}
+            </option>
+          ))}
+        </Select>
         <div>
           <label className="label">Reason (optional)</label>
           <textarea
             className="input min-h-16 resize-none"
-            placeholder="e.g. Family relocation, closer to new franchise"
+            placeholder="e.g. Family relocation, closer to new branch"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
@@ -2894,20 +3378,12 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
                 onChange={(e) => handleDobChange(e.target.value)}
                 required
               />
-              <div>
-                <label className="label">Age group</label>
-                <select
-                  value={ageGroup}
-                  onChange={(e) => setAgeGroup(e.target.value)}
-                  className="input !w-full"
-                >
-                  {allCategories.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label="Age group"
+                value={ageGroup}
+                onChange={(e) => setAgeGroup(e.target.value)}
+                options={allCategories}
+              />
             </div>
 
             <div>
@@ -2959,30 +3435,27 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
             </div>
 
             <div>
-              <label className="label">Franchise</label>
+              <label className="label">Branch</label>
               <div className="input !w-full flex items-center justify-between text-slate-400 cursor-not-allowed">
                 <span>{franchise?.name ?? "—"}</span>
                 <span className="text-2xs uppercase tracking-wide text-slate-600">
-                  Use Transfer Franchise to move this player
+                  Use Transfer Branch to move this player
                 </span>
               </div>
             </div>
 
-            <div>
-              <label className="label">Team Assignment</label>
-              <select
-                value={teamId}
-                onChange={(e) => setTeamId(e.target.value)}
-                className="input !w-full"
-              >
-                <option value="">No team assigned</option>
-                {(teams ?? []).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.ageGroup})
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              label="Team Assignment"
+              value={teamId}
+              onChange={(e) => setTeamId(e.target.value)}
+            >
+              <option value="">No team assigned</option>
+              {(teams ?? []).map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} ({t.ageGroup})
+                </option>
+              ))}
+            </Select>
 
             <div className="border-t border-white/5 pt-4 mt-2">
               <p className="section-title mb-3 text-volt-400">

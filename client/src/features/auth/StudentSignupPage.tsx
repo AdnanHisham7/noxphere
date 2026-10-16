@@ -23,6 +23,7 @@ import {
   Award,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { Select } from "@/components/ui";
 import { calculateAgeCategory, ALL_AGE_GROUPS } from "@/utils/ageCategory";
 
 const AGE_GROUPS = ALL_AGE_GROUPS;
@@ -503,50 +504,47 @@ export const StudentSignupPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="label">Gender</label>
-                      <select
+                      <Select
+                        label="Gender"
                         name="gender"
                         value={formData.gender}
                         onChange={handleChange}
-                        className="input"
                       >
                         <option value="male">Male</option>
                         <option value="female">Female</option>
                         <option value="other">Other</option>
-                      </select>
+                      </Select>
                     </div>
 
                     <div>
-                      <label className="label">Age Group *</label>
-                      <select
+                      <Select
+                        label="Age Group *"
                         name="ageGroup"
                         value={formData.ageGroup}
                         onChange={handleChange}
-                        className="input"
                       >
                         {AGE_GROUPS.map((ag) => (
                           <option key={ag} value={ag}>
                             {ag}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </div>
                   </div>
 
                   <div>
-                    <label className="label">Preferred Position</label>
-                    <select
+                    <Select
+                      label="Preferred Position"
                       name="position"
                       value={formData.position}
                       onChange={handleChange}
-                      className="input"
                     >
                       {POSITIONS.map((pos) => (
                         <option key={pos} value={pos}>
                           {pos}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
 
                   {/* Summary Profile Preview Card */}

@@ -27,6 +27,10 @@ const SessionBaseSchema = z.object({
   dailyEndTime: z.string().optional(),
   location: z.string().min(1),
   fieldNumber: z.string().optional(),
+  pitchId: z.string().optional(),
+  googleMapsUrl: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
   notes: z.string().optional(),
   playerIds: z.array(z.string()).optional(),
   documents: z.array(
@@ -57,6 +61,10 @@ export const UpdateSessionSchema = SessionBaseSchema.partial().extend({
 export const ChangeLocationSchema = z.object({
   location: z.string().min(1),
   fieldNumber: z.string().optional(),
+  pitchId: z.string().optional(),
+  googleMapsUrl: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
   notifyGuardians: z.boolean().default(true),
 });
 

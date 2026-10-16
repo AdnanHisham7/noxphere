@@ -27,6 +27,7 @@ import {
   EmptyState,
   PageHeader,
   Tabs,
+  Select,
 } from "../../components/ui";
 import { AddPurchaseModal } from "./components/AddPurchaseModal";
 import { AddMiscExpenseModal } from "./components/AddMiscExpenseModal";
@@ -147,8 +148,8 @@ export const ExpenseManagementPage: React.FC = () => {
 
   const activeFranchiseName =
     selectedFranchiseId === "all"
-      ? "All Franchises"
-      : franchiseNameMap.get(selectedFranchiseId) || "Selected Franchise";
+      ? "All Branches"
+      : franchiseNameMap.get(selectedFranchiseId) || "Selected Branch";
 
   // Queries
   const { data: reportData, isLoading: isReportLoading } = useGetAnalyticsReportQuery(
@@ -283,20 +284,19 @@ export const ExpenseManagementPage: React.FC = () => {
         actions={
           <>
             {franchises && franchises.length > 0 && !user?.franchiseId && (
-              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 rounded-lg px-2.5 py-1">
-                <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                <select
+              <div className="w-48">
+                <Select
+                  icon={<Building2 className="w-3.5 h-3.5 text-slate-400" />}
                   value={selectedFranchiseId}
                   onChange={(e) => setSelectedFranchiseId(e.target.value)}
-                  className="bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
                 >
-                  <option value="all">All Franchises</option>
+                  <option value="all">All Branches</option>
                   {franchises.map((f) => (
                     <option key={f.id} value={f.id}>
                       {f.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             )}
 
@@ -1375,20 +1375,17 @@ export const ExpenseManagementPage: React.FC = () => {
             {/* Timeframe selector controls */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 dark:bg-pitch-900/40 p-3 rounded-lg border border-slate-200 dark:border-white/5">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">
-                  Report Timeframe
-                </label>
-                <select
+                <Select
+                  label="Report Timeframe"
                   value={timeframe}
                   onChange={(e) => setTimeframe(e.target.value as any)}
-                  className="input w-full text-xs"
                 >
                   <option value="day">Single Day Audit</option>
                   <option value="month">Monthly Statement</option>
                   <option value="year">Annual Financial Statement</option>
                   <option value="lifetime">Lifetime (All-Time Audit)</option>
                   <option value="custom">Custom Date Range</option>
-                </select>
+                </Select>
               </div>
 
               {timeframe === "day" && (
@@ -1426,19 +1423,18 @@ export const ExpenseManagementPage: React.FC = () => {
               )}
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Target Franchise</label>
-                <select
+                <Select
+                  label="Target Branch"
                   value={selectedFranchiseId}
                   onChange={(e) => setSelectedFranchiseId(e.target.value)}
-                  className="input w-full text-xs"
                 >
-                  <option value="all">All Franchises</option>
+                  <option value="all">All Branches</option>
                   {franchises?.map((f) => (
                     <option key={f.id} value={f.id}>
                       {f.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
 
