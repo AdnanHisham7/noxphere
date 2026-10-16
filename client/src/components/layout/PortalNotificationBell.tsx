@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link } from "react-router-dom";
-import { Bell, FileText, Download } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Bell, FileText, Download, Check } from "lucide-react";
 import { useClickOutside } from "../../hooks/useClickOutside";
 import { RootState } from "../../store";
 import {
@@ -13,15 +13,14 @@ import {
   useGetMyNotificationsQuery,
   useMarkMyNotificationReadMutation,
   useMarkAllMyNotificationsReadMutation,
+  type MyNotification,
 } from "../../store/api/myNotificationsApi";
+import { getNotificationTarget } from "../../utils/notificationRouter";
 
-// Guardians and students never had a bell at all — PortalLayout has no
-// equivalent of the admin TopBar's notification dropdown, so this is new,
-// not a fix to something broken. Reuses the same /notifications/me feed
-// and Redux slice as the admin-side bell so both surfaces agree on what
-// counts as read.
+// Guardians and students notification bell with navigation and mark-as-read
 export const PortalNotificationBell: React.FC = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { isAuthenticated, user } = useSelector((s: RootState) => s.auth);
   const { unreadCount, items: notifications } = useSelector(
     (s: RootState) => s.notifications,
@@ -41,8 +40,25 @@ export const PortalNotificationBell: React.FC = () => {
   const [markOneReadOnServer] = useMarkMyNotificationReadMutation();
   const [markAllReadOnServer] = useMarkAllMyNotificationsReadMutation();
 
-  const handleOpenNotification = (id: string, isRead: boolean) => {
-    if (isRead) return;
+  const handleNotificationClick = (n: MyNotification) => {
+    if (!n.isRead) {
+      dispatch(markOneRead(n.id));
+      markOneReadOnServer(n.id).catch(() => undefined);
+    }
+    setOpen(false);
+
+    const target = getNotificationTarget(n, user?.role);
+    if (target?.url) {
+      if (target.url.startsWith("http")) {
+        window.open(target.url, "_blank");
+      } else {
+        navigate(target.url);
+      }
+    }
+  };
+
+  const handleMarkOneReadExplicit = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     dispatch(markOneRead(id));
     markOneReadOnServer(id).catch(() => undefined);
   };
@@ -87,75 +103,90 @@ export const PortalNotificationBell: React.FC = () => {
                 </p>
               ) : (
                 notifications.slice(0, 10).map((n) => (
-                  <button
+                  <div
                     key={n.id}
-                    onClick={() => handleOpenNotification(n.id, n.isRead)}
-                    className={`w-full text-left px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03] ${
+                    onClick={() => handleNotificationClick(n)}
+                    className={`w-full text-left px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03] cursor-pointer group flex items-start justify-between gap-3 ${
                       !n.isRead
                         ? "bg-core-400/[0.08] dark:bg-core-400/[0.06]"
                         : "bg-white dark:bg-transparent"
                     }`}
                   >
-                    <p className="text-xs font-semibold text-slate-900 dark:text-nox-high">
-                      {n.title}
-                    </p>
-                    <p className="text-xs text-slate-600 dark:text-nox-low mt-0.5 line-clamp-2">
-                      {n.body}
-                    </p>
-                    {n.data?.imageUrl && (
-                      <img
-                        src={n.data.imageUrl}
-                        alt=""
-                        className="mt-1.5 max-h-24 w-full rounded object-cover border border-slate-200 dark:border-white/10"
-                      />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-slate-900 dark:text-nox-high">
+                        {n.title}
+                      </p>
+                      <p className="text-xs text-slate-600 dark:text-nox-low mt-0.5 line-clamp-2">
+                        {n.body}
+                      </p>
+                      {n.data?.imageUrl && (
+                        <img
+                          src={n.data.imageUrl}
+                          alt=""
+                          className="mt-1.5 max-h-24 w-full rounded object-cover border border-slate-200 dark:border-white/10"
+                        />
+                      )}
+                      {/* Attachments */}
+                      {(() => {
+                        let atts: { name: string; url: string }[] = [];
+                        if (Array.isArray(n.data?.attachments)) {
+                          atts = [...n.data.attachments];
+                        } else if (typeof n.data?.attachments === "string") {
+                          try {
+                            const p = JSON.parse(n.data.attachments);
+                            if (Array.isArray(p)) atts = [...p];
+                          } catch {}
+                        }
+                        if (atts.length === 0 && n.data?.documentUrl) {
+                          atts.push({
+                            name:
+                              (n.data.documentFilename as string) ||
+                              "Attached Document",
+                            url: n.data.documentUrl as string,
+                          });
+                        }
+                        if (atts.length === 0) return null;
+                        return (
+                          <div
+                            className="mt-1.5 flex flex-wrap gap-1.5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {atts.map((at, idx) => (
+                              <a
+                                key={idx}
+                                href={at.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                download
+                                className="inline-flex items-center gap-1 text-[11px] text-core-500 dark:text-core-400 bg-core-400/10 border border-core-400/20 px-2 py-0.5 rounded font-medium hover:underline"
+                              >
+                                <Download size={11} />
+                                <span className="truncate max-w-[140px]">
+                                  {at.name}
+                                </span>
+                              </a>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                      <p className="text-[10px] text-slate-400 dark:text-nox-low/70 font-mono mt-1">
+                        {new Date(n.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+
+                    {/* Separate Tick Button to mark as read without navigating */}
+                    {!n.isRead && (
+                      <button
+                        type="button"
+                        title="Mark as read"
+                        aria-label="Mark as read"
+                        onClick={(e) => handleMarkOneReadExplicit(n.id, e)}
+                        className="shrink-0 p-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-white/[0.04] text-slate-400 hover:text-core-500 dark:hover:text-core-400 hover:border-core-400/30 hover:bg-core-400/10 transition-all cursor-pointer shadow-2xs mt-0.5"
+                      >
+                        <Check size={13} strokeWidth={2.5} />
+                      </button>
                     )}
-                    {/* Attachments */}
-                    {(() => {
-                      let atts: { name: string; url: string }[] = [];
-                      if (Array.isArray(n.data?.attachments)) {
-                        atts = [...n.data.attachments];
-                      } else if (typeof n.data?.attachments === "string") {
-                        try {
-                          const p = JSON.parse(n.data.attachments);
-                          if (Array.isArray(p)) atts = [...p];
-                        } catch {}
-                      }
-                      if (atts.length === 0 && n.data?.documentUrl) {
-                        atts.push({
-                          name:
-                            (n.data.documentFilename as string) ||
-                            "Attached Document",
-                          url: n.data.documentUrl as string,
-                        });
-                      }
-                      if (atts.length === 0) return null;
-                      return (
-                        <div
-                          className="mt-1.5 flex flex-wrap gap-1.5"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {atts.map((at, idx) => (
-                            <a
-                              key={idx}
-                              href={at.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              download
-                              className="inline-flex items-center gap-1 text-[11px] text-core-500 dark:text-core-400 bg-core-400/10 border border-core-400/20 px-2 py-0.5 rounded font-medium hover:underline"
-                            >
-                              <Download size={11} />
-                              <span className="truncate max-w-[140px]">
-                                {at.name}
-                              </span>
-                            </a>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                    <p className="text-[10px] text-slate-400 dark:text-nox-low/70 font-mono mt-1">
-                      {new Date(n.createdAt).toLocaleString()}
-                    </p>
-                  </button>
+                  </div>
                 ))
               )}
             </div>

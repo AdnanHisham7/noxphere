@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useSearchParams, Link } from 'react-router-dom';
 import { clsx } from 'clsx';
+import { useHighlightEffect } from '../../hooks/useEntityHighlight';
 import {
   useGetTransferListingsQuery,
   useGetListingByIdQuery,
@@ -62,12 +63,27 @@ const TransferWallPage: React.FC = () => {
   const { isAuthenticated, user } = useSelector((s: RootState) => s.auth);
   const [searchParams, setSearchParams] = useSearchParams();
   const targetListingId = searchParams.get('listingId');
+  const queryTab = searchParams.get('tab') as any;
+  const highlightId = searchParams.get('highlightId');
 
   const { data: platformTransferWall } = useGetPlatformTransferWallQuery();
   const academyTransferWall = useTransferWallEnabled();
   const isTransferWallDisabled = platformTransferWall === false || !academyTransferWall;
 
-  const [activeTab, setActiveTab] = useState<'market' | 'incoming' | 'outgoing' | 'my_listings'>('market');
+  const [activeTab, setActiveTab] = useState<'market' | 'incoming' | 'outgoing' | 'my_listings'>(
+    queryTab && ['market', 'incoming', 'outgoing', 'my_listings'].includes(queryTab)
+      ? queryTab
+      : 'market',
+  );
+
+  useEffect(() => {
+    const t = searchParams.get('tab') as any;
+    if (t && ['market', 'incoming', 'outgoing', 'my_listings'].includes(t)) {
+      setActiveTab(t);
+    }
+  }, [searchParams]);
+
+  useHighlightEffect();
   const [selectedListing, setSelectedListing] = useState<TransferListing | null>(null);
   const [requestModal, setRequestModal] = useState(false);
   const [offeredPrice, setOfferedPrice] = useState('');
@@ -572,6 +588,8 @@ const TransferWallPage: React.FC = () => {
                   return (
                     <div
                       key={req.id}
+                      id={`entity-${req.id}`}
+                      data-highlight-id={req.id}
                       className={clsx(
                         'card p-5 border transition-all duration-150 space-y-4',
                         req.status === 'pending'
@@ -717,6 +735,8 @@ const TransferWallPage: React.FC = () => {
                   return (
                     <div
                       key={req.id}
+                      id={`entity-${req.id}`}
+                      data-highlight-id={req.id}
                       className="card p-5 border border-slate-200 dark:border-white/5 space-y-3 shadow-xs"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

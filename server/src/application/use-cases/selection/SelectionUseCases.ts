@@ -54,6 +54,7 @@ export class SelectionUseCases {
         type: "selection_updated",
         title: "Selection status updated",
         body: `${student.firstName}'s selection status is now "${dto.status.replace("_", " ")}".`,
+        data: { studentId: student._id?.toString() || studentId },
         channels: ["push"],
       }).catch(() => undefined);
     }

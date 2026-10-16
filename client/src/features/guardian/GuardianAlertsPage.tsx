@@ -1,5 +1,5 @@
-// src/features/guardian/GuardianAlertsPage.tsx
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Bell,
   CheckCheck,
@@ -19,6 +19,7 @@ import {
   useMarkAllMyNotificationsReadMutation,
   type MyNotification,
 } from "../../store/api/myNotificationsApi";
+import { getNotificationTarget } from "../../utils/notificationRouter";
 import {
   NoxPageHeader,
   NoxEmptyState,
@@ -60,6 +61,8 @@ const GuardianAlertsPage: React.FC = () => {
     return true;
   });
 
+  const navigate = useNavigate();
+
   const handleMarkAllRead = async () => {
     try {
       await markAllRead().unwrap();
@@ -76,6 +79,22 @@ const GuardianAlertsPage: React.FC = () => {
       await markOneRead(id).unwrap();
     } catch {
       // silent
+    }
+  };
+
+  const handleAlertClick = async (n: MyNotification) => {
+    if (!n.isRead) {
+      try {
+        await markOneRead(n.id).unwrap();
+      } catch {}
+    }
+    const target = getNotificationTarget(n, "guardian");
+    if (target?.url) {
+      if (target.url.startsWith("http")) {
+        window.open(target.url, "_blank");
+      } else {
+        navigate(target.url);
+      }
     }
   };
 
@@ -180,7 +199,8 @@ const GuardianAlertsPage: React.FC = () => {
             return (
               <div
                 key={n.id}
-                className={`nox-card p-4 sm:p-5 transition-all rounded-2xl ${
+                onClick={() => handleAlertClick(n)}
+                className={`nox-card p-4 sm:p-5 transition-all rounded-2xl cursor-pointer group hover:scale-[1.003] ${
                   !n.isRead
                     ? "border-core-400/40 bg-core-400/[0.03] shadow-sm ring-1 ring-core-400/20"
                     : "hover:border-slate-300 dark:hover:border-white/10"
@@ -214,11 +234,13 @@ const GuardianAlertsPage: React.FC = () => {
                         </span>
                         {!n.isRead && (
                           <button
+                            type="button"
                             onClick={(e) => handleMarkOne(n.id, e)}
                             title="Mark as read"
-                            className="p-1 rounded text-slate-400 hover:text-core-500 hover:bg-slate-100 dark:hover:bg-white/[0.05] transition-colors cursor-pointer"
+                            aria-label="Mark as read"
+                            className="p-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-pitch-800 text-slate-400 hover:text-core-500 dark:hover:text-core-400 hover:border-core-400/30 hover:bg-core-400/10 transition-all cursor-pointer shadow-2xs"
                           >
-                            <Check size={14} />
+                            <Check size={14} strokeWidth={2.5} />
                           </button>
                         )}
                       </div>

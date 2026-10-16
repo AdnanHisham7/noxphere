@@ -1,6 +1,8 @@
 // src/features/fees/FeesPage.tsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { clsx } from "clsx";
+import { useHighlightEffect } from "../../hooks/useEntityHighlight";
 import {
   Wallet,
   Plus,
@@ -420,6 +422,10 @@ const FeesPage: React.FC = () => {
   const [expandedFees, setExpandedFees] = useState<Set<string>>(new Set());
   const [expandedAudits, setExpandedAudits] = useState<Set<string>>(new Set());
 
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get("highlightId");
+  useHighlightEffect();
+
   const {
     data: fees,
     isLoading,
@@ -428,6 +434,28 @@ const FeesPage: React.FC = () => {
     { franchiseId: franchiseId ?? "" },
     { skip: !franchiseId },
   );
+
+  useEffect(() => {
+    if (!highlightId || !fees) return;
+    const matchedFee = fees.find(
+      (f) =>
+        f._id === highlightId ||
+        (typeof f.studentId === "object" && f.studentId?._id === highlightId) ||
+        (typeof f.studentId === "string" && f.studentId === highlightId),
+    );
+    if (matchedFee) {
+      const studentId =
+        typeof matchedFee.studentId === "object"
+          ? matchedFee.studentId._id
+          : matchedFee.studentId;
+      if (studentId) {
+        setExpandedStudents((prev) => new Set([...prev, studentId]));
+      }
+      setExpandedFees((prev) => new Set([...prev, matchedFee._id]));
+    } else {
+      setExpandedStudents((prev) => new Set([...prev, highlightId]));
+    }
+  }, [highlightId, fees]);
   const { data: studentsResult } = useGetStudentsQuery(
     { franchiseId: franchiseId ?? "", limit: 200 },
     { skip: !franchiseId },
@@ -980,6 +1008,8 @@ const FeesPage: React.FC = () => {
               return (
                 <div
                   key={group.student._id}
+                  id={`entity-${group.student._id}`}
+                  data-highlight-id={group.student._id}
                   className="card border-slate-200/80 dark:border-white/5 overflow-hidden transition-all shadow-sm"
                 >
                   {/* Student Header Bar */}
@@ -1152,6 +1182,8 @@ const FeesPage: React.FC = () => {
                     return (
                       <React.Fragment key={fee._id}>
                         <tr
+                          id={`entity-${fee._id}`}
+                          data-highlight-id={fee._id}
                           onClick={() => toggleFeeExpanded(fee._id)}
                           className={clsx(
                             "cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors border-b border-slate-100 dark:border-white/5",
@@ -1368,7 +1400,11 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
   onToggleAudit,
 }) => {
   return (
-    <div className="rounded-lg border border-slate-200/80 dark:border-white/5 bg-white dark:bg-pitch-800 p-3.5 space-y-3 shadow-xs">
+    <div
+      id={`entity-${fee._id}`}
+      data-highlight-id={fee._id}
+      className="rounded-lg border border-slate-200/80 dark:border-white/5 bg-white dark:bg-pitch-800 p-3.5 space-y-3 shadow-xs"
+    >
       {/* Plan Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
@@ -1411,6 +1447,8 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
           return (
             <div
               key={inst.installmentNumber}
+              id={`entity-${fee._id}-${inst.installmentNumber}`}
+              data-highlight-id={`${fee._id}-${inst.installmentNumber}`}
               className="flex items-center justify-between text-xs bg-slate-50 dark:bg-pitch-700/50 border border-slate-200/80 dark:border-white/5 rounded-lg px-3 py-2 flex-wrap gap-2 hover:bg-slate-100 dark:hover:bg-pitch-700/80 transition-colors shadow-2xs"
             >
               {/* Left Info: Milestone #, Due Date, Payment Details */}

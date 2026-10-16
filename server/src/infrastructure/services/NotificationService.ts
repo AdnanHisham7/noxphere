@@ -668,6 +668,7 @@ export class NotificationService {
       upiId?: string;
     },
     paymentMethod: "qr" | "bank_transfer" | "both" = "qr",
+    extraData?: Record<string, string>,
   ) {
     const isOverdue = daysUntilDue < 0;
     const isToday = daysUntilDue === 0;
@@ -695,6 +696,7 @@ export class NotificationService {
       type: 'fee_due_soon',
       title,
       body,
+      data: extraData,
       franchiseId,
       channels: ['push', 'whatsapp'],
       whatsappImageUrl: effectiveQrImage,
@@ -712,12 +714,14 @@ export class NotificationService {
     amount: number,
     receiptUrl: string,
     franchiseId: string,
+    extraData?: Record<string, string>,
   ) {
     await this.send({
       userIds: guardianIds,
       type: 'payment_receipt',
       title: 'Payment Received',
       body: `We've received a payment of ₹${amount.toLocaleString('en-IN')} for ${studentName}. Your receipt is attached.`,
+      data: extraData,
       franchiseId,
       channels: ['push', 'whatsapp'],
       whatsappDocumentUrl: receiptUrl,

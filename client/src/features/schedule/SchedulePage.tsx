@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { useHighlightEffect } from "../../hooks/useEntityHighlight";
 import {
   CalendarDays,
   Plus,
@@ -86,6 +87,10 @@ const SchedulePage: React.FC = () => {
   const canHardDelete = user?.role === "super_admin" || user?.role === "manager" || user?.role === "operational_manager";
 
   // State
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get("highlightId");
+  useHighlightEffect();
+
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -134,6 +139,14 @@ const SchedulePage: React.FC = () => {
   );
 
   const sessionsList = Array.isArray(sessions) ? sessions : [];
+
+  useEffect(() => {
+    if (!highlightId || !sessionsList.length) return;
+    const match = sessionsList.find((s) => s.id === highlightId);
+    if (match && selectedDate && match.date !== selectedDate) {
+      setSelectedDate("");
+    }
+  }, [highlightId, sessionsList, selectedDate]);
 
   // Mutations
   const [createSession, { isLoading: creating }] = useCreateSessionMutation();
@@ -368,7 +381,12 @@ const SchedulePage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-white/5 font-mono">
                 {filteredSessions.map((session) => (
-                  <tr key={session.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                  <tr
+                    key={session.id}
+                    id={`entity-${session.id}`}
+                    data-highlight-id={session.id}
+                    className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
+                  >
                     {/* Date & Time */}
                     <td className="py-3.5 px-4 text-slate-900 dark:text-white font-medium whitespace-nowrap">
                       <div className="flex flex-col gap-0.5">

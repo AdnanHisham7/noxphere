@@ -1,5 +1,7 @@
 // src/features/students/RegistrationRequestsTab.tsx
 import React, { useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useHighlightEffect } from "@/hooks/useEntityHighlight";
 import {
   useGetRegistrationRequestsQuery,
   useApproveRegistrationRequestMutation,
@@ -34,6 +36,10 @@ export const RegistrationRequestsTab: React.FC<RegistrationRequestsTabProps> = (
   teams,
   onApprovedStudent,
 }) => {
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get("highlightId");
+  useHighlightEffect();
+
   const [filterStatus, setFilterStatus] = useState<string>("pending");
   const [scope, setScope] = useState<"all" | "franchise">("all");
   const { data, isLoading, refetch } = useGetRegistrationRequestsQuery(
@@ -224,7 +230,12 @@ export const RegistrationRequestsTab: React.FC<RegistrationRequestsTabProps> = (
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                 {requests.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-pitch-700/40 transition-colors">
+                  <tr
+                    key={r.id}
+                    id={`entity-${r.id}`}
+                    data-highlight-id={r.id}
+                    className="hover:bg-slate-50 dark:hover:bg-pitch-700/40 transition-colors"
+                  >
                     <td className="py-3 px-4 font-semibold text-slate-900 dark:text-white">
                       {r.studentDetails?.firstName} {r.studentDetails?.lastName}
                       {r.studentDetails?.dateOfBirth && (

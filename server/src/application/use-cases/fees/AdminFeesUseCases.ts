@@ -453,6 +453,11 @@ export class AdminFeesUseCases {
       qrImageUrl,
       bankDetails,
       feePaymentMethod,
+      {
+        studentId: student._id ? student._id.toString() : String(student.id || student),
+        feeId: fee._id ? fee._id.toString() : String(fee.id),
+        installmentNumber: String(installmentNumber),
+      },
     );
 
     installment.reminderSentCount = (installment.reminderSentCount || 0) + 1;
@@ -531,6 +536,11 @@ export class AdminFeesUseCases {
         amountJustPaid,
         upload.url,
         String(fee.franchiseId),
+        {
+          studentId: student._id ? student._id.toString() : String(student.id || student),
+          feeId: String(fee._id),
+          installmentNumber: String(installmentNumber),
+        },
       );
     } catch (err) {
       logger.error("[AdminFeesUseCases] Couldn't generate/send payment receipt:", err);

@@ -377,6 +377,7 @@ export class ScheduleUseCases {
           type: "session_created",
           title: "New Session Scheduled",
           body: `A new session has been scheduled for ${target ?? "your squad"} on ${sessionDate}, ${dto.startTime}–${dto.endTime} at ${dto.location}.`,
+          data: { sessionId: (populated?._id || firstSession._id || firstSession.id).toString() },
           franchiseId: dto.franchiseId,
           channels: ["push"],
         }).catch(() => undefined);
@@ -833,7 +834,16 @@ export class ScheduleUseCases {
   }
 
   private async notifySessionGuardians(
-    session: { targetType: string; teamId?: mongoose.Types.ObjectId; category?: string; franchiseId: mongoose.Types.ObjectId; rosterPlayerIds?: mongoose.Types.ObjectId[]; playerIds?: mongoose.Types.ObjectId[] },
+    session: {
+      _id?: any;
+      id?: any;
+      targetType: string;
+      teamId?: mongoose.Types.ObjectId;
+      category?: string;
+      franchiseId: mongoose.Types.ObjectId;
+      rosterPlayerIds?: mongoose.Types.ObjectId[];
+      playerIds?: mongoose.Types.ObjectId[];
+    },
     opts: { title: string; body: string; type: "session_location_change" },
   ) {
     let query: any;
@@ -856,6 +866,7 @@ export class ScheduleUseCases {
       type: opts.type,
       title: opts.title,
       body: opts.body,
+      data: { sessionId: ((session as any)._id || (session as any).id || "").toString() },
       channels: ["push"],
     });
   }

@@ -1,7 +1,8 @@
 // src/features/students/StudentsPage.tsx
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { clsx } from "clsx";
+import { useHighlightEffect } from "../../hooks/useEntityHighlight";
 import {
   Shuffle,
   Users,
@@ -284,7 +285,27 @@ const StudentsPage: React.FC = () => {
     "subscribe" | "upgrade" | null
   >(null);
 
-  const [activeTab, setActiveTab] = useState<"squad" | "requests" | "archived">("squad");
+  const [searchParams] = useSearchParams();
+  const queryTab = searchParams.get("tab") as
+    | "squad"
+    | "requests"
+    | "archived"
+    | null;
+  const [activeTab, setActiveTab] = useState<"squad" | "requests" | "archived">(
+    queryTab && ["squad", "requests", "archived"].includes(queryTab)
+      ? queryTab
+      : "squad",
+  );
+
+  useEffect(() => {
+    const t = searchParams.get("tab") as any;
+    if (t && ["squad", "requests", "archived"].includes(t)) {
+      setActiveTab(t);
+    }
+  }, [searchParams]);
+
+  useHighlightEffect();
+
   const [showShareLinkModal, setShowShareLinkModal] = useState(false);
   const [showClaimModal, setShowClaimModal] = useState(false);
 
@@ -821,7 +842,12 @@ const StudentsPage: React.FC = () => {
           {!isLoading && viewMode === "grid" && students.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
               {students.map((student) => (
-                <div key={student.id} className="relative group/card">
+                <div
+                  key={student.id}
+                  id={`entity-${student.id}`}
+                  data-highlight-id={student.id}
+                  className="relative group/card"
+                >
                   <Link
                     to={`/students/${student.id}`}
                     className="block relative aspect-[2/3] [perspective:2000px] overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-pitch-950 group transition-all duration-300 hover:border-volt-500 dark:hover:border-volt-400/30 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-2xl dark:hover:shadow-volt-400/10"
@@ -944,6 +970,8 @@ const StudentsPage: React.FC = () => {
                   {students.map((student, i) => (
                     <tr
                       key={student.id}
+                      id={`entity-${student.id}`}
+                      data-highlight-id={student.id}
                       className={clsx(
                         "border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors",
                         i % 2 === 0 && "bg-slate-50/30 dark:bg-white/[0.01]",

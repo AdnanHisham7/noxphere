@@ -29,6 +29,7 @@ import {
   NoxSkeleton,
   NoxEmptyState,
 } from "../../components/portal-ui";
+import { useHighlightEffect } from "../../hooks/useEntityHighlight";
 
 const STATUS_CONFIG: Record<
   Complaint["status"],
@@ -135,6 +136,18 @@ export const FileComplaintWidget: React.FC = () => {
     (page - 1) * ITEMS_PER_PAGE,
     page * ITEMS_PER_PAGE,
   );
+
+  const highlightId = useHighlightEffect();
+
+  useEffect(() => {
+    if (highlightId && filteredComplaints.length > 0) {
+      const idx = filteredComplaints.findIndex((c) => c.id === highlightId);
+      if (idx !== -1) {
+        const targetPage = Math.floor(idx / ITEMS_PER_PAGE) + 1;
+        setPage(targetPage);
+      }
+    }
+  }, [highlightId, filteredComplaints]);
 
   return (
     <div className="space-y-6">
@@ -389,6 +402,8 @@ export const FileComplaintWidget: React.FC = () => {
             return (
               <div
                 key={c.id}
+                id={`entity-${c.id}`}
+                data-highlight-id={c.id}
                 className="nox-card p-5 space-y-3.5 border-pitch-200/60 dark:border-white/[0.06] hover:border-core-400/30 transition-all shadow-sm"
               >
                 {/* Header Row */}

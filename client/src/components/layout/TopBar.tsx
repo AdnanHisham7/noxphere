@@ -1,7 +1,8 @@
 import { useSelector, useDispatch } from "react-redux";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Building2, ChevronDown, Check, Bell, Repeat2, Menu, FileText, Download } from "lucide-react";
 import logoSrc from "../../assets/logo.png";
+import { getNotificationTarget } from "../../utils/notificationRouter";
 import {
   setNotifications,
   markOneRead,
@@ -270,15 +271,31 @@ export const TopBar: React.FC = () => {
     if (myNotifications) dispatch(setNotifications(myNotifications.items));
   }, [myNotifications, dispatch]);
 
+  const navigate = useNavigate();
   const [markOneReadOnServer] = useMarkMyNotificationReadMutation();
   const [markAllReadOnServer] = useMarkAllMyNotificationsReadMutation();
 
-  const handleOpenNotification = (id: string, isRead: boolean) => {
-    if (!isRead) {
-      dispatch(markOneRead(id));
-      markOneReadOnServer(id).catch(() => undefined);
+  const handleNotificationClick = (n: any) => {
+    if (!n.isRead) {
+      dispatch(markOneRead(n.id));
+      markOneReadOnServer(n.id).catch(() => undefined);
     }
     setNotifOpen(false);
+
+    const target = getNotificationTarget(n, user?.role);
+    if (target?.url) {
+      if (target.url.startsWith("http")) {
+        window.open(target.url, "_blank");
+      } else {
+        navigate(target.url);
+      }
+    }
+  };
+
+  const handleMarkOneReadExplicit = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    dispatch(markOneRead(id));
+    markOneReadOnServer(id).catch(() => undefined);
   };
 
   const handleMarkAllRead = () => {
@@ -362,70 +379,85 @@ export const TopBar: React.FC = () => {
                     </p>
                   ) : (
                     notifications.slice(0, 15).map((n) => (
-                      <button
+                      <div
                         key={n.id}
-                        onClick={() => handleOpenNotification(n.id, n.isRead)}
+                        onClick={() => handleNotificationClick(n)}
                         className={clsx(
-                          "w-full text-left p-3.5 sm:p-4 border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors",
+                          "w-full text-left p-3.5 sm:p-4 border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer group flex items-start justify-between gap-2.5",
                           !n.isRead && "bg-volt-400/10",
                         )}
                       >
-                        <p className="text-xs font-semibold text-slate-900 dark:text-white">
-                          {n.title}
-                        </p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 line-clamp-2">
-                          {n.body}
-                        </p>
-                        {n.data?.imageUrl && (
-                          <img
-                            src={n.data.imageUrl}
-                            alt=""
-                            className="mt-1.5 max-h-24 w-full rounded object-cover border border-slate-200 dark:border-white/10"
-                          />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-slate-900 dark:text-white">
+                            {n.title}
+                          </p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 line-clamp-2">
+                            {n.body}
+                          </p>
+                          {n.data?.imageUrl && (
+                            <img
+                              src={n.data.imageUrl}
+                              alt=""
+                              className="mt-1.5 max-h-24 w-full rounded object-cover border border-slate-200 dark:border-white/10"
+                            />
+                          )}
+                          {/* Attachments */}
+                          {(() => {
+                            let atts: { name: string; url: string }[] = [];
+                            if (Array.isArray(n.data?.attachments)) {
+                              atts = [...n.data.attachments];
+                            } else if (typeof n.data?.attachments === "string") {
+                              try {
+                                const p = JSON.parse(n.data.attachments);
+                                if (Array.isArray(p)) atts = [...p];
+                              } catch {}
+                            }
+                            if (atts.length === 0 && n.data?.documentUrl) {
+                              atts.push({
+                                name: (n.data.documentFilename as string) || "Attached Document",
+                                url: n.data.documentUrl as string,
+                              });
+                            }
+                            if (atts.length === 0) return null;
+                            return (
+                              <div
+                                className="mt-1.5 flex flex-wrap gap-1.5"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {atts.map((at, idx) => (
+                                  <a
+                                    key={idx}
+                                    href={at.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    download
+                                    className="inline-flex items-center gap-1 text-[11px] text-volt-700 dark:text-volt-400 bg-volt-400/10 border border-volt-400/20 px-2 py-0.5 rounded font-medium hover:underline"
+                                  >
+                                    <Download size={11} />
+                                    <span className="truncate max-w-[140px]">{at.name}</span>
+                                  </a>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                          <p className="text-2xs text-slate-400 dark:text-slate-500 mt-1">
+                            {new Date(n.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+
+                        {/* Separate Tick Button to mark as read without navigating */}
+                        {!n.isRead && (
+                          <button
+                            type="button"
+                            title="Mark as read"
+                            aria-label="Mark as read"
+                            onClick={(e) => handleMarkOneReadExplicit(n.id, e)}
+                            className="shrink-0 p-1.5 rounded-md border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-pitch-800 text-slate-400 hover:text-volt-600 dark:hover:text-volt-400 hover:border-volt-400/40 hover:bg-volt-400/10 transition-all cursor-pointer shadow-2xs mt-0.5"
+                          >
+                            <Check size={13} strokeWidth={2.5} />
+                          </button>
                         )}
-                        {/* Attachments */}
-                        {(() => {
-                          let atts: { name: string; url: string }[] = [];
-                          if (Array.isArray(n.data?.attachments)) {
-                            atts = [...n.data.attachments];
-                          } else if (typeof n.data?.attachments === "string") {
-                            try {
-                              const p = JSON.parse(n.data.attachments);
-                              if (Array.isArray(p)) atts = [...p];
-                            } catch {}
-                          }
-                          if (atts.length === 0 && n.data?.documentUrl) {
-                            atts.push({
-                              name: (n.data.documentFilename as string) || "Attached Document",
-                              url: n.data.documentUrl as string,
-                            });
-                          }
-                          if (atts.length === 0) return null;
-                          return (
-                            <div
-                              className="mt-1.5 flex flex-wrap gap-1.5"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {atts.map((at, idx) => (
-                                <a
-                                  key={idx}
-                                  href={at.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  download
-                                  className="inline-flex items-center gap-1 text-[11px] text-volt-700 dark:text-volt-400 bg-volt-400/10 border border-volt-400/20 px-2 py-0.5 rounded font-medium hover:underline"
-                                >
-                                  <Download size={11} />
-                                  <span className="truncate max-w-[140px]">{at.name}</span>
-                                </a>
-                              ))}
-                            </div>
-                          );
-                        })()}
-                        <p className="text-2xs text-slate-400 dark:text-slate-500 mt-1">
-                          {new Date(n.createdAt).toLocaleString()}
-                        </p>
-                      </button>
+                      </div>
                     ))
                   )}
                 </div>

@@ -81,6 +81,10 @@ export class ComplaintUseCases {
         type: "complaint_received",
         title: "New Complaint Submitted",
         body: `${complaint.raisedByName} submitted a complaint${studentName ? ` regarding ${studentName}` : ""}: "${dto.subject}"`,
+        data: {
+          complaintId: complaint.id || complaint._id.toString(),
+          ...(dto.studentId ? { studentId: dto.studentId } : {}),
+        },
         channels,
       }).catch(() => undefined);
     }
@@ -91,6 +95,10 @@ export class ComplaintUseCases {
       type: "complaint_received",
       title: "Complaint Received",
       body: `Your complaint${studentName ? ` regarding ${studentName}` : ""} ("${dto.subject}") has been registered with academy management.`,
+      data: {
+        complaintId: complaint.id || complaint._id.toString(),
+        ...(dto.studentId ? { studentId: dto.studentId } : {}),
+      },
       channels: ["push"],
     }).catch(() => undefined);
 
@@ -281,6 +289,10 @@ export class ComplaintUseCases {
         type: "complaint_forwarded",
         title: `Complaint Forwarded: ${complaint.subject}`,
         body: `Manager ${managerName} forwarded a complaint${complaint.studentName ? ` regarding ${complaint.studentName}` : ""}: "${complaint.subject}".${notes ? ` Manager Note: "${notes}"` : ""}`,
+        data: {
+          complaintId: complaint.id || complaint._id.toString(),
+          ...(complaint.studentId ? { studentId: complaint.studentId.toString() } : {}),
+        },
         channels: ["push"],
       }).catch(() => undefined);
     }
@@ -292,6 +304,10 @@ export class ComplaintUseCases {
       type: "complaint_forwarded",
       title: "Complaint Forwarded to Coaching Staff",
       body: `Your complaint ("${complaint.subject}")${complaint.studentName ? ` regarding ${complaint.studentName}` : ""} has been forwarded to ${coachNamesStr} for direct review.`,
+      data: {
+        complaintId: complaint.id || complaint._id.toString(),
+        ...(complaint.studentId ? { studentId: complaint.studentId.toString() } : {}),
+      },
       channels: ["push"],
     }).catch(() => undefined);
 
@@ -348,6 +364,10 @@ export class ComplaintUseCases {
         type: "complaint_coach_response",
         title: `Coach Response: ${complaint.subject}`,
         body: `Coach ${coachName} responded to complaint${complaint.studentName ? ` regarding ${complaint.studentName}` : ""}: "${response}"`,
+        data: {
+          complaintId: complaint.id || complaint._id.toString(),
+          ...(complaint.studentId ? { studentId: complaint.studentId.toString() } : {}),
+        },
         channels: ["push"],
       }).catch(() => undefined);
     }
@@ -358,6 +378,10 @@ export class ComplaintUseCases {
       type: "complaint_response",
       title: `Coach Responded: ${complaint.subject}`,
       body: `Coach ${coachName} provided feedback on your complaint: "${response}"`,
+      data: {
+        complaintId: complaint.id || complaint._id.toString(),
+        ...(complaint.studentId ? { studentId: complaint.studentId.toString() } : {}),
+      },
       channels: ["push"],
     }).catch(() => undefined);
 
@@ -399,6 +423,10 @@ export class ComplaintUseCases {
       type: "complaint_response",
       title: `Complaint ${status === "resolved" ? "Resolved" : "Updated"}: ${complaint.subject}`,
       body: `Your complaint has been marked as ${status.replace("_", " ")}. Management response: "${response}"`,
+      data: {
+        complaintId: complaint.id || complaint._id.toString(),
+        ...(complaint.studentId ? { studentId: complaint.studentId.toString() } : {}),
+      },
       channels: ["push"],
     }).catch(() => undefined);
 
@@ -410,6 +438,10 @@ export class ComplaintUseCases {
         type: "complaint_response",
         title: `Complaint ${status === "resolved" ? "Resolved" : "Updated"}: ${complaint.subject}`,
         body: `Manager ${responderName} responded to complaint${complaint.studentName ? ` regarding ${complaint.studentName}` : ""}: "${response}" (${status.replace("_", " ")})`,
+        data: {
+          complaintId: complaint.id || complaint._id.toString(),
+          ...(complaint.studentId ? { studentId: complaint.studentId.toString() } : {}),
+        },
         channels: ["push"],
       }).catch(() => undefined);
     }

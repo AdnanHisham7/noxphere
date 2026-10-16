@@ -1,5 +1,5 @@
-// src/features/complaints/ComplaintsInboxPage.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { clsx } from "clsx";
 import { toast } from "react-hot-toast";
 import {
@@ -27,6 +27,7 @@ import {
   Select,
 } from "../../components/ui";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
+import { useHighlightEffect } from "../../hooks/useEntityHighlight";
 import {
   useListAcademyComplaintsQuery,
   useRespondToComplaintMutation,
@@ -44,13 +45,15 @@ const STATUS_VARIANT: Record<Complaint["status"], "yellow" | "blue" | "green"> =
 };
 
 const ComplaintsInboxPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const academyId = useCurrentAcademyId();
   const user = useSelector((s: RootState) => s.auth.user);
   const isCoach = user?.role === "coach";
 
+  const initialTab = searchParams.get("tab") === "platform_support" ? "platform_support" : "academy_inquiries";
   const [activeTab, setActiveTab] = useState<
     "academy_inquiries" | "platform_support"
-  >("academy_inquiries");
+  >(initialTab);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [selected, setSelected] = useState<Complaint | null>(null);
 
@@ -58,6 +61,21 @@ const ComplaintsInboxPage: React.FC = () => {
     { academyId: academyId ?? "", status: statusFilter || undefined },
     { skip: !academyId },
   );
+
+  const highlightId = useHighlightEffect();
+
+  useEffect(() => {
+    if (highlightId && complaints && complaints.length > 0) {
+      const match = complaints.find((c) => c.id === highlightId);
+      if (match) setSelected(match);
+    }
+  }, [highlightId, complaints]);
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "platform_support") setActiveTab("platform_support");
+    else if (tabParam === "academy_inquiries") setActiveTab("academy_inquiries");
+  }, [searchParams]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -147,6 +165,8 @@ const ComplaintsInboxPage: React.FC = () => {
                 complaints.map((c) => (
                   <button
                     key={c.id}
+                    id={`entity-${c.id}`}
+                    data-highlight-id={c.id}
                     onClick={() => setSelected(c)}
                     className={clsx(
                       "w-full text-left card p-4 space-y-2 transition-all border",

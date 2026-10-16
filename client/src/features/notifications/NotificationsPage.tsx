@@ -1,6 +1,8 @@
 // src/features/notifications/NotificationsPage.tsx
 import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { getNotificationTarget } from "../../utils/notificationRouter";
 import {
   LucideIcon,
   Bell,
@@ -190,6 +192,8 @@ const NotificationsPage: React.FC = () => {
     : rawItems;
   const unreadAlertsCount = myAlertsData?.unreadCount ?? 0;
 
+  const navigate = useNavigate();
+
   const handleMarkOneRead = async (id: string, isRead: boolean) => {
     if (isRead) return;
     dispatch(markOneRead(id));
@@ -197,6 +201,20 @@ const NotificationsPage: React.FC = () => {
       await markOneReadOnServer(id).unwrap();
     } catch {
       // Handled silently
+    }
+  };
+
+  const handleAlertClick = (alert: any) => {
+    if (!alert.isRead) {
+      handleMarkOneRead(alert.id, false);
+    }
+    const target = getNotificationTarget(alert, user?.role);
+    if (target?.url) {
+      if (target.url.startsWith("http")) {
+        window.open(target.url, "_blank");
+      } else {
+        navigate(target.url);
+      }
     }
   };
 
@@ -376,7 +394,7 @@ const NotificationsPage: React.FC = () => {
               return (
                 <div
                   key={alert.id}
-                  onClick={() => handleMarkOneRead(alert.id, alert.isRead)}
+                  onClick={() => handleAlertClick(alert)}
                   className={clsx(
                     "group relative p-4 sm:p-5 rounded-xl border transition-all duration-200 cursor-pointer",
                     !alert.isRead
@@ -510,14 +528,16 @@ const NotificationsPage: React.FC = () => {
                     {/* Mark as read button */}
                     {!alert.isRead && (
                       <button
+                        type="button"
                         title="Mark as read"
+                        aria-label="Mark as read"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleMarkOneRead(alert.id, false);
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-slate-400 hover:text-volt-500 hover:bg-slate-100 dark:hover:bg-white/5 transition-opacity"
+                        className="opacity-90 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-pitch-800 text-slate-400 hover:text-volt-600 dark:hover:text-volt-400 hover:border-volt-400/40 hover:bg-volt-400/10 transition-all cursor-pointer shadow-2xs shrink-0 self-start"
                       >
-                        <Check size={14} />
+                        <Check size={14} strokeWidth={2.5} />
                       </button>
                     )}
                   </div>

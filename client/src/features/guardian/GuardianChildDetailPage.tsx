@@ -1,7 +1,7 @@
-// src/features/guardian/GuardianChildDetailPage.tsx
-import React, { useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import React, { useState, useMemo, useEffect } from "react";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import { useHighlightEffect } from "../../hooks/useEntityHighlight";
 import {
   ArrowLeft,
   CalendarCheck,
@@ -98,8 +98,23 @@ const PaginationControls: React.FC<{
 
 const GuardianChildDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const studentId = id!;
-  const [tab, setTab] = useState<Tab>("attendance");
+  const queryTab = searchParams.get("tab") as Tab | null;
+  const [tab, setTab] = useState<Tab>(
+    queryTab && ["attendance", "schedule", "fees", "performance"].includes(queryTab)
+      ? queryTab
+      : "attendance"
+  );
+
+  useEffect(() => {
+    const t = searchParams.get("tab") as Tab | null;
+    if (t && ["attendance", "schedule", "fees", "performance"].includes(t)) {
+      setTab(t);
+    }
+  }, [searchParams]);
+
+  useHighlightEffect();
 
   const { data: profile, isLoading: profileLoading } =
     useGetChildProfileQuery(studentId);
@@ -553,12 +568,29 @@ const PublicProfileToggleCard: React.FC<{
 };
 
 const AttendanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get("highlightId");
   const { data, isLoading } = useGetChildAttendanceQuery({ studentId });
   const [filterStatus, setFilterStatus] = useState<
     "all" | "present" | "absent" | "late"
   >("all");
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
+
+  const filteredRecords = (data?.records || []).filter((r) => {
+    if (filterStatus === "all") return true;
+    return r.status === filterStatus;
+  });
+
+  useEffect(() => {
+    if (!highlightId || !filteredRecords.length) return;
+    const idx = filteredRecords.findIndex(
+      (r) => r._id === highlightId || (r as any).sessionId === highlightId
+    );
+    if (idx !== -1) {
+      setPage(Math.floor(idx / ITEMS_PER_PAGE) + 1);
+    }
+  }, [highlightId, filteredRecords.length]);
 
   if (isLoading) return <NoxSkeleton className="h-64" />;
   if (!data || data.records.length === 0) {
@@ -569,11 +601,6 @@ const AttendanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
       />
     );
   }
-
-  const filteredRecords = data.records.filter((r) => {
-    if (filterStatus === "all") return true;
-    return r.status === filterStatus;
-  });
 
   const totalPages = Math.ceil(filteredRecords.length / ITEMS_PER_PAGE);
   const pagedRecords = filteredRecords.slice(
@@ -644,6 +671,8 @@ const AttendanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
           {pagedRecords.map((r) => (
             <div
               key={r._id}
+              id={`entity-${(r as any).sessionId || r._id}`}
+              data-highlight-id={(r as any).sessionId || r._id}
               className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.01] transition-colors"
             >
               <div>
@@ -677,20 +706,12 @@ const AttendanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
 };
 
 const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get("highlightId");
   const { data: sessions, isLoading } = useGetChildSessionsQuery(studentId);
   const [activeView, setActiveView] = useState<"upcoming" | "past">("upcoming");
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
-
-  if (isLoading) return <NoxSkeleton className="h-64" />;
-  if (!sessions || sessions.length === 0) {
-    return (
-      <NoxEmptyState
-        title="No scheduled events or sessions yet"
-        body="Upcoming training sessions, matches, and batch schedules will appear here once planned by the coaches."
-      />
-    );
-  }
 
   const now = new Date();
   const todayStart = new Date(now.setHours(0, 0, 0, 0));
@@ -702,8 +723,34 @@ const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
     return new Date(s.date) >= todayStart;
   };
 
-  const upcomingSessions = sessions.filter(isUpcoming);
-  const pastSessions = sessions.filter((s: any) => !!s.attendanceStatus);
+  const upcomingSessions = (sessions || []).filter(isUpcoming);
+  const pastSessions = (sessions || []).filter((s: any) => !!s.attendanceStatus);
+
+  useEffect(() => {
+    if (!highlightId || !sessions) return;
+    const inUpcoming = upcomingSessions.findIndex((s: any) => (s.id || s._id) === highlightId);
+    if (inUpcoming !== -1) {
+      setActiveView("upcoming");
+      setPage(Math.floor(inUpcoming / ITEMS_PER_PAGE) + 1);
+      return;
+    }
+    const inPast = pastSessions.findIndex((s: any) => (s.id || s._id) === highlightId);
+    if (inPast !== -1) {
+      setActiveView("past");
+      setPage(Math.floor(inPast / ITEMS_PER_PAGE) + 1);
+      return;
+    }
+  }, [highlightId, sessions]);
+
+  if (isLoading) return <NoxSkeleton className="h-64" />;
+  if (!sessions || sessions.length === 0) {
+    return (
+      <NoxEmptyState
+        title="No scheduled events or sessions yet"
+        body="Upcoming training sessions, matches, and batch schedules will appear here once planned by the coaches."
+      />
+    );
+  }
 
   const activeList = activeView === "upcoming" ? upcomingSessions : pastSessions;
   const totalPages = Math.ceil(activeList.length / ITEMS_PER_PAGE);
@@ -712,6 +759,8 @@ const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
   const renderSessionCard = (s: any) => (
     <div
       key={s.id || s._id}
+      id={`entity-${s.id || s._id}`}
+      data-highlight-id={s.id || s._id}
       className="nox-card p-4 sm:p-5 flex flex-col justify-between gap-3.5 hover:border-core-400/30 transition-all rounded-2xl"
     >
       <div className="space-y-1.5 min-w-0">
@@ -993,7 +1042,12 @@ const FeesTab: React.FC<{ studentId: string; studentName?: string }> = ({
       ) : (
         <div className="space-y-5">
           {sortedAndFilteredFees.map((fee) => (
-            <div key={fee._id} className="nox-card p-5 space-y-4">
+            <div
+              key={fee._id}
+              id={`entity-${fee._id}`}
+              data-highlight-id={fee._id}
+              className="nox-card p-5 space-y-4"
+            >
               <div className="flex items-center justify-between border-b border-pitch-200/50 dark:border-white/[0.06] pb-3">
                 <div>
                   <div className="font-orbital text-sm font-semibold text-nox-high capitalize">
@@ -1023,6 +1077,8 @@ const FeesTab: React.FC<{ studentId: string; studentName?: string }> = ({
                   return (
                     <div
                       key={inst.installmentNumber}
+                      id={`entity-${fee._id}-${inst.installmentNumber}`}
+                      data-highlight-id={`${fee._id}-${inst.installmentNumber}`}
                       className={`flex flex-col sm:flex-row sm:items-center justify-between text-sm rounded-xl p-3.5 sm:p-4 gap-3 border transition-all ${
                         isOverdue
                           ? "bg-rose-500/[0.05] border-rose-500/40 dark:bg-rose-950/[0.15]"

@@ -371,3 +371,52 @@ html.dark .nox-landing {
     animation: none !important;
   }
 }
+
+/* ══════════════════════════════════════════════
+   Entity Highlight Flash (for Notification Click Navigation)
+   ══════════════════════════════════════════════ */
+@keyframes entityFlashDark {
+  0% {
+    box-shadow: 0 0 0 3px rgba(204, 255, 0, 0.85), 0 0 24px rgba(204, 255, 0, 0.45);
+    background-color: rgba(204, 255, 0, 0.18);
+    transform: scale(1.012);
+  }
+  60% {
+    box-shadow: 0 0 0 2px rgba(204, 255, 0, 0.6), 0 0 16px rgba(204, 255, 0, 0.25);
+    background-color: rgba(204, 255, 0, 0.1);
+    transform: scale(1.004);
+  }
+  100% {
+    box-shadow: 0 0 0 0px transparent;
+    background-color: transparent;
+    transform: scale(1);
+  }
+}
+
+@keyframes entityFlashLight {
+  0% {
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.8), 0 0 20px rgba(22, 163, 74, 0.35);
+    background-color: rgba(22, 163, 74, 0.14);
+    transform: scale(1.012);
+  }
+  60% {
+    box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.5), 0 0 12px rgba(22, 163, 74, 0.2);
+    background-color: rgba(22, 163, 74, 0.08);
+    transform: scale(1.004);
+  }
+  100% {
+    box-shadow: 0 0 0 0px transparent;
+    background-color: transparent;
+    transform: scale(1);
+  }
+}
+
+.entity-highlight-active {
+  animation: entityFlashLight 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards !important;
+  z-index: 30 !important;
+  position: relative;
+}
+
+html.dark .entity-highlight-active {
+  animation: entityFlashDark 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards !important;
+}

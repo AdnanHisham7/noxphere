@@ -1,6 +1,7 @@
 // src/features/students/StudentDetailPage.tsx
 import React, { useRef, useState, useMemo, useEffect } from "react";
-import { useParams, Link, Navigate } from "react-router-dom";
+import { useParams, Link, Navigate, useSearchParams } from "react-router-dom";
+import { useHighlightEffect } from "../../hooks/useEntityHighlight";
 import {
   RadarChart,
   Radar,
@@ -151,9 +152,30 @@ const isPdf = (url: string) => {
 
 const StudentDetailPage: React.FC = () => {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get("highlightId");
+  const queryTab = searchParams.get("tab") as
+    | "overview"
+    | "attendance"
+    | "performance"
+    | "info"
+    | null;
   const [activeTab, setActiveTab] = useState<
     "overview" | "attendance" | "performance" | "info"
-  >("overview");
+  >(
+    queryTab && ["overview", "attendance", "performance", "info"].includes(queryTab)
+      ? queryTab
+      : "overview",
+  );
+
+  useEffect(() => {
+    const t = searchParams.get("tab") as any;
+    if (t && ["overview", "attendance", "performance", "info"].includes(t)) {
+      setActiveTab(t);
+    }
+  }, [searchParams]);
+
+  useHighlightEffect();
   const [transferModal, setTransferModal] = useState(false);
   const [franchiseTransferModal, setFranchiseTransferModal] = useState(false);
   const [editModal, setEditModal] = useState(false);
@@ -328,6 +350,20 @@ const StudentDetailPage: React.FC = () => {
   const performances = card?.performances ?? [];
   const attendance = card?.attendance ?? [];
   const remarks = card?.remarks ?? [];
+
+  useEffect(() => {
+    if (!highlightId || !performances.length) return;
+    const match = performances.find(
+      (p) =>
+        p._id === highlightId ||
+        (typeof p.sessionId === "object" &&
+          (p.sessionId?._id === highlightId || p.sessionId?.id === highlightId)) ||
+        p.sessionId === highlightId,
+    );
+    if (match) {
+      setExpandedSessionIds((prev) => ({ ...prev, [match._id]: true }));
+    }
+  }, [highlightId, performances]);
   const student = card?.student;
   const { data: squadTeams } = useListTeamsQuery(
     { franchiseId: student?.franchiseId },
@@ -1744,6 +1780,8 @@ const StudentDetailPage: React.FC = () => {
               {attendance.map((entry, i) => (
                 <div
                   key={i}
+                  id={`entity-${(entry as any).sessionId || (entry as any)._id || i}`}
+                  data-highlight-id={(entry as any).sessionId || (entry as any)._id}
                   className="flex items-center gap-3 py-2 border-b border-white/4"
                 >
                   <div
@@ -2175,10 +2213,17 @@ const StudentDetailPage: React.FC = () => {
                   const topHighlights = sortedSessionSkills.slice(0, 2);
 
                   const tier = getRatingTier(session.overallScore);
+                  const targetHighlightId =
+                    session._id ||
+                    (typeof session.sessionId === "object"
+                      ? session.sessionId?._id || session.sessionId?.id
+                      : session.sessionId);
 
                   return (
                     <div
                       key={session._id}
+                      id={`entity-${targetHighlightId}`}
+                      data-highlight-id={targetHighlightId}
                       className="bg-slate-50 dark:bg-pitch-900/40 hover:bg-slate-100 dark:hover:bg-pitch-900/70 transition-colors"
                     >
                       {/* Compact Primary Row */}

@@ -43,8 +43,10 @@ import {
 import { ImageUploadField, Select } from "../../components/ui";
 import { NfcPlayerCardSection } from "./NfcPlayerCardSection";
 import { AcceptSquadInvitationModal } from "./AcceptSquadInvitationModal";
+import { useHighlightEffect } from "../../hooks/useEntityHighlight";
 
 const StudentDashboardPage: React.FC = () => {
+  useHighlightEffect();
   const user = useSelector((s: RootState) => s.auth.user);
   const {
     data,
@@ -276,6 +278,8 @@ const StudentDashboardPage: React.FC = () => {
               return (
                 <div
                   key={inv.id || (inv as any)._id}
+                  id={`entity-${inv.id || (inv as any)._id}`}
+                  data-highlight-id={inv.id || (inv as any)._id}
                   className="p-4 rounded-xl bg-white dark:bg-pitch-900/80 border border-slate-200 dark:border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm"
                 >
                   <div className="space-y-1.5 flex-1">
