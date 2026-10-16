@@ -1,0 +1,248 @@
+{
+  "exportedAt": "2026-10-16T11:42:04.273Z",
+  "academy": {
+    "academyCode": "GEFA",
+    "logo": null,
+    "feeQrImageUrl": null
+  },
+  "teams": [
+    {
+      "name": "Galácticos U17 Pro",
+      "logoUrl": null,
+      "bannerUrl": null
+    },
+    {
+      "name": "Galácticos U15 Strikers",
+      "logoUrl": null,
+      "bannerUrl": null
+    },
+    {
+      "name": "Galácticos U13 Rising Stars",
+      "logoUrl": null,
+      "bannerUrl": null
+    },
+    {
+      "name": "North Coast U19 Thunder",
+      "logoUrl": null,
+      "bannerUrl": null
+    },
+    {
+      "name": "North Coast U15 Raptors",
+      "logoUrl": null,
+      "bannerUrl": null
+    }
+  ],
+  "students": [
+    {
+      "name": "Lamine Yamal",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Jude Bellingham",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Warren Zaïre-Emery",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Kobbie Mainoo",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Alejandro Garnacho",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Endrick Felipe",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Pau Cubarsí",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Leny Yoro",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Rico Lewis",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Alejandro Balde",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Guillaume Restes",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Arda Güler",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Mathys Tel",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Lucas Beraldo",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Francesco Camarda",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Ethan Nwaneri",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Estêvão Willian",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Franco Mastantuono",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Chris Rigg",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Myles Lewis-Skelly",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Luka Vušković",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Jorrel Hato",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Archie Gray",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Max Moerstedt",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Spike Brits",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Kendry Páez",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Cavan Sullivan",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Finlay Gorman",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Enzo Alves",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Kai Rooney",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Cristiano Ronaldo Jr",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Thiago Messi",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Benjamin Aguero",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Mateo Messi",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Ciro Messi",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Kylian Mbappé",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Vinicius Junior",
+      "photo": null,
+      "medicalReportUrl": null
+    },
+    {
+      "name": "Eduardo Camavinga",
+      "photo": null,
+      "medicalReportUrl": null
+    }
+  ],
+  "users": [],
+  "resources": [
+    {
+      "fileName": "Galacticos_High_Press_Trigger_Masterclass.pdf",
+      "fileUrl": "https://noxphere.storage/vault/drills/high_press_v2.pdf",
+      "mimeType": "application/pdf",
+      "publicId": "vault_high_press_v2"
+    },
+    {
+      "fileName": "Nutrition_Hydration_Microcycle_Guidelines.pdf",
+      "fileUrl": "https://noxphere.storage/vault/sports_science/nutrition_2026.pdf",
+      "mimeType": "application/pdf",
+      "publicId": "vault_nutrition_2026"
+    },
+    {
+      "fileName": "Set_Piece_Routine_Playbook_Corners_FreeKicks.pdf",
+      "fileUrl": "https://noxphere.storage/vault/tactics/set_piece_playbook.pdf",
+      "mimeType": "application/pdf",
+      "publicId": "vault_set_piece_playbook"
+    }
+  ]
+}

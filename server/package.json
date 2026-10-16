@@ -4,12 +4,15 @@
   "description": "Football Camp Management Platform - Backend API",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "ts-node-dev --respawn --transpile-only --max-old-space-size=4096 src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "eslint src --ext .ts",
     "test": "jest",
-    "seed:admin": "ts-node --transpile-only src/scripts/seedSuperAdmin.ts"
+    "seed:admin": "ts-node --transpile-only src/scripts/seedSuperAdmin.ts",
+    "seed:demo": "ts-node --transpile-only src/scripts/seedDemoData.ts",
+    "seed:export": "ts-node --transpile-only src/scripts/exportSeedData.ts",
+    "db:clean": "ts-node --transpile-only src/scripts/cleanDatabase.ts"
   },
   "dependencies": {
     "@types/geoip-lite": "^1.4.4",
