@@ -15,6 +15,8 @@
 // and run: npm run seed:admin
 
 import "dotenv/config";
+import dns from "dns";
+dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import { UserModel } from "../infrastructure/database/models/User.model";

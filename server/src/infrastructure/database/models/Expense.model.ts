@@ -73,7 +73,7 @@ const ExpenseSchema = new Schema<ExpenseDocument>(
       type: String,
       enum: ["pending", "verified", "rejected"],
       default: function (this: ExpenseDocument) {
-        return this.type === "purchase" ? "pending" : undefined;
+        return this?.type === "purchase" ? "pending" : undefined;
       },
       index: true,
     },
