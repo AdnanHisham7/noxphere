@@ -63,7 +63,7 @@ const AUDIENCE_LABEL: Record<AdminNotification["audience"], string> = {
   guardians: "Guardians Only",
   coaches: "Coaches Only",
   managers: "Managers Only",
-  franchise: "Entire Franchise",
+  franchise: "Entire Branch",
   academy: "Entire Academy",
   team: "One Team",
 };
@@ -852,10 +852,10 @@ const ComposeModal: React.FC<{
           }
         >
           <option value="franchise">
-            Entire Franchise (Guardians + Players + Coaches + Managers)
+            Entire Branch (Guardians + Players + Coaches + Managers)
           </option>
           <option value="academy">
-            Entire Academy (All Sibling Franchises)
+            Entire Academy (All Sibling Branches)
           </option>
           <option value="players">Players Only</option>
           <option value="guardians">Guardians Only</option>

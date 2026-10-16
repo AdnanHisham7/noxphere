@@ -329,7 +329,7 @@ const AcademySettingsPage: React.FC = () => {
       <PageHeader
         eyebrow="Configuration"
         title="Academy settings"
-        subtitle={`These apply academy-wide, across every franchise of ${academy.name}.`}
+        subtitle={`These apply academy-wide, across every branch of ${academy.name}.`}
         actions={
           <Button icon={<Save size={15} />} loading={saving} onClick={handleSave} className="w-full sm:w-auto justify-center">
             Save changes

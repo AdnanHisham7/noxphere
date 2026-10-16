@@ -69,8 +69,8 @@ interface NavItem {
 
 const EMPLOYEE_NAV: NavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/franchises', label: 'Franchise', icon: Building2, requiredPermission: 'canManageFranchises' },
-  { path: '/students', label: 'Squad', icon: Shirt, requiredPermission: 'canManageAttendance' },
+  { path: '/franchises', label: 'Branch', icon: Building2, requiredPermission: 'canManageFranchises' },
+  { path: '/students', label: 'Players', icon: Shirt, requiredPermission: 'canManageAttendance' },
   { path: '/teams', label: 'Team', icon: Shield, requiredPermission: 'canManagePerformance' },
   { path: '/schedule', label: 'Sessions', icon: CalendarClock, requiredPermission: 'canManageSessions' },
   { path: '/coaches', label: 'Coaches', icon: UserCog, requiredPermission: 'canManageUsers' },
@@ -84,7 +84,7 @@ const navConfig: Record<string, NavItem[]> = {
   super_admin: [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/academies', label: 'Academies', icon: School },
-    { path: '/franchises', label: 'Franchises', icon: Building2 },
+    { path: '/franchises', label: 'Branches', icon: Building2 },
     { path: '/users', label: 'Users', icon: Users },
     { path: '/finance', label: 'Finance', icon: Wallet },
     { path: '/platform-settings', label: 'Platform Engine', icon: Sliders },
@@ -93,8 +93,8 @@ const navConfig: Record<string, NavItem[]> = {
   ],
   manager: [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/franchises', label: 'Franchise', icon: Building2 },
-    { path: '/students', label: 'Squad', icon: Shirt },
+    { path: '/franchises', label: 'Branch', icon: Building2 },
+    { path: '/students', label: 'Players', icon: Shirt },
     { path: '/teams', label: 'Team', icon: Shield },
     { path: '/schedule', label: 'Sessions', icon: CalendarClock },
     { path: '/coaches', label: 'Coaches', icon: UserCog },
@@ -110,8 +110,8 @@ const navConfig: Record<string, NavItem[]> = {
   ],
   operational_manager: [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/franchises', label: 'Franchise', icon: Building2 },
-    { path: '/students', label: 'Squad', icon: Shirt },
+    { path: '/franchises', label: 'Branch', icon: Building2 },
+    { path: '/students', label: 'Players', icon: Shirt },
     { path: '/teams', label: 'Team', icon: Shield },
     { path: '/schedule', label: 'Sessions', icon: CalendarClock },
     { path: '/coaches', label: 'Coaches', icon: UserCog },
@@ -126,7 +126,7 @@ const navConfig: Record<string, NavItem[]> = {
   ],
   coach: [
     { path: '/coach/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/students', label: 'Squad', icon: Shirt },
+    { path: '/students', label: 'Players', icon: Shirt },
     { path: '/schedule', label: 'Sessions', icon: CalendarClock },
     { path: '/complaints', label: 'Complaints', icon: MessageSquareWarning },
     { path: '/resources', label: 'Resources', icon: FolderOpen },
@@ -305,7 +305,7 @@ export const Sidebar: React.FC = () => {
                       {openComplaintsCount}
                     </span>
                   )}
-                  {item.label === 'Squad' && pendingRequestsCount > 0 && (
+                  {(item.label === 'Players' || item.label === 'Squad') && pendingRequestsCount > 0 && (
                     <span
                       className={clsx(
                         'ml-auto bg-rose-600 text-white text-2xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center shadow-xs',

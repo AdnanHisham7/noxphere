@@ -199,8 +199,8 @@ export const FranchiseDashboardPage: React.FC = () => {
     return (
       <EmptyState
         icon={<Building2 size={28} />}
-        title="No franchise selected"
-        description="Go to Franchises and pick one to see its dashboard."
+        title="No branch selected"
+        description="Go to Branches and pick one to see its dashboard."
       />
     );
   }
@@ -215,11 +215,11 @@ export const FranchiseDashboardPage: React.FC = () => {
             className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-volt-500 dark:hover:text-volt-400 transition-colors mb-2 font-medium"
           >
             <ArrowLeft size={13} />
-            All franchises
+            All branches
           </button>
           <div className="flex items-center gap-2.5">
             <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl uppercase tracking-tight">
-              {franchiseLoading ? "Loading…" : (franchise?.name ?? "Franchise")}
+              {franchiseLoading ? "Loading…" : (franchise?.name ?? "Branch")}
             </h1>
             {franchise && (
               <Badge variant={franchise.isActive ? "green" : "gray"}>
@@ -290,8 +290,8 @@ export const FranchiseDashboardPage: React.FC = () => {
               <div>
                 <p className="section-title">Attendance Trend</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {attendanceDays === 7 && "Last 7 days daily — franchise breakdown"}
-                  {attendanceDays === 30 && "Last 30 days daily — franchise trend"}
+                  {attendanceDays === 7 && "Last 7 days daily — branch breakdown"}
+                  {attendanceDays === 30 && "Last 30 days daily — branch trend"}
                   {attendanceDays === 365 && "Last 12 months — monthly average"}
                   {attendanceDays === 0 && "Overall historical attendance"}
                 </p>
@@ -422,7 +422,7 @@ export const FranchiseDashboardPage: React.FC = () => {
             ) : !teamHealth?.length ? (
               <EmptyState
                 title="No teams yet"
-                description="Create squads in this franchise to monitor health and performance metrics."
+                description="Create squads in this branch to monitor health and performance metrics."
               />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -587,7 +587,7 @@ export const FranchiseDashboardPage: React.FC = () => {
             ) : !topPerformers?.length ? (
               <EmptyState
                 title="No ratings yet"
-                description="Log performance scores to rank players in this franchise."
+                description="Log performance scores to rank players in this branch."
               />
             ) : (
               <div className="space-y-4">
@@ -749,7 +749,7 @@ export const FranchiseDashboardPage: React.FC = () => {
             setActivitySearchTerm("");
             setActivityTypeFilter("all");
           }}
-          title="Franchise Live Activity History"
+          title="Branch Live Activity History"
           size="lg"
         >
           <div className="space-y-4">

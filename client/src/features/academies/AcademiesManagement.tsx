@@ -335,7 +335,7 @@ const AcademiesManagement: React.FC = () => {
 
     try {
       await createAcademy(payload).unwrap();
-      toast.success("Academy created — a default franchise was set up automatically");
+      toast.success("Academy created — a default branch was set up automatically");
       setIsAddModalOpen(false);
       // Reset form
       setNewAcademyForm({

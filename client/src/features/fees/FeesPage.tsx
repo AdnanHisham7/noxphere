@@ -704,8 +704,8 @@ const FeesPage: React.FC = () => {
     return (
       <EmptyState
         icon={<Wallet size={28} />}
-        title="No franchise selected"
-        description="Select a franchise from the top bar to manage fees."
+        title="No branch selected"
+        description="Select a branch from the top bar to manage fees."
       />
     );
   }
@@ -1853,7 +1853,7 @@ const CreateFeeModal: React.FC<{
               <strong className="text-volt-600 dark:text-volt-400">
                 {students.length} active players
               </strong>{" "}
-              in this franchise.
+              in this branch.
             </div>
           )}
 

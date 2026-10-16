@@ -387,15 +387,15 @@ const StudentDetailPage: React.FC = () => {
   const handleRestoreStudent = async () => {
     if (!student) return;
     const ok = await confirm({
-      title: "Restore player to squad",
-      message: `Restore ${student.firstName} ${student.lastName} back to the active squad? This will occupy 1 student capacity slot in your subscription plan.`,
+      title: "Restore player to branch",
+      message: `Restore ${student.firstName} ${student.lastName} back to active players? This will occupy 1 student capacity slot in your subscription plan.`,
       confirmLabel: "Restore Player",
     });
     if (!ok) return;
     try {
       await restoreStudent(student.id).unwrap();
       toast.success(
-        `${student.firstName} ${student.lastName} restored to active squad!`,
+        `${student.firstName} ${student.lastName} restored to active players!`,
       );
     } catch (err: any) {
       const msg =
@@ -415,7 +415,7 @@ const StudentDetailPage: React.FC = () => {
     if (!student) return;
     const ok = await confirm({
       title: "Archive Player & Release Slot",
-      message: `Remove ${student.firstName} ${student.lastName} from the active franchise squad? This will release 1 student subscription slot immediately. The player's profile and historical stats are safely archived and can be restored anytime from the Archived tab.`,
+      message: `Remove ${student.firstName} ${student.lastName} from the active branch players? This will release 1 student subscription slot immediately. The player's profile and historical stats are safely archived and can be restored anytime from the Archived tab.`,
       confirmLabel: "Archive Player",
       danger: true,
     });
@@ -553,7 +553,7 @@ const StudentDetailPage: React.FC = () => {
             to="/students"
             className="inline-flex items-center gap-1.5 text-volt-400 hover:underline text-sm"
           >
-            <ArrowLeft size={14} /> Back to Squad
+            <ArrowLeft size={14} /> Back to Players
           </Link>
         }
       />
@@ -753,7 +753,7 @@ const StudentDetailPage: React.FC = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <span className="font-semibold block truncate">
-                        Restore to Squad
+                        Restore to Branch
                       </span>
                       <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-normal block truncate">
                         Re-add to active roster
@@ -844,10 +844,10 @@ const StudentDetailPage: React.FC = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <span className="font-semibold block truncate text-slate-900 dark:text-white">
-                        Transfer Franchise
+                        Transfer Branch
                       </span>
                       <span className="text-[10px] text-slate-400 dark:text-slate-400 font-normal block truncate">
-                        Move to another franchise
+                        Move to another branch
                       </span>
                     </div>
                   </button>
@@ -1350,15 +1350,15 @@ const StudentDetailPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* KPI 3: Franchise & Squad Roster */}
+                {/* KPI 3: Branch & Squad Roster */}
                 <div className="p-3 rounded-2xl bg-slate-50 dark:bg-pitch-950/70 border border-slate-200/80 dark:border-white/10 shadow-xs flex flex-col justify-between hover:border-volt-400/40 dark:hover:border-volt-400/30 transition-all">
                   <div className="flex items-center justify-between mb-1">
                     <span className="flex items-center gap-1.5 text-3xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       <MapPin size={12} className="text-volt-500" /> Club &
-                      Franchise
+                      Branch
                     </span>
                     <span className="px-1.5 py-0.5 rounded text-3xs font-mono font-bold uppercase tracking-wider bg-volt-400/10 text-volt-600 dark:text-volt-400 border border-volt-400/20">
-                      Franchise
+                      Branch
                     </span>
                   </div>
 
@@ -1481,7 +1481,7 @@ const StudentDetailPage: React.FC = () => {
                       Technical <span className="text-volt-400">Breakdown</span>
                     </h3>
                     <p className="text-white/30 font-bold uppercase tracking-[0.4em] mt-2 text-[10px]">
-                      Verified Franchise Data • {new Date().getFullYear()}
+                      Verified Branch Data • {new Date().getFullYear()}
                     </p>
                   </div>
                   <div className="text-right">
@@ -2667,7 +2667,7 @@ const StudentDetailPage: React.FC = () => {
                 toFranchiseId,
                 reason,
               }).unwrap();
-              toast.success("Player transferred to new franchise");
+              toast.success("Player transferred to new branch");
               setFranchiseTransferModal(false);
             } catch (err: any) {
               toast.error(
@@ -2866,7 +2866,7 @@ const FranchiseTransferHistoryCard: React.FC<{ studentId: string }> = ({
     return (
       <div className="card p-5 space-y-3">
         <p className="section-title text-volt-400">
-          Franchise Transfer History
+          Branch Transfer History
         </p>
         <Skeleton className="h-10 rounded" />
       </div>
@@ -2877,7 +2877,7 @@ const FranchiseTransferHistoryCard: React.FC<{ studentId: string }> = ({
 
   return (
     <div className="card p-5 space-y-4">
-      <p className="section-title text-volt-400">Franchise Transfer History</p>
+      <p className="section-title text-volt-400">Branch Transfer History</p>
       <div className="space-y-3">
         {history.map((h) => (
           <div
@@ -3077,10 +3077,10 @@ const FranchiseTransferModal: React.FC<{
   const [reason, setReason] = useState("");
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Transfer Franchise" size="sm">
+    <Modal isOpen={true} onClose={onClose} title="Transfer Branch" size="sm">
       <div className="space-y-4">
         <div>
-          <label className="label">Current Franchise</label>
+          <label className="label">Current Branch</label>
           <p className="text-sm text-slate-300">
             {currentFranchise?.name ?? "—"}
           </p>
@@ -3091,11 +3091,11 @@ const FranchiseTransferModal: React.FC<{
           onChange={(e) => setToFranchiseId(e.target.value)}
           helperText={
             destinationOptions.length === 0
-              ? "No other active franchises in this academy to transfer into."
+              ? "No other active branches in this academy to transfer into."
               : undefined
           }
         >
-          <option value="">Select destination franchise…</option>
+          <option value="">Select destination branch…</option>
           {destinationOptions.map((f) => (
             <option key={f.id} value={f.id}>
               {f.name}
@@ -3106,7 +3106,7 @@ const FranchiseTransferModal: React.FC<{
           <label className="label">Reason (optional)</label>
           <textarea
             className="input min-h-16 resize-none"
-            placeholder="e.g. Family relocation, closer to new franchise"
+            placeholder="e.g. Family relocation, closer to new branch"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
@@ -3435,11 +3435,11 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
             </div>
 
             <div>
-              <label className="label">Franchise</label>
+              <label className="label">Branch</label>
               <div className="input !w-full flex items-center justify-between text-slate-400 cursor-not-allowed">
                 <span>{franchise?.name ?? "—"}</span>
                 <span className="text-2xs uppercase tracking-wide text-slate-600">
-                  Use Transfer Franchise to move this player
+                  Use Transfer Branch to move this player
                 </span>
               </div>
             </div>

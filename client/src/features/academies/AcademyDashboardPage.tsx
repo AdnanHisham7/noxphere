@@ -197,7 +197,7 @@ export const AcademyDashboardPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-display font-bold text-white text-base uppercase tracking-wide">
-                Academy Branches / Franchises
+                Academy Branches
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">Performance and enrollment per operational centre</p>
             </div>

@@ -1114,7 +1114,7 @@ const TransferWallPage: React.FC = () => {
       {/* Footer */}
       <footer className="border-t border-slate-200 dark:border-white/5 mt-12 py-6 px-6 text-center">
         <p className="text-2xs text-slate-500">
-          Noxphere Platform · Transfer Wall is a secure verified exchange · All transfers are processed franchise-to-franchise
+          Noxphere Platform · Transfer Wall is a secure verified exchange · All transfers are processed branch-to-branch
         </p>
       </footer>
     </div>

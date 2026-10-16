@@ -227,8 +227,8 @@ const SchedulePage: React.FC = () => {
     return (
       <EmptyState
         icon={<CalendarDays size={32} />}
-        title="No franchise selected"
-        description="Select an active franchise from the header bar to manage operational schedules."
+        title="No branch selected"
+        description="Select an active branch from the header bar to manage operational schedules."
       />
     );
   }
@@ -546,7 +546,7 @@ const SchedulePage: React.FC = () => {
             <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs">
               <AlertTriangle size={18} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
               <p>
-                This action will send an immediate push notification to <strong>all registered guardians</strong> across the franchise. Use only for schedule delays or emergency announcements.
+                This action will send an immediate push notification to <strong>all registered guardians</strong> across the branch. Use only for schedule delays or emergency announcements.
               </p>
             </div>
             <div className="flex justify-end gap-2">
@@ -744,7 +744,7 @@ const CreateSessionModal: React.FC<{
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFranchiseId) return toast.error("Select a franchise");
+    if (!selectedFranchiseId) return toast.error("Select a branch");
     if (targetType === "team" && !teamId) return toast.error("Select a team");
     if (targetType === "category" && categoriesState.length === 0) return toast.error("Select at least one category");
     if (targetType === "batch" && playerIds.length === 0) return toast.error("Select at least one player for the custom batch session");
@@ -795,11 +795,11 @@ const CreateSessionModal: React.FC<{
         {!franchiseId && academyFranchises && (
           <div>
             <Select
-              label="Franchise"
+              label="Branch"
               value={selectedFranchiseId}
               onChange={(e) => setSelectedFranchiseId(e.target.value)}
             >
-              <option value="" disabled>Select Franchise</option>
+              <option value="" disabled>Select Branch</option>
               {academyFranchises.map((f) => (
                 <option key={f.id} value={f.id}>{f.name}</option>
               ))}
@@ -853,7 +853,7 @@ const CreateSessionModal: React.FC<{
             </label>
             {categories.length === 0 ? (
               <div className="p-3 rounded border border-amber-500/20 bg-amber-500/10 text-amber-500 text-xs">
-                No players with assigned age categories exist in this franchise yet. Age categories are automatically registered when players enroll with their birthdates.
+                No players with assigned age categories exist in this branch yet. Age categories are automatically registered when players enroll with their birthdates.
               </div>
             ) : (
               <div className="flex flex-wrap gap-1.5 mt-1 border border-slate-200 dark:border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-slate-50 dark:bg-pitch-900">
@@ -937,7 +937,7 @@ const CreateSessionModal: React.FC<{
 
             <div className="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto border border-slate-200 dark:border-white/10 rounded p-2 bg-slate-50 dark:bg-pitch-900">
               {availableStudents.length === 0 ? (
-                <p className="text-2xs text-slate-400 dark:text-slate-500 italic p-1">No players found in this franchise.</p>
+                <p className="text-2xs text-slate-400 dark:text-slate-500 italic p-1">No players found in this branch.</p>
               ) : (
                 availableStudents
                   .filter((s) =>
@@ -1177,12 +1177,12 @@ const CreateSessionModal: React.FC<{
         <div className="border-t border-slate-200 dark:border-white/5 pt-3 space-y-3">
           <div>
             <Select
-              label="Cross-Franchise / Custom Player List (Optional)"
-              helperText="Select a different franchise to invite players from."
+              label="Cross-Branch / Custom Player List (Optional)"
+              helperText="Select a different branch to invite players from."
               value={crossFranchiseId}
               onChange={(e) => setCrossFranchiseId(e.target.value)}
             >
-              <option value="">-- Choose a Franchise --</option>
+              <option value="">-- Choose a Branch --</option>
               {otherFranchises.map((f) => (
                 <option key={f.id} value={f.id}>{f.name}</option>
               ))}
@@ -1195,7 +1195,7 @@ const CreateSessionModal: React.FC<{
                 Available Players in {otherFranchises.find(f => f.id === crossFranchiseId)?.name}
               </p>
               {crossStudents.length === 0 ? (
-                <p className="text-2xs text-slate-400 dark:text-slate-500 italic">No players registered under this franchise.</p>
+                <p className="text-2xs text-slate-400 dark:text-slate-500 italic">No players registered under this branch.</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto border border-slate-200 dark:border-white/10 rounded p-2 bg-slate-50 dark:bg-pitch-900">
                   {crossStudents.map((s) => {
@@ -1437,7 +1437,7 @@ const EditSessionModal: React.FC<{
             </label>
             {Array.from(new Set([...categories, ...categoriesState])).length === 0 ? (
               <div className="p-3 rounded border border-amber-500/20 bg-amber-500/10 text-amber-500 text-xs">
-                No players with assigned age categories exist in this franchise yet.
+                No players with assigned age categories exist in this branch yet.
               </div>
             ) : (
               <div className="flex flex-wrap gap-1.5 mt-1 border border-slate-200 dark:border-white/10 rounded p-2 max-h-32 overflow-y-auto bg-slate-50 dark:bg-pitch-900">
@@ -1684,12 +1684,12 @@ const EditSessionModal: React.FC<{
         <div className="border-t border-slate-200 dark:border-white/5 pt-3 space-y-3">
           <div>
             <Select
-              label="Cross-Franchise / Custom Player List (Optional)"
-              helperText="Select a different franchise to invite players from."
+              label="Cross-Branch / Custom Player List (Optional)"
+              helperText="Select a different branch to invite players from."
               value={crossFranchiseId}
               onChange={(e) => setCrossFranchiseId(e.target.value)}
             >
-              <option value="">-- Choose a Franchise --</option>
+              <option value="">-- Choose a Branch --</option>
               {otherFranchises.map((f) => (
                 <option key={f.id} value={f.id}>{f.name}</option>
               ))}
@@ -1702,7 +1702,7 @@ const EditSessionModal: React.FC<{
                 Available Players in {otherFranchises.find(f => f.id === crossFranchiseId)?.name}
               </p>
               {crossStudents.length === 0 ? (
-                <p className="text-2xs text-slate-500 italic">No players registered under this franchise.</p>
+                <p className="text-2xs text-slate-500 italic">No players registered under this branch.</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto border border-slate-200 dark:border-white/10 rounded p-2 bg-slate-50 dark:bg-pitch-900">
                   {crossStudents.map((s) => {

@@ -7,6 +7,7 @@ import { UserRole } from '../../../domain/entities/User.entity';
 import { geoLocationService } from '../../../infrastructure/services/GeoLocationService';
 import { AcademyModel } from '../../../infrastructure/database/models/Academy.model';
 import { FranchiseModel } from '../../../infrastructure/database/models/Franchise.model';
+import { StudentModel } from '../../../infrastructure/database/models/Student.model';
 
 export interface JwtPayload {
   sub: string;
@@ -50,9 +51,28 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
           academyId = franchise.academyId.toString();
           req.user.academyId = academyId;
         }
+      } else if (!academyId && (req.user.role === 'guardian' || req.user.role === 'student')) {
+        const student = await StudentModel.findOne({
+          $or: [{ guardianIds: req.user.sub }, { userId: req.user.sub }],
+          deletedAt: { $exists: false },
+        }).select('franchiseId academyId').lean();
+        if (student?.franchiseId) {
+          const franchise = await FranchiseModel.findById(student.franchiseId).select('academyId').lean();
+          if (franchise?.academyId) {
+            academyId = franchise.academyId.toString();
+            req.user.academyId = academyId;
+          }
+        } else if ((student as any)?.academyId) {
+          academyId = (student as any).academyId.toString();
+          req.user.academyId = academyId;
+        }
       }
 
       if (academyId) {
+        const academy = await AcademyModel.findById(academyId).select('isActive name deletedAt').lean();
+        if (!academy || academy.isActive === false || academy.deletedAt) {
+          throw new UnauthorizedError(`Academy "${academy?.name || 'Your academy'}" has been deactivated by the administrator. Access is denied.`);
+        }
         await geoLocationService.assertAcademyGeoAccess(req, academyId, req.user.role);
       }
     }

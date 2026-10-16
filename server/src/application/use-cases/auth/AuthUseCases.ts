@@ -34,21 +34,21 @@ export class AuthUseCases {
 
     let academyId = user.academyId;
 
-    if (!academyId && user.franchiseId) {
+    if (user.franchiseId) {
       try {
-        const franchise = await FranchiseModel.findById(user.franchiseId).select('academyId').lean();
+        const franchise = await FranchiseModel.findById(user.franchiseId).select('academyId isActive deletedAt').lean();
         if (franchise?.academyId) {
           academyId = franchise.academyId.toString();
         }
       } catch {}
     }
 
-    if (!academyId && user.role === 'manager') {
+    if (!academyId && (user.role === 'manager' || user.role === 'operational_manager')) {
       try {
-        const managedAcademy = await AcademyModel.findOne({ managerId: user.id }).select('_id isActive name').lean();
+        const managedAcademy = await AcademyModel.findOne({ managerId: user.id }).select('_id isActive name deletedAt').lean();
         if (managedAcademy) {
           academyId = managedAcademy._id.toString();
-          if (managedAcademy.isActive === false) {
+          if (managedAcademy.isActive === false || managedAcademy.deletedAt) {
             throw new UnauthorizedError(`Academy "${managedAcademy.name || 'Your academy'}" has been deactivated by the administrator. Access is denied.`);
           }
         }
@@ -66,10 +66,44 @@ export class AuthUseCases {
       } catch {}
     }
 
-    if (!academyId && (user.role === 'guardian' || user.role === 'student')) {
+    if (user.role === 'guardian') {
+      try {
+        const students = await StudentModel.find({
+          guardianIds: user.id,
+          deletedAt: { $exists: false },
+        }).select('franchiseId academyId').lean();
+
+        if (students.length > 0) {
+          const studentFranchiseIds = students.map((s) => s.franchiseId).filter(Boolean);
+          const franchises = await FranchiseModel.find({ _id: { $in: studentFranchiseIds } }).select('academyId').lean();
+          const allAcademyIds = new Set<string>();
+          if (academyId) allAcademyIds.add(academyId.toString());
+          for (const f of franchises) {
+            if (f.academyId) allAcademyIds.add(f.academyId.toString());
+          }
+          for (const s of students) {
+            if ((s as any).academyId) allAcademyIds.add((s as any).academyId.toString());
+          }
+
+          if (allAcademyIds.size > 0) {
+            const academies = await AcademyModel.find({ _id: { $in: Array.from(allAcademyIds) } }).select('isActive name deletedAt').lean();
+            const activeAcademies = academies.filter((a) => a.isActive !== false && !a.deletedAt);
+            if (activeAcademies.length === 0) {
+              const name = academies[0]?.name || 'Your academy';
+              throw new UnauthorizedError(`Academy "${name}" has been deactivated by the administrator. Access is denied.`);
+            }
+            return;
+          }
+        }
+      } catch (err) {
+        if (err instanceof UnauthorizedError) throw err;
+      }
+    }
+
+    if (!academyId && user.role === 'student') {
       try {
         const student = await StudentModel.findOne({
-          $or: [{ guardianIds: user.id }, { userId: user.id }],
+          $or: [{ userId: user.id }, { _id: user.id }],
           deletedAt: { $exists: false },
         }).select('franchiseId academyId').lean();
         if (student?.franchiseId) {
@@ -84,9 +118,9 @@ export class AuthUseCases {
     }
 
     if (academyId) {
-      const academy = await AcademyModel.findById(academyId).select('isActive name').lean();
-      if (academy && academy.isActive === false) {
-        throw new UnauthorizedError(`Academy "${academy.name || 'Your academy'}" has been deactivated by the administrator. Access is denied.`);
+      const academy = await AcademyModel.findById(academyId).select('isActive name deletedAt').lean();
+      if (!academy || academy.isActive === false || academy.deletedAt) {
+        throw new UnauthorizedError(`Academy "${academy?.name || 'Your academy'}" has been deactivated by the administrator. Access is denied.`);
       }
     }
   }

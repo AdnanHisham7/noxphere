@@ -161,8 +161,8 @@ const TeamsPage: React.FC = () => {
     return (
       <EmptyState
         icon={<Users size={28} />}
-        title="No franchise selected"
-        description="Select a franchise from the top bar to manage teams."
+        title="No branch selected"
+        description="Select a branch from the top bar to manage teams."
       />
     );
   }
@@ -174,8 +174,8 @@ const TeamsPage: React.FC = () => {
         title={isHeadOffice ? "Academy Teams" : "Teams"}
         subtitle={
           isHeadOffice
-            ? "All squads across all franchises of the academy"
-            : "Batches and squads for this franchise"
+            ? "All squads across all branches of the academy"
+            : "Batches and squads for this branch"
         }
         actions={
           !isHeadOffice && (
@@ -690,7 +690,7 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
                       className="!text-[11px] !py-1 !px-2"
                     >
                       <option value="" disabled>
-                        Select Franchise
+                        Select Branch
                       </option>
                       {(franchises ?? []).map((f) => (
                         <option key={f.id} value={f.id}>

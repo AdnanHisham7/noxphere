@@ -66,16 +66,16 @@ const FranchiseManagementPage: React.FC = () => {
   const handleToggle = async (id: string, isActive: boolean) => {
     try {
       await toggleActive(id).unwrap();
-      toast.success(isActive ? "Franchise deactivated" : "Franchise activated");
+      toast.success(isActive ? "Branch deactivated" : "Branch activated");
     } catch {
-      toast.error("Couldn't update franchise — try again");
+      toast.error("Couldn't update branch — try again");
     }
   };
 
   const handleDelete = async (f: Franchise) => {
     if (!activeAcademyId) return;
     const ok = await confirm({
-      title: "Remove franchise",
+      title: "Remove branch",
       message: `Remove "${f.name}"? This cannot be undone.`,
       confirmLabel: "Remove",
       danger: true,
@@ -83,9 +83,9 @@ const FranchiseManagementPage: React.FC = () => {
     if (!ok) return;
     try {
       await deleteFranchise({ id: f.id, academyId: activeAcademyId }).unwrap();
-      toast.success("Franchise removed");
+      toast.success("Branch removed");
     } catch (err: any) {
-      toast.error(err?.data?.message || "Couldn't remove franchise — try again");
+      toast.error(err?.data?.message || "Couldn't remove branch — try again");
     }
   };
 
@@ -101,15 +101,15 @@ const FranchiseManagementPage: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         eyebrow="Structure"
-        title="Franchises"
+        title="Branches"
         subtitle={
           isSuperAdmin
-            ? "Manage the operational franchises under any academy"
-            : "Manage the franchises under your academy"
+            ? "Manage the operational branches under any academy"
+            : "Manage the branches under your academy"
         }
         actions={
           activeAcademyId && canCreateFranchise ? (
-            <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)} className="w-full sm:w-auto">New franchise</Button>
+            <Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)} className="w-full sm:w-auto">New branch</Button>
           ) : undefined
         }
       />
@@ -131,7 +131,7 @@ const FranchiseManagementPage: React.FC = () => {
         <EmptyState
           icon={<Building2 size={28} />}
           title={isSuperAdmin ? "Select an academy" : "No academy found"}
-          description={isSuperAdmin ? "Choose an academy above to see its franchises." : "Your account isn't linked to an academy yet."}
+          description={isSuperAdmin ? "Choose an academy above to see its branches." : "Your account isn't linked to an academy yet."}
         />
       )}
 
@@ -144,15 +144,15 @@ const FranchiseManagementPage: React.FC = () => {
 
 
       {activeAcademyId && isError && (
-        <EmptyState title="Couldn't load franchises" description="Please try again shortly." />
+        <EmptyState title="Couldn't load branches" description="Please try again shortly." />
       )}
 
       {activeAcademyId && !isLoading && franchises?.length === 0 && (
         <EmptyState
           icon={<Building2 size={28} />}
-          title="No franchises yet"
-          description="Every academy needs at least one franchise for students, teams, and sessions to belong to."
-          action={canCreateFranchise ? <Button onClick={() => setShowCreate(true)}>Create franchise</Button> : undefined}
+          title="No branches yet"
+          description="Every academy needs at least one branch for students, teams, and sessions to belong to."
+          action={canCreateFranchise ? <Button onClick={() => setShowCreate(true)}>Create branch</Button> : undefined}
         />
       )}
 
@@ -235,10 +235,10 @@ const FranchiseManagementPage: React.FC = () => {
           onCreate={async (body) => {
             try {
               await createFranchise(body).unwrap();
-              toast.success("Franchise created");
+              toast.success("Branch created");
               setShowCreate(false);
             } catch (err: any) {
-              toast.error(err?.data?.message || "Couldn't create franchise — try again");
+              toast.error(err?.data?.message || "Couldn't create branch — try again");
             }
           }}
         />
@@ -289,9 +289,9 @@ const CreateFranchiseModal: React.FC<{
   };
 
   return (
-    <Modal isOpen onClose={onClose} title="New franchise" size="md">
+    <Modal isOpen onClose={onClose} title="New branch" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input label="Franchise name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Downtown Franchise" required />
+        <Input label="Branch name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Downtown Branch" required />
         <Input label="Location name" value={locationName} onChange={(e) => setLocationName(e.target.value)} placeholder="e.g. Downtown Sports Complex" required />
         <Input label="Address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street address" required />
         <LocationPicker
@@ -303,7 +303,7 @@ const CreateFranchiseModal: React.FC<{
           }}
         />
         <div className="flex gap-3 pt-2">
-          <Button type="submit" className="flex-1" loading={creating}>Create franchise</Button>
+          <Button type="submit" className="flex-1" loading={creating}>Create branch</Button>
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
         </div>
       </form>
@@ -342,17 +342,17 @@ const FranchiseDetailsModal: React.FC<{
           },
         },
       }).unwrap();
-      toast.success("Franchise details updated");
+      toast.success("Branch details updated");
       onClose();
     } catch (err: any) {
-      toast.error(err?.data?.message || "Couldn't update franchise — try again");
+      toast.error(err?.data?.message || "Couldn't update branch — try again");
     }
   };
 
   return (
     <Modal isOpen onClose={onClose} title={`Edit ${franchise.name}`} size="md">
       <div className="space-y-4">
-        <Input label="Franchise name" value={name} onChange={(e) => setName(e.target.value)} required />
+        <Input label="Branch name" value={name} onChange={(e) => setName(e.target.value)} required />
         <Input label="Location name" value={locationName} onChange={(e) => setLocationName(e.target.value)} required />
         <Input label="Address" value={address} onChange={(e) => setAddress(e.target.value)} required />
         <LocationPicker

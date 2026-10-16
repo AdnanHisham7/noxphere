@@ -36,8 +36,8 @@ const PerformancePage: React.FC = () => {
     return (
       <EmptyState
         icon={<TrendingUp size={28} />}
-        title="No franchise selected"
-        description="Select a franchise from the top bar to view performance."
+        title="No branch selected"
+        description="Select a branch from the top bar to view performance."
       />
     );
   }

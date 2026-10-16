@@ -76,7 +76,7 @@ const EmployeesManagementPage: React.FC = () => {
       <EmptyState
         icon={<Users size={28} />}
         title="No academy context"
-        description="Select a franchise or academy to manage employee records."
+        description="Select a branch or academy to manage employee records."
       />
     );
   }
@@ -768,11 +768,11 @@ const AddOperationalManagerModal: React.FC<AddOperationalManagerModalProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Select
-              label="Assigned Franchise Scope"
+              label="Assigned Branch Scope"
               value={franchiseId}
               onChange={(e) => setFranchiseId(e.target.value)}
             >
-              <option value="">Academy-wide (All Franchises)</option>
+              <option value="">Academy-wide (All Branches)</option>
               {franchises.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.name}
@@ -780,7 +780,7 @@ const AddOperationalManagerModal: React.FC<AddOperationalManagerModalProps> = ({
               ))}
             </Select>
             <p className="text-2xs text-slate-400 dark:text-slate-500 mt-1">
-              Select a specific franchise or leave academy-wide.
+              Select a specific branch or leave academy-wide.
             </p>
           </div>
 

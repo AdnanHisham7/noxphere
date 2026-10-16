@@ -175,8 +175,8 @@ const DashboardPage: React.FC = () => {
     return (
       <EmptyState
         icon={<LayoutDashboard size={28} />}
-        title="No franchise selected"
-        description="Select a franchise from the top bar or log in as an academy manager to see its dashboard."
+        title="No branch selected"
+        description="Select a branch from the top bar or log in as an academy manager to see its dashboard."
       />
     );
   }
@@ -212,7 +212,7 @@ const DashboardPage: React.FC = () => {
               ? "Super Admin Active"
               : isConsolidated
                 ? "Academy-wide"
-                : "Franchise Active"}
+                : "Branch Active"}
           </span>
         }
       />
@@ -246,7 +246,7 @@ const DashboardPage: React.FC = () => {
             /* Consolidated (academy-wide) Stats Layout - Total Sessions hidden on mobile */
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
               <StatCard
-                label="Total Franchises"
+                label="Total Branches"
                 value={stats?.franchisePerformance?.length ?? 0}
                 sublabel="Operational branches"
                 icon={<Building2 className="h-5 w-5" />}
@@ -439,11 +439,11 @@ const DashboardPage: React.FC = () => {
           <div className="card p-5 space-y-4">
             <div>
               <p className="section-title">
-                {isConsolidated ? "Overall Avg Skills" : "Franchise Avg Skills"}
+                {isConsolidated ? "Overall Avg Skills" : "Branch Avg Skills"}
               </p>
               <p className="text-xs text-slate-500 mt-0.5">
                 {isConsolidated
-                  ? "All franchises aggregate"
+                  ? "All branches aggregate"
                   : "All players aggregate"}
               </p>
             </div>
@@ -508,7 +508,7 @@ const DashboardPage: React.FC = () => {
         stats.franchisePerformance.length > 0 && (
           <div className="card p-3.5 sm:p-5 space-y-4 animate-fade-in">
             <div>
-              <p className="section-title">Franchise Performance</p>
+              <p className="section-title">Branch Performance</p>
               <p className="text-xs text-slate-500 mt-0.5">
                 Consolidated overview of all operational branches
               </p>
@@ -518,7 +518,7 @@ const DashboardPage: React.FC = () => {
                 <thead>
                   <tr className="border-b border-slate-200/80 dark:border-white/5 pb-2">
                     <th className="py-2.5 px-3.5 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Franchise
+                      Branch
                     </th>
                     <th className="py-2.5 px-3 text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">
                       Players
@@ -746,7 +746,7 @@ const DashboardPage: React.FC = () => {
             ) : !recentActivity?.length ? (
               <EmptyState
                 title="No recent activity"
-                description="Actions across the franchise will show up here."
+                description="Actions across the branch will show up here."
               />
             ) : (
               <div className="space-y-0">

@@ -21,8 +21,8 @@ const AttendancePage: React.FC = () => {
     return (
       <EmptyState
         icon={<Users size={28} />}
-        title="No franchise selected"
-        description="Select a franchise from the top bar to manage attendance."
+        title="No branch selected"
+        description="Select a branch from the top bar to manage attendance."
       />
     );
   }

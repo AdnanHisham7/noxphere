@@ -418,7 +418,7 @@ const CreateUserModal: React.FC<{
           ))}
         </Select>
         <Select
-          label="Franchise (optional)"
+          label="Branch (optional)"
           value={franchiseId}
           onChange={(e) => setFranchiseId(e.target.value)}
         >

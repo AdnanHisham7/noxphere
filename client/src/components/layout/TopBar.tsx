@@ -100,7 +100,7 @@ const FranchiseSwitcher: React.FC = () => {
 
       {open && (
         <div className="absolute left-0 top-11 w-64 card shadow-panel z-50 animate-slide-up py-1.5">
-            <p className="px-3 py-1.5 section-title">Switch franchise</p>
+            <p className="px-3 py-1.5 section-title">Switch branch</p>
 
             <button
               onClick={() => {
@@ -172,7 +172,7 @@ const CoachFranchiseSwitcher: React.FC = () => {
       <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 rounded px-2.5 sm:px-3 py-1.5">
         <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />
         <span className="text-xs text-slate-500 font-medium truncate max-w-[120px] sm:max-w-none">
-          No franchise assigned yet
+          No branch assigned yet
         </span>
       </div>
     );
@@ -204,7 +204,7 @@ const CoachFranchiseSwitcher: React.FC = () => {
 
       {open && (
         <div className="absolute left-0 top-11 w-64 max-w-[85vw] card shadow-panel z-50 animate-slide-up py-1.5">
-            <p className="px-3 py-1.5 section-title">Switch franchise</p>
+            <p className="px-3 py-1.5 section-title">Switch branch</p>
             {franchises.map((f) => (
               <button
                 key={f.id}

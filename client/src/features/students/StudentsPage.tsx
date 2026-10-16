@@ -376,8 +376,8 @@ const StudentsPage: React.FC = () => {
 
   const handleDelete = async (id: string, name: string) => {
     const ok = await confirm({
-      title: "Remove player from squad",
-      message: `Remove ${name} from the active franchise squad? This will release 1 student subscription slot immediately. The player's profile and historical stats are safely archived and can be restored anytime from the Archived tab.`,
+      title: "Remove player from roster",
+      message: `Remove ${name} from the active branch players? This will release 1 student subscription slot immediately. The player's profile and historical stats are safely archived and can be restored anytime from the Archived tab.`,
       confirmLabel: "Archive Player",
       danger: true,
     });
@@ -392,14 +392,14 @@ const StudentsPage: React.FC = () => {
 
   const handleRestore = async (id: string, name: string) => {
     const ok = await confirm({
-      title: "Restore player to squad",
-      message: `Restore ${name} back to the active squad? This will occupy 1 student capacity slot in your subscription plan.`,
+      title: "Restore player to branch",
+      message: `Restore ${name} back to active players? This will occupy 1 student capacity slot in your subscription plan.`,
       confirmLabel: "Restore Player",
     });
     if (!ok) return;
     try {
       await restoreStudent(id).unwrap();
-      toast.success(`${name} restored to active squad!`);
+      toast.success(`${name} restored to active players!`);
     } catch (err: any) {
       const msg = err?.data?.message || "Failed to restore player. Check subscription capacity.";
       toast.error(msg);
@@ -413,8 +413,8 @@ const StudentsPage: React.FC = () => {
     return (
       <EmptyState
         icon={<Users size={28} />}
-        title="No franchise selected"
-        description="Select a franchise from the top bar to manage its squad."
+        title="No branch selected"
+        description="Select a branch from the top bar to manage its players."
         action={
           franchises && franchises.length > 0 ? (
             <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
@@ -440,7 +440,7 @@ const StudentsPage: React.FC = () => {
       {/* Header */}
       <PageHeader
         eyebrow="Management"
-        title="Squad & Players"
+        title="Players"
         subtitle={isLoading ? "Loading…" : `${data?.total ?? 0} players enrolled`}
         actions={
           canManageSquad ? (
@@ -590,7 +590,7 @@ const StudentsPage: React.FC = () => {
             <EmptyState
               icon={<Archive size={28} />}
               title="No archived players"
-              description="No deleted or archived players found for this franchise."
+              description="No deleted or archived players found for this branch."
             />
           ) : (
             <div className="card overflow-hidden">

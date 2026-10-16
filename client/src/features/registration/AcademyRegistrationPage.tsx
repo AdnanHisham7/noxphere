@@ -101,7 +101,7 @@ export const AcademyRegistrationPage: React.FC = () => {
 
   const validateStep1 = () => {
     if (!selectedFranchiseId && academyInfo?.franchises?.length) {
-      toast.error("Please select a preferred training branch/franchise");
+      toast.error("Please select a preferred training branch");
       return false;
     }
     if (!studentDetails.firstName.trim() || !studentDetails.lastName.trim()) {
@@ -267,7 +267,7 @@ export const AcademyRegistrationPage: React.FC = () => {
     e.preventDefault();
 
     if (!selectedFranchiseId) {
-      toast.error("Please choose your preferred training branch / franchise");
+      toast.error("Please choose your preferred training branch");
       document.getElementById("franchise-select")?.focus();
       return;
     }
@@ -647,7 +647,7 @@ export const AcademyRegistrationPage: React.FC = () => {
                   <div className="space-y-2">
                     <Select
                       id="franchise-select"
-                      label="Select Preferred Branch / Franchise *"
+                      label="Select Preferred Branch *"
                       value={selectedFranchiseId}
                       onChange={(e) => setSelectedFranchiseId(e.target.value)}
                       required

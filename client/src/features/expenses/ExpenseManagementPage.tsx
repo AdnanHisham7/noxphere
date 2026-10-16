@@ -148,8 +148,8 @@ export const ExpenseManagementPage: React.FC = () => {
 
   const activeFranchiseName =
     selectedFranchiseId === "all"
-      ? "All Franchises"
-      : franchiseNameMap.get(selectedFranchiseId) || "Selected Franchise";
+      ? "All Branches"
+      : franchiseNameMap.get(selectedFranchiseId) || "Selected Branch";
 
   // Queries
   const { data: reportData, isLoading: isReportLoading } = useGetAnalyticsReportQuery(
@@ -290,7 +290,7 @@ export const ExpenseManagementPage: React.FC = () => {
                   value={selectedFranchiseId}
                   onChange={(e) => setSelectedFranchiseId(e.target.value)}
                 >
-                  <option value="all">All Franchises</option>
+                  <option value="all">All Branches</option>
                   {franchises.map((f) => (
                     <option key={f.id} value={f.id}>
                       {f.name}
@@ -1424,11 +1424,11 @@ export const ExpenseManagementPage: React.FC = () => {
 
               <div>
                 <Select
-                  label="Target Franchise"
+                  label="Target Branch"
                   value={selectedFranchiseId}
                   onChange={(e) => setSelectedFranchiseId(e.target.value)}
                 >
-                  <option value="all">All Franchises</option>
+                  <option value="all">All Branches</option>
                   {franchises?.map((f) => (
                     <option key={f.id} value={f.id}>
                       {f.name}

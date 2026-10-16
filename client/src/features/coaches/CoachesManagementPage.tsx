@@ -67,8 +67,8 @@ const CoachesManagementPage: React.FC = () => {
     return (
       <EmptyState
         icon={<UserCog size={28} />}
-        title="No franchise selected"
-        description="Select a franchise from the top bar to manage coaches."
+        title="No branch selected"
+        description="Select a branch from the top bar to manage coaches."
       />
     );
   }
@@ -128,7 +128,7 @@ const CoachesManagementPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <p className="text-2xs text-slate-500 uppercase tracking-wide mb-1">Franchise Assignment</p>
+                  <p className="text-2xs text-slate-500 uppercase tracking-wide mb-1">Branch Assignment</p>
                   {c.franchiseId && franchiseMap.has(c.franchiseId) ? (
                     <span className="pill-blue text-2xs bg-emerald-950/80 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider font-semibold">
                       In-Charge: {franchiseMap.get(c.franchiseId)}
@@ -295,11 +295,11 @@ const EditCoachModal: React.FC<{ coach: ManagedUser; franchises: any[]; onClose:
         />
         <div>
           <Select
-            label="Franchise in-charge (Optional)"
+            label="Branch in-charge (Optional)"
             value={franchiseId}
             onChange={(e) => setFranchiseId(e.target.value)}
           >
-            <option value="">No franchise assigned (General Coach)</option>
+            <option value="">No branch assigned (General Coach)</option>
             {franchises.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.name}
@@ -375,12 +375,12 @@ const CreateCoachModal: React.FC<{
 
         <div className="sm:col-span-2">
           <Select
-            label="Franchise in-charge (Optional)"
+            label="Branch in-charge (Optional)"
             value={franchiseId}
             onChange={(e) => setFranchiseId(e.target.value)}
-            helperText="If selected, this coach will be marked as in-charge of the chosen franchise."
+            helperText="If selected, this coach will be marked as in-charge of the chosen branch."
           >
-            <option value="">No franchise assigned (General Coach)</option>
+            <option value="">No branch assigned (General Coach)</option>
             {franchises.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.name}

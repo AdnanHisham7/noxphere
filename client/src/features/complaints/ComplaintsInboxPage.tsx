@@ -127,7 +127,7 @@ const ComplaintsInboxPage: React.FC = () => {
         <EmptyState
           icon={<MessageSquareWarning size={28} />}
           title="No academy context"
-          description="Select a franchise to view its academy's complaints."
+          description="Select a branch to view its academy's complaints."
         />
       ) : (
         <>

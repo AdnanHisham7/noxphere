@@ -732,11 +732,11 @@ export const AcademyNfcManagementPage: React.FC = () => {
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
                   <Select
-                    label="Filter by Franchise / Branch"
+                    label="Filter by Branch"
                     value={selectedFranchiseId}
                     onChange={(e) => setSelectedFranchiseId(e.target.value)}
                   >
-                    <option value="all">All Franchises</option>
+                    <option value="all">All Branches</option>
                     {franchises?.map((f) => (
                       <option key={f.id} value={f.id}>
                         {f.name}
