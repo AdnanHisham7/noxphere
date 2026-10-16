@@ -9,6 +9,7 @@ export interface PageHeaderProps {
   badge?: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
+  breakpoint?: "sm" | "md" | "lg" | "xl";
 }
 
 export const PageHeader: React.FC<PageHeaderProps> = ({
@@ -18,15 +19,38 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   badge,
   actions,
   className,
+  breakpoint = "sm",
 }) => {
+  const breakpointClassMap = {
+    sm: {
+      container: "sm:flex-row sm:items-start",
+      actions: "sm:self-auto sm:w-auto",
+    },
+    md: {
+      container: "md:flex-row md:items-start",
+      actions: "md:self-auto md:w-auto",
+    },
+    lg: {
+      container: "lg:flex-row lg:items-start",
+      actions: "lg:self-auto lg:w-auto",
+    },
+    xl: {
+      container: "xl:flex-row xl:items-start",
+      actions: "xl:self-auto xl:w-auto",
+    },
+  };
+
+  const bp = breakpointClassMap[breakpoint] || breakpointClassMap.sm;
+
   return (
     <div
       className={clsx(
-        "flex flex-col sm:flex-row sm:items-start justify-between gap-3.5 sm:gap-4",
+        "flex flex-col justify-between gap-3.5 sm:gap-4",
+        bp.container,
         className
       )}
     >
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         {eyebrow && (
           <p className="section-title mb-1">
             {eyebrow}
@@ -45,7 +69,12 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         )}
       </div>
       {actions && (
-        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto shrink-0 w-full sm:w-auto">
+        <div
+          className={clsx(
+            "flex flex-wrap items-center gap-2 self-start shrink-0 w-full",
+            bp.actions
+          )}
+        >
           {actions}
         </div>
       )}

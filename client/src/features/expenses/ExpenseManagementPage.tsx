@@ -278,17 +278,23 @@ export const ExpenseManagementPage: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       {/* ─── Top Header & Controls ────────────────────────────────────────────── */}
       <PageHeader
+        breakpoint="xl"
         eyebrow="Financial Management"
         title="Expense & Stock Management"
-        subtitle="Track purchases, verified stock replenishment, operational expenses, incoming student fees, and financial audits."
+        subtitle={
+          <span className="block max-w-3xl">
+            Track purchases, verified stock replenishment, operational expenses, incoming student fees, and financial audits.
+          </span>
+        }
         actions={
-          <>
+          <div className="flex flex-col md:flex-row md:items-center justify-between xl:justify-end gap-2.5 w-full xl:w-auto">
             {franchises && franchises.length > 0 && !user?.franchiseId && (
-              <div className="w-48">
+              <div className="w-full md:w-52 lg:w-56 shrink-0">
                 <Select
                   icon={<Building2 className="w-3.5 h-3.5 text-slate-400" />}
                   value={selectedFranchiseId}
                   onChange={(e) => setSelectedFranchiseId(e.target.value)}
+                  className="text-xs py-1.5 sm:py-2"
                 >
                   <option value="all">All Branches</option>
                   {franchises.map((f) => (
@@ -300,46 +306,51 @@ export const ExpenseManagementPage: React.FC = () => {
               </div>
             )}
 
-            <Button
-              variant="secondary"
-              onClick={() => setIsRecordIncomeOpen(true)}
-              className="text-xs py-2 px-3 flex items-center gap-1.5"
-            >
-              <ArrowDownLeft size={14} className="text-field-500" />
-              Record Income
-            </Button>
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setRestockItem(null);
+                  setIsAddPurchaseOpen(true);
+                }}
+                className="w-full sm:w-auto justify-center text-xs py-2 px-2.5 sm:px-3 flex items-center gap-1.5 font-bold shadow-md truncate order-1 sm:order-3"
+                title="Add Purchase & Restock"
+              >
+                <PackagePlus size={14} className="shrink-0" />
+                <span className="truncate">Add Purchase</span>
+              </Button>
 
-            <Button
-              variant="secondary"
-              onClick={() => setIsAddMiscOpen(true)}
-              className="text-xs py-2 px-3 flex items-center gap-1.5"
-            >
-              <Receipt size={14} />
-              Misc Expense
-            </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setIsRecordIncomeOpen(true)}
+                className="w-full sm:w-auto justify-center text-xs py-2 px-2.5 sm:px-3 flex items-center gap-1.5 truncate order-2 sm:order-1"
+                title="Record External Income"
+              >
+                <ArrowDownLeft size={14} className="text-field-500 shrink-0" />
+                <span className="truncate">Record Income</span>
+              </Button>
 
-            <Button
-              variant="primary"
-              onClick={() => {
-                setRestockItem(null);
-                setIsAddPurchaseOpen(true);
-              }}
-              className="text-xs py-2 px-3 flex items-center gap-1.5 shadow-md"
-            >
-              <PackagePlus size={14} />
-              Add Purchase
-            </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setIsAddMiscOpen(true)}
+                className="w-full sm:w-auto justify-center text-xs py-2 px-2.5 sm:px-3 flex items-center gap-1.5 truncate order-3 sm:order-2"
+                title="Log Miscellaneous Expense"
+              >
+                <Receipt size={14} className="shrink-0" />
+                <span className="truncate">Misc Expense</span>
+              </Button>
 
-            <Button
-              variant="secondary"
-              onClick={() => setIsPrintReportOpen(true)}
-              className="text-xs py-2 px-3 flex items-center gap-1.5"
-              title="Print or download comprehensive financial report"
-            >
-              <Printer size={14} />
-              Print / Report
-            </Button>
-          </>
+              <Button
+                variant="secondary"
+                onClick={() => setIsPrintReportOpen(true)}
+                className="w-full sm:w-auto justify-center text-xs py-2 px-2.5 sm:px-3 flex items-center gap-1.5 truncate order-4"
+                title="Print or download comprehensive financial report"
+              >
+                <Printer size={14} className="shrink-0" />
+                <span className="truncate">Print / Report</span>
+              </Button>
+            </div>
+          </div>
         }
       />
 
@@ -350,12 +361,24 @@ export const ExpenseManagementPage: React.FC = () => {
         tabs={[
           {
             id: "overview",
-            label: "Financial Overview & Cash Flow",
+            label: (
+              <>
+                <span className="hidden lg:inline">Financial Overview & Cash Flow</span>
+                <span className="hidden sm:inline lg:hidden">Overview & Flow</span>
+                <span className="sm:hidden">Overview</span>
+              </>
+            ),
             icon: <LayoutDashboard size={16} />,
           },
           {
             id: "purchases",
-            label: "Purchases & Restocks",
+            label: (
+              <>
+                <span className="hidden lg:inline">Purchases & Restocks</span>
+                <span className="hidden sm:inline lg:hidden">Purchases</span>
+                <span className="sm:hidden">Purchases</span>
+              </>
+            ),
             icon: <ShoppingCart size={16} />,
             badge:
               summary && summary.pendingPurchasesCount > 0 ? (
@@ -366,7 +389,13 @@ export const ExpenseManagementPage: React.FC = () => {
           },
           {
             id: "stocks",
-            label: "Stocks & Inventory",
+            label: (
+              <>
+                <span className="hidden lg:inline">Stocks & Inventory</span>
+                <span className="hidden sm:inline lg:hidden">Inventory</span>
+                <span className="sm:hidden">Inventory</span>
+              </>
+            ),
             icon: <Boxes size={16} />,
             badge:
               summary && summary.outOfStockCount > 0 ? (
@@ -377,17 +406,35 @@ export const ExpenseManagementPage: React.FC = () => {
           },
           {
             id: "misc",
-            label: "Misc Expenses (No Stocks)",
+            label: (
+              <>
+                <span className="hidden lg:inline">Misc Expenses (No Stocks)</span>
+                <span className="hidden sm:inline lg:hidden">Misc Expenses</span>
+                <span className="sm:hidden">Misc</span>
+              </>
+            ),
             icon: <Receipt size={16} />,
           },
           {
             id: "inflows",
-            label: "Incoming Funds & Fees",
+            label: (
+              <>
+                <span className="hidden lg:inline">Incoming Funds & Fees</span>
+                <span className="hidden sm:inline lg:hidden">Funds & Fees</span>
+                <span className="sm:hidden">Inflows</span>
+              </>
+            ),
             icon: <ArrowDownLeft size={16} />,
           },
           {
             id: "reports",
-            label: "Advanced Audit Reports",
+            label: (
+              <>
+                <span className="hidden lg:inline">Advanced Audit Reports</span>
+                <span className="hidden sm:inline lg:hidden">Audit Reports</span>
+                <span className="sm:hidden">Reports</span>
+              </>
+            ),
             icon: <FileSpreadsheet size={16} />,
           },
         ]}
@@ -397,19 +444,24 @@ export const ExpenseManagementPage: React.FC = () => {
       {activeTab === "overview" && (
         <div className="space-y-6">
           {/* Timeframe bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-pitch-900/60 border border-slate-200 dark:border-white/5 rounded-xl">
-            <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 font-medium">
-              <Calendar size={14} className="text-volt-500" />
-              <span>Statement Period:</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-pitch-900/60 border border-slate-200 dark:border-white/5 rounded-xl">
+            <div className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-slate-600 dark:text-slate-400 font-medium">
+              <div className="flex items-center gap-1.5">
+                <Calendar size={14} className="text-volt-500" />
+                <span>Statement Period:</span>
+              </div>
+              <span className="sm:hidden font-mono text-[11px] text-volt-500 font-bold uppercase">
+                {timeframe}
+              </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-800 p-0.5 text-xs">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+              <div className="flex rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-800 p-0.5 text-xs overflow-x-auto no-scrollbar max-w-full">
                 {(["day", "month", "year", "lifetime", "custom"] as const).map((t) => (
                   <button
                     key={t}
                     onClick={() => setTimeframe(t)}
-                    className={`px-3 py-1 rounded capitalize font-medium transition-all ${
+                    className={`flex-1 sm:flex-initial px-2.5 sm:px-3 py-1 rounded capitalize font-medium transition-all whitespace-nowrap text-center ${
                       timeframe === t
                         ? "bg-volt-400 text-slate-950 font-bold shadow-sm"
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -425,7 +477,7 @@ export const ExpenseManagementPage: React.FC = () => {
                   type="date"
                   value={reportDate}
                   onChange={(e) => setReportDate(e.target.value)}
-                  className="text-xs py-1 px-2 w-36"
+                  className="text-xs py-1 px-2 w-full sm:w-36"
                 />
               )}
 
@@ -434,7 +486,7 @@ export const ExpenseManagementPage: React.FC = () => {
                   type="month"
                   value={reportMonth}
                   onChange={(e) => setReportMonth(e.target.value)}
-                  className="text-xs py-1 px-2 w-36"
+                  className="text-xs py-1 px-2 w-full sm:w-36"
                 />
               )}
 
@@ -445,25 +497,24 @@ export const ExpenseManagementPage: React.FC = () => {
                   max="2035"
                   value={reportYear}
                   onChange={(e) => setReportYear(e.target.value)}
-                  className="text-xs py-1 px-2 w-24"
+                  className="text-xs py-1 px-2 w-full sm:w-24"
                 />
               )}
 
               {timeframe === "custom" && (
-                <div className="flex items-center gap-1.5">
+                <div className="grid grid-cols-2 sm:flex items-center gap-1.5 w-full sm:w-auto">
                   <Input
                     type="date"
                     value={customStart}
                     onChange={(e) => setCustomStart(e.target.value)}
-                    className="text-xs py-1 px-2 w-32"
+                    className="text-xs py-1 px-2 w-full sm:w-32"
                     placeholder="Start"
                   />
-                  <span className="text-xs text-slate-400">to</span>
                   <Input
                     type="date"
                     value={customEnd}
                     onChange={(e) => setCustomEnd(e.target.value)}
-                    className="text-xs py-1 px-2 w-32"
+                    className="text-xs py-1 px-2 w-full sm:w-32"
                     placeholder="End"
                   />
                 </div>
@@ -514,9 +565,9 @@ export const ExpenseManagementPage: React.FC = () => {
 
               {/* Stock Alerts Notice Banner */}
               {summary && summary.outOfStockCount > 0 && (
-                <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <span className="p-2 rounded-lg bg-rose-500/20 text-rose-500">
+                    <span className="p-2 rounded-lg bg-rose-500/20 text-rose-500 shrink-0">
                       <AlertTriangle className="w-5 h-5" />
                     </span>
                     <div>
@@ -531,7 +582,7 @@ export const ExpenseManagementPage: React.FC = () => {
                   <Button
                     variant="primary"
                     onClick={() => setActiveTab("stocks")}
-                    className="text-xs py-1.5 px-3 bg-rose-500 hover:bg-rose-600 text-white border-none"
+                    className="w-full sm:w-auto justify-center text-xs py-1.5 px-3 bg-rose-500 hover:bg-rose-600 text-white border-none shrink-0"
                   >
                     View Stockout Items
                   </Button>
@@ -539,9 +590,9 @@ export const ExpenseManagementPage: React.FC = () => {
               )}
 
               {/* Charts Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* Cash Flow Inflow vs Outflow Trend */}
-                <div className="lg:col-span-2 card p-5 space-y-4">
+                <div className="lg:col-span-2 card p-3.5 sm:p-5 space-y-4 min-w-0">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide font-display">
@@ -552,7 +603,7 @@ export const ExpenseManagementPage: React.FC = () => {
                     <Badge variant="gray">{timeframe.toUpperCase()}</Badge>
                   </div>
 
-                  <div className="h-64 sm:h-72 w-full">
+                  <div className="h-60 sm:h-72 w-full">
                     {timeSeries.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-xs text-slate-400">
                         No financial transactions in this period
@@ -589,7 +640,7 @@ export const ExpenseManagementPage: React.FC = () => {
                 </div>
 
                 {/* Expense Distribution by Category */}
-                <div className="card p-5 space-y-4">
+                <div className="card p-3.5 sm:p-5 space-y-4 min-w-0">
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide font-display">
                       Expense Category Breakdown
@@ -597,7 +648,7 @@ export const ExpenseManagementPage: React.FC = () => {
                     <p className="text-xs text-slate-500">Distribution of operational & equipment spending</p>
                   </div>
 
-                  <div className="h-48 w-full flex items-center justify-center">
+                  <div className="h-44 sm:h-48 w-full flex items-center justify-center">
                     {categoryBreakdown.length === 0 ? (
                       <p className="text-xs text-slate-400">No expenses in this period</p>
                     ) : (
@@ -647,8 +698,8 @@ export const ExpenseManagementPage: React.FC = () => {
               </div>
 
               {/* Purchases vs Misc Split bar */}
-              <div className="card p-5 space-y-3">
-                <div className="flex items-center justify-between text-xs">
+              <div className="card p-3.5 sm:p-5 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 text-xs">
                   <span className="font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                     Spending Allocation Ratio
                   </span>
@@ -668,7 +719,7 @@ export const ExpenseManagementPage: React.FC = () => {
                     title={`Misc Expenses: ${reportData?.purchasesVsMisc.miscPercent || 0}%`}
                   />
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 text-[11px] text-slate-500">
                   <div className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-volt-400" />
                     <span>Inventory Purchases ({reportData?.purchasesVsMisc.purchasesPercent || 0}%)</span>
@@ -687,10 +738,10 @@ export const ExpenseManagementPage: React.FC = () => {
       {/* ─── TAB 2: PURCHASES & RESTOCKS ──────────────────────────────────────── */}
       {activeTab === "purchases" && (
         <div className="space-y-4">
-          <div className="bg-volt-400/10 dark:bg-volt-400/10 border border-volt-400/20 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="bg-volt-400/10 dark:bg-volt-400/10 border border-volt-400/20 rounded-xl p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-volt-500" /> Verified Purchases Convert Into Inventory Stocks
+                <CheckCircle2 className="w-4 h-4 text-volt-500 shrink-0" /> Verified Purchases Convert Into Inventory Stocks
               </h3>
               <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                 Purchases recorded with status "Pending" can be inspected and verified. Once verified, stock quantity is automatically incremented in your inventory.
@@ -702,22 +753,22 @@ export const ExpenseManagementPage: React.FC = () => {
                 setRestockItem(null);
                 setIsAddPurchaseOpen(true);
               }}
-              className="text-xs py-1.5 px-3 shrink-0"
+              className="w-full sm:w-auto justify-center text-xs py-1.5 px-3 shrink-0"
             >
               <Plus size={14} /> Add Purchase
             </Button>
           </div>
 
           {/* Filters & Search */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500">Status:</span>
-              <div className="flex rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-800 p-0.5 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-0.5 sm:pb-0">
+              <span className="text-xs text-slate-500 shrink-0">Status:</span>
+              <div className="flex rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-800 p-0.5 text-xs shrink-0">
                 {["all", "pending", "verified", "rejected"].map((s) => (
                   <button
                     key={s}
                     onClick={() => setPurchasesFilter(s)}
-                    className={`px-2.5 py-1 rounded capitalize font-medium ${
+                    className={`px-2.5 py-1 rounded capitalize font-medium whitespace-nowrap ${
                       purchasesFilter === s
                         ? "bg-volt-400 text-slate-950 font-bold"
                         : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
@@ -739,7 +790,7 @@ export const ExpenseManagementPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Purchases Table */}
+          {/* Purchases Content */}
           {isPurchasesLoading ? (
             <div className="py-12 flex justify-center">
               <Spinner size="lg" />
@@ -763,110 +814,221 @@ export const ExpenseManagementPage: React.FC = () => {
               }
             />
           ) : (
-            <div className="card overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-100 dark:bg-pitch-800 text-slate-600 dark:text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-white/5 font-semibold">
-                    <tr>
-                      <th className="px-4 py-3">Date</th>
-                      <th className="px-4 py-3">Item Name</th>
-                      <th className="px-4 py-3">Category</th>
-                      <th className="px-4 py-3 text-right">Quantity</th>
-                      <th className="px-4 py-3 text-right">Unit Price</th>
-                      <th className="px-4 py-3 text-right">Total Amount</th>
-                      <th className="px-4 py-3">Invoice / Bill No.</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                    {purchasesData.expenses.map((p) => {
-                      const isPending = p.verificationStatus === "pending";
-                      const isVerified = p.verificationStatus === "verified";
-                      return (
-                        <tr key={p.id || p._id} className="hover:bg-slate-50 dark:hover:bg-pitch-800/40 transition-colors">
-                          <td className="px-4 py-3 tabular-nums font-mono text-[11px] text-slate-500">
-                            {format(new Date(p.date), "dd MMM yyyy")}
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+            <>
+              {/* Mobile View: Cards */}
+              <div className="block lg:hidden space-y-3">
+                {purchasesData.expenses.map((p) => {
+                  const isPending = p.verificationStatus === "pending";
+                  const isVerified = p.verificationStatus === "verified";
+                  return (
+                    <div
+                      key={p.id || p._id}
+                      className="card p-3.5 space-y-2.5 transition-colors border border-slate-200 dark:border-white/5"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">
                             {p.itemName}
-                            {p.stockItemId && (
-                              <span className="block text-[10px] text-field-500 font-normal">
-                                Linked to Stock: {p.stockItemId.name}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-slate-500">{p.category}</td>
-                          <td className="px-4 py-3 text-right font-bold tabular-nums">
+                          </h4>
+                          {p.stockItemId && (
+                            <span className="text-[10px] text-field-500 font-normal block truncate">
+                              Linked to Stock: {p.stockItemId.name}
+                            </span>
+                          )}
+                          <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                            <span>{p.category}</span>
+                            <span>•</span>
+                            <span className="font-mono">{format(new Date(p.date), "dd MMM yyyy")}</span>
+                          </div>
+                        </div>
+                        <div className="shrink-0">
+                          {isVerified && (
+                            <Badge variant="green" className="text-[10px]">
+                              Verified
+                            </Badge>
+                          )}
+                          {isPending && (
+                            <Badge variant="yellow" className="text-[10px]">
+                              Pending
+                            </Badge>
+                          )}
+                          {p.verificationStatus === "rejected" && (
+                            <Badge variant="red" className="text-[10px]">
+                              Rejected
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 p-2 bg-slate-50 dark:bg-pitch-900/60 rounded-lg text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block uppercase">Qty</span>
+                          <span className="font-bold text-slate-900 dark:text-white tabular-nums">
                             {p.quantity} {p.unit}
-                          </td>
-                          <td className="px-4 py-3 text-right tabular-nums text-slate-500">
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 block uppercase">Unit Cost</span>
+                          <span className="text-slate-600 dark:text-slate-300 tabular-nums">
                             ₹{(p.unitPrice || 0).toLocaleString("en-IN")}
-                          </td>
-                          <td className="px-4 py-3 text-right font-extrabold text-volt-500 tabular-nums">
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 block uppercase">Total</span>
+                          <span className="font-extrabold text-volt-500 tabular-nums">
                             ₹{p.amount.toLocaleString("en-IN")}
-                          </td>
-                          <td className="px-4 py-3">
-                            {p.invoiceNumber ? (
-                              <span className="font-mono text-xs text-slate-800 dark:text-slate-200 block truncate max-w-[150px]">
-                                {p.invoiceNumber}
-                              </span>
-                            ) : (
-                              <span className="text-slate-400">—</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            {isVerified && (
-                              <Badge variant="green" className="text-[10px]">
-                                Verified (In Stock)
-                              </Badge>
-                            )}
-                            {isPending && (
-                              <Badge variant="yellow" className="text-[10px]">
-                                Pending Review
-                              </Badge>
-                            )}
-                            {p.verificationStatus === "rejected" && (
-                              <Badge variant="red" className="text-[10px]">
-                                Rejected
-                              </Badge>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right space-x-1 whitespace-nowrap">
-                            {isPending && (
-                              <>
-                                <Button
-                                  variant="primary"
-                                  onClick={() => handleVerify(p.id || p._id!)}
-                                  disabled={isVerifying}
-                                  className="text-[11px] py-1 px-2.5 bg-field-500 hover:bg-field-600 text-slate-950 font-bold border-none"
-                                >
-                                  Verify into Stock
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  onClick={() => handleReject(p.id || p._id!)}
-                                  className="text-[11px] py-1 px-2 text-rose-500 hover:bg-rose-500/10"
-                                >
-                                  Reject
-                                </Button>
-                              </>
-                            )}
-                            <button
-                              onClick={() => handleDeleteExpense(p.id || p._id!)}
-                              className="p-1 text-slate-400 hover:text-rose-500 transition-colors inline-block"
-                              title="Delete record"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          </span>
+                        </div>
+                      </div>
+
+                      {p.invoiceNumber && (
+                        <div className="text-[11px] text-slate-500 font-mono truncate">
+                          Bill / Invoice:{" "}
+                          <span className="text-slate-700 dark:text-slate-300 font-semibold">{p.invoiceNumber}</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-white/5 gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {isPending && (
+                            <>
+                              <Button
+                                variant="primary"
+                                onClick={() => handleVerify(p.id || p._id!)}
+                                disabled={isVerifying}
+                                className="text-[11px] py-1 px-2.5 bg-field-500 hover:bg-field-600 text-slate-950 font-bold border-none"
+                              >
+                                Verify into Stock
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                onClick={() => handleReject(p.id || p._id!)}
+                                className="text-[11px] py-1 px-2 text-rose-500 hover:bg-rose-500/10"
+                              >
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleDeleteExpense(p.id || p._id!)}
+                          className="p-1 text-slate-400 hover:text-rose-500 transition-colors shrink-0 ml-auto"
+                          title="Delete record"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
+
+              {/* Desktop / Tablet View: Table */}
+              <div className="card overflow-hidden hidden lg:block">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 dark:bg-pitch-800 text-slate-600 dark:text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-white/5 font-semibold">
+                      <tr>
+                        <th className="px-4 py-3">Date</th>
+                        <th className="px-4 py-3">Item Name</th>
+                        <th className="px-4 py-3">Category</th>
+                        <th className="px-4 py-3 text-right">Quantity</th>
+                        <th className="px-4 py-3 text-right">Unit Price</th>
+                        <th className="px-4 py-3 text-right">Total Amount</th>
+                        <th className="px-4 py-3">Invoice / Bill No.</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                      {purchasesData.expenses.map((p) => {
+                        const isPending = p.verificationStatus === "pending";
+                        const isVerified = p.verificationStatus === "verified";
+                        return (
+                          <tr key={p.id || p._id} className="hover:bg-slate-50 dark:hover:bg-pitch-800/40 transition-colors">
+                            <td className="px-4 py-3 tabular-nums font-mono text-[11px] text-slate-500">
+                              {format(new Date(p.date), "dd MMM yyyy")}
+                            </td>
+                            <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                              {p.itemName}
+                              {p.stockItemId && (
+                                <span className="block text-[10px] text-field-500 font-normal">
+                                  Linked to Stock: {p.stockItemId.name}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-slate-500">{p.category}</td>
+                            <td className="px-4 py-3 text-right font-bold tabular-nums">
+                              {p.quantity} {p.unit}
+                            </td>
+                            <td className="px-4 py-3 text-right tabular-nums text-slate-500">
+                              ₹{(p.unitPrice || 0).toLocaleString("en-IN")}
+                            </td>
+                            <td className="px-4 py-3 text-right font-extrabold text-volt-500 tabular-nums">
+                              ₹{p.amount.toLocaleString("en-IN")}
+                            </td>
+                            <td className="px-4 py-3">
+                              {p.invoiceNumber ? (
+                                <span className="font-mono text-xs text-slate-800 dark:text-slate-200 block truncate max-w-[150px]">
+                                  {p.invoiceNumber}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">—</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              {isVerified && (
+                                <Badge variant="green" className="text-[10px]">
+                                  Verified (In Stock)
+                                </Badge>
+                              )}
+                              {isPending && (
+                                <Badge variant="yellow" className="text-[10px]">
+                                  Pending Review
+                                </Badge>
+                              )}
+                              {p.verificationStatus === "rejected" && (
+                                <Badge variant="red" className="text-[10px]">
+                                  Rejected
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right space-x-1 whitespace-nowrap">
+                              {isPending && (
+                                <>
+                                  <Button
+                                    variant="primary"
+                                    onClick={() => handleVerify(p.id || p._id!)}
+                                    disabled={isVerifying}
+                                    className="text-[11px] py-1 px-2.5 bg-field-500 hover:bg-field-600 text-slate-950 font-bold border-none"
+                                  >
+                                    Verify into Stock
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    onClick={() => handleReject(p.id || p._id!)}
+                                    className="text-[11px] py-1 px-2 text-rose-500 hover:bg-rose-500/10"
+                                  >
+                                    Reject
+                                  </Button>
+                                </>
+                              )}
+                              <button
+                                onClick={() => handleDeleteExpense(p.id || p._id!)}
+                                className="p-1 text-slate-400 hover:text-rose-500 transition-colors inline-block"
+                                title="Delete record"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -875,43 +1037,43 @@ export const ExpenseManagementPage: React.FC = () => {
       {activeTab === "stocks" && (
         <div className="space-y-4">
           {/* Top Inventory Stat Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="card p-3">
-              <span className="text-xs text-slate-500">Total Items Cataloged</span>
-              <p className="text-xl font-bold text-slate-900 dark:text-white tabular-nums">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+            <div className="card p-2.5 sm:p-3">
+              <span className="text-[11px] sm:text-xs text-slate-500 block truncate">Total Items Cataloged</span>
+              <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tabular-nums">
                 {stocksData?.summary.totalItems || 0}
               </p>
             </div>
-            <div className="card p-3">
-              <span className="text-xs text-slate-500">In Stock</span>
-              <p className="text-xl font-bold text-field-500 tabular-nums">
+            <div className="card p-2.5 sm:p-3">
+              <span className="text-[11px] sm:text-xs text-slate-500 block truncate">In Stock</span>
+              <p className="text-lg sm:text-xl font-bold text-field-500 tabular-nums">
                 {stocksData?.summary.inStockCount || 0}
               </p>
             </div>
-            <div className="card p-3">
-              <span className="text-xs text-slate-500">Low Stock Alert</span>
-              <p className="text-xl font-bold text-amber-500 tabular-nums">
+            <div className="card p-2.5 sm:p-3">
+              <span className="text-[11px] sm:text-xs text-slate-500 block truncate">Low Stock Alert</span>
+              <p className="text-lg sm:text-xl font-bold text-amber-500 tabular-nums">
                 {stocksData?.summary.lowStockCount || 0}
               </p>
             </div>
-            <div className="card p-3">
-              <span className="text-xs text-slate-500">Total Valuation</span>
-              <p className="text-xl font-bold text-ice-400 tabular-nums">
+            <div className="card p-2.5 sm:p-3">
+              <span className="text-[11px] sm:text-xs text-slate-500 block truncate">Total Valuation</span>
+              <p className="text-lg sm:text-xl font-bold text-ice-400 tabular-nums truncate">
                 ₹{(stocksData?.summary.totalInventoryValuation || 0).toLocaleString("en-IN")}
               </p>
             </div>
           </div>
 
           {/* Filters & Actions Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500">Filter:</span>
-              <div className="flex rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-800 p-0.5 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-0.5 sm:pb-0">
+              <span className="text-xs text-slate-500 shrink-0">Filter:</span>
+              <div className="flex rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-800 p-0.5 text-xs shrink-0">
                 {["all", "in_stock", "low_stock", "out_of_stock"].map((st) => (
                   <button
                     key={st}
                     onClick={() => setStocksFilter(st)}
-                    className={`px-2.5 py-1 rounded capitalize font-medium ${
+                    className={`px-2.5 py-1 rounded capitalize font-medium whitespace-nowrap ${
                       stocksFilter === st
                         ? "bg-volt-400 text-slate-950 font-bold"
                         : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
@@ -923,7 +1085,7 @@ export const ExpenseManagementPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-2 w-full sm:w-auto">
               <Input
                 placeholder="Search inventory items..."
                 value={stocksSearch}
@@ -933,14 +1095,14 @@ export const ExpenseManagementPage: React.FC = () => {
               <Button
                 variant="primary"
                 onClick={() => setIsAddStockOpen(true)}
-                className="text-xs py-1.5 px-3 whitespace-nowrap"
+                className="w-full xs:w-auto justify-center text-xs py-1.5 px-3 whitespace-nowrap shrink-0"
               >
                 <Plus size={14} /> New Stock Item
               </Button>
             </div>
           </div>
 
-          {/* Stocks Table */}
+          {/* Stocks Content */}
           {isStocksLoading ? (
             <div className="py-12 flex justify-center">
               <Spinner size="lg" />
@@ -957,135 +1119,273 @@ export const ExpenseManagementPage: React.FC = () => {
               }
             />
           ) : (
-            <div className="card overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-100 dark:bg-pitch-800 text-slate-600 dark:text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-white/5 font-semibold">
-                    <tr>
-                      <th className="px-4 py-3">Item Details</th>
-                      <th className="px-4 py-3">Category</th>
-                      <th className="px-4 py-3 text-right">Available Stock</th>
-                      <th className="px-4 py-3 text-right">Est. Unit Price</th>
-                      <th className="px-4 py-3 text-right">Total Value</th>
-                      <th className="px-4 py-3">Storage Location</th>
-                      <th className="px-4 py-3">Stock Status</th>
-                      <th className="px-4 py-3 text-right">Inventory Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                    {stocksData.items.map((item) => {
-                      const isStockout = item.quantity <= 0;
-                      const isLowStock = item.status === "low_stock";
-                      return (
-                        <tr
-                          key={item.id || item._id}
-                          className={`hover:bg-slate-50 dark:hover:bg-pitch-800/40 transition-colors ${
-                            isStockout ? "bg-rose-500/5" : ""
-                          }`}
-                        >
-                          <td className="px-4 py-3">
-                            <span className="font-bold text-slate-900 dark:text-white block">
-                              {item.name}
-                            </span>
+            <>
+              {/* Mobile View: Cards */}
+              <div className="block lg:hidden space-y-3">
+                {stocksData.items.map((item) => {
+                  const isStockout = item.quantity <= 0;
+                  const isLowStock = item.status === "low_stock";
+                  return (
+                    <div
+                      key={item.id || item._id}
+                      className={`card p-3.5 space-y-3 border transition-colors ${
+                        isStockout
+                          ? "border-rose-500/30 bg-rose-500/5"
+                          : "border-slate-200 dark:border-white/5"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                            {item.name}
+                          </h4>
+                          <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                            <span>{item.category}</span>
                             {item.sku && (
-                              <span className="text-[10px] font-mono text-slate-400">
-                                SKU: {item.sku}
-                              </span>
+                              <>
+                                <span>•</span>
+                                <span className="font-mono">SKU: {item.sku}</span>
+                              </>
                             )}
-                          </td>
-                          <td className="px-4 py-3 text-slate-500">{item.category}</td>
-                          <td className="px-4 py-3 text-right">
-                            <span
-                              className={`text-sm font-extrabold tabular-nums ${
-                                isStockout
-                                  ? "text-rose-500"
-                                  : isLowStock
-                                  ? "text-amber-500"
-                                  : "text-field-500"
-                              }`}
-                            >
-                              {item.quantity} {item.unit}
-                            </span>
-                            <span className="block text-[10px] text-slate-400">
-                              Alert at ≤ {item.minQuantityAlert}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right tabular-nums text-slate-500">
-                            ₹{(item.unitPrice || 0).toLocaleString("en-IN")}
-                          </td>
-                          <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-white tabular-nums">
+                          </div>
+                        </div>
+                        <div className="shrink-0">
+                          {isStockout && (
+                            <Badge variant="red" className="text-[10px] font-bold">
+                              STOCKOUT
+                            </Badge>
+                          )}
+                          {isLowStock && (
+                            <Badge variant="yellow" className="text-[10px]">
+                              Low Stock
+                            </Badge>
+                          )}
+                          {item.status === "in_stock" && (
+                            <Badge variant="green" className="text-[10px]">
+                              In Stock
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-50 dark:bg-pitch-900/60 rounded-lg text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block uppercase">Available Stock</span>
+                          <span
+                            className={`text-base font-extrabold tabular-nums ${
+                              isStockout
+                                ? "text-rose-500"
+                                : isLowStock
+                                ? "text-amber-500"
+                                : "text-field-500"
+                            }`}
+                          >
+                            {item.quantity} {item.unit}
+                          </span>
+                          <span className="block text-[10px] text-slate-400">
+                            Alert at ≤ {item.minQuantityAlert}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 block uppercase">Valuation</span>
+                          <span className="text-base font-bold text-slate-900 dark:text-white tabular-nums block">
                             ₹{(item.totalValue || 0).toLocaleString("en-IN")}
-                          </td>
-                          <td className="px-4 py-3 text-slate-500">{item.location || "General Storage"}</td>
-                          <td className="px-4 py-3">
-                            {isStockout && (
-                              <Badge variant="red" className="text-[10px] font-bold">
-                                STOCKOUT
-                              </Badge>
-                            )}
-                            {isLowStock && (
-                              <Badge variant="yellow" className="text-[10px]">
-                                Low Stock
-                              </Badge>
-                            )}
-                            {item.status === "in_stock" && (
-                              <Badge variant="green" className="text-[10px]">
-                                In Stock
-                              </Badge>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right space-x-1.5 whitespace-nowrap">
-                            {/* Key requirement: Restock when out of stock by adding a purchase */}
-                            <Button
-                              variant="primary"
-                              onClick={() => handleOpenRestock(item)}
-                              className={`text-[11px] py-1 px-2.5 font-bold ${
-                                isStockout
-                                  ? "bg-rose-500 hover:bg-rose-600 text-white border-none animate-pulse"
-                                  : isLowStock
-                                  ? "bg-amber-500 hover:bg-amber-600 text-slate-950 border-none"
-                                  : "bg-volt-400 text-slate-950"
-                              }`}
-                              title="Add purchase to restock this item"
-                            >
-                              + Restock via Purchase
-                            </Button>
+                          </span>
+                          <span className="text-[10px] text-slate-500 tabular-nums">
+                            @ ₹{(item.unitPrice || 0).toLocaleString("en-IN")}/{item.unit}
+                          </span>
+                        </div>
+                      </div>
 
-                            <Button
-                              variant="secondary"
-                              onClick={() => setIssueStockItem(item)}
-                              disabled={isStockout}
-                              className="text-[11px] py-1 px-2"
-                              title="Hand out or consume stock"
-                            >
-                              Issue
-                            </Button>
+                      <div className="flex items-center justify-between text-[11px] text-slate-500">
+                        <span>Location:</span>
+                        <span className="font-medium text-slate-700 dark:text-slate-300">
+                          {item.location || "General Storage"}
+                        </span>
+                      </div>
 
-                            <Button
-                              variant="ghost"
-                              onClick={() => setAdjustStockItem(item)}
-                              className="text-[11px] py-1 px-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                              title="Audit count adjustment"
-                            >
-                              <SlidersHorizontal size={13} />
-                            </Button>
+                      <div className="flex flex-wrap items-center justify-between gap-1.5 pt-2 border-t border-slate-100 dark:border-white/5">
+                        <Button
+                          variant="primary"
+                          onClick={() => handleOpenRestock(item)}
+                          className={`text-xs py-1 px-2.5 font-bold flex-1 sm:flex-initial justify-center ${
+                            isStockout
+                              ? "bg-rose-500 hover:bg-rose-600 text-white border-none animate-pulse"
+                              : isLowStock
+                              ? "bg-amber-500 hover:bg-amber-600 text-slate-950 border-none"
+                              : "bg-volt-400 text-slate-950"
+                          }`}
+                          title="Add purchase to restock this item"
+                        >
+                          + Restock via Purchase
+                        </Button>
 
-                            <Button
-                              variant="ghost"
-                              onClick={() => setHistoryStockItemId(item.id || item._id!)}
-                              className="text-[11px] py-1 px-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                              title="View stock history trail"
-                            >
-                              <History size={13} />
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="secondary"
+                            onClick={() => setIssueStockItem(item)}
+                            disabled={isStockout}
+                            className="text-xs py-1 px-2.5"
+                            title="Hand out or consume stock"
+                          >
+                            Issue
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            onClick={() => setAdjustStockItem(item)}
+                            className="text-xs py-1 px-2 text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                            title="Audit count adjustment"
+                          >
+                            <SlidersHorizontal size={13} />
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            onClick={() => setHistoryStockItemId(item.id || item._id!)}
+                            className="text-xs py-1 px-2 text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                            title="View stock history trail"
+                          >
+                            <History size={13} />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
+
+              {/* Desktop / Tablet View: Table */}
+              <div className="card overflow-hidden hidden lg:block">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 dark:bg-pitch-800 text-slate-600 dark:text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-white/5 font-semibold">
+                      <tr>
+                        <th className="px-4 py-3">Item Details</th>
+                        <th className="px-4 py-3">Category</th>
+                        <th className="px-4 py-3 text-right">Available Stock</th>
+                        <th className="px-4 py-3 text-right">Est. Unit Price</th>
+                        <th className="px-4 py-3 text-right">Total Value</th>
+                        <th className="px-4 py-3">Storage Location</th>
+                        <th className="px-4 py-3">Stock Status</th>
+                        <th className="px-4 py-3 text-right">Inventory Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                      {stocksData.items.map((item) => {
+                        const isStockout = item.quantity <= 0;
+                        const isLowStock = item.status === "low_stock";
+                        return (
+                          <tr
+                            key={item.id || item._id}
+                            className={`hover:bg-slate-50 dark:hover:bg-pitch-800/40 transition-colors ${
+                              isStockout ? "bg-rose-500/5" : ""
+                            }`}
+                          >
+                            <td className="px-4 py-3">
+                              <span className="font-bold text-slate-900 dark:text-white block">
+                                {item.name}
+                              </span>
+                              {item.sku && (
+                                <span className="text-[10px] font-mono text-slate-400">
+                                  SKU: {item.sku}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-slate-500">{item.category}</td>
+                            <td className="px-4 py-3 text-right">
+                              <span
+                                className={`text-sm font-extrabold tabular-nums ${
+                                  isStockout
+                                    ? "text-rose-500"
+                                    : isLowStock
+                                    ? "text-amber-500"
+                                    : "text-field-500"
+                                }`}
+                              >
+                                {item.quantity} {item.unit}
+                              </span>
+                              <span className="block text-[10px] text-slate-400">
+                                Alert at ≤ {item.minQuantityAlert}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right tabular-nums text-slate-500">
+                              ₹{(item.unitPrice || 0).toLocaleString("en-IN")}
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-white tabular-nums">
+                              ₹{(item.totalValue || 0).toLocaleString("en-IN")}
+                            </td>
+                            <td className="px-4 py-3 text-slate-500">{item.location || "General Storage"}</td>
+                            <td className="px-4 py-3">
+                              {isStockout && (
+                                <Badge variant="red" className="text-[10px] font-bold">
+                                  STOCKOUT
+                                </Badge>
+                              )}
+                              {isLowStock && (
+                                <Badge variant="yellow" className="text-[10px]">
+                                  Low Stock
+                                </Badge>
+                              )}
+                              {item.status === "in_stock" && (
+                                <Badge variant="green" className="text-[10px]">
+                                  In Stock
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right space-x-1.5 whitespace-nowrap">
+                              {/* Key requirement: Restock when out of stock by adding a purchase */}
+                              <Button
+                                variant="primary"
+                                onClick={() => handleOpenRestock(item)}
+                                className={`text-[11px] py-1 px-2.5 font-bold ${
+                                  isStockout
+                                    ? "bg-rose-500 hover:bg-rose-600 text-white border-none animate-pulse"
+                                    : isLowStock
+                                    ? "bg-amber-500 hover:bg-amber-600 text-slate-950 border-none"
+                                    : "bg-volt-400 text-slate-950"
+                                }`}
+                                title="Add purchase to restock this item"
+                              >
+                                + Restock via Purchase
+                              </Button>
+
+                              <Button
+                                variant="secondary"
+                                onClick={() => setIssueStockItem(item)}
+                                disabled={isStockout}
+                                className="text-[11px] py-1 px-2"
+                                title="Hand out or consume stock"
+                              >
+                                Issue
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                onClick={() => setAdjustStockItem(item)}
+                                className="text-[11px] py-1 px-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                title="Audit count adjustment"
+                              >
+                                <SlidersHorizontal size={13} />
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                onClick={() => setHistoryStockItemId(item.id || item._id!)}
+                                className="text-[11px] py-1 px-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                title="View stock history trail"
+                              >
+                                <History size={13} />
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -1093,10 +1393,10 @@ export const ExpenseManagementPage: React.FC = () => {
       {/* ─── TAB 4: MISCELLANEOUS EXPENSES (NO STOCKS) ─────────────────────────── */}
       {activeTab === "misc" && (
         <div className="space-y-4">
-          <div className="bg-amber-400/10 dark:bg-amber-400/10 border border-amber-400/20 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="bg-amber-400/10 dark:bg-amber-400/10 border border-amber-400/20 rounded-xl p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Receipt className="w-4 h-4 text-amber-500" /> Operational Miscellaneous Expenses
+                <Receipt className="w-4 h-4 text-amber-500 shrink-0" /> Operational Miscellaneous Expenses
               </h3>
               <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                 Record routine running costs like pitch grass maintenance, electric utility bills, referee refreshments, bus travel, and marketing. These do NOT produce physical stocks.
@@ -1105,19 +1405,19 @@ export const ExpenseManagementPage: React.FC = () => {
             <Button
               variant="primary"
               onClick={() => setIsAddMiscOpen(true)}
-              className="text-xs py-1.5 px-3 shrink-0"
+              className="w-full sm:w-auto justify-center text-xs py-1.5 px-3 shrink-0"
             >
               <Plus size={14} /> Add Misc Expense
             </Button>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end w-full">
             <div className="w-full sm:w-64">
               <Input
                 placeholder="Search expense description, vendor..."
                 value={miscSearch}
                 onChange={(e) => setMiscSearch(e.target.value)}
-                className="text-xs py-1.5"
+                className="text-xs py-1.5 w-full"
               />
             </div>
           </div>
@@ -1138,59 +1438,117 @@ export const ExpenseManagementPage: React.FC = () => {
               }
             />
           ) : (
-            <div className="card overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-100 dark:bg-pitch-800 text-slate-600 dark:text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-white/5 font-semibold">
-                    <tr>
-                      <th className="px-4 py-3">Date</th>
-                      <th className="px-4 py-3">Expense Title / Description</th>
-                      <th className="px-4 py-3">Category</th>
-                      <th className="px-4 py-3 text-right">Amount (₹)</th>
-                      <th className="px-4 py-3">Paid To / Vendor</th>
-                      <th className="px-4 py-3">Payment Mode</th>
-                      <th className="px-4 py-3">Reference / Bill</th>
-                      <th className="px-4 py-3">Logged By</th>
-                      <th className="px-4 py-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                    {miscData.expenses.map((exp) => (
-                      <tr key={exp.id || exp._id} className="hover:bg-slate-50 dark:hover:bg-pitch-800/40 transition-colors">
-                        <td className="px-4 py-3 tabular-nums font-mono text-[11px] text-slate-500">
-                          {format(new Date(exp.date), "dd MMM yyyy")}
-                        </td>
-                        <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+            <>
+              {/* Mobile View: Cards */}
+              <div className="block lg:hidden space-y-3">
+                {miscData.expenses.map((exp) => (
+                  <div
+                    key={exp.id || exp._id}
+                    className="card p-3.5 space-y-2.5 border border-slate-200 dark:border-white/5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">
                           {exp.title}
-                          {exp.notes && (
-                            <span className="block text-[11px] text-slate-400 font-normal truncate max-w-xs">
-                              {exp.notes}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-slate-500">{exp.category}</td>
-                        <td className="px-4 py-3 text-right font-extrabold text-rose-500 tabular-nums">
+                        </h4>
+                        {exp.notes && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
+                            {exp.notes}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-1">
+                          <span className="font-medium text-slate-700 dark:text-slate-300">{exp.category}</span>
+                          <span>•</span>
+                          <span className="font-mono">{format(new Date(exp.date), "dd MMM yyyy")}</span>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-base font-extrabold text-rose-500 tabular-nums block">
                           ₹{exp.amount.toLocaleString("en-IN")}
-                        </td>
-                        <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{exp.vendor || "—"}</td>
-                        <td className="px-4 py-3 capitalize text-slate-500">{exp.paymentMethod.replace("_", " ")}</td>
-                        <td className="px-4 py-3 font-mono text-[11px] text-slate-400">{exp.invoiceNumber || "—"}</td>
-                        <td className="px-4 py-3 text-[11px] text-slate-400">{exp.createdByName}</td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => handleDeleteExpense(exp.id || exp._id!)}
-                            className="p-1 text-slate-400 hover:text-rose-500 transition-colors inline-block"
-                            title="Delete expense"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </span>
+                        <span className="text-[10px] text-slate-400 capitalize block">
+                          {exp.paymentMethod.replace("_", " ")}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between text-xs pt-2 border-t border-slate-100 dark:border-white/5 gap-1.5 text-slate-500">
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <span>Vendor: <strong className="text-slate-700 dark:text-slate-300">{exp.vendor || "—"}</strong></span>
+                        {exp.invoiceNumber && (
+                          <span>| Bill: <span className="font-mono text-slate-600 dark:text-slate-300">{exp.invoiceNumber}</span></span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 ml-auto">
+                        <span className="text-[10px] text-slate-400">By {exp.createdByName}</span>
+                        <button
+                          onClick={() => handleDeleteExpense(exp.id || exp._id!)}
+                          className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
+                          title="Delete expense"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+
+              {/* Desktop / Tablet View: Table */}
+              <div className="card overflow-hidden hidden lg:block">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 dark:bg-pitch-800 text-slate-600 dark:text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-white/5 font-semibold">
+                      <tr>
+                        <th className="px-4 py-3">Date</th>
+                        <th className="px-4 py-3">Expense Title / Description</th>
+                        <th className="px-4 py-3">Category</th>
+                        <th className="px-4 py-3 text-right">Amount (₹)</th>
+                        <th className="px-4 py-3">Paid To / Vendor</th>
+                        <th className="px-4 py-3">Payment Mode</th>
+                        <th className="px-4 py-3">Reference / Bill</th>
+                        <th className="px-4 py-3">Logged By</th>
+                        <th className="px-4 py-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                      {miscData.expenses.map((exp) => (
+                        <tr key={exp.id || exp._id} className="hover:bg-slate-50 dark:hover:bg-pitch-800/40 transition-colors">
+                          <td className="px-4 py-3 tabular-nums font-mono text-[11px] text-slate-500">
+                            {format(new Date(exp.date), "dd MMM yyyy")}
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                            {exp.title}
+                            {exp.notes && (
+                              <span className="block text-[11px] text-slate-400 font-normal truncate max-w-xs">
+                                {exp.notes}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-slate-500">{exp.category}</td>
+                          <td className="px-4 py-3 text-right font-extrabold text-rose-500 tabular-nums">
+                            ₹{exp.amount.toLocaleString("en-IN")}
+                          </td>
+                          <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{exp.vendor || "—"}</td>
+                          <td className="px-4 py-3 capitalize text-slate-500">{exp.paymentMethod.replace("_", " ")}</td>
+                          <td className="px-4 py-3 font-mono text-[11px] text-slate-400">{exp.invoiceNumber || "—"}</td>
+                          <td className="px-4 py-3 text-[11px] text-slate-400">{exp.createdByName}</td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={() => handleDeleteExpense(exp.id || exp._id!)}
+                              className="p-1 text-slate-400 hover:text-rose-500 transition-colors inline-block"
+                              title="Delete expense"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -1198,7 +1556,7 @@ export const ExpenseManagementPage: React.FC = () => {
       {/* ─── TAB 5: INCOMING FUNDS (FEES & OTHER INCOMES) ───────────────────────── */}
       {activeTab === "inflows" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <StatCard
               label="Total Funds Inflow"
               value={`₹${(summary?.totalInflow || 0).toLocaleString("en-IN")}`}
@@ -1223,8 +1581,8 @@ export const ExpenseManagementPage: React.FC = () => {
           </div>
 
           {/* Additional Incomes Section */}
-          <div className="card p-5 space-y-3">
-            <div className="flex items-center justify-between">
+          <div className="card p-3.5 sm:p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider font-display">
                   Additional External Incomes
@@ -1234,7 +1592,7 @@ export const ExpenseManagementPage: React.FC = () => {
               <Button
                 variant="primary"
                 onClick={() => setIsRecordIncomeOpen(true)}
-                className="text-xs py-1.5 px-3"
+                className="w-full sm:w-auto justify-center text-xs py-1.5 px-3 shrink-0"
               >
                 <Plus size={14} /> Record Income
               </Button>
@@ -1245,52 +1603,86 @@ export const ExpenseManagementPage: React.FC = () => {
                 No external incomes logged yet. Student fee collections are displayed below.
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-100 dark:bg-pitch-800 text-slate-600 dark:text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-white/5 font-semibold">
-                    <tr>
-                      <th className="px-4 py-2.5">Date</th>
-                      <th className="px-4 py-2.5">Source / Purpose</th>
-                      <th className="px-4 py-2.5">Category</th>
-                      <th className="px-4 py-2.5 text-right">Amount (₹)</th>
-                      <th className="px-4 py-2.5">Payer / Partner</th>
-                      <th className="px-4 py-2.5">Payment Mode</th>
-                      <th className="px-4 py-2.5">Ref No</th>
-                      <th className="px-4 py-2.5 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                    {incomesData.map((inc) => (
-                      <tr key={inc.id || inc._id} className="hover:bg-slate-50 dark:hover:bg-pitch-800/40">
-                        <td className="px-4 py-2.5 tabular-nums text-slate-500">
-                          {format(new Date(inc.date), "dd MMM yyyy")}
-                        </td>
-                        <td className="px-4 py-2.5 font-semibold text-slate-900 dark:text-white">{inc.source}</td>
-                        <td className="px-4 py-2.5 text-slate-500">{inc.category}</td>
-                        <td className="px-4 py-2.5 text-right font-extrabold text-field-500 tabular-nums">
+              <>
+                {/* Mobile View: Cards */}
+                <div className="block lg:hidden space-y-2.5">
+                  {incomesData.map((inc) => (
+                    <div
+                      key={inc.id || inc._id}
+                      className="p-3 bg-slate-50 dark:bg-pitch-900/60 rounded-xl border border-slate-200 dark:border-white/5 space-y-2 text-xs"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="font-bold text-slate-900 dark:text-white block text-sm">{inc.source}</span>
+                          <span className="text-[11px] text-slate-500">{inc.category} • {format(new Date(inc.date), "dd MMM yyyy")}</span>
+                        </div>
+                        <span className="text-base font-extrabold text-field-500 tabular-nums shrink-0">
                           ₹{inc.amount.toLocaleString("en-IN")}
-                        </td>
-                        <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">{inc.payerName || "—"}</td>
-                        <td className="px-4 py-2.5 capitalize text-slate-500">{inc.paymentMethod}</td>
-                        <td className="px-4 py-2.5 font-mono text-[11px] text-slate-400">{inc.referenceNumber || "—"}</td>
-                        <td className="px-4 py-2.5 text-right">
-                          <button
-                            onClick={() => handleDeleteIncome(inc.id || inc._id!)}
-                            className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </td>
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-500 pt-1.5 border-t border-slate-200 dark:border-white/5 gap-1">
+                        <div>
+                          Payer: <strong className="text-slate-700 dark:text-slate-300">{inc.payerName || "—"}</strong> ({inc.paymentMethod})
+                        </div>
+                        <button
+                          onClick={() => handleDeleteIncome(inc.id || inc._id!)}
+                          className="p-1 text-slate-400 hover:text-rose-500 transition-colors ml-auto"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop View: Table */}
+                <div className="overflow-x-auto hidden lg:block">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 dark:bg-pitch-800 text-slate-600 dark:text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-white/5 font-semibold">
+                      <tr>
+                        <th className="px-4 py-2.5">Date</th>
+                        <th className="px-4 py-2.5">Source / Purpose</th>
+                        <th className="px-4 py-2.5">Category</th>
+                        <th className="px-4 py-2.5 text-right">Amount (₹)</th>
+                        <th className="px-4 py-2.5">Payer / Partner</th>
+                        <th className="px-4 py-2.5">Payment Mode</th>
+                        <th className="px-4 py-2.5">Ref No</th>
+                        <th className="px-4 py-2.5 text-right">Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                      {incomesData.map((inc) => (
+                        <tr key={inc.id || inc._id} className="hover:bg-slate-50 dark:hover:bg-pitch-800/40">
+                          <td className="px-4 py-2.5 tabular-nums text-slate-500">
+                            {format(new Date(inc.date), "dd MMM yyyy")}
+                          </td>
+                          <td className="px-4 py-2.5 font-semibold text-slate-900 dark:text-white">{inc.source}</td>
+                          <td className="px-4 py-2.5 text-slate-500">{inc.category}</td>
+                          <td className="px-4 py-2.5 text-right font-extrabold text-field-500 tabular-nums">
+                            ₹{inc.amount.toLocaleString("en-IN")}
+                          </td>
+                          <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">{inc.payerName || "—"}</td>
+                          <td className="px-4 py-2.5 capitalize text-slate-500">{inc.paymentMethod}</td>
+                          <td className="px-4 py-2.5 font-mono text-[11px] text-slate-400">{inc.referenceNumber || "—"}</td>
+                          <td className="px-4 py-2.5 text-right">
+                            <button
+                              onClick={() => handleDeleteIncome(inc.id || inc._id!)}
+                              className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
 
           {/* Paid Student Fees Inflow Ledger */}
-          <div className="card p-5 space-y-3">
+          <div className="card p-3.5 sm:p-5 space-y-3">
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider font-display">
                 Student Fee Collections in Selected Period ({reportData?.feeInflows.length || 0} Transactions)
@@ -1303,38 +1695,67 @@ export const ExpenseManagementPage: React.FC = () => {
                 No fee payment installments collected in this timeframe.
               </p>
             ) : (
-              <div className="overflow-x-auto max-h-96 custom-scrollbar">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-100 dark:bg-pitch-800 text-slate-600 dark:text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-white/5 font-semibold sticky top-0 z-10">
-                    <tr>
-                      <th className="px-4 py-2.5">Date Paid</th>
-                      <th className="px-4 py-2.5">Student Name</th>
-                      <th className="px-4 py-2.5">Fee Type</th>
-                      <th className="px-4 py-2.5">Installment</th>
-                      <th className="px-4 py-2.5 text-right">Amount Paid</th>
-                      <th className="px-4 py-2.5">Payment Method</th>
-                      <th className="px-4 py-2.5">Transaction ID</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                    {reportData.feeInflows.map((f, idx) => (
-                      <tr key={f.id || idx} className="hover:bg-slate-50 dark:hover:bg-pitch-800/40">
-                        <td className="px-4 py-2.5 tabular-nums text-slate-500 font-mono text-[11px]">
-                          {format(new Date(f.paidAt), "dd MMM yyyy")}
-                        </td>
-                        <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-white">{f.studentName}</td>
-                        <td className="px-4 py-2.5 text-slate-500 capitalize">{f.feeType.replace("_", " ")}</td>
-                        <td className="px-4 py-2.5 text-slate-500">Installment #{f.installmentNumber}</td>
-                        <td className="px-4 py-2.5 text-right font-extrabold text-field-500 tabular-nums">
+              <>
+                {/* Mobile View: Cards */}
+                <div className="block lg:hidden space-y-2.5">
+                  {reportData.feeInflows.map((f, idx) => (
+                    <div
+                      key={f.id || idx}
+                      className="p-3 bg-slate-50 dark:bg-pitch-900/60 rounded-xl border border-slate-200 dark:border-white/5 space-y-1.5 text-xs"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="font-bold text-slate-900 dark:text-white text-sm block">{f.studentName}</span>
+                          <span className="text-[11px] text-slate-500 capitalize">
+                            {f.feeType.replace("_", " ")} • Installment #{f.installmentNumber}
+                          </span>
+                        </div>
+                        <span className="text-base font-extrabold text-field-500 tabular-nums shrink-0">
                           ₹{f.amount.toLocaleString("en-IN")}
-                        </td>
-                        <td className="px-4 py-2.5 capitalize text-slate-500">{f.paymentMethod || "Cash"}</td>
-                        <td className="px-4 py-2.5 font-mono text-[11px] text-slate-400">{f.transactionId || "—"}</td>
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200 dark:border-white/5">
+                        <span>Paid: {format(new Date(f.paidAt), "dd MMM yyyy")}</span>
+                        <span>{f.paymentMethod || "Cash"}{f.transactionId ? ` • Ref: ${f.transactionId}` : ""}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop View: Table */}
+                <div className="overflow-x-auto max-h-96 custom-scrollbar hidden lg:block">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 dark:bg-pitch-800 text-slate-600 dark:text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-white/5 font-semibold sticky top-0 z-10">
+                      <tr>
+                        <th className="px-4 py-2.5">Date Paid</th>
+                        <th className="px-4 py-2.5">Student Name</th>
+                        <th className="px-4 py-2.5">Fee Type</th>
+                        <th className="px-4 py-2.5">Installment</th>
+                        <th className="px-4 py-2.5 text-right">Amount Paid</th>
+                        <th className="px-4 py-2.5">Payment Method</th>
+                        <th className="px-4 py-2.5">Transaction ID</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                      {reportData.feeInflows.map((f, idx) => (
+                        <tr key={f.id || idx} className="hover:bg-slate-50 dark:hover:bg-pitch-800/40">
+                          <td className="px-4 py-2.5 tabular-nums text-slate-500 font-mono text-[11px]">
+                            {format(new Date(f.paidAt), "dd MMM yyyy")}
+                          </td>
+                          <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-white">{f.studentName}</td>
+                          <td className="px-4 py-2.5 text-slate-500 capitalize">{f.feeType.replace("_", " ")}</td>
+                          <td className="px-4 py-2.5 text-slate-500">Installment #{f.installmentNumber}</td>
+                          <td className="px-4 py-2.5 text-right font-extrabold text-field-500 tabular-nums">
+                            ₹{f.amount.toLocaleString("en-IN")}
+                          </td>
+                          <td className="px-4 py-2.5 capitalize text-slate-500">{f.paymentMethod || "Cash"}</td>
+                          <td className="px-4 py-2.5 font-mono text-[11px] text-slate-400">{f.transactionId || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -1343,7 +1764,7 @@ export const ExpenseManagementPage: React.FC = () => {
       {/* ─── TAB 6: ADVANCED AUDIT REPORTS & STATEMENTS ───────────────────────── */}
       {activeTab === "reports" && (
         <div className="space-y-6">
-          <div className="card p-5 space-y-4">
+          <div className="card p-3.5 sm:p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-white/5">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white uppercase tracking-wide font-display">
@@ -1354,26 +1775,26 @@ export const ExpenseManagementPage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
                 <Button
                   variant="secondary"
                   onClick={() => setIsPrintReportOpen(true)}
-                  className="text-xs py-2 px-3 flex items-center gap-1.5"
+                  className="w-full sm:w-auto justify-center text-xs py-2 px-3 flex items-center gap-1.5"
                 >
                   <Printer size={14} /> Print View
                 </Button>
                 <Button
                   variant="primary"
                   onClick={() => setIsPrintReportOpen(true)}
-                  className="text-xs py-2 px-3 flex items-center gap-1.5 shadow-md"
+                  className="w-full sm:w-auto justify-center text-xs py-2 px-3 flex items-center gap-1.5 shadow-md"
                 >
-                  <Download size={14} /> Export & Download CSV
+                  <Download size={14} /> Export CSV
                 </Button>
               </div>
             </div>
 
             {/* Timeframe selector controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 dark:bg-pitch-900/40 p-3 rounded-lg border border-slate-200 dark:border-white/5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-50 dark:bg-pitch-900/40 p-3 rounded-lg border border-slate-200 dark:border-white/5">
               <div>
                 <Select
                   label="Report Timeframe"
@@ -1441,53 +1862,55 @@ export const ExpenseManagementPage: React.FC = () => {
             {/* Quick Summary Statement Table */}
             {summary && (
               <div className="border border-slate-200 dark:border-white/10 rounded-lg overflow-hidden">
-                <table className="w-full text-left text-xs divide-y divide-slate-200 dark:divide-white/10">
-                  <thead className="bg-slate-100 dark:bg-pitch-800 text-slate-700 dark:text-slate-300 font-bold">
-                    <tr>
-                      <th className="px-4 py-2.5">Financial Metric</th>
-                      <th className="px-4 py-2.5 text-right">Amount (INR)</th>
-                      <th className="px-4 py-2.5">Accounting Significance</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                    <tr>
-                      <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-white">Total Gross Inflows</td>
-                      <td className="px-4 py-2.5 text-right font-extrabold text-field-500 tabular-nums">
-                        ₹{summary.totalInflow.toLocaleString("en-IN")}
-                      </td>
-                      <td className="px-4 py-2.5 text-slate-500">Student fees collected + sponsorships & external revenues</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-white">Total Outflows (Expenses)</td>
-                      <td className="px-4 py-2.5 text-right font-extrabold text-rose-500 tabular-nums">
-                        ₹{summary.totalOutflow.toLocaleString("en-IN")}
-                      </td>
-                      <td className="px-4 py-2.5 text-slate-500">Verified purchases + pitch maintenance + operational bills</td>
-                    </tr>
-                    <tr className="bg-slate-50 dark:bg-pitch-900/50">
-                      <td className="px-4 py-2.5 font-black text-slate-900 dark:text-white uppercase font-display">
-                        Net Operating Balance
-                      </td>
-                      <td
-                        className={`px-4 py-2.5 text-right font-black text-base tabular-nums ${
-                          summary.netBalance >= 0 ? "text-field-500" : "text-rose-500"
-                        }`}
-                      >
-                        {summary.netBalance >= 0 ? "+" : ""}₹{summary.netBalance.toLocaleString("en-IN")}
-                      </td>
-                      <td className="px-4 py-2.5 font-bold text-volt-500">
-                        {summary.profitMargin}% Operating Margin ({summary.netBalance >= 0 ? "Surplus" : "Deficit"})
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-white">Active Stock Assets Valuation</td>
-                      <td className="px-4 py-2.5 text-right font-extrabold text-sky-400 tabular-nums">
-                        ₹{summary.totalInventoryValue.toLocaleString("en-IN")}
-                      </td>
-                      <td className="px-4 py-2.5 text-slate-500">Current market valuation of all physical equipment in inventory</td>
-                    </tr>
-                  </tbody>
-                </table>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs divide-y divide-slate-200 dark:divide-white/10">
+                    <thead className="bg-slate-100 dark:bg-pitch-800 text-slate-700 dark:text-slate-300 font-bold">
+                      <tr>
+                        <th className="px-4 py-2.5">Financial Metric</th>
+                        <th className="px-4 py-2.5 text-right">Amount (INR)</th>
+                        <th className="px-4 py-2.5">Accounting Significance</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                      <tr>
+                        <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-white">Total Gross Inflows</td>
+                        <td className="px-4 py-2.5 text-right font-extrabold text-field-500 tabular-nums">
+                          ₹{summary.totalInflow.toLocaleString("en-IN")}
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-500">Student fees collected + sponsorships & external revenues</td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-white">Total Outflows (Expenses)</td>
+                        <td className="px-4 py-2.5 text-right font-extrabold text-rose-500 tabular-nums">
+                          ₹{summary.totalOutflow.toLocaleString("en-IN")}
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-500">Verified purchases + pitch maintenance + operational bills</td>
+                      </tr>
+                      <tr className="bg-slate-50 dark:bg-pitch-900/50">
+                        <td className="px-4 py-2.5 font-black text-slate-900 dark:text-white uppercase font-display">
+                          Net Operating Balance
+                        </td>
+                        <td
+                          className={`px-4 py-2.5 text-right font-black text-base tabular-nums ${
+                            summary.netBalance >= 0 ? "text-field-500" : "text-rose-500"
+                          }`}
+                        >
+                          {summary.netBalance >= 0 ? "+" : ""}₹{summary.netBalance.toLocaleString("en-IN")}
+                        </td>
+                        <td className="px-4 py-2.5 font-bold text-volt-500">
+                          {summary.profitMargin}% Operating Margin ({summary.netBalance >= 0 ? "Surplus" : "Deficit"})
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-white">Active Stock Assets Valuation</td>
+                        <td className="px-4 py-2.5 text-right font-extrabold text-sky-400 tabular-nums">
+                          ₹{summary.totalInventoryValue.toLocaleString("en-IN")}
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-500">Current market valuation of all physical equipment in inventory</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
