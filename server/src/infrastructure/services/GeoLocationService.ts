@@ -1,5 +1,6 @@
 // src/infrastructure/services/GeoLocationService.ts
 import { Request } from 'express';
+import geoip from 'geoip-lite';
 import { AcademyModel } from '../database/models/Academy.model';
 import { GeoRestrictionError, UnauthorizedError } from '../../shared/errors/AppError';
 
@@ -158,7 +159,17 @@ class GeoLocationService {
       return 'DEV_LOCAL';
     }
 
-    // If external public IP, we can map known test ranges or fallback to IN in dev
+    // 4. Resolve country via geoip-lite lookup for public IPs
+    try {
+      const geo = geoip.lookup(cleanIp);
+      if (geo && geo.country) {
+        return geo.country.trim().toUpperCase();
+      }
+    } catch (err) {
+      console.error('GeoIP lookup error for IP:', cleanIp, err);
+    }
+
+    // Fallback if IP cannot be resolved
     return 'IN';
   }
 

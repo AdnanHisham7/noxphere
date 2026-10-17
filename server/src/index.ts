@@ -86,6 +86,7 @@ import { ExpenseController } from "./interfaces/http/controllers/ExpenseControll
 import { ExpenseUseCases } from "./application/use-cases/expense/ExpenseUseCases";
 
 const app = express();
+app.set("trust proxy", true);
 
 const httpServer = createServer(app);
 
