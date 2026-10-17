@@ -10,7 +10,7 @@ export async function cleanDatabase() {
   await mongoose.connect(config.db.uri);
   console.log(`Connected to database: ${mongoose.connection.name}`);
 
-  const collections = await mongoose.connection.db.collections();
+  const collections = await mongoose.connection.db!.collections();
   console.log(`Found ${collections.length} collections to clean.`);
 
   for (const collection of collections) {

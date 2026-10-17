@@ -339,7 +339,7 @@ export async function seedDemoData() {
         isActive: true,
         isEmailVerified: true,
         permissions: defaultPermissions[dto.role],
-        academyId: academy._id as mongoose.Types.ObjectId,
+        academyId: academy!._id as mongoose.Types.ObjectId,
         franchiseId: dto.franchiseId,
         fcmTokens: [],
       });
