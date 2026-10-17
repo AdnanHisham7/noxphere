@@ -197,7 +197,7 @@ export const Sidebar: React.FC = () => {
       {/* Mobile Drawer Backdrop */}
       {mobileSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden animate-fade-in"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 md:hidden animate-fade-in"
           onClick={() => dispatch(closeMobileSidebar())}
         />
       )}

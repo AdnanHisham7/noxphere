@@ -649,7 +649,7 @@ const StudentDetailPage: React.FC = () => {
 
         {/* Quick Actions & Actions Dropdown Menu */}
         <div
-          className="flex items-center gap-1.5 sm:gap-2 relative z-30"
+          className="flex items-center gap-1.5 sm:gap-2 relative"
           ref={actionsMenuRef}
         >
           {isArchived && canManageSquad && (
