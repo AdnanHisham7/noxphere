@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Modal, Badge, Skeleton, EmptyState, Button } from "../../components/ui";
 import { useListSalaryHistoryQuery, type SalaryPayment } from "../../store/api/employeeApi";
+import { useCurrency } from "../../hooks/useCurrency";
 
 interface SalaryHistoryModalProps {
   isOpen: boolean;
@@ -35,6 +36,7 @@ export const SalaryHistoryModal: React.FC<SalaryHistoryModalProps> = ({
   academyId,
   employee,
 }) => {
+  const { format } = useCurrency();
   const { data: history, isLoading } = useListSalaryHistoryQuery(
     { academyId, employeeId: employee?.id ?? "" },
     { skip: !isOpen || !employee?.id || !academyId },
@@ -101,7 +103,7 @@ export const SalaryHistoryModal: React.FC<SalaryHistoryModalProps> = ({
                   <>
                     <span>•</span>
                     <span className="font-mono">
-                      ₹{employee.salaryAmount.toLocaleString("en-IN")}/mo Base
+                      {format(employee.salaryAmount)}/mo Base
                     </span>
                   </>
                 )}
@@ -121,7 +123,7 @@ export const SalaryHistoryModal: React.FC<SalaryHistoryModalProps> = ({
             </div>
             <div className="mt-1 flex items-baseline gap-1.5">
               <span className="font-mono font-bold text-base sm:text-lg text-emerald-600 dark:text-emerald-400">
-                ₹{totalPaid.toLocaleString("en-IN")}
+                {format(totalPaid)}
               </span>
               <span className="text-3xs text-emerald-600/70 dark:text-emerald-400/70">
                 ({paidRecords.length} paid)
@@ -138,7 +140,7 @@ export const SalaryHistoryModal: React.FC<SalaryHistoryModalProps> = ({
             </div>
             <div className="mt-1 flex items-baseline gap-1.5">
               <span className="font-mono font-bold text-base sm:text-lg text-amber-600 dark:text-amber-400">
-                ₹{totalPending.toLocaleString("en-IN")}
+                {format(totalPending)}
               </span>
               <span className="text-3xs text-amber-600/70 dark:text-amber-400/70">
                 ({pendingRecords.length} pending)
@@ -251,7 +253,7 @@ export const SalaryHistoryModal: React.FC<SalaryHistoryModalProps> = ({
                               : "text-amber-600 dark:text-amber-400",
                           )}
                         >
-                          ₹{rec.amount.toLocaleString("en-IN")}
+                          {format(rec.amount)}
                         </span>
                       </div>
                       <Badge variant={isPaid ? "green" : "yellow"} className="!text-3xs !py-0.5 !px-2">

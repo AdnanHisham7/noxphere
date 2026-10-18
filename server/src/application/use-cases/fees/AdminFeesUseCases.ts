@@ -17,6 +17,7 @@ export interface CreateFeeInput {
   totalAmount: number;
   discount?: number;
   promoCode?: string;
+  currency?: string;
   installments: { installmentNumber: number; amount: number; dueDate: string }[];
   notes?: string;
 }
@@ -47,6 +48,18 @@ export class AdminFeesUseCases {
     const discount = input.discount ?? 0;
     const finalAmount = input.totalAmount - discount;
 
+    let feeCurrency = input.currency?.toUpperCase();
+    if (!feeCurrency && input.franchiseId) {
+      const franchise = await FranchiseModel.findById(input.franchiseId).select("academyId").lean();
+      if (franchise?.academyId) {
+        const academy = await AcademyModel.findById(franchise.academyId).select("currency").lean();
+        if (academy?.currency) {
+          feeCurrency = academy.currency.toUpperCase();
+        }
+      }
+    }
+    if (!feeCurrency) feeCurrency = "INR";
+
     const fee = await FeeModel.create({
       studentId: input.studentId,
       franchiseId: input.franchiseId,
@@ -54,6 +67,7 @@ export class AdminFeesUseCases {
       totalAmount: input.totalAmount,
       discount,
       promoCode: input.promoCode,
+      currency: feeCurrency,
       finalAmount,
       notes: input.notes,
       createdBy,
@@ -80,15 +94,42 @@ export class AdminFeesUseCases {
     if (filters.studentId) query.studentId = filters.studentId;
     if (filters.status) query.overallStatus = filters.status;
 
-    return FeeModel.find(query)
-      .populate("studentId", "firstName lastName photo")
-      .sort({ createdAt: -1 })
-      .lean();
+    const [fees, franchise] = await Promise.all([
+      FeeModel.find(query)
+        .populate("studentId", "firstName lastName photo")
+        .sort({ createdAt: -1 })
+        .lean(),
+      FranchiseModel.findById(franchiseId).select("academyId").lean(),
+    ]);
+
+    let academyCurrency: string | null = null;
+    if (franchise?.academyId) {
+      const academy = await AcademyModel.findById(franchise.academyId).select("currency").lean();
+      if (academy?.currency) academyCurrency = academy.currency.toUpperCase();
+    }
+
+    if (academyCurrency && academyCurrency !== "INR") {
+      return fees.map((f: any) => ({
+        ...f,
+        currency: f.currency && f.currency !== "INR" ? f.currency : academyCurrency,
+      }));
+    }
+
+    return fees;
   }
 
   async getFeeById(id: string) {
     const fee = await FeeModel.findById(id).populate("studentId", "firstName lastName photo").lean();
     if (!fee) throw new NotFoundError("Fee record not found");
+    if (fee.franchiseId) {
+      const franchise = await FranchiseModel.findById(fee.franchiseId).select("academyId").lean();
+      if (franchise?.academyId) {
+        const academy = await AcademyModel.findById(franchise.academyId).select("currency").lean();
+        if (academy?.currency && academy.currency.toUpperCase() !== "INR" && (!fee.currency || fee.currency === "INR")) {
+          return { ...fee, currency: academy.currency.toUpperCase() };
+        }
+      }
+    }
     return fee;
   }
 
@@ -458,6 +499,7 @@ export class AdminFeesUseCases {
         feeId: fee._id ? fee._id.toString() : String(fee.id),
         installmentNumber: String(installmentNumber),
       },
+      fee.currency || "INR",
     );
 
     installment.reminderSentCount = (installment.reminderSentCount || 0) + 1;
@@ -473,7 +515,7 @@ export class AdminFeesUseCases {
       timestamp: new Date(),
       performedBy: performedBy as any,
       performedByName,
-      details: `Sent payment reminder for installment #${installmentNumber} (₹${remainingAmount.toLocaleString("en-IN")}) with ${qrImageUrl ? "payment QR code" : "payment details"}. Total reminders: ${installment.reminderSentCount}.`,
+      details: `Sent payment reminder for installment #${installmentNumber} (${fee.currency || "INR"} ${remainingAmount.toLocaleString()}) with ${qrImageUrl ? "payment QR code" : "payment details"}. Total reminders: ${installment.reminderSentCount}.`,
     });
 
     await fee.save();
@@ -541,6 +583,7 @@ export class AdminFeesUseCases {
           feeId: String(fee._id),
           installmentNumber: String(installmentNumber),
         },
+        fee.currency || "INR",
       );
     } catch (err) {
       logger.error("[AdminFeesUseCases] Couldn't generate/send payment receipt:", err);

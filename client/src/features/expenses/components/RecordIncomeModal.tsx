@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Modal, Button, Input, Select } from "../../../components/ui";
 import { useCreateIncomeMutation } from "../../../store/api/expenseApi";
+import { useCurrency } from "../../../hooks/useCurrency";
 import toast from "react-hot-toast";
 import { ArrowDownLeft } from "lucide-react";
 
@@ -30,6 +31,7 @@ export const RecordIncomeModal: React.FC<RecordIncomeModalProps> = ({
   academyId,
   franchiseId,
 }) => {
+  const { currencySymbol } = useCurrency();
   const [createIncome, { isLoading }] = useCreateIncomeMutation();
 
   const [source, setSource] = useState<string>("");
@@ -119,7 +121,7 @@ export const RecordIncomeModal: React.FC<RecordIncomeModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Amount Received (₹) *
+              Amount Received ({currencySymbol}) *
             </label>
             <Input
               type="number"

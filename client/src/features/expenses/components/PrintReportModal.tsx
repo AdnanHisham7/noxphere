@@ -2,6 +2,7 @@
 import React, { useRef } from "react";
 import { Modal, Button } from "../../../components/ui";
 import { type AnalyticsReport } from "../../../store/api/expenseApi";
+import { useCurrency } from "../../../hooks/useCurrency";
 import { format } from "date-fns";
 import { Printer, Download, X, Building, Calendar, DollarSign, PackageCheck } from "lucide-react";
 import toast from "react-hot-toast";
@@ -21,6 +22,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
   academyName = "Noxphere Football Academy",
   franchiseName = "All Branches",
 }) => {
+  const { format: formatMoney, currencySymbol } = useCurrency();
   const printAreaRef = useRef<HTMLDivElement>(null);
 
   if (!report) return null;
@@ -226,27 +228,27 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
               <div className="p-3 rounded border border-slate-200 bg-slate-50">
                 <span className="text-[10px] uppercase font-bold text-slate-500 block">Total Inflow (Revenue)</span>
                 <span className="text-base font-extrabold text-emerald-700 tabular-nums">
-                  ₹{summary.totalInflow.toLocaleString("en-IN")}
+                  {formatMoney(summary.totalInflow)}
                 </span>
                 <span className="block text-[10px] text-slate-500 mt-0.5">
-                  Fees: ₹{summary.feesInflow.toLocaleString("en-IN")}
+                  Fees: {formatMoney(summary.feesInflow)}
                 </span>
               </div>
 
               <div className="p-3 rounded border border-slate-200 bg-slate-50">
                 <span className="text-[10px] uppercase font-bold text-slate-500 block">Total Outflow (Expenses)</span>
                 <span className="text-base font-extrabold text-rose-700 tabular-nums">
-                  ₹{summary.totalOutflow.toLocaleString("en-IN")}
+                  {formatMoney(summary.totalOutflow)}
                 </span>
                 <span className="block text-[10px] text-slate-500 mt-0.5">
-                  Purchases: ₹{summary.purchasesOutflow.toLocaleString("en-IN")}
+                  Purchases: {formatMoney(summary.purchasesOutflow)}
                 </span>
               </div>
 
               <div className="p-3 rounded border border-slate-200 bg-slate-50">
                 <span className="text-[10px] uppercase font-bold text-slate-500 block">Net Balance (Surplus / Deficit)</span>
                 <span className={`text-base font-extrabold tabular-nums ${summary.netBalance >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
-                  {summary.netBalance >= 0 ? "+" : ""}₹{summary.netBalance.toLocaleString("en-IN")}
+                  {(summary.netBalance >= 0 ? "+" : "") + formatMoney(summary.netBalance)}
                 </span>
                 <span className="block text-[10px] text-slate-500 mt-0.5">
                   Margin: {summary.profitMargin}%
@@ -256,7 +258,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
               <div className="p-3 rounded border border-slate-200 bg-slate-50">
                 <span className="text-[10px] uppercase font-bold text-slate-500 block">Total Inventory Valuation</span>
                 <span className="text-base font-extrabold text-sky-700 tabular-nums">
-                  ₹{summary.totalInventoryValue.toLocaleString("en-IN")}
+                  {formatMoney(summary.totalInventoryValue)}
                 </span>
                 <span className="block text-[10px] text-slate-500 mt-0.5">
                   Stockouts: {summary.outOfStockCount} | Low: {summary.lowStockCount}
@@ -276,7 +278,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                   <tr className="bg-slate-100 text-[11px] font-bold text-slate-700">
                     <th className="border border-slate-200 px-3 py-1.5">Category</th>
                     <th className="border border-slate-200 px-3 py-1.5 text-right">Transactions</th>
-                    <th className="border border-slate-200 px-3 py-1.5 text-right">Total Amount (₹)</th>
+                    <th className="border border-slate-200 px-3 py-1.5 text-right">Total Amount ({currencySymbol})</th>
                     <th className="border border-slate-200 px-3 py-1.5 text-right">% of Total Expenses</th>
                   </tr>
                 </thead>
@@ -286,7 +288,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                       <td className="border border-slate-200 px-3 py-1 font-medium">{cat.category}</td>
                       <td className="border border-slate-200 px-3 py-1 text-right tabular-nums">{cat.count}</td>
                       <td className="border border-slate-200 px-3 py-1 text-right font-semibold tabular-nums">
-                        ₹{cat.amount.toLocaleString("en-IN")}
+                        {formatMoney(cat.amount)}
                       </td>
                       <td className="border border-slate-200 px-3 py-1 text-right tabular-nums">{cat.percentage}%</td>
                     </tr>
@@ -314,7 +316,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                       <th className="border border-slate-200 px-2.5 py-1.5">Category</th>
                       <th className="border border-slate-200 px-2.5 py-1.5 text-right">Qty / Unit</th>
                       <th className="border border-slate-200 px-2.5 py-1.5">Invoice / Payee</th>
-                      <th className="border border-slate-200 px-2.5 py-1.5 text-right">Amount (₹)</th>
+                      <th className="border border-slate-200 px-2.5 py-1.5 text-right">Amount ({currencySymbol})</th>
                       <th className="border border-slate-200 px-2.5 py-1.5">Status</th>
                     </tr>
                   </thead>
@@ -340,7 +342,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                         </td>
                         <td className="border border-slate-200 px-2.5 py-1 text-slate-600">{e.type === "purchase" ? (e.invoiceNumber || "—") : (e.vendor || "—")}</td>
                         <td className="border border-slate-200 px-2.5 py-1 text-right font-bold tabular-nums">
-                          ₹{e.amount.toLocaleString("en-IN")}
+                          {formatMoney(e.amount)}
                         </td>
                         <td className="border border-slate-200 px-2.5 py-1 text-[10px] capitalize">
                           {e.type === "purchase" ? (
@@ -384,7 +386,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                       <th className="border border-slate-200 px-2.5 py-1.5">Source / Student Name</th>
                       <th className="border border-slate-200 px-2.5 py-1.5">Payment Mode</th>
                       <th className="border border-slate-200 px-2.5 py-1.5">Ref / Txn ID</th>
-                      <th className="border border-slate-200 px-2.5 py-1.5 text-right">Amount (₹)</th>
+                      <th className="border border-slate-200 px-2.5 py-1.5 text-right">Amount ({currencySymbol})</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -404,7 +406,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                           {f.transactionId || "—"}
                         </td>
                         <td className="border border-slate-200 px-2.5 py-1 text-right font-bold text-emerald-700 tabular-nums">
-                          ₹{f.amount.toLocaleString("en-IN")}
+                          {formatMoney(f.amount)}
                         </td>
                       </tr>
                     ))}
@@ -424,7 +426,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                           {inc.referenceNumber || "—"}
                         </td>
                         <td className="border border-slate-200 px-2.5 py-1 text-right font-bold text-sky-700 tabular-nums">
-                          ₹{inc.amount.toLocaleString("en-IN")}
+                          {formatMoney(inc.amount)}
                         </td>
                       </tr>
                     ))}
@@ -446,8 +448,8 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                     <th className="border border-slate-200 px-2.5 py-1.5">Stock Item Name</th>
                     <th className="border border-slate-200 px-2.5 py-1.5">Category</th>
                     <th className="border border-slate-200 px-2.5 py-1.5 text-right">Qty Available</th>
-                    <th className="border border-slate-200 px-2.5 py-1.5 text-right">Unit Cost (₹)</th>
-                    <th className="border border-slate-200 px-2.5 py-1.5 text-right">Total Value (₹)</th>
+                    <th className="border border-slate-200 px-2.5 py-1.5 text-right">Unit Cost ({currencySymbol})</th>
+                    <th className="border border-slate-200 px-2.5 py-1.5 text-right">Total Value ({currencySymbol})</th>
                     <th className="border border-slate-200 px-2.5 py-1.5">Status</th>
                   </tr>
                 </thead>
@@ -460,10 +462,10 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                         {stk.quantity} {stk.unit}
                       </td>
                       <td className="border border-slate-200 px-2.5 py-1 text-right tabular-nums">
-                        ₹{stk.unitPrice.toLocaleString("en-IN")}
+                        {formatMoney(stk.unitPrice)}
                       </td>
                       <td className="border border-slate-200 px-2.5 py-1 text-right font-bold text-sky-700 tabular-nums">
-                        ₹{stk.totalValue.toLocaleString("en-IN")}
+                        {formatMoney(stk.totalValue)}
                       </td>
                       <td className="border border-slate-200 px-2.5 py-1 text-[10px] uppercase font-bold">
                         <span

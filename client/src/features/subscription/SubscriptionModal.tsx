@@ -14,6 +14,8 @@ import {
 } from "../../store/api/academySubscriptionApi";
 import { openRazorpayCheckout } from "../../utils/razorpay";
 import { RootState } from "../../store";
+import { useCurrency } from "../../hooks/useCurrency";
+import { formatCurrency as formatMoney } from "../../utils/currency";
 
 interface SubscriptionModalProps {
   academyId: string;
@@ -27,16 +29,14 @@ interface SubscriptionModalProps {
 
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ academyId, onClose, onSuccess, mode }) => {
   const user = useSelector((s: RootState) => s.auth.user);
+  const { currency: defaultCurrency, currencySymbol: defaultSymbol } = useCurrency();
   const { data: status, isLoading } = useGetAcademySubscriptionStatusQuery(academyId);
   const { data: platformStudentRate } = useGetPlatformDefaultRateQuery();
   const { data: platformStaffRate } = useGetPlatformDefaultStaffRateQuery();
 
-  const sym = status?.currencySymbol || "₹";
-  const curr = status?.currency || "INR";
-  const formatCurrency = (n: number) => {
-    const rounded = Math.round((n + Number.EPSILON) * 100) / 100;
-    return `${sym} ${rounded.toLocaleString(curr === "INR" ? "en-IN" : "en-US", { maximumFractionDigits: 2 })}`;
-  };
+  const sym = status?.currencySymbol || defaultSymbol || "₹";
+  const curr = status?.currency || defaultCurrency || "INR";
+  const formatCurrency = (n: number) => formatMoney(n, curr);
 
   const [createRazorpayOrder, { isLoading: creatingOrder }] = useCreateRazorpaySubscriptionOrderMutation();
   const [verifyRazorpayPayment, { isLoading: verifyingPayment }] = useVerifyRazorpaySubscriptionPaymentMutation();

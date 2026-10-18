@@ -121,6 +121,7 @@ feeReminderQueue.process(async (job) => {
         feeId: fee._id ? fee._id.toString() : String(fee.id),
         installmentNumber: String(installmentNumber),
       },
+      (fee as any).currency || 'INR',
     );
 
     installment.reminderSentCount = (installment.reminderSentCount || 0) + 1;
@@ -300,6 +301,7 @@ export class SchedulerService {
                   feeId: fee._id ? fee._id.toString() : String(fee.id),
                   installmentNumber: String(inst.installmentNumber),
                 },
+                (fee as any).currency || 'INR',
               );
 
               inst.reminderSentCount = (inst.reminderSentCount || 0) + 1;

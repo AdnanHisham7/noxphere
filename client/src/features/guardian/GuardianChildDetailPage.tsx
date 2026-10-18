@@ -29,6 +29,7 @@ import {
 import QRCode from "react-qr-code";
 import { PayFeeModal } from "./PayFeeModal";
 import { FeeReceiptModal } from "./FeeReceiptModal";
+import { formatCurrency } from "../../utils/currency";
 import {
   useGetChildProfileQuery,
   useGetChildAttendanceQuery,
@@ -924,6 +925,7 @@ const FeesTab: React.FC<{ studentId: string; studentName?: string }> = ({
     amount: number;
     dueDate: string;
     feeType: string;
+    currency?: string;
   } | null>(null);
 
   const [receiptToView, setReceiptToView] = useState<{
@@ -1041,142 +1043,145 @@ const FeesTab: React.FC<{ studentId: string; studentName?: string }> = ({
         </div>
       ) : (
         <div className="space-y-5">
-          {sortedAndFilteredFees.map((fee) => (
-            <div
-              key={fee._id}
-              id={`entity-${fee._id}`}
-              data-highlight-id={fee._id}
-              className="nox-card p-5 space-y-4"
-            >
-              <div className="flex items-center justify-between border-b border-pitch-200/50 dark:border-white/[0.06] pb-3">
-                <div>
-                  <div className="font-orbital text-sm font-semibold text-nox-high capitalize">
-                    {fee.feeType.replace("_", " ")}
-                  </div>
-                  <div className="text-xs text-nox-low font-mono mt-0.5">
-                    ₹{fee.finalAmount.toLocaleString("en-IN")} total ·{" "}
-                    {fee.installments.length} installment{fee.installments.length === 1 ? "" : "s"}
-                  </div>
-                </div>
-                <NoxStatusBadge status={fee.overallStatus} />
-              </div>
-
-              <div className="space-y-2">
-                {fee.installments.map((inst) => {
-                  const remaining = inst.amount - inst.paidAmount;
-                  const isPendingVerif = inst.status === "pending_verification";
-                  const isPaid = inst.status === "paid" || remaining <= 0;
-                  const isOverdue =
-                    inst.status === "overdue" ||
-                    (!isPaid &&
-                      !isPendingVerif &&
-                      new Date(inst.dueDate).getTime() < Date.now());
-
-                  const canPay = !isPaid && !isPendingVerif && remaining > 0;
-
-                  return (
-                    <div
-                      key={inst.installmentNumber}
-                      id={`entity-${fee._id}-${inst.installmentNumber}`}
-                      data-highlight-id={`${fee._id}-${inst.installmentNumber}`}
-                      className={`flex flex-col sm:flex-row sm:items-center justify-between text-sm rounded-xl p-3.5 sm:p-4 gap-3 border transition-all ${
-                        isOverdue
-                          ? "bg-rose-500/[0.05] border-rose-500/40 dark:bg-rose-950/[0.15]"
-                          : isPendingVerif
-                            ? "bg-blue-500/[0.05] border-blue-500/40 dark:bg-blue-950/[0.15]"
-                            : isPaid
-                              ? "bg-slate-50 border-slate-200/80 dark:bg-white/[0.02] dark:border-white/[0.05]"
-                              : "bg-amber-500/[0.05] border-amber-500/30 dark:bg-amber-950/[0.12]"
-                      }`}
-                    >
-                      <div className="space-y-0.5 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-nox-high text-xs">
-                            Installment #{inst.installmentNumber}
-                          </span>
-                          {isOverdue && (
-                            <span className="text-2xs font-mono uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 font-bold">
-                              Overdue
-                            </span>
-                          )}
-                          {isPendingVerif && (
-                            <span className="text-2xs font-mono uppercase px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold">
-                              Under Verification
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-nox-mid font-mono">
-                          Due {new Date(inst.dueDate).toLocaleDateString()}
-                          {inst.paidAt && (
-                            <span className="text-field-500 dark:text-field-400 ml-2">
-                              · Paid on {new Date(inst.paidAt).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                        <div className="text-right">
-                          <span className="text-nox-high font-mono text-sm font-semibold">
-                            ₹{inst.paidAmount.toLocaleString("en-IN")} / ₹
-                            {inst.amount.toLocaleString("en-IN")}
-                          </span>
-                        </div>
-
-                        {isPendingVerif && (
-                          <div className="text-2xs text-blue-400 font-mono px-2.5 py-1 rounded bg-blue-500/10 border border-blue-500/20">
-                            Proof Under Review
-                          </div>
-                        )}
-
-                        {isPaid && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setReceiptToView({
-                                fee,
-                                installment: inst,
-                              })
-                            }
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-pitch-100 hover:bg-pitch-200 dark:bg-white/10 dark:hover:bg-white/15 text-nox-high border border-pitch-200 dark:border-white/10 transition-colors"
-                            title="View official digital receipt"
-                          >
-                            <Receipt size={13} className="text-core-400" />
-                            <span>Receipt</span>
-                          </button>
-                        )}
-
-                        {canPay && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setSelectedFeeForPayment({
-                                feeId: fee._id,
-                                installmentNumber: inst.installmentNumber,
-                                amount: remaining,
-                                dueDate: inst.dueDate,
-                                feeType: fee.feeType,
-                              })
-                            }
-                            className={`nox-btn-primary !py-1 !px-3 text-xs flex items-center gap-1.5 shadow-sm font-bold ${
-                              isOverdue
-                                ? "!bg-volt-400 hover:!bg-volt-300 !text-pitch-950 dark:!text-pitch-950"
-                                : "!bg-volt-400 hover:!bg-volt-300 !text-pitch-950 dark:!text-pitch-950"
-                            }`}
-                          >
-                            <CreditCard size={13} className="text-pitch-950" />
-                            <span className="text-pitch-950 font-bold">
-                              {isOverdue ? "Pay Overdue Fee" : "Pay Fee"}
-                            </span>
-                          </button>
-                        )}
-                      </div>
+          {sortedAndFilteredFees.map((fee) => {
+            const feeCurrency = (fee as any).currency || "INR";
+            return (
+              <div
+                key={fee._id}
+                id={`entity-${fee._id}`}
+                data-highlight-id={fee._id}
+                className="nox-card p-5 space-y-4"
+              >
+                <div className="flex items-center justify-between border-b border-pitch-200/50 dark:border-white/[0.06] pb-3">
+                  <div>
+                    <div className="font-orbital text-sm font-semibold text-nox-high capitalize">
+                      {fee.feeType.replace("_", " ")}
                     </div>
-                  );
-                })}
+                    <div className="text-xs text-nox-low font-mono mt-0.5">
+                      {formatCurrency(fee.finalAmount, feeCurrency)} total ·{" "}
+                      {fee.installments.length} installment{fee.installments.length === 1 ? "" : "s"}
+                    </div>
+                  </div>
+                  <NoxStatusBadge status={fee.overallStatus} />
+                </div>
+
+                <div className="space-y-2">
+                  {fee.installments.map((inst) => {
+                    const remaining = inst.amount - inst.paidAmount;
+                    const isPendingVerif = inst.status === "pending_verification";
+                    const isPaid = inst.status === "paid" || remaining <= 0;
+                    const isOverdue =
+                      inst.status === "overdue" ||
+                      (!isPaid &&
+                        !isPendingVerif &&
+                        new Date(inst.dueDate).getTime() < Date.now());
+
+                    const canPay = !isPaid && !isPendingVerif && remaining > 0;
+
+                    return (
+                      <div
+                        key={inst.installmentNumber}
+                        id={`entity-${fee._id}-${inst.installmentNumber}`}
+                        data-highlight-id={`${fee._id}-${inst.installmentNumber}`}
+                        className={`flex flex-col sm:flex-row sm:items-center justify-between text-sm rounded-xl p-3.5 sm:p-4 gap-3 border transition-all ${
+                          isOverdue
+                            ? "bg-rose-500/[0.05] border-rose-500/40 dark:bg-rose-950/[0.15]"
+                            : isPendingVerif
+                              ? "bg-blue-500/[0.05] border-blue-500/40 dark:bg-blue-950/[0.15]"
+                              : isPaid
+                                ? "bg-slate-50 border-slate-200/80 dark:bg-white/[0.02] dark:border-white/[0.05]"
+                                : "bg-amber-500/[0.05] border-amber-500/30 dark:bg-amber-950/[0.12]"
+                        }`}
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-nox-high text-xs">
+                              Installment #{inst.installmentNumber}
+                            </span>
+                            {isOverdue && (
+                              <span className="text-2xs font-mono uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 font-bold">
+                                Overdue
+                              </span>
+                            )}
+                            {isPendingVerif && (
+                              <span className="text-2xs font-mono uppercase px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold">
+                                Under Verification
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-nox-mid font-mono">
+                            Due {new Date(inst.dueDate).toLocaleDateString()}
+                            {inst.paidAt && (
+                              <span className="text-field-500 dark:text-field-400 ml-2">
+                                · Paid on {new Date(inst.paidAt).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                          <div className="text-right">
+                            <span className="text-nox-high font-mono text-sm font-semibold">
+                              {formatCurrency(inst.paidAmount, feeCurrency)} / {formatCurrency(inst.amount, feeCurrency)}
+                            </span>
+                          </div>
+
+                          {isPendingVerif && (
+                            <div className="text-2xs text-blue-400 font-mono px-2.5 py-1 rounded bg-blue-500/10 border border-blue-500/20">
+                              Proof Under Review
+                            </div>
+                          )}
+
+                          {isPaid && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setReceiptToView({
+                                  fee,
+                                  installment: inst,
+                                })
+                              }
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-pitch-100 hover:bg-pitch-200 dark:bg-white/10 dark:hover:bg-white/15 text-nox-high border border-pitch-200 dark:border-white/10 transition-colors"
+                              title="View official digital receipt"
+                            >
+                              <Receipt size={13} className="text-core-400" />
+                              <span>Receipt</span>
+                            </button>
+                          )}
+
+                          {canPay && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedFeeForPayment({
+                                  feeId: fee._id,
+                                  installmentNumber: inst.installmentNumber,
+                                  amount: remaining,
+                                  dueDate: inst.dueDate,
+                                  feeType: fee.feeType,
+                                  currency: feeCurrency,
+                                })
+                              }
+                              className={`nox-btn-primary !py-1 !px-3 text-xs flex items-center gap-1.5 shadow-sm font-bold ${
+                                isOverdue
+                                  ? "!bg-volt-400 hover:!bg-volt-300 !text-pitch-950 dark:!text-pitch-950"
+                                  : "!bg-volt-400 hover:!bg-volt-300 !text-pitch-950 dark:!text-pitch-950"
+                              }`}
+                            >
+                              <CreditCard size={13} className="text-pitch-950" />
+                              <span className="text-pitch-950 font-bold">
+                                {isOverdue ? "Pay Overdue Fee" : "Pay Fee"}
+                              </span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -1189,6 +1194,7 @@ const FeesTab: React.FC<{ studentId: string; studentName?: string }> = ({
           feeType={selectedFeeForPayment.feeType}
           amount={selectedFeeForPayment.amount}
           dueDate={selectedFeeForPayment.dueDate}
+          currency={selectedFeeForPayment.currency}
           onClose={() => setSelectedFeeForPayment(null)}
           onSuccess={() => {
             refetch();

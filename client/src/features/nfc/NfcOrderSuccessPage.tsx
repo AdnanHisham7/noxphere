@@ -6,6 +6,7 @@ import { CheckCircle2, CreditCard, Loader2, Sparkles, ArrowRight, Package } from
 import { RootState } from "../../store";
 import { Button } from "../../components/ui";
 import { useVerifyNfcCheckoutSessionMutation } from "../../store/api/nfcCardApi";
+import { formatCurrency } from "../../utils/currency";
 
 export const NfcOrderSuccessPage: React.FC = () => {
   const navigate = useNavigate();
@@ -88,7 +89,7 @@ export const NfcOrderSuccessPage: React.FC = () => {
             <div className="flex justify-between border-b border-white/5 pb-2">
               <span className="text-slate-400">Total Paid:</span>
               <span className="font-mono font-bold text-slate-900 dark:text-white">
-                ₹{verifiedOrder.totalAmount?.toLocaleString("en-IN")}
+                {formatCurrency(verifiedOrder.totalAmount ?? 0, verifiedOrder.currency)}
               </span>
             </div>
             <div className="pt-1 text-2xs text-slate-400">

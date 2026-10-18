@@ -1,7 +1,7 @@
-// src/features/expenses/components/AddMiscExpenseModal.tsx
 import React, { useState } from "react";
 import { Modal, Button, Input, Select } from "../../../components/ui";
 import { useCreateExpenseMutation } from "../../../store/api/expenseApi";
+import { useCurrency } from "../../../hooks/useCurrency";
 import toast from "react-hot-toast";
 import { Receipt, Info } from "lucide-react";
 
@@ -42,6 +42,7 @@ export const AddMiscExpenseModal: React.FC<AddMiscExpenseModalProps> = ({
   academyId,
   franchiseId,
 }) => {
+  const { currencySymbol } = useCurrency();
   const [createExpense, { isLoading }] = useCreateExpenseMutation();
 
   const [title, setTitle] = useState<string>("");
@@ -133,7 +134,7 @@ export const AddMiscExpenseModal: React.FC<AddMiscExpenseModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Amount (₹) *
+              Amount ({currencySymbol}) *
             </label>
             <Input
               type="number"

@@ -40,12 +40,10 @@ import {
 } from 'lucide-react';
 import logoSrc from '../../assets/logo.png';
 import { ThemeToggle } from '../../components/common/ThemeToggle';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 
 const getRatingColor = (r: number) =>
   r >= 9 ? 'text-volt-400' : r >= 8 ? 'text-field-400' : r >= 7 ? 'text-ice-500 dark:text-ice-400' : 'text-slate-400';
-
-const formatCurrency = (amount: number, currency = 'INR') =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
 
 const getStudentFromReq = (r: TransferRequest) => {
   if (r.student && typeof r.student === 'object') return r.student;
@@ -1023,7 +1021,7 @@ const TransferWallPage: React.FC = () => {
             <p className="text-xs text-slate-500">Listing Asking Price: {selectedListing ? formatCurrency(selectedListing.price, selectedListing.currency) : '—'}</p>
           </div>
           <Input
-            label="Your Offer Amount (₹)"
+            label={`Your Offer Amount (${getCurrencySymbol(selectedListing?.currency)})`}
             type="number"
             value={offeredPrice}
             onChange={(e) => setOfferedPrice(e.target.value)}

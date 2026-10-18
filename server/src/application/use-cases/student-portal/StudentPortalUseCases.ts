@@ -49,8 +49,8 @@ export class StudentPortalUseCases {
 
     const now = new Date();
     const in14Days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-    const upcomingFees: { installmentNumber: number; amount: number; dueDate: Date }[] = [];
-    const overdueFees: { installmentNumber: number; amount: number; dueDate: Date }[] = [];
+    const upcomingFees: { installmentNumber: number; amount: number; dueDate: Date; currency: string }[] = [];
+    const overdueFees: { installmentNumber: number; amount: number; dueDate: Date; currency: string }[] = [];
 
     for (const fee of fees) {
       for (const inst of fee.installments) {
@@ -59,6 +59,7 @@ export class StudentPortalUseCases {
           installmentNumber: inst.installmentNumber,
           amount: inst.amount - inst.paidAmount,
           dueDate: inst.dueDate,
+          currency: fee.currency || "INR",
         };
         if (inst.dueDate < now) overdueFees.push(entry);
         else if (inst.dueDate <= in14Days) upcomingFees.push(entry);

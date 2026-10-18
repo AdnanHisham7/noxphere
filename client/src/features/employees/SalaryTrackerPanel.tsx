@@ -21,6 +21,7 @@ import {
   useMarkSalaryPaidMutation,
   type SalaryPayment,
 } from "../../store/api/employeeApi";
+import { useCurrency } from "../../hooks/useCurrency";
 import { SalaryHistoryModal } from "./SalaryHistoryModal";
 
 const currentPeriod = () => new Date().toISOString().slice(0, 7);
@@ -42,6 +43,7 @@ const MarkPaidModal: React.FC<MarkPaidModalProps> = ({
   onConfirm,
   loading,
 }) => {
+  const { currencySymbol, format } = useCurrency();
   const [amount, setAmount] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
 
@@ -95,7 +97,7 @@ const MarkPaidModal: React.FC<MarkPaidModalProps> = ({
           <div className="text-right shrink-0">
             <span className="text-2xs uppercase tracking-wider text-slate-400 dark:text-slate-500 block">Base Salary</span>
             <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-200">
-              ₹{defaultAmount.toLocaleString("en-IN")}
+              {format(defaultAmount)}
             </span>
           </div>
         </div>
@@ -103,7 +105,7 @@ const MarkPaidModal: React.FC<MarkPaidModalProps> = ({
         {/* Amount Input with Live Difference Chip */}
         <div className="space-y-1.5">
           <Input
-            label="Paid Amount (₹)"
+            label={`Paid Amount (${currencySymbol})`}
             type="number"
             min="0"
             step="1"
@@ -117,12 +119,12 @@ const MarkPaidModal: React.FC<MarkPaidModalProps> = ({
             {diff > 0 ? (
               <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
                 <TrendingUp size={12} />
-                +₹{diff.toLocaleString("en-IN")} performance incentive / bonus included
+                +{format(diff)} performance incentive / bonus included
               </span>
             ) : diff < 0 ? (
               <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
                 <TrendingDown size={12} />
-                -₹{Math.abs(diff).toLocaleString("en-IN")} deduction applied
+                -{format(Math.abs(diff))} deduction applied
               </span>
             ) : (
               <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
@@ -146,7 +148,7 @@ const MarkPaidModal: React.FC<MarkPaidModalProps> = ({
           <input
             type="text"
             className="input text-xs"
-            placeholder="e.g. Added ₹2,000 performance bonus for tournament victory"
+            placeholder={`e.g. Added ${format(2000)} performance bonus for tournament victory`}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             maxLength={500}
@@ -171,6 +173,7 @@ const MarkPaidModal: React.FC<MarkPaidModalProps> = ({
 };
 
 export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId }) => {
+  const { format } = useCurrency();
   const [period, setPeriod] = useState(currentPeriod());
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "paid">("all");
@@ -332,7 +335,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
           </div>
           <div className="mt-1.5 sm:mt-2 flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2">
             <span className="text-base sm:text-xl font-bold font-display text-slate-900 dark:text-white font-mono">
-              ₹{totalPayroll.toLocaleString("en-IN")}
+              {format(totalPayroll)}
             </span>
             <span className="text-3xs sm:text-xs text-slate-500 dark:text-slate-400">
               ({allRecords.length} staff)
@@ -351,7 +354,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
           </div>
           <div className="mt-1.5 sm:mt-2 flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2">
             <span className="text-base sm:text-xl font-bold font-display text-emerald-600 dark:text-emerald-400 font-mono">
-              ₹{totalPaid.toLocaleString("en-IN")}
+              {format(totalPaid)}
             </span>
             <span className="text-3xs sm:text-xs text-slate-500 dark:text-slate-400">
               ({paidRecords.length} paid)
@@ -370,7 +373,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
           </div>
           <div className="mt-1.5 sm:mt-2 flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2">
             <span className="text-base sm:text-xl font-bold font-display text-amber-600 dark:text-amber-400 font-mono">
-              ₹{totalPending.toLocaleString("en-IN")}
+              {format(totalPending)}
             </span>
             <span className="text-3xs sm:text-xs text-slate-500 dark:text-slate-400">
               ({pendingRecords.length} pending)
@@ -522,7 +525,7 @@ export const SalaryTrackerPanel: React.FC<{ academyId: string }> = ({ academyId 
                 <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 sm:gap-3 self-end sm:self-auto w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-white/5">
                   <div className="text-left sm:text-right">
                     <span className="text-sm font-bold text-slate-900 dark:text-white block font-mono">
-                      ₹{rec.amount.toLocaleString("en-IN")}
+                      {format(rec.amount)}
                     </span>
                     <span className="text-2xs text-slate-400 dark:text-slate-500">
                       {rec.status === "paid" && rec.paidAt

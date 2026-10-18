@@ -6,6 +6,7 @@ import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useGetFranchisesQuery } from "../../store/api/franchiseApi";
 import { useGetAcademyByIdQuery } from "../../store/api/academyApi";
+import { useCurrency } from "../../hooks/useCurrency";
 import {
   useListExpensesQuery,
   useListStocksQuery,
@@ -95,6 +96,7 @@ export const ExpenseManagementPage: React.FC = () => {
   const { user } = useSelector((s: RootState) => s.auth);
   const activeAcademyId = useCurrentAcademyId();
   const currentFranchiseId = useCurrentFranchiseId();
+  const { format: formatMoney, currencySymbol } = useCurrency();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
   const [selectedFranchiseId, setSelectedFranchiseId] = useState<string>(
@@ -532,23 +534,23 @@ export const ExpenseManagementPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
                   label="Total Inflow (Revenue)"
-                  value={`₹${(summary?.totalInflow || 0).toLocaleString("en-IN")}`}
-                  sublabel={`Student Fees: ₹${(summary?.feesInflow || 0).toLocaleString("en-IN")} | Other: ₹${(summary?.otherInflow || 0).toLocaleString("en-IN")}`}
+                  value={formatMoney(summary?.totalInflow || 0)}
+                  sublabel={`Student Fees: ${formatMoney(summary?.feesInflow || 0)} | Other: ${formatMoney(summary?.otherInflow || 0)}`}
                   icon={<ArrowDownLeft size={22} />}
                   accent="field"
                 />
 
                 <StatCard
                   label="Total Outflow (Expenses)"
-                  value={`₹${(summary?.totalOutflow || 0).toLocaleString("en-IN")}`}
-                  sublabel={`Purchases: ₹${(summary?.purchasesOutflow || 0).toLocaleString("en-IN")} | Misc: ₹${(summary?.miscOutflow || 0).toLocaleString("en-IN")}`}
+                  value={formatMoney(summary?.totalOutflow || 0)}
+                  sublabel={`Purchases: ${formatMoney(summary?.purchasesOutflow || 0)} | Misc: ${formatMoney(summary?.miscOutflow || 0)}`}
                   icon={<Receipt size={22} />}
                   accent="ember"
                 />
 
                 <StatCard
                   label="Net Balance (Surplus / Deficit)"
-                  value={`${(summary?.netBalance || 0) >= 0 ? "+" : ""}₹${(summary?.netBalance || 0).toLocaleString("en-IN")}`}
+                  value={`${(summary?.netBalance || 0) >= 0 ? "+" : ""}${formatMoney(summary?.netBalance || 0)}`}
                   sublabel={`Net Operating Margin: ${summary?.profitMargin || 0}%`}
                   icon={<TrendingUp size={22} />}
                   accent="volt"
@@ -556,7 +558,7 @@ export const ExpenseManagementPage: React.FC = () => {
 
                 <StatCard
                   label="Total Inventory Valuation"
-                  value={`₹${(summary?.totalInventoryValue || 0).toLocaleString("en-IN")}`}
+                  value={formatMoney(summary?.totalInventoryValue || 0)}
                   sublabel={`${summary?.outOfStockCount || 0} Stockout | ${summary?.lowStockCount || 0} Low Stock Alert`}
                   icon={<Boxes size={22} />}
                   accent="ice"
@@ -613,7 +615,7 @@ export const ExpenseManagementPage: React.FC = () => {
                         <BarChart data={timeSeries} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                           <XAxis dataKey="label" stroke="#64748b" fontSize={11} />
-                          <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => `₹${v >= 1000 ? `${v / 1000}k` : v}`} />
+                          <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => `${currencySymbol}${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} />
                           <Tooltip
                             content={({ active, payload, label }) => {
                               if (!active || !payload?.length) return null;
@@ -621,10 +623,10 @@ export const ExpenseManagementPage: React.FC = () => {
                                 <div className="bg-slate-900 text-white border border-slate-700 rounded-lg p-2.5 text-xs shadow-xl space-y-1">
                                   <p className="font-bold text-slate-300">{label}</p>
                                   <p className="text-field-400 font-semibold">
-                                    Inflow: ₹{Number(payload[0]?.value || 0).toLocaleString("en-IN")}
+                                    Inflow: {formatMoney(Number(payload[0]?.value || 0))}
                                   </p>
                                   <p className="text-rose-400 font-semibold">
-                                    Outflow: ₹{Number(payload[1]?.value || 0).toLocaleString("en-IN")}
+                                    Outflow: {formatMoney(Number(payload[1]?.value || 0))}
                                   </p>
                                 </div>
                               );
@@ -669,7 +671,7 @@ export const ExpenseManagementPage: React.FC = () => {
                             ))}
                           </Pie>
                           <Tooltip
-                            formatter={(value: any) => [`₹${Number(value).toLocaleString("en-IN")}`, "Amount"]}
+                            formatter={(value: any) => [formatMoney(Number(value)), "Amount"]}
                             contentStyle={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", fontSize: "11px" }}
                           />
                         </PieChart>
@@ -689,7 +691,7 @@ export const ExpenseManagementPage: React.FC = () => {
                           <span className="text-slate-700 dark:text-slate-300 truncate">{cat.category}</span>
                         </div>
                         <span className="font-semibold text-slate-900 dark:text-white tabular-nums shrink-0">
-                          ₹{cat.amount.toLocaleString("en-IN")} ({cat.percentage}%)
+                          {formatMoney(cat.amount)} ({cat.percentage}%)
                         </span>
                       </div>
                     ))}
@@ -704,7 +706,7 @@ export const ExpenseManagementPage: React.FC = () => {
                     Spending Allocation Ratio
                   </span>
                   <span className="text-slate-500">
-                    Purchases: ₹{(summary?.purchasesOutflow || 0).toLocaleString("en-IN")} vs Misc: ₹{(summary?.miscOutflow || 0).toLocaleString("en-IN")}
+                    Purchases: {formatMoney(summary?.purchasesOutflow || 0)} vs Misc: {formatMoney(summary?.miscOutflow || 0)}
                   </span>
                 </div>
                 <div className="w-full h-3 bg-slate-200 dark:bg-pitch-800 rounded-full overflow-hidden flex">
@@ -870,13 +872,13 @@ export const ExpenseManagementPage: React.FC = () => {
                         <div>
                           <span className="text-[10px] text-slate-400 block uppercase">Unit Cost</span>
                           <span className="text-slate-600 dark:text-slate-300 tabular-nums">
-                            ₹{(p.unitPrice || 0).toLocaleString("en-IN")}
+                            {formatMoney(p.unitPrice || 0)}
                           </span>
                         </div>
                         <div>
                           <span className="text-[10px] text-slate-400 block uppercase">Total</span>
                           <span className="font-extrabold text-volt-500 tabular-nums">
-                            ₹{p.amount.toLocaleString("en-IN")}
+                            {formatMoney(p.amount)}
                           </span>
                         </div>
                       </div>
@@ -962,10 +964,10 @@ export const ExpenseManagementPage: React.FC = () => {
                               {p.quantity} {p.unit}
                             </td>
                             <td className="px-4 py-3 text-right tabular-nums text-slate-500">
-                              ₹{(p.unitPrice || 0).toLocaleString("en-IN")}
+                              {formatMoney(p.unitPrice || 0)}
                             </td>
                             <td className="px-4 py-3 text-right font-extrabold text-volt-500 tabular-nums">
-                              ₹{p.amount.toLocaleString("en-IN")}
+                              {formatMoney(p.amount)}
                             </td>
                             <td className="px-4 py-3">
                               {p.invoiceNumber ? (
@@ -1059,7 +1061,7 @@ export const ExpenseManagementPage: React.FC = () => {
             <div className="card p-2.5 sm:p-3">
               <span className="text-[11px] sm:text-xs text-slate-500 block truncate">Total Valuation</span>
               <p className="text-lg sm:text-xl font-bold text-ice-400 tabular-nums truncate">
-                ₹{(stocksData?.summary.totalInventoryValuation || 0).toLocaleString("en-IN")}
+                {formatMoney(stocksData?.summary.totalInventoryValuation || 0)}
               </p>
             </div>
           </div>
@@ -1189,10 +1191,10 @@ export const ExpenseManagementPage: React.FC = () => {
                         <div>
                           <span className="text-[10px] text-slate-400 block uppercase">Valuation</span>
                           <span className="text-base font-bold text-slate-900 dark:text-white tabular-nums block">
-                            ₹{(item.totalValue || 0).toLocaleString("en-IN")}
+                            {formatMoney(item.totalValue || 0)}
                           </span>
                           <span className="text-[10px] text-slate-500 tabular-nums">
-                            @ ₹{(item.unitPrice || 0).toLocaleString("en-IN")}/{item.unit}
+                            @ {formatMoney(item.unitPrice || 0)}/{item.unit}
                           </span>
                         </div>
                       </div>
@@ -1310,10 +1312,10 @@ export const ExpenseManagementPage: React.FC = () => {
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right tabular-nums text-slate-500">
-                              ₹{(item.unitPrice || 0).toLocaleString("en-IN")}
+                              {formatMoney(item.unitPrice || 0)}
                             </td>
                             <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-white tabular-nums">
-                              ₹{(item.totalValue || 0).toLocaleString("en-IN")}
+                              {formatMoney(item.totalValue || 0)}
                             </td>
                             <td className="px-4 py-3 text-slate-500">{item.location || "General Storage"}</td>
                             <td className="px-4 py-3">
@@ -1464,7 +1466,7 @@ export const ExpenseManagementPage: React.FC = () => {
                       </div>
                       <div className="text-right shrink-0">
                         <span className="text-base font-extrabold text-rose-500 tabular-nums block">
-                          ₹{exp.amount.toLocaleString("en-IN")}
+                          {formatMoney(exp.amount)}
                         </span>
                         <span className="text-[10px] text-slate-400 capitalize block">
                           {exp.paymentMethod.replace("_", " ")}
@@ -1503,7 +1505,7 @@ export const ExpenseManagementPage: React.FC = () => {
                         <th className="px-4 py-3">Date</th>
                         <th className="px-4 py-3">Expense Title / Description</th>
                         <th className="px-4 py-3">Category</th>
-                        <th className="px-4 py-3 text-right">Amount (₹)</th>
+                        <th className="px-4 py-3 text-right">Amount ({currencySymbol})</th>
                         <th className="px-4 py-3">Paid To / Vendor</th>
                         <th className="px-4 py-3">Payment Mode</th>
                         <th className="px-4 py-3">Reference / Bill</th>
@@ -1527,7 +1529,7 @@ export const ExpenseManagementPage: React.FC = () => {
                           </td>
                           <td className="px-4 py-3 text-slate-500">{exp.category}</td>
                           <td className="px-4 py-3 text-right font-extrabold text-rose-500 tabular-nums">
-                            ₹{exp.amount.toLocaleString("en-IN")}
+                            {formatMoney(exp.amount)}
                           </td>
                           <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{exp.vendor || "—"}</td>
                           <td className="px-4 py-3 capitalize text-slate-500">{exp.paymentMethod.replace("_", " ")}</td>
@@ -1559,21 +1561,21 @@ export const ExpenseManagementPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <StatCard
               label="Total Funds Inflow"
-              value={`₹${(summary?.totalInflow || 0).toLocaleString("en-IN")}`}
+              value={formatMoney(summary?.totalInflow || 0)}
               sublabel="Student Fees + External Incomes"
               icon={<ArrowDownLeft size={22} />}
               accent="field"
             />
             <StatCard
               label="Student Fees Collected"
-              value={`₹${(summary?.feesInflow || 0).toLocaleString("en-IN")}`}
+              value={formatMoney(summary?.feesInflow || 0)}
               sublabel="Aggregated from paid fee installments"
               icon={<Receipt size={22} />}
               accent="ice"
             />
             <StatCard
               label="Additional Incomes"
-              value={`₹${(summary?.otherInflow || 0).toLocaleString("en-IN")}`}
+              value={formatMoney(summary?.otherInflow || 0)}
               sublabel="Sponsorships, pitch rentals & events"
               icon={<TrendingUp size={22} />}
               accent="volt"
@@ -1617,7 +1619,7 @@ export const ExpenseManagementPage: React.FC = () => {
                           <span className="text-[11px] text-slate-500">{inc.category} • {format(new Date(inc.date), "dd MMM yyyy")}</span>
                         </div>
                         <span className="text-base font-extrabold text-field-500 tabular-nums shrink-0">
-                          ₹{inc.amount.toLocaleString("en-IN")}
+                          {formatMoney(inc.amount)}
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-500 pt-1.5 border-t border-slate-200 dark:border-white/5 gap-1">
@@ -1643,7 +1645,7 @@ export const ExpenseManagementPage: React.FC = () => {
                         <th className="px-4 py-2.5">Date</th>
                         <th className="px-4 py-2.5">Source / Purpose</th>
                         <th className="px-4 py-2.5">Category</th>
-                        <th className="px-4 py-2.5 text-right">Amount (₹)</th>
+                        <th className="px-4 py-2.5 text-right">Amount ({currencySymbol})</th>
                         <th className="px-4 py-2.5">Payer / Partner</th>
                         <th className="px-4 py-2.5">Payment Mode</th>
                         <th className="px-4 py-2.5">Ref No</th>
@@ -1659,7 +1661,7 @@ export const ExpenseManagementPage: React.FC = () => {
                           <td className="px-4 py-2.5 font-semibold text-slate-900 dark:text-white">{inc.source}</td>
                           <td className="px-4 py-2.5 text-slate-500">{inc.category}</td>
                           <td className="px-4 py-2.5 text-right font-extrabold text-field-500 tabular-nums">
-                            ₹{inc.amount.toLocaleString("en-IN")}
+                            {formatMoney(inc.amount)}
                           </td>
                           <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">{inc.payerName || "—"}</td>
                           <td className="px-4 py-2.5 capitalize text-slate-500">{inc.paymentMethod}</td>
@@ -1711,7 +1713,7 @@ export const ExpenseManagementPage: React.FC = () => {
                           </span>
                         </div>
                         <span className="text-base font-extrabold text-field-500 tabular-nums shrink-0">
-                          ₹{f.amount.toLocaleString("en-IN")}
+                          {formatMoney(f.amount)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200 dark:border-white/5">
@@ -1746,7 +1748,7 @@ export const ExpenseManagementPage: React.FC = () => {
                           <td className="px-4 py-2.5 text-slate-500 capitalize">{f.feeType.replace("_", " ")}</td>
                           <td className="px-4 py-2.5 text-slate-500">Installment #{f.installmentNumber}</td>
                           <td className="px-4 py-2.5 text-right font-extrabold text-field-500 tabular-nums">
-                            ₹{f.amount.toLocaleString("en-IN")}
+                            {formatMoney(f.amount)}
                           </td>
                           <td className="px-4 py-2.5 capitalize text-slate-500">{f.paymentMethod || "Cash"}</td>
                           <td className="px-4 py-2.5 font-mono text-[11px] text-slate-400">{f.transactionId || "—"}</td>
@@ -1867,7 +1869,7 @@ export const ExpenseManagementPage: React.FC = () => {
                     <thead className="bg-slate-100 dark:bg-pitch-800 text-slate-700 dark:text-slate-300 font-bold">
                       <tr>
                         <th className="px-4 py-2.5">Financial Metric</th>
-                        <th className="px-4 py-2.5 text-right">Amount (INR)</th>
+                        <th className="px-4 py-2.5 text-right">Amount ({currencySymbol})</th>
                         <th className="px-4 py-2.5">Accounting Significance</th>
                       </tr>
                     </thead>
@@ -1875,14 +1877,14 @@ export const ExpenseManagementPage: React.FC = () => {
                       <tr>
                         <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-white">Total Gross Inflows</td>
                         <td className="px-4 py-2.5 text-right font-extrabold text-field-500 tabular-nums">
-                          ₹{summary.totalInflow.toLocaleString("en-IN")}
+                          {formatMoney(summary.totalInflow)}
                         </td>
                         <td className="px-4 py-2.5 text-slate-500">Student fees collected + sponsorships & external revenues</td>
                       </tr>
                       <tr>
                         <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-white">Total Outflows (Expenses)</td>
                         <td className="px-4 py-2.5 text-right font-extrabold text-rose-500 tabular-nums">
-                          ₹{summary.totalOutflow.toLocaleString("en-IN")}
+                          {formatMoney(summary.totalOutflow)}
                         </td>
                         <td className="px-4 py-2.5 text-slate-500">Verified purchases + pitch maintenance + operational bills</td>
                       </tr>
@@ -1895,7 +1897,7 @@ export const ExpenseManagementPage: React.FC = () => {
                             summary.netBalance >= 0 ? "text-field-500" : "text-rose-500"
                           }`}
                         >
-                          {summary.netBalance >= 0 ? "+" : ""}₹{summary.netBalance.toLocaleString("en-IN")}
+                          {(summary.netBalance >= 0 ? "+" : "") + formatMoney(summary.netBalance)}
                         </td>
                         <td className="px-4 py-2.5 font-bold text-volt-500">
                           {summary.profitMargin}% Operating Margin ({summary.netBalance >= 0 ? "Surplus" : "Deficit"})
@@ -1904,7 +1906,7 @@ export const ExpenseManagementPage: React.FC = () => {
                       <tr>
                         <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-white">Active Stock Assets Valuation</td>
                         <td className="px-4 py-2.5 text-right font-extrabold text-sky-400 tabular-nums">
-                          ₹{summary.totalInventoryValue.toLocaleString("en-IN")}
+                          {formatMoney(summary.totalInventoryValue)}
                         </td>
                         <td className="px-4 py-2.5 text-slate-500">Current market valuation of all physical equipment in inventory</td>
                       </tr>

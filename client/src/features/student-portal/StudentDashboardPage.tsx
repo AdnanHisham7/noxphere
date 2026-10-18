@@ -43,6 +43,7 @@ import {
 import { ImageUploadField, Select } from "../../components/ui";
 import { NfcPlayerCardSection } from "./NfcPlayerCardSection";
 import { AcceptSquadInvitationModal } from "./AcceptSquadInvitationModal";
+import { formatCurrency } from "../../utils/currency";
 import { useHighlightEffect } from "../../hooks/useEntityHighlight";
 
 const StudentDashboardPage: React.FC = () => {
@@ -925,7 +926,7 @@ const StudentDashboardPage: React.FC = () => {
                               </div>
                               <div className="text-right">
                                 <div className="font-orbital text-sm font-semibold text-nox-high">
-                                  ₹{f.amount.toLocaleString("en-IN")}
+                                  {formatCurrency(f.amount, f.currency)}
                                 </div>
                                 <NoxStatusBadge
                                   status={isOverdue ? "overdue" : "pending"}

@@ -28,6 +28,7 @@ import {
 } from "recharts";
 import { Button, Skeleton } from "../../components/ui";
 import { useGetStudentReportQuery } from "../../store/api/studentsApi";
+import { useCurrency } from "../../hooks/useCurrency";
 
 type ReportPeriod = "daily" | "monthly" | "yearly" | "all";
 
@@ -68,6 +69,7 @@ const StudentReportPage: React.FC = () => {
 
   const activePeriod = (searchParams.get("period") as ReportPeriod) || "monthly";
   const { data: rawReport, isLoading, isError } = useGetStudentReportQuery(id ?? "", { skip: !id });
+  const { format } = useCurrency();
 
   useEffect(() => {
     if (rawReport) {
@@ -388,7 +390,7 @@ const StudentReportPage: React.FC = () => {
               <Award size={15} className="text-emerald-500" />
             </div>
             <p className="text-2xl font-black text-slate-900 mt-2 font-display">
-              ₹{periodPaid.toLocaleString("en-IN")}
+              {format(periodPaid)}
             </p>
             <p className="text-3xs text-slate-500 mt-0.5 font-medium">Verified fee receipts</p>
           </div>
@@ -403,7 +405,7 @@ const StudentReportPage: React.FC = () => {
                 summary.totalOutstanding > 0 ? "text-rose-600" : "text-slate-900"
               }`}
             >
-              ₹{(summary.totalOutstanding || 0).toLocaleString("en-IN")}
+              {format(summary.totalOutstanding || 0)}
             </p>
             <p className="text-3xs text-slate-500 mt-0.5 font-medium">Current fee ledger balance</p>
           </div>
@@ -675,7 +677,7 @@ const StudentReportPage: React.FC = () => {
               Fee Records & Installments
             </h2>
             <span className="text-xs font-mono font-bold text-slate-700">
-              Total Billed: ₹{periodBilled.toLocaleString("en-IN")}
+              Total Billed: {format(periodBilled)}
             </span>
           </div>
 
@@ -711,8 +713,7 @@ const StudentReportPage: React.FC = () => {
                         {new Date(inst.dueDate).toLocaleDateString("en-IN")}
                       </span>
                       <span className="font-mono font-medium">
-                        ₹{(inst.paidAmount || 0).toLocaleString("en-IN")} / ₹
-                        {(inst.amount || 0).toLocaleString("en-IN")} (
+                        {format(inst.paidAmount || 0)} / {format(inst.amount || 0)} (
                         <span className="capitalize">{inst.status}</span>)
                       </span>
                     </div>

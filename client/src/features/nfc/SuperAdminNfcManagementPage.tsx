@@ -43,6 +43,7 @@ import {
   Card,
   Select,
 } from "../../components/ui";
+import { formatCurrency } from "../../utils/currency";
 
 export const SuperAdminNfcManagementPage: React.FC = () => {
   const { data: pricing, isLoading: pricingLoading } = useGetNfcPricingQuery();
@@ -471,7 +472,7 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
                         )}
                       </td>
                       <td className="py-3 px-4 font-mono font-bold text-slate-900 dark:text-white">
-                        ₹{req.totalAmount.toLocaleString("en-IN")}
+                        {formatCurrency(req.totalAmount, req.currency)}
                       </td>
                       <td className="py-3 px-4">
                         {req.status === "pending" && (
@@ -638,10 +639,10 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
                   </strong>
                 </p>
                 <p className="text-xs text-slate-700 dark:text-slate-300">
-                  Rate: <strong>₹{selectedRequest.unitPrice} / card</strong>
+                  Rate: <strong>{formatCurrency(selectedRequest.unitPrice, selectedRequest.currency)} / card</strong>
                 </p>
                 <p className="text-sm font-mono font-bold text-volt-600 dark:text-volt-400 mt-1">
-                  Total: ₹{selectedRequest.totalAmount.toLocaleString("en-IN")}
+                  Total: {formatCurrency(selectedRequest.totalAmount, selectedRequest.currency)}
                 </p>
               </div>
             </div>

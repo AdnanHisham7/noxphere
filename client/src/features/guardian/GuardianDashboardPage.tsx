@@ -37,6 +37,7 @@ import {
 } from "../../components/portal-ui";
 import { getMapsLink } from "../../components/ui";
 import { PayFeeModal } from "./PayFeeModal";
+import { formatCurrency } from "../../utils/currency";
 
 const GuardianDashboardPage: React.FC = () => {
   const user = useSelector((s: RootState) => s.auth.user);
@@ -165,8 +166,7 @@ const GuardianDashboardPage: React.FC = () => {
                         </strong>{" "}
                         has an overdue milestone of{" "}
                         <strong className="text-rose-600 dark:text-rose-400 font-bold font-mono">
-                          {lateFees[0].currency === "INR" ? "₹" : lateFees[0].currency}
-                          {lateFees[0].amount.toLocaleString("en-IN")}
+                          {formatCurrency(lateFees[0].amount, lateFees[0].currency)}
                         </strong>{" "}
                         (Installment #{lateFees[0].installmentNumber} · overdue by{" "}
                         {Math.abs(lateFees[0].daysDiff || 0)} days).
@@ -714,7 +714,6 @@ const GuardianDashboardPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {lateFees.map((fee) => {
                     const daysOverdue = Math.abs(fee.daysDiff || 0);
-                    const currSymbol = fee.currency === "INR" ? "₹" : fee.currency;
                     return (
                       <div
                         key={`${fee.feeId}-${fee.installmentNumber}`}
@@ -744,8 +743,7 @@ const GuardianDashboardPage: React.FC = () => {
                               Overdue
                             </span>
                             <div className="font-orbital text-lg font-bold text-rose-600 dark:text-rose-400 mt-1.5">
-                              {currSymbol}
-                              {fee.amount.toLocaleString("en-IN")}
+                              {formatCurrency(fee.amount, fee.currency)}
                             </div>
                           </div>
                         </div>
@@ -792,7 +790,6 @@ const GuardianDashboardPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {pendingFees.map((fee) => {
                     const daysLeft = fee.daysDiff;
-                    const currSymbol = fee.currency === "INR" ? "₹" : fee.currency;
                     return (
                       <div
                         key={`${fee.feeId}-${fee.installmentNumber}`}
@@ -822,8 +819,7 @@ const GuardianDashboardPage: React.FC = () => {
                               Due Soon
                             </span>
                             <div className="font-orbital text-lg font-bold text-amber-600 dark:text-amber-400 mt-1.5">
-                              {currSymbol}
-                              {fee.amount.toLocaleString("en-IN")}
+                              {formatCurrency(fee.amount, fee.currency)}
                             </div>
                           </div>
                         </div>
@@ -869,7 +865,6 @@ const GuardianDashboardPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {verificationPendingFees.map((fee) => {
-                    const currSymbol = fee.currency === "INR" ? "₹" : fee.currency;
                     return (
                       <div
                         key={`verif-${fee.feeId}-${fee.installmentNumber}`}
@@ -894,8 +889,7 @@ const GuardianDashboardPage: React.FC = () => {
                               Under Review
                             </span>
                             <div className="font-orbital text-base font-bold text-blue-600 dark:text-blue-400 mt-1">
-                              {currSymbol}
-                              {fee.amount.toLocaleString("en-IN")}
+                              {formatCurrency(fee.amount, fee.currency)}
                             </div>
                           </div>
                         </div>
@@ -931,7 +925,6 @@ const GuardianDashboardPage: React.FC = () => {
 
                 <div className="nox-card divide-y divide-slate-100 dark:divide-white/[0.06] overflow-hidden rounded-2xl">
                   {upcomingFees.map((fee) => {
-                    const currSymbol = fee.currency === "INR" ? "₹" : fee.currency;
                     return (
                       <div
                         key={`${fee.feeId}-${fee.installmentNumber}`}
@@ -961,8 +954,7 @@ const GuardianDashboardPage: React.FC = () => {
                         <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto shrink-0">
                           <div className="text-left sm:text-right">
                             <div className="font-orbital text-base font-bold text-slate-900 dark:text-white">
-                              {currSymbol}
-                              {fee.amount.toLocaleString("en-IN")}
+                              {formatCurrency(fee.amount, fee.currency)}
                             </div>
                             <span className="text-2xs font-mono text-core-500 font-medium">
                               Upcoming

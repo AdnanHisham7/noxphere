@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { StatCard, Skeleton, Avatar, EmptyState, Badge, Button } from "../../components/ui";
 import { academyApi } from "../../store/api/academyApi";
+import { formatCurrency } from "../../utils/currency";
 import {
   useGetDashboardStatsQuery,
   useGetAttendanceTrendQuery,
@@ -43,9 +44,6 @@ const ChartTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-const formatCurrency = (n: number) =>
-  n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : `₹${n.toLocaleString("en-IN")}`;
-
 export const AcademyDashboardPage: React.FC = () => {
   const { academyId } = useParams<{ academyId: string }>();
   const navigate = useNavigate();
@@ -54,6 +52,8 @@ export const AcademyDashboardPage: React.FC = () => {
     academyId ?? "",
     { skip: !academyId }
   );
+
+  const formatMoney = (n: number) => formatCurrency(n, academy?.currency);
 
   const queryParams = { academyId: academyId ?? undefined };
   const skip = !academyId;
@@ -176,8 +176,8 @@ export const AcademyDashboardPage: React.FC = () => {
           />
           <StatCard
             label="Fees Collected"
-            value={formatCurrency(stats?.feesCollected ?? 0)}
-            sublabel={`${formatCurrency(stats?.feesOutstanding ?? 0)} outstanding`}
+            value={formatMoney(stats?.feesCollected ?? 0)}
+            sublabel={`${formatMoney(stats?.feesOutstanding ?? 0)} outstanding`}
             icon={<CreditCard className="h-5 w-5" />}
             accent="ice"
           />
@@ -233,7 +233,7 @@ export const AcademyDashboardPage: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-2xs text-slate-500 uppercase">Collected</p>
-                    <p className="text-sm font-bold text-volt-400 mt-0.5">{formatCurrency(fp.feesCollected)}</p>
+                    <p className="text-sm font-bold text-volt-400 mt-0.5">{formatMoney(fp.feesCollected)}</p>
                   </div>
                 </div>
               </div>

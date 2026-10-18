@@ -15,6 +15,18 @@ import { AcademyModel } from '../database/models/Academy.model';
 import { whatsAppService } from './WhatsAppService';
 import { getSocketServer } from './SocketRegistry';
 import { normalizePhone } from '../../shared/utils/phone';
+import { getCurrencySymbol } from './GeoLocationService';
+
+function formatCurrencyDisplay(amount: number, currency: string = 'INR'): string {
+  const code = (currency || 'INR').toUpperCase();
+  const symbol = getCurrencySymbol(code);
+  const isOMR = code === 'OMR';
+  const formatted = amount.toLocaleString(code === 'INR' ? 'en-IN' : 'en-US', {
+    minimumFractionDigits: isOMR ? (amount % 1 !== 0 ? 3 : 0) : 0,
+    maximumFractionDigits: isOMR ? 3 : 2,
+  });
+  return symbol.length > 1 ? `${symbol} ${formatted}` : `${symbol}${formatted}`;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type NotificationType =
@@ -669,6 +681,7 @@ export class NotificationService {
     },
     paymentMethod: "qr" | "bank_transfer" | "both" = "qr",
     extraData?: Record<string, string>,
+    currency: string = "INR",
   ) {
     const isOverdue = daysUntilDue < 0;
     const isToday = daysUntilDue === 0;
@@ -688,7 +701,8 @@ export class NotificationService {
     }
 
     const title = isOverdue ? 'Installment Overdue Alert' : isToday ? 'Installment Due Today' : 'Installment Payment Reminder';
-    const body = `₹${amount.toLocaleString('en-IN')} for ${studentName} ${timing}. Please pay to avoid disruption to training.${paymentInstructions}`;
+    const formattedAmount = formatCurrencyDisplay(amount, currency);
+    const body = `${formattedAmount} for ${studentName} ${timing}. Please pay to avoid disruption to training.${paymentInstructions}`;
     const effectiveQrImage = paymentMethod === 'bank_transfer' ? undefined : qrImageUrl;
 
     await this.send({
@@ -715,12 +729,14 @@ export class NotificationService {
     receiptUrl: string,
     franchiseId: string,
     extraData?: Record<string, string>,
+    currency: string = "INR",
   ) {
+    const formattedAmount = formatCurrencyDisplay(amount, currency);
     await this.send({
       userIds: guardianIds,
       type: 'payment_receipt',
       title: 'Payment Received',
-      body: `We've received a payment of ₹${amount.toLocaleString('en-IN')} for ${studentName}. Your receipt is attached.`,
+      body: `We've received a payment of ${formattedAmount} for ${studentName}. Your receipt is attached.`,
       data: extraData,
       franchiseId,
       channels: ['push', 'whatsapp'],
@@ -772,12 +788,13 @@ export class NotificationService {
     });
   }
 
-  async sendFeeReminder(guardianIds: string[], studentName: string, amount: number, dueDate: string, franchiseId: string) {
+  async sendFeeReminder(guardianIds: string[], studentName: string, amount: number, dueDate: string, franchiseId: string, currency: string = "INR") {
+    const formattedAmount = formatCurrencyDisplay(amount, currency);
     await this.send({
       userIds: guardianIds,
       type: 'fee_reminder',
       title: 'Fee Payment Reminder',
-      body: `₹${amount.toLocaleString()} due for ${studentName} on ${dueDate}. Please pay to avoid disruption.`,
+      body: `${formattedAmount} due for ${studentName} on ${dueDate}. Please pay to avoid disruption.`,
       franchiseId,
       channels: ['push', 'email'],
       emailSubject: `Fee Payment Due — ${studentName}`,
@@ -786,7 +803,7 @@ export class NotificationService {
           <h2 style="color:#0a0a0f;background:#ccff00;padding:12px 20px;margin:0">Football Franchise — Fee Reminder</h2>
           <div style="padding:20px">
             <p>Dear Guardian,</p>
-            <p>A fee payment of <strong>₹${amount.toLocaleString()}</strong> for <strong>${studentName}</strong> is due on <strong>${dueDate}</strong>.</p>
+            <p>A fee payment of <strong>${formattedAmount}</strong> for <strong>${studentName}</strong> is due on <strong>${dueDate}</strong>.</p>
             <p>Please log in to the Football Franchise app to make your payment and avoid any disruption to training.</p>
           </div>
         </div>
