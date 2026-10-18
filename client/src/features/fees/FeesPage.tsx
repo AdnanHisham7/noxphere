@@ -1376,6 +1376,7 @@ interface FeePlanDetailBlockProps {
     feeId: string;
     installmentNumber: number;
     amount: number;
+    currency?: string;
   }) => void;
   onEditPayment: (target: {
     feeId: string;
@@ -1384,6 +1385,7 @@ interface FeePlanDetailBlockProps {
     paymentMethod?: string;
     transactionId?: string;
     paymentBreakdown?: PaymentBreakdownItem[];
+    currency?: string;
   }) => void;
   onVerifyPayment?: (target: {
     fee: AdminFeeRecord;

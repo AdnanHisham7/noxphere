@@ -238,6 +238,7 @@ export interface BillingTransaction {
   number: string | null;
   amountPaid: number;
   amountDue: number;
+  currency?: string | null;
   status: string | null;
   created: string;
   invoicePdf: string | null;

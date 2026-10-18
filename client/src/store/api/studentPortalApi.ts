@@ -28,8 +28,8 @@ export interface MyDashboard {
   };
 
   todayStatus: string | null;
-  upcomingFees: { installmentNumber: number; amount: number; dueDate: string }[];
-  overdueFees: { installmentNumber: number; amount: number; dueDate: string }[];
+  upcomingFees: { installmentNumber: number; amount: number; dueDate: string; currency?: string }[];
+  overdueFees: { installmentNumber: number; amount: number; dueDate: string; currency?: string }[];
   recentRemarks: { _id: string; text: string; date: string }[];
 }
 
