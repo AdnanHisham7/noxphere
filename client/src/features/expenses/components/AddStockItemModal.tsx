@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Modal, Button, Input, Select } from "../../../components/ui";
 import { useCreateStockMutation } from "../../../store/api/expenseApi";
+import { useCurrency } from "../../../hooks/useCurrency";
 import toast from "react-hot-toast";
 
 interface AddStockItemModalProps {
@@ -29,6 +30,7 @@ export const AddStockItemModal: React.FC<AddStockItemModalProps> = ({
   academyId,
   franchiseId,
 }) => {
+  const { currencySymbol } = useCurrency();
   const [createStock, { isLoading }] = useCreateStockMutation();
 
   const [name, setName] = useState<string>("");
@@ -159,7 +161,7 @@ export const AddStockItemModal: React.FC<AddStockItemModalProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Estimated Unit Cost (₹)
+              Estimated Unit Cost ({currencySymbol})
             </label>
             <Input
               type="number"

@@ -32,6 +32,7 @@ import {
 } from "../../store/api/nfcCardApi";
 import { openRazorpayCheckout } from "../../utils/razorpay";
 import { Button, Input, Modal, Badge } from "../../components/ui";
+import { formatCurrency } from "../../utils/currency";
 
 interface NfcPlayerCardSectionProps {
   player: {
@@ -372,7 +373,7 @@ export const NfcPlayerCardSection: React.FC<NfcPlayerCardSectionProps> = ({
                   Order Approved &bull; Ready for Payment
                 </p>
                 <p className="text-2xs text-slate-600 dark:text-slate-300 mt-0.5">
-                  Complete your ₹{activeRequest.totalAmount} payment to send this card into chip engraving and production.
+                  Complete your {formatCurrency(activeRequest.totalAmount, activeRequest.currency)} payment to send this card into chip engraving and production.
                 </p>
               </div>
               <Button
@@ -381,7 +382,7 @@ export const NfcPlayerCardSection: React.FC<NfcPlayerCardSectionProps> = ({
                 size="sm"
                 className="!bg-emerald-600 hover:!bg-emerald-500 !text-white dark:!bg-field-400 dark:hover:!bg-field-300 dark:!text-pitch-950 font-bold text-xs shrink-0"
               >
-                Pay ₹{activeRequest.totalAmount} Now
+                Pay {formatCurrency(activeRequest.totalAmount, activeRequest.currency)} Now
               </Button>
             </div>
           )}
@@ -470,7 +471,7 @@ export const NfcPlayerCardSection: React.FC<NfcPlayerCardSectionProps> = ({
                   <Sparkles size={13} /> Physical Smart NFC Card
                 </span>
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
-                  ₹{cardPrice} Flat Rate
+                  {formatCurrency(cardPrice, activeRequest?.currency)} Flat Rate
                 </span>
               </div>
 
@@ -491,7 +492,7 @@ export const NfcPlayerCardSection: React.FC<NfcPlayerCardSectionProps> = ({
                   onClick={() => setIsModalOpen(true)}
                   className="!bg-volt-400 hover:!bg-volt-300 !text-pitch-950 font-bold shadow-sm"
                 >
-                  Request NFC Player Card (₹{cardPrice}){" "}
+                  Request NFC Player Card ({formatCurrency(cardPrice, activeRequest?.currency)}){" "}
                   <ArrowRight size={16} className="ml-1.5" />
                 </Button>
               </div>
@@ -524,7 +525,7 @@ export const NfcPlayerCardSection: React.FC<NfcPlayerCardSectionProps> = ({
                 </strong>
                 . Fixed rate:{" "}
                 <strong className="text-slate-900 dark:text-white">
-                  ₹{cardPrice}
+                  {formatCurrency(cardPrice, activeRequest?.currency)}
                 </strong>{" "}
                 (paid via Stripe once approved).
               </p>

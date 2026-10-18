@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Button, Input, Select } from "../../../components/ui";
 import { useCreateExpenseMutation, type StockItem } from "../../../store/api/expenseApi";
+import { useCurrency } from "../../../hooks/useCurrency";
 import toast from "react-hot-toast";
 import { PackagePlus, CheckCircle2 } from "lucide-react";
 
@@ -44,6 +45,7 @@ export const AddPurchaseModal: React.FC<AddPurchaseModalProps> = ({
   preselectedStockItem,
   existingStocks = [],
 }) => {
+  const { format: formatMoney, currencySymbol } = useCurrency();
   const [createExpense, { isLoading }] = useCreateExpenseMutation();
 
   const [selectedStockId, setSelectedStockId] = useState<string>("");
@@ -221,7 +223,7 @@ export const AddPurchaseModal: React.FC<AddPurchaseModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Cost Per Unit (₹) *
+              Cost Per Unit ({currencySymbol}) *
             </label>
             <Input
               type="number"
@@ -238,7 +240,7 @@ export const AddPurchaseModal: React.FC<AddPurchaseModalProps> = ({
         <div className="bg-slate-100 dark:bg-pitch-900 border border-slate-200 dark:border-white/10 rounded-lg p-3 flex items-center justify-between">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Total Purchase Expense:</span>
           <span className="text-lg font-bold font-display text-volt-500 tabular-nums">
-            ₹{calculatedTotal.toLocaleString("en-IN")}
+            {formatMoney(calculatedTotal)}
           </span>
         </div>
 

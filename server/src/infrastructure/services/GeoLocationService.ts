@@ -183,7 +183,7 @@ class GeoLocationService {
   }
 
   getCurrencySymbol(currency: string): string {
-    return SUPPORTED_CURRENCY_MAP[currency?.toUpperCase()]?.symbol || currency || '₹';
+    return getCurrencySymbol(currency);
   }
 
   /**
@@ -240,3 +240,8 @@ class GeoLocationService {
 }
 
 export const geoLocationService = new GeoLocationService();
+
+export function getCurrencySymbol(currency?: string): string {
+  if (!currency) return '₹';
+  return SUPPORTED_CURRENCY_MAP[currency.toUpperCase()]?.symbol || currency;
+}

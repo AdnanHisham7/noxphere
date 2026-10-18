@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   ExternalLink,
 } from "lucide-react";
+import { getCurrencySymbol, formatCurrency } from "../../utils/currency";
 
 export interface FeeReceiptModalProps {
   academyName?: string;
@@ -45,7 +46,7 @@ export const FeeReceiptModal: React.FC<FeeReceiptModalProps> = ({
   receiptUrl,
   onClose,
 }) => {
-  const currSymbol = currency === "INR" ? "₹" : currency;
+  const currSymbol = getCurrencySymbol(currency);
   const formattedDate = paidAt
     ? new Date(paidAt).toLocaleDateString("en-IN", {
         day: "2-digit",
@@ -240,12 +241,10 @@ export const FeeReceiptModal: React.FC<FeeReceiptModalProps> = ({
                     </div>
                   </td>
                   <td className="py-3 px-4 text-right font-mono text-slate-600 dark:text-slate-400">
-                    {currSymbol}
-                    {totalAmount.toLocaleString("en-IN")}
+                    {formatCurrency(totalAmount, currency)}
                   </td>
                   <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                    {currSymbol}
-                    {amountPaid.toLocaleString("en-IN")}
+                    {formatCurrency(amountPaid, currency)}
                   </td>
                 </tr>
               </tbody>
@@ -265,8 +264,7 @@ export const FeeReceiptModal: React.FC<FeeReceiptModalProps> = ({
                 Total Paid
               </span>
               <div className="font-orbital text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
-                {currSymbol}
-                {amountPaid.toLocaleString("en-IN")}
+                {formatCurrency(amountPaid, currency)}
               </div>
             </div>
           </div>

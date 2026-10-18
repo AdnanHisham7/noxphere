@@ -28,6 +28,7 @@ import {
   useGetMySessionsQuery,
   useGetMyDashboardQuery,
 } from "../../store/api/studentPortalApi";
+import { formatCurrency } from "../../utils/currency";
 import {
   NoxPageHeader,
   NoxSkeleton,
@@ -488,7 +489,7 @@ const FeesTab: React.FC = () => {
                 {fee.feeType.replace("_", " ")}
               </div>
               <div className="text-xs text-nox-low font-mono mt-0.5">
-                ₹{fee.finalAmount.toLocaleString("en-IN")} total
+                {formatCurrency(fee.finalAmount, (fee as any).currency)} total
               </div>
             </div>
             <NoxStatusBadge status={fee.overallStatus} />
@@ -505,8 +506,7 @@ const FeesTab: React.FC = () => {
                 </span>
                 <div className="flex items-center gap-3">
                   <span className="text-nox-high font-mono text-xs">
-                    ₹{inst.paidAmount.toLocaleString("en-IN")} / ₹
-                    {inst.amount.toLocaleString("en-IN")}
+                    {formatCurrency(inst.paidAmount, (fee as any).currency)} / {formatCurrency(inst.amount, (fee as any).currency)}
                   </span>
                   <NoxStatusBadge status={inst.status} />
                 </div>

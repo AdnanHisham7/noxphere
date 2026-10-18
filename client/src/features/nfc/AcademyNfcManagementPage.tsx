@@ -38,6 +38,8 @@ import { openRazorpayCheckout } from "../../utils/razorpay";
 import { useGetStudentsQuery, Student } from "../../store/api/studentsApi";
 import { useGetFranchisesQuery } from "../../store/api/franchiseApi";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
+import { useCurrency } from "../../hooks/useCurrency";
+import { formatCurrency } from "../../utils/currency";
 import { useUploadImageMutation } from "../../store/api/uploadApi";
 import {
   Button,
@@ -55,6 +57,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
   const user = useSelector((s: RootState) => s.auth.user);
   const academyId = user?.academyId;
   const currentFranchiseId = useCurrentFranchiseId();
+  const { currency, currencySymbol, format } = useCurrency();
 
   const { data: pricing } = useGetNfcPricingQuery();
   const {
@@ -418,7 +421,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
                         )}
                       </td>
                       <td className="py-3 px-4 font-mono font-bold text-slate-900 dark:text-white">
-                        ₹{req.totalAmount.toLocaleString("en-IN")}
+                        {formatCurrency(req.totalAmount, req.currency || currency)}
                       </td>
                       <td className="py-3 px-4">
                         {req.status === "pending" && (
@@ -481,7 +484,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
                             loading={isOrderingRazorpay || isVerifyingRazorpay}
                             className="!bg-field-400 hover:!bg-field-300 !text-pitch-950 font-bold"
                           >
-                            Pay ₹{req.totalAmount}
+                            Pay {formatCurrency(req.totalAmount, req.currency || currency)}
                           </Button>
                         )}
                       </td>
@@ -518,7 +521,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
                 </span>
               </div>
               <span className="font-mono text-xs font-bold text-volt-700 dark:text-volt-400">
-                ₹{viewRequest.totalAmount.toLocaleString("en-IN")} (
+                {formatCurrency(viewRequest.totalAmount, viewRequest.currency || currency)} (
                 {viewRequest.quantity} cards)
               </span>
             </div>
@@ -664,7 +667,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
                   loading={isOrderingRazorpay || isVerifyingRazorpay}
                   className="!bg-field-400 hover:!bg-field-300 !text-pitch-950 font-bold"
                 >
-                  Pay ₹{viewRequest.totalAmount} Now
+                  Pay {formatCurrency(viewRequest.totalAmount, viewRequest.currency || currency)} Now
                 </Button>
               )}
             </div>
@@ -886,7 +889,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
                     NFC chip, and verified Noxphere ID branding.
                   </p>
                   <span className="font-mono text-xs text-volt-700 dark:text-volt-400 font-bold block pt-1">
-                    ₹{pricing?.cardPrice ?? 299} / card
+                    {format(pricing?.cardPrice ?? 299)} / card
                   </span>
                 </div>
 
@@ -916,7 +919,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
                     and background artwork. Upload your design file below.
                   </p>
                   <span className="font-mono text-xs text-purple-700 dark:text-purple-400 font-bold block pt-1">
-                    ₹{pricing?.customCardPrice ?? 399} / card
+                    {format(pricing?.customCardPrice ?? 399)} / card
                   </span>
                 </div>
               </div>
@@ -1100,14 +1103,14 @@ export const AcademyNfcManagementPage: React.FC = () => {
                 </div>
                 <div className="flex justify-between text-xs pb-2 border-b border-slate-200 dark:border-white/5">
                   <span className="text-slate-600 dark:text-slate-400">Price Per Card:</span>
-                  <span className="font-mono text-slate-900 dark:text-white">₹{unitPrice}</span>
+                  <span className="font-mono text-slate-900 dark:text-white">{format(unitPrice)}</span>
                 </div>
                 <div className="flex justify-between text-sm pt-1">
                   <span className="font-bold text-slate-900 dark:text-white">
                     Total Order Value:
                   </span>
                   <span className="font-mono font-black text-volt-700 dark:text-volt-400 text-base">
-                    ₹{totalAmount.toLocaleString("en-IN")}
+                    {format(totalAmount)}
                   </span>
                 </div>
               </div>

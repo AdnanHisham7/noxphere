@@ -21,6 +21,7 @@ import {
 } from "../../store/api/guardianApi";
 import { NoxSkeleton } from "../../components/portal-ui";
 import { Select } from "../../components/ui";
+import { getCurrencySymbol, formatCurrency } from "../../utils/currency";
 
 interface PayFeeModalProps {
   feeId: string;
@@ -89,7 +90,7 @@ export const PayFeeModal: React.FC<PayFeeModalProps> = ({
     }
 
     if (numericAmount > amount) {
-      toast.error(`Amount cannot exceed the remaining due of ${currency === "INR" ? "₹" : currency} ${amount.toLocaleString("en-IN")}`);
+      toast.error(`Amount cannot exceed the remaining due of ${formatCurrency(amount, currency)}`);
       return;
     }
 
@@ -127,7 +128,8 @@ export const PayFeeModal: React.FC<PayFeeModalProps> = ({
     }
   };
 
-  const currencySymbol = currency === "INR" ? "₹" : currency;
+  const effectiveCurrency = currency || config?.currency || "INR";
+  const currencySymbol = getCurrencySymbol(effectiveCurrency);
   const isBoth = config?.paymentMethod === "both";
   const showQr = activeTab === "qr" || config?.paymentMethod === "qr";
   const showBank =
@@ -191,8 +193,7 @@ export const PayFeeModal: React.FC<PayFeeModalProps> = ({
                 Remaining Due
               </span>
               <div className="font-orbital text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-                {currencySymbol}
-                {amount.toLocaleString("en-IN")}
+                {formatCurrency(amount, effectiveCurrency)}
               </div>
             </div>
           </div>

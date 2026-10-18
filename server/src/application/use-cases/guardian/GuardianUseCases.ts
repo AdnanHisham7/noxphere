@@ -223,8 +223,19 @@ export class GuardianUseCases {
     const verificationPendingFees: Array<any> = [];
     const in14Days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
+    const franchiseDocs = await FranchiseModel.find({ _id: { $in: franchiseIds } }).select("academyId").lean();
+    const academyIds = Array.from(new Set(franchiseDocs.map((f) => f.academyId?.toString()).filter(Boolean)));
+    const academyDocs = await AcademyModel.find({ _id: { $in: academyIds } }).select("currency").lean();
+    const franchiseAcademyMap = new Map(franchiseDocs.map((f) => [f._id.toString(), f.academyId?.toString()]));
+    const academyCurrencyMap = new Map(academyDocs.map((a) => [a._id.toString(), a.currency?.toUpperCase()]));
+
     for (const fee of fees) {
       const student = studentMap.get(fee.studentId.toString());
+      const fId = (fee.franchiseId || student?.franchiseId)?.toString();
+      const aId = fId ? franchiseAcademyMap.get(fId) : null;
+      const acadCurrency = aId ? academyCurrencyMap.get(aId) : null;
+      const feeCurrency = (fee.currency && fee.currency !== "INR") ? fee.currency : (acadCurrency || fee.currency || "INR");
+
       for (const inst of fee.installments) {
         if (inst.status === "paid" || inst.status === "refunded") continue;
         const remainingAmount = inst.amount - inst.paidAmount;
@@ -249,7 +260,7 @@ export class GuardianUseCases {
           status: inst.status === "pending_verification" ? "pending_verification" : (isLate ? "overdue" : inst.status),
           urgency: inst.status === "pending_verification" ? "under_review" : (isLate ? "late" : isDueSoon ? "due_soon" : "upcoming"),
           daysDiff,
-          currency: fee.currency || "INR",
+          currency: feeCurrency,
           verificationProof: (inst as any).verificationProof,
         };
 
@@ -326,8 +337,21 @@ export class GuardianUseCases {
   }
 
   async getChildFees(guardianUserId: string, studentId: string) {
-    await this.assertOwnsStudent(guardianUserId, studentId);
+    const student = await this.assertOwnsStudent(guardianUserId, studentId);
     const fees = await FeeModel.find({ studentId }).sort({ createdAt: -1 }).lean();
+    if (student.franchiseId) {
+      const franchise = await FranchiseModel.findById(student.franchiseId).select("academyId").lean();
+      if (franchise?.academyId) {
+        const academy = await AcademyModel.findById(franchise.academyId).select("currency").lean();
+        if (academy?.currency && academy.currency.toUpperCase() !== "INR") {
+          const academyCurrency = academy.currency.toUpperCase();
+          return fees.map((f: any) => ({
+            ...f,
+            currency: f.currency && f.currency !== "INR" ? f.currency : academyCurrency,
+          }));
+        }
+      }
+    }
     return fees;
   }
 

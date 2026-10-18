@@ -50,6 +50,7 @@ export interface AdminFeeRecord {
   feeType: string;
   totalAmount: number;
   finalAmount: number;
+  currency?: string;
   overallStatus: string;
   installments: FeeInstallment[];
   auditLog?: FeeAuditLog[];
@@ -62,6 +63,7 @@ export interface CreateFeeBody {
   feeType: "one_time" | "installment" | "early_bird";
   totalAmount: number;
   discount?: number;
+  currency?: string;
   installments: { installmentNumber: number; amount: number; dueDate: string }[];
   notes?: string;
 }

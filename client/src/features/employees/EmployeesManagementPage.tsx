@@ -33,6 +33,7 @@ import {
 } from "../../components/ui";
 import { useConfirm } from "../../hooks/useConfirm";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
+import { useCurrency } from "../../hooks/useCurrency";
 import {
   useListEmployeesQuery,
   useCreateEmployeeMutation,
@@ -48,6 +49,7 @@ import { SalaryHistoryModal } from "./SalaryHistoryModal";
 
 const EmployeesManagementPage: React.FC = () => {
   const academyId = useCurrentAcademyId();
+  const { currencySymbol, format } = useCurrency();
   const [tab, setTab] = useState<"employees" | "salary">("employees");
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [showAddOperationalManager, setShowAddOperationalManager] = useState(false);
@@ -318,7 +320,7 @@ const EmployeesManagementPage: React.FC = () => {
                     <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 self-end sm:self-auto w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-white/5">
                       <div className="text-left sm:text-right">
                         <span className="text-sm font-bold font-mono text-slate-900 dark:text-white block">
-                          ₹{emp.salaryAmount.toLocaleString("en-IN")}
+                          {format(emp.salaryAmount)}
                           <span className="text-2xs font-normal text-slate-400">/mo</span>
                         </span>
                         <span className="text-2xs text-slate-400 dark:text-slate-500">
@@ -488,6 +490,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
   onClose,
   onSubmit,
 }) => {
+  const { currencySymbol } = useCurrency();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [designation, setDesignation] = useState("");
@@ -556,7 +559,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
         />
 
         <Input
-          label="Monthly Salary (₹)"
+          label={`Monthly Salary (${currencySymbol})`}
           type="number"
           min="0"
           step="1"
@@ -633,6 +636,7 @@ const AddOperationalManagerModal: React.FC<AddOperationalManagerModalProps> = ({
   onClose,
   onSubmit,
 }) => {
+  const { currencySymbol } = useCurrency();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -786,7 +790,7 @@ const AddOperationalManagerModal: React.FC<AddOperationalManagerModalProps> = ({
 
           <div>
             <Input
-              label="Monthly Salary (₹)"
+              label={`Monthly Salary (${currencySymbol})`}
               type="number"
               min="0"
               step="1"
@@ -834,6 +838,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
   onClose,
   onSubmit,
 }) => {
+  const { currencySymbol } = useCurrency();
   const [firstName, setFirstName] = useState(employee.firstName);
   const [lastName, setLastName] = useState(employee.lastName);
   const [designation, setDesignation] = useState(employee.designation || "");
@@ -890,7 +895,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
 
         <div>
           <Input
-            label="Monthly Salary (₹)"
+            label={`Monthly Salary (${currencySymbol})`}
             type="number"
             min="0"
             step="1"

@@ -68,6 +68,7 @@ import { toast } from "react-hot-toast";
 import { useTransferWallEnabled } from "../../hooks/useTransferWallEnabled";
 import { useConfirm } from "../../hooks/useConfirm";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
+import { useCurrency } from "../../hooks/useCurrency";
 import { SubscriptionModal } from "../subscription/SubscriptionModal";
 import mannequinPng from "../../assets/players/mannequin.png";
 import { PlayerPlaceholder } from "@/components/ui/PlayerPlaceholder";
@@ -2788,6 +2789,7 @@ const TransferListingModal: React.FC<{
 }) => {
   const [price, setPrice] = useState("");
   const [note, setNote] = useState("");
+  const { currencySymbol } = useCurrency();
 
   return (
     <Modal
@@ -2809,7 +2811,7 @@ const TransferListingModal: React.FC<{
           </div>
         </div>
         <div>
-          <label className="label">Transfer Price (₹)</label>
+          <label className="label">Transfer Price ({currencySymbol})</label>
           <input
             type="number"
             className="input"

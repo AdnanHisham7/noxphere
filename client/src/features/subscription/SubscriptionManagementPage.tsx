@@ -26,6 +26,8 @@ import {
   type BillingTransaction,
 } from "../../store/api/academySubscriptionApi";
 import { Button, Badge, Skeleton, EmptyState, PageHeader, Card } from "../../components/ui";
+import { useCurrency } from "../../hooks/useCurrency";
+import { formatCurrency } from "../../utils/currency";
 import { SubscriptionModal } from "./SubscriptionModal";
 import { clsx } from "clsx";
 
@@ -38,6 +40,7 @@ const formatCleanPrice = (val: number): string => {
 export const SubscriptionManagementPage: React.FC = () => {
   const { user } = useSelector((s: RootState) => s.auth);
   const academyId = user?.academyId;
+  const { currency, currencySymbol } = useCurrency();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"subscribe" | "upgrade">("upgrade");
@@ -66,7 +69,7 @@ export const SubscriptionManagementPage: React.FC = () => {
     details?.platformDefaultStaffRate ??
     10;
 
-  const sym = details?.currencySymbol || "₹";
+  const sym = details?.currencySymbol || currencySymbol || "₹";
 
   const openModal = (mode: "subscribe" | "upgrade") => {
     setModalMode(mode);
@@ -385,16 +388,16 @@ export const SubscriptionManagementPage: React.FC = () => {
               </p>
               <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-slate-300">
-                  ₹{formatCleanPrice(effectiveStaffRate * 1)}/mo
+                  {sym}{formatCleanPrice(effectiveStaffRate * 1)}/mo
                 </span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-slate-300">
-                  ₹{formatCleanPrice(effectiveStaffRate * 3)}/3-mo
+                  {sym}{formatCleanPrice(effectiveStaffRate * 3)}/3-mo
                 </span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-slate-300">
-                  ₹{formatCleanPrice(effectiveStaffRate * 6)}/6-mo
+                  {sym}{formatCleanPrice(effectiveStaffRate * 6)}/6-mo
                 </span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-slate-300">
-                  ₹{formatCleanPrice(effectiveStaffRate * 12)}/yr
+                  {sym}{formatCleanPrice(effectiveStaffRate * 12)}/yr
                 </span>
               </div>
             </div>
@@ -472,7 +475,7 @@ export const SubscriptionManagementPage: React.FC = () => {
                       })}
                     </td>
                     <td className="py-3 px-4 text-volt-400 font-bold">
-                      ₹{tx.amountPaid.toLocaleString("en-IN")}
+                      {formatCurrency(tx.amountPaid, tx.currency || details?.currency || currency)}
                     </td>
                     <td className="py-3 px-4">
                       {tx.status === "paid" ? (

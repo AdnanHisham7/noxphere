@@ -6,6 +6,7 @@ import { UserCog, Plus, KeyRound, Power, Search, Pencil, Clock, Trash2, Wallet }
 import { toast } from "react-hot-toast";
 import { Button, Input, Badge, Avatar, Modal, Skeleton, EmptyState, PageHeader, Select } from "../../components/ui";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
+import { useCurrency } from "../../hooks/useCurrency";
 import { useListTeamsQuery } from "../../store/api/teamsApi";
 import { useGetFranchisesQuery } from "../../store/api/franchiseApi";
 import {
@@ -19,6 +20,7 @@ import {
 
 const CoachesManagementPage: React.FC = () => {
   const academyId = useCurrentAcademyId();
+  const { currencySymbol, format } = useCurrency();
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [passwordModal, setPasswordModal] = useState<{ id: string; name: string } | null>(null);
@@ -161,8 +163,8 @@ const CoachesManagementPage: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-slate-900 dark:text-white">
                       {c.salaryAmount !== undefined && c.salaryAmount > 0
-                        ? `₹${c.salaryAmount.toLocaleString("en-IN")}/mo`
-                        : "₹0 / Unset"}
+                        ? `${format(c.salaryAmount)}/mo`
+                        : `${format(0)} / Unset`}
                     </span>
                     <Link to="/employees" className="text-2xs text-volt-400 hover:underline">
                       Payroll →
@@ -249,6 +251,7 @@ const CoachesManagementPage: React.FC = () => {
 };
 
 const EditCoachModal: React.FC<{ coach: ManagedUser; franchises: any[]; onClose: () => void }> = ({ coach, franchises, onClose }) => {
+  const { currencySymbol } = useCurrency();
   const [updateUser, { isLoading: saving }] = useUpdateUserMutation();
   const [firstName, setFirstName] = useState(coach.firstName);
   const [lastName, setLastName] = useState(coach.lastName);
@@ -286,7 +289,7 @@ const EditCoachModal: React.FC<{ coach: ManagedUser; franchises: any[]; onClose:
         <Input label="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
         <Input label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} required />
         <Input
-          label="Monthly Salary (₹)"
+          label={`Monthly Salary (${currencySymbol})`}
           type="number"
           min={0}
           value={salaryAmount}
@@ -322,6 +325,7 @@ const CreateCoachModal: React.FC<{
   creating: boolean;
   onCreate: (body: { email: string; password: string; role: "coach"; firstName: string; lastName: string; phone: string; franchiseId?: string; salaryAmount?: number }) => void;
 }> = ({ franchises, onClose, creating, onCreate }) => {
+  const { currencySymbol } = useCurrency();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -361,7 +365,7 @@ const CreateCoachModal: React.FC<{
         
         <div className="sm:col-span-2">
           <Input
-            label="Monthly Salary (₹, optional)"
+            label={`Monthly Salary (${currencySymbol}, optional)`}
             type="number"
             min={0}
             value={salaryAmount}

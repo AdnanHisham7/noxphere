@@ -39,6 +39,7 @@ import {
   Modal,
   Button,
 } from "../../components/ui";
+import { useCurrency } from "../../hooks/useCurrency";
 import { setActiveFranchise } from "../../store/slices/uiSlice";
 import { useGetFranchiseByIdQuery } from "../../store/api/franchiseApi";
 import {
@@ -96,11 +97,6 @@ const renderActivityIcon = (type: string) => {
   }
 };
 
-const formatCurrency = (n: number) =>
-  n >= 100000
-    ? `₹${(n / 100000).toFixed(1)}L`
-    : `₹${n.toLocaleString("en-IN")}`;
-
 const getTeamHealthStatus = (attendance: number, performance: number) => {
   if (attendance >= 85 && performance >= 7.5) {
     return {
@@ -131,6 +127,7 @@ export const FranchiseDashboardPage: React.FC = () => {
   const franchiseId = params.franchiseId || params.id;
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { format: formatMoney } = useCurrency();
 
   useEffect(() => {
     if (franchiseId) {
@@ -264,8 +261,8 @@ export const FranchiseDashboardPage: React.FC = () => {
           />
           <StatCard
             label="Fees Collected"
-            value={formatCurrency(stats?.feesCollected ?? 0)}
-            sublabel={`${formatCurrency(stats?.feesOutstanding ?? 0)} outstanding`}
+            value={formatMoney(stats?.feesCollected ?? 0)}
+            sublabel={`${formatMoney(stats?.feesOutstanding ?? 0)} outstanding`}
             icon={<CreditCard className="h-5 w-5" />}
             accent="ice"
           />

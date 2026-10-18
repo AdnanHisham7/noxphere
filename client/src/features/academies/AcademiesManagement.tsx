@@ -30,6 +30,7 @@ import { academyApi } from "@/store/api/academyApi";
 import { academySubscriptionApi } from "@/store/api/academySubscriptionApi";
 import { useConfirm } from "../../hooks/useConfirm";
 import { Academy, AcademyConfigPayload, CreateAcademyPayload } from "./types";
+import { getCurrencySymbol } from "../../utils/currency";
 
 // Hooks
 const useGetAcademies = academyApi.useGetAcademiesQuery;
@@ -1347,7 +1348,7 @@ const AcademiesManagement: React.FC = () => {
               <p className="section-title">Subscription Billing</p>
               <div className="grid grid-cols-2 gap-4">
                 <Input
-                  label="Rate override (₹/student/day)"
+                  label={`Rate override (${getCurrencySymbol(selectedAcademy?.currency)}/student/day)`}
                   type="number"
                   step="0.01"
                   value={configForm.subscriptionRateOverride ?? selectedAcademy.subscriptionRateOverride ?? ""}
@@ -1360,7 +1361,7 @@ const AcademiesManagement: React.FC = () => {
                   placeholder="Platform default"
                 />
                 <Input
-                  label="Staff rate override (₹/staff/month)"
+                  label={`Staff rate override (${getCurrencySymbol(selectedAcademy?.currency)}/staff/month)`}
                   type="number"
                   step="0.01"
                   value={configForm.staffRateOverride ?? selectedAcademy.staffRateOverride ?? ""}

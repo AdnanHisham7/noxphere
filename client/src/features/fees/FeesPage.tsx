@@ -63,6 +63,8 @@ import {
   type PaymentBreakdownItem,
 } from "../../store/api/adminFeesApi";
 import { useGetStudentsQuery } from "../../store/api/studentsApi";
+import { useCurrency } from "../../hooks/useCurrency";
+import { formatCurrency, getCurrencySymbol } from "../../utils/currency";
 
 const STATUS_VARIANT: Record<string, "green" | "red" | "yellow" | "gray"> = {
   paid: "green",
@@ -387,6 +389,7 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
 
 const FeesPage: React.FC = () => {
   const franchiseId = useCurrentFranchiseId();
+  const { currency, currencySymbol, format } = useCurrency();
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [viewMode, setViewMode] = useState<"student" | "table">("student");
@@ -401,6 +404,7 @@ const FeesPage: React.FC = () => {
     feeId: string;
     installmentNumber: number;
     amount: number;
+    currency?: string;
   } | null>(null);
   const [editTarget, setEditTarget] = useState<{
     feeId: string;
@@ -409,6 +413,7 @@ const FeesPage: React.FC = () => {
     paymentMethod?: string;
     transactionId?: string;
     paymentBreakdown?: PaymentBreakdownItem[];
+    currency?: string;
   } | null>(null);
   const [verifyTarget, setVerifyTarget] = useState<{
     fee: AdminFeeRecord;
@@ -737,7 +742,7 @@ const FeesPage: React.FC = () => {
             Total Invoiced
           </p>
           <p className="text-xl font-display font-extrabold text-slate-900 dark:text-white mt-1">
-            ₹{metrics.invoiced.toLocaleString("en-IN")}
+            {format(metrics.invoiced)}
           </p>
           <span className="text-2xs text-slate-500 font-mono">
             Across all active plans
@@ -754,7 +759,7 @@ const FeesPage: React.FC = () => {
             </span>
           </div>
           <p className="text-xl font-display font-extrabold text-emerald-400 mt-1">
-            ₹{metrics.collected.toLocaleString("en-IN")}
+            {format(metrics.collected)}
           </p>
           {/* Mini progress bar */}
           <div className="w-full bg-slate-100 dark:bg-white/5 rounded-full h-1 mt-2 overflow-hidden">
@@ -770,7 +775,7 @@ const FeesPage: React.FC = () => {
             Outstanding Due
           </p>
           <p className="text-xl font-display font-extrabold text-amber-400 mt-1">
-            ₹{metrics.pending.toLocaleString("en-IN")}
+            {format(metrics.pending)}
           </p>
           <span className="text-2xs text-slate-500">
             {metrics.studentsWithDuesCount} student
@@ -788,7 +793,7 @@ const FeesPage: React.FC = () => {
             )}
           </div>
           <p className="text-xl font-display font-extrabold text-rose-400 mt-1">
-            ₹{metrics.overdue.toLocaleString("en-IN")}
+            {format(metrics.overdue)}
           </p>
           <span className="text-2xs text-rose-400/80 font-mono">
             Needs immediate reminder
@@ -1046,11 +1051,11 @@ const FeesPage: React.FC = () => {
                       <div className="text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <span className="text-xs font-mono font-bold text-slate-900 dark:text-white">
-                            ₹{group.totalPaid.toLocaleString("en-IN")}
+                            {format(group.totalPaid)}
                           </span>
                           <span className="text-2xs text-slate-500">/</span>
                           <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-                            ₹{group.totalInvoiced.toLocaleString("en-IN")}
+                            {format(group.totalInvoiced)}
                           </span>
                         </div>
                         <div className="w-32 sm:w-40 bg-slate-100 dark:bg-white/5 rounded-full h-1.5 mt-1 overflow-hidden ml-auto">
@@ -1211,13 +1216,13 @@ const FeesPage: React.FC = () => {
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-right font-mono text-slate-900 dark:text-white">
-                            ₹{fee.finalAmount.toLocaleString("en-IN")}
+                            {formatCurrency(fee.finalAmount, (fee as any).currency || currency)}
                           </td>
                           <td className="py-2.5 px-3 text-right font-mono text-emerald-400 font-semibold">
-                            ₹{totalPaid.toLocaleString("en-IN")}
+                            {formatCurrency(totalPaid, (fee as any).currency || currency)}
                           </td>
                           <td className="py-2.5 px-3 text-right font-mono text-amber-400 font-semibold">
-                            ₹{balance.toLocaleString("en-IN")}
+                            {formatCurrency(balance, (fee as any).currency || currency)}
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             <Badge
@@ -1413,7 +1418,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
           </span>
           <span className="text-slate-500 text-2xs">·</span>
           <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">
-            Total: ₹{fee.finalAmount.toLocaleString("en-IN")}
+            Total: {formatCurrency(fee.finalAmount, (fee as any).currency)}
           </span>
           {fee.auditLog && fee.auditLog.length > 0 && (
             <button
@@ -1499,7 +1504,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                             className="inline-flex items-center gap-1 text-[9px] font-mono font-medium px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                           >
                             <span className="uppercase font-bold">{item.method}:</span>
-                            <span>₹{item.amount.toLocaleString("en-IN")}</span>
+                            <span>{formatCurrency(item.amount, (fee as any).currency)}</span>
                             {item.transactionId && (
                               <span className="text-slate-400">({item.transactionId})</span>
                             )}
@@ -1524,11 +1529,11 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
               <div className="flex items-center gap-3 flex-wrap ml-auto">
                 <span className="font-mono text-xs">
                   <span className="text-emerald-400 font-semibold">
-                    ₹{inst.paidAmount.toLocaleString("en-IN")}
+                    {formatCurrency(inst.paidAmount, (fee as any).currency)}
                   </span>
                   <span className="text-slate-500"> / </span>
                   <span className="text-slate-700 dark:text-slate-300">
-                    ₹{inst.amount.toLocaleString("en-IN")}
+                    {formatCurrency(inst.amount, (fee as any).currency)}
                   </span>
                 </span>
 
@@ -1560,6 +1565,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                             paymentMethod: inst.paymentMethod || "cash",
                             transactionId: inst.transactionId || "",
                             paymentBreakdown: inst.paymentBreakdown,
+                            currency: (fee as any).currency,
                           })
                         }
                         className="text-[10px] text-slate-600 dark:text-slate-400 hover:text-volt-600 dark:hover:text-volt-400 font-semibold border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-white/5 rounded px-2 py-1 transition-colors"
@@ -1619,6 +1625,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                             feeId: fee._id,
                             installmentNumber: inst.installmentNumber,
                             amount: unpaid,
+                            currency: (fee as any).currency,
                           })
                         }
                         className="text-[11px] font-semibold text-pitch-950 bg-volt-400 hover:bg-volt-300 px-2.5 py-1 rounded transition-colors"
@@ -1650,7 +1657,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                   <span className="text-volt-400 font-semibold capitalize">
                     [{log.action.replace("_", " ")}]
                   </span>{" "}
-                  <span>{log.details || `Amount: ₹${log.amount}`}</span>
+                  <span>{log.details || `Amount: ${formatCurrency(log.amount, (fee as any).currency)}`}</span>
                 </div>
                 <div className="text-right text-[9px] text-slate-500 shrink-0 ml-2">
                   <span>by {log.performedByName}</span>
@@ -1681,6 +1688,7 @@ const CreateFeeModal: React.FC<{
   ) => void;
   creating: boolean;
 }> = ({ franchiseId, initialStudentId, onClose, onCreate, creating }) => {
+  const { currency, currencySymbol } = useCurrency();
   const { data: studentsResult } = useGetStudentsQuery(
     { franchiseId, limit: 200 },
     { skip: !franchiseId },
@@ -1781,7 +1789,7 @@ const CreateFeeModal: React.FC<{
     const finalAmount = total - (parseFloat(discount) || 0);
     if (Math.abs(installmentTotal - finalAmount) > 0.5) {
       toast.error(
-        `Installments (₹${installmentTotal.toFixed(2)}) must add up to the total minus discount (₹${finalAmount.toFixed(2)})`,
+        `Installments (${currencySymbol}${installmentTotal.toFixed(2)}) must add up to the total minus discount (${currencySymbol}${finalAmount.toFixed(2)})`,
       );
       return;
     }
@@ -1792,6 +1800,7 @@ const CreateFeeModal: React.FC<{
         feeType,
         totalAmount: total,
         discount: parseFloat(discount) || undefined,
+        currency,
         notes: notes || undefined,
         installments: installments.map((inst, i) => ({
           installmentNumber: i + 1,
@@ -1988,7 +1997,7 @@ const CreateFeeModal: React.FC<{
 
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Total amount (₹)"
+            label={`Total amount (${currencySymbol})`}
             type="number"
             min={1}
             value={totalAmount}
@@ -1996,7 +2005,7 @@ const CreateFeeModal: React.FC<{
             required
           />
           <Input
-            label="Discount (₹, optional)"
+            label={`Discount (${currencySymbol}, optional)`}
             type="number"
             min={0}
             value={discount}
@@ -2192,7 +2201,7 @@ const VerifyPaymentModal: React.FC<{
               Submitted Payment Proof
             </span>
             <span className="font-orbital text-lg font-bold text-slate-900 dark:text-white">
-              ₹{claimedAmount.toLocaleString("en-IN")}
+              {formatCurrency(claimedAmount, (fee as any).currency)}
             </span>
           </div>
 
@@ -2300,9 +2309,10 @@ const VerifyPaymentModal: React.FC<{
 };
 
 const RecordPaymentModal: React.FC<{
-  target: { feeId: string; installmentNumber: number; amount: number };
+  target: { feeId: string; installmentNumber: number; amount: number; currency?: string };
   onClose: () => void;
 }> = ({ target, onClose }) => {
+  const { currencySymbol, format } = useCurrency(target.currency);
   const [recordPayment, { isLoading }] = useRecordPaymentMutation();
   const [isMixed, setIsMixed] = useState(false);
   const [singleAmount, setSingleAmount] = useState(String(target.amount));
@@ -2429,7 +2439,7 @@ const RecordPaymentModal: React.FC<{
         {!isMixed ? (
           <div className="space-y-4">
             <Input
-              label="Amount (₹)"
+              label={`Amount (${currencySymbol})`}
               type="number"
               value={singleAmount}
               onChange={(e) => setSingleAmount(e.target.value)}
@@ -2491,7 +2501,7 @@ const RecordPaymentModal: React.FC<{
                   <div className="flex-1 relative">
                     <input
                       type="number"
-                      placeholder="Amount (₹)"
+                      placeholder={`Amount (${currencySymbol})`}
                       value={row.amount}
                       onChange={(e) => updateSplitRow(idx, "amount", e.target.value)}
                       className="input text-xs !w-full font-mono font-semibold"
@@ -2530,11 +2540,11 @@ const RecordPaymentModal: React.FC<{
               <div>
                 <span className="text-slate-500 dark:text-slate-400">Total Allocated: </span>
                 <span className="font-mono font-bold text-slate-900 dark:text-white">
-                  ₹{totalSplit.toLocaleString("en-IN")}
+                  {format(totalSplit)}
                 </span>
                 <span className="text-slate-500 mx-1">/</span>
                 <span className="text-slate-500 font-mono">
-                  Due: ₹{target.amount.toLocaleString("en-IN")}
+                  Due: {format(target.amount)}
                 </span>
               </div>
               <div>
@@ -2545,11 +2555,11 @@ const RecordPaymentModal: React.FC<{
                   </span>
                 ) : totalSplit < target.amount ? (
                   <span className="text-amber-400 font-mono text-[11px]">
-                    Remaining: ₹{(target.amount - totalSplit).toLocaleString("en-IN")}
+                    Remaining: {format(target.amount - totalSplit)}
                   </span>
                 ) : (
                   <span className="text-rose-400 font-mono text-[11px]">
-                    Over by ₹{(totalSplit - target.amount).toLocaleString("en-IN")}
+                    Over by {format(totalSplit - target.amount)}
                   </span>
                 )}
               </div>
@@ -2562,7 +2572,7 @@ const RecordPaymentModal: React.FC<{
           loading={isLoading}
           className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2 mt-2"
         >
-          {isMixed ? `Record Split Payment (₹${totalSplit})` : `Record Payment (₹${singleAmount})`}
+          {isMixed ? `Record Split Payment (${currencySymbol}${totalSplit})` : `Record Payment (${currencySymbol}${singleAmount})`}
         </Button>
       </form>
     </Modal>
@@ -2577,9 +2587,11 @@ const EditPaymentModal: React.FC<{
     paymentMethod?: string;
     transactionId?: string;
     paymentBreakdown?: PaymentBreakdownItem[];
+    currency?: string;
   };
   onClose: () => void;
 }> = ({ target, onClose }) => {
+  const { currencySymbol, format } = useCurrency(target.currency);
   const [updatePayment, { isLoading }] = useUpdatePaymentMutation();
   const hasExistingBreakdown = !!(
     target.paymentBreakdown && target.paymentBreakdown.length > 1
@@ -2725,7 +2737,7 @@ const EditPaymentModal: React.FC<{
         {!isMixed ? (
           <div className="space-y-4">
             <Input
-              label="Amount (₹)"
+              label={`Amount (${currencySymbol})`}
               type="number"
               value={singleAmount}
               onChange={(e) => setSingleAmount(e.target.value)}
@@ -2787,7 +2799,7 @@ const EditPaymentModal: React.FC<{
                   <div className="flex-1">
                     <input
                       type="number"
-                      placeholder="Amount (₹)"
+                      placeholder={`Amount (${currencySymbol})`}
                       value={row.amount}
                       onChange={(e) => updateSplitRow(idx, "amount", e.target.value)}
                       className="input text-xs !w-full font-mono font-semibold"
@@ -2826,7 +2838,7 @@ const EditPaymentModal: React.FC<{
               <div>
                 <span className="text-slate-500 dark:text-slate-400">Total Updated Amount: </span>
                 <span className="font-mono font-bold text-slate-900 dark:text-white">
-                  ₹{totalSplit.toLocaleString("en-IN")}
+                  {format(totalSplit)}
                 </span>
               </div>
             </div>
@@ -2838,7 +2850,7 @@ const EditPaymentModal: React.FC<{
           loading={isLoading}
           className="w-full bg-volt-400 hover:bg-volt-300 text-pitch-900 font-bold uppercase py-2 mt-2"
         >
-          {isMixed ? `Save Changes (₹${totalSplit})` : `Save Changes (₹${singleAmount})`}
+          {isMixed ? `Save Changes (${currencySymbol}${totalSplit})` : `Save Changes (${currencySymbol}${singleAmount})`}
         </Button>
       </form>
     </Modal>

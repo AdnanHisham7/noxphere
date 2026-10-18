@@ -46,6 +46,7 @@ import {
 import { SuperAdminDashboardView } from "./SuperAdminDashboardView";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useTransferWallEnabled } from "../../hooks/useTransferWallEnabled";
+import { useCurrency } from "../../hooks/useCurrency";
 import { RootState } from "../../store";
 import { setActiveFranchise } from "../../store/slices/uiSlice";
 import {
@@ -81,11 +82,6 @@ const ChartTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-const formatCurrency = (n: number) =>
-  n >= 100000
-    ? `₹${(n / 100000).toFixed(1)}L`
-    : `₹${n.toLocaleString("en-IN")}`;
-
 const renderActivityIcon = (type: string) => {
   switch (type) {
     case "attendance":
@@ -102,6 +98,7 @@ const renderActivityIcon = (type: string) => {
 const DashboardPage: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { format: formatMoney } = useCurrency();
   const activeFranchiseId = useCurrentFranchiseId();
   const user = useSelector((s: RootState) => s.auth.user);
   const academyId = user?.academyId;
@@ -271,8 +268,8 @@ const DashboardPage: React.FC = () => {
 
               <StatCard
                 label="Total Fees"
-                value={formatCurrency(stats?.feesCollected ?? 0)}
-                sublabel={`${formatCurrency(stats?.feesOutstanding ?? 0)} unpaid`}
+                value={formatMoney(stats?.feesCollected ?? 0)}
+                sublabel={`${formatMoney(stats?.feesOutstanding ?? 0)} unpaid`}
                 icon={<CreditCard className="h-5 w-5" />}
                 accent="volt"
               />
@@ -307,8 +304,8 @@ const DashboardPage: React.FC = () => {
 
               <StatCard
                 label="Fees Collected"
-                value={formatCurrency(stats?.feesCollected ?? 0)}
-                sublabel={`${formatCurrency(stats?.feesOutstanding ?? 0)} outstanding`}
+                value={formatMoney(stats?.feesCollected ?? 0)}
+                sublabel={`${formatMoney(stats?.feesOutstanding ?? 0)} outstanding`}
                 icon={<CreditCard className="h-5 w-5" />}
                 accent="ice"
               />
@@ -567,10 +564,10 @@ const DashboardPage: React.FC = () => {
                         {fp.totalSessions}
                       </td>
                       <td className="py-3 px-3 text-right text-emerald-600 dark:text-field-400 font-mono text-sm">
-                        ₹{fp.feesCollected.toLocaleString("en-IN")}
+                        {formatMoney(fp.feesCollected)}
                       </td>
                       <td className="py-3 px-3 text-right text-amber-600 dark:text-ember-400 font-mono text-sm">
-                        ₹{fp.feesOutstanding.toLocaleString("en-IN")}
+                        {formatMoney(fp.feesOutstanding)}
                       </td>
                       <td className="py-3 px-3 text-center">
                         <span
