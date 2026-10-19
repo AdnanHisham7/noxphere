@@ -16,6 +16,7 @@ import { ThemeToggle } from "../common/ThemeToggle";
 import { useGetMyDashboardQuery } from "../../store/api/studentPortalApi";
 import { useLogoutMutation } from "../../store/api/authApi";
 import { Modal } from "../ui";
+import { GeoRestrictionBanner } from "./GeoRestrictionBanner";
 
 
 export interface PortalNavItem {
@@ -227,6 +228,7 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ navItems, portalLabe
 
       {/* Content */}
       <main className="flex-1 min-w-0 pt-16 md:pt-0">
+        <GeoRestrictionBanner />
         <div className="hidden md:flex items-center justify-end px-8 pt-6 gap-3">
           <ThemeToggle size="sm" />
           <PortalNotificationBell />

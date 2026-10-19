@@ -187,23 +187,24 @@ class GeoLocationService {
   }
 
   /**
-   * Asserts that the request originates from the country designated for the academy
+   * Checks whether the request originates from the country designated for the academy.
+   * Does NOT throw; returns comprehensive status for reporting, headers, and UI alerts.
    */
-  async assertAcademyGeoAccess(
+  async checkAcademyGeoAccess(
     req: Request,
     academyId: string,
     userRole?: string
-  ): Promise<void> {
+  ): Promise<GeoAccessStatus | null> {
     // Super admins manage the entire platform across all territories
-    if (userRole === 'super_admin') return;
+    if (userRole === 'super_admin') return null;
 
-    if (!academyId) return;
+    if (!academyId) return null;
 
     const academy = await AcademyModel.findById(academyId)
       .select('name currency country isActive')
       .lean();
 
-    if (!academy) return;
+    if (!academy) return null;
 
     if (academy.isActive === false) {
       throw new UnauthorizedError(
@@ -218,25 +219,66 @@ class GeoLocationService {
     ).toUpperCase();
 
     const detectedCountry = this.detectClientCountry(req);
+    const allowedCountryName = this.getCountryName(requiredCountry);
+    const detectedCountryName = this.getCountryName(detectedCountry);
+    const currency = academy.currency || 'INR';
+    const academyName = academy.name || 'Academy';
 
     // If running in local dev without explicit simulated header, allow access
-    if (detectedCountry === 'DEV_LOCAL') {
+    const isDevLocal = detectedCountry === 'DEV_LOCAL';
+    const isRestricted = !isDevLocal && detectedCountry !== requiredCountry;
+
+    return {
+      isRestricted,
+      detectedCountry,
+      requiredCountry,
+      allowedCountryName,
+      detectedCountryName,
+      currency,
+      academyName,
+    };
+  }
+
+  /**
+   * Asserts that mutation operations originate from the academy's designated country.
+   * Read-only requests (GET, HEAD, OPTIONS) and auth session endpoints are permitted globally.
+   */
+  async assertAcademyGeoAccess(
+    req: Request,
+    academyId: string,
+    userRole?: string
+  ): Promise<void> {
+    const status = await this.checkAcademyGeoAccess(req, academyId, userRole);
+    if (!status || !status.isRestricted) return;
+
+    // Permit read requests globally so managers and coaches can view dashboards and reports abroad
+    const method = req.method?.toUpperCase();
+    if (['GET', 'HEAD', 'OPTIONS'].includes(method)) {
       return;
     }
 
-    if (detectedCountry !== requiredCountry) {
-      const allowedCountryName = this.getCountryName(requiredCountry);
-      const detectedCountryName = this.getCountryName(detectedCountry);
-      const currency = academy.currency || 'INR';
-
-      throw new GeoRestrictionError(
-        `Access Denied: Academy "${academy.name}" is restricted to operations exclusively within ${allowedCountryName} (${currency}). Your detected location is ${detectedCountryName} (${detectedCountry}).`,
-        detectedCountry,
-        requiredCountry,
-        currency
-      );
+    // Exempt essential session management
+    if (req.originalUrl?.includes('/auth/logout') || req.originalUrl?.includes('/auth/refresh')) {
+      return;
     }
+
+    throw new GeoRestrictionError(
+      `Access Denied (Read-Only Mode): Performing operations or modifying data for "${status.academyName}" is restricted to its registered country (${status.allowedCountryName}). You are currently connected from ${status.detectedCountryName} (${status.detectedCountry}). Data can be viewed in read-only mode, but creation, edits, and deletions are disabled.`,
+      status.detectedCountry,
+      status.requiredCountry,
+      status.currency
+    );
   }
+}
+
+export interface GeoAccessStatus {
+  isRestricted: boolean;
+  detectedCountry: string;
+  requiredCountry: string;
+  allowedCountryName: string;
+  detectedCountryName: string;
+  currency: string;
+  academyName: string;
 }
 
 export const geoLocationService = new GeoLocationService();

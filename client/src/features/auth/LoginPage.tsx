@@ -81,6 +81,7 @@ const LoginPage: React.FC = () => {
             accessToken: result.data.tokens.accessToken,
             refreshToken: result.data.tokens.refreshToken,
           },
+          geoStatus: result.data.geoStatus,
         })
       );
       if (loadedUser.franchiseId) {
@@ -88,7 +89,14 @@ const LoginPage: React.FC = () => {
       } else if (loadedUser.role === 'manager' || loadedUser.role === 'operational_manager') {
         dispatch(clearActiveFranchise());
       }
-      toast.success('Welcome back!');
+      if (result.data.geoStatus?.isRestricted) {
+        toast(
+          `Travel Mode: Connected from ${result.data.geoStatus.detectedCountryName || result.data.geoStatus.detectedCountry}. Read-only access enabled for review and meetings.`,
+          { icon: '🌍', duration: 7000 }
+        );
+      } else {
+        toast.success('Welcome back!');
+      }
       navigate(getRedirectTarget(), { replace: true });
     } catch (err: any) {
       toast.error(err?.data?.message || 'Login failed');

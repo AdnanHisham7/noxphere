@@ -14,23 +14,36 @@ export interface AuthUser {
   permissions: Record<string, boolean>;
 }
 
+export interface GeoRestrictionStatus {
+  isRestricted: boolean;
+  detectedCountry?: string;
+  requiredCountry?: string;
+  allowedCountryName?: string;
+  detectedCountryName?: string;
+  currency?: string;
+  academyName?: string;
+}
+
 interface AuthState {
   user: AuthUser | null;
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  geoRestriction: GeoRestrictionStatus | null;
 }
 
-const getStoredAuth = (): Pick<AuthState, 'accessToken' | 'refreshToken' | 'user'> => {
+const getStoredAuth = (): Pick<AuthState, 'accessToken' | 'refreshToken' | 'user' | 'geoRestriction'> => {
   try {
+    const geo = sessionStorage.getItem('nox_geo_restriction_status');
     return {
       accessToken: localStorage.getItem('accessToken'),
       refreshToken: localStorage.getItem('refreshToken'),
       user: JSON.parse(localStorage.getItem('user') || 'null'),
+      geoRestriction: geo ? JSON.parse(geo) : null,
     };
   } catch {
-    return { accessToken: null, refreshToken: null, user: null };
+    return { accessToken: null, refreshToken: null, user: null, geoRestriction: null };
   }
 };
 
@@ -42,6 +55,7 @@ const initialState: AuthState = {
   refreshToken: stored.refreshToken,
   isAuthenticated: !!stored.accessToken,
   isLoading: false,
+  geoRestriction: stored.geoRestriction,
 };
 
 const authSlice = createSlice({
@@ -50,22 +64,39 @@ const authSlice = createSlice({
   reducers: {
     setCredentials: (
       state,
-      action: PayloadAction<{ user: AuthUser; tokens: { accessToken: string; refreshToken: string } }>
+      action: PayloadAction<{ user: AuthUser; tokens: { accessToken: string; refreshToken: string }; geoStatus?: GeoRestrictionStatus | null }>
     ) => {
-      const { user, tokens } = action.payload;
+      const { user, tokens, geoStatus } = action.payload;
       state.user = user;
       state.accessToken = tokens.accessToken;
       state.refreshToken = tokens.refreshToken;
       state.isAuthenticated = true;
+      if (geoStatus !== undefined) {
+        state.geoRestriction = geoStatus;
+        if (geoStatus) {
+          sessionStorage.setItem('nox_geo_restriction_status', JSON.stringify(geoStatus));
+        } else {
+          sessionStorage.removeItem('nox_geo_restriction_status');
+        }
+      }
       localStorage.setItem('accessToken', tokens.accessToken);
       localStorage.setItem('refreshToken', tokens.refreshToken);
       localStorage.setItem('user', JSON.stringify(user));
+    },
+    setGeoRestriction: (state, action: PayloadAction<GeoRestrictionStatus | null>) => {
+      state.geoRestriction = action.payload;
+      if (action.payload) {
+        sessionStorage.setItem('nox_geo_restriction_status', JSON.stringify(action.payload));
+      } else {
+        sessionStorage.removeItem('nox_geo_restriction_status');
+      }
     },
     clearCredentials: (state) => {
       state.user = null;
       state.accessToken = null;
       state.refreshToken = null;
       state.isAuthenticated = false;
+      state.geoRestriction = null;
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
@@ -87,7 +118,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, clearCredentials, updateAccessToken, updateUser } = authSlice.actions;
+export const { setCredentials, setGeoRestriction, clearCredentials, updateAccessToken, updateUser } = authSlice.actions;
 export default authSlice.reducer;
 
 

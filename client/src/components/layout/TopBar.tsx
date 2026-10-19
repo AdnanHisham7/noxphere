@@ -1,7 +1,8 @@
 import { useSelector, useDispatch } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Building2, ChevronDown, Check, Bell, Repeat2, Menu, FileText, Download } from "lucide-react";
+import { Building2, ChevronDown, Check, Bell, Repeat2, Menu, FileText, Download, Globe } from "lucide-react";
 import logoSrc from "../../assets/logo.png";
+import { GeoRestrictionBanner } from "./GeoRestrictionBanner";
 import { getNotificationTarget } from "../../utils/notificationRouter";
 import {
   setNotifications,
@@ -232,7 +233,7 @@ const CoachFranchiseSwitcher: React.FC = () => {
 export const TopBar: React.FC = () => {
   const dispatch = useDispatch();
   const location = useLocation();
-  const { user, isAuthenticated } = useSelector((s: RootState) => s.auth);
+  const { user, isAuthenticated, geoRestriction: geo } = useSelector((s: RootState) => s.auth);
   const { unreadCount, items: notifications } = useSelector(
     (s: RootState) => s.notifications,
   );
@@ -304,29 +305,42 @@ export const TopBar: React.FC = () => {
   };
 
   return (
-    <header className="h-16 bg-white/90 dark:bg-pitch-900/80 backdrop-blur-sm border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-2.5 sm:px-6 sticky top-0 z-40 transition-colors duration-200">
-      {/* Left: Mobile hamburger menu + Mobile logo + Franchise selector / breadcrumb */}
-      <div className="flex items-center gap-1.5 sm:gap-4 min-w-0">
-        <button
-          type="button"
-          onClick={() => dispatch(toggleMobileSidebar())}
-          className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg bg-slate-100 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white shrink-0 transition-colors"
-          aria-label="Toggle Navigation Menu"
-        >
-          <Menu size={18} />
-        </button>
+    <div className="sticky top-0 z-40">
+      <GeoRestrictionBanner />
+      <header className="h-16 bg-white/90 dark:bg-pitch-900/80 backdrop-blur-sm border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-2.5 sm:px-6 transition-colors duration-200">
+        {/* Left: Mobile hamburger menu + Mobile logo + Franchise selector / breadcrumb + Geo Badge */}
+        <div className="flex items-center gap-1.5 sm:gap-4 min-w-0">
+          <button
+            type="button"
+            onClick={() => dispatch(toggleMobileSidebar())}
+            className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg bg-slate-100 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white shrink-0 transition-colors"
+            aria-label="Toggle Navigation Menu"
+          >
+            <Menu size={18} />
+          </button>
 
-        <Link to="/" className="md:hidden flex items-center shrink-0">
-          <img src={logoSrc} alt="Noxphere" className="h-7 w-auto object-contain" />
-        </Link>
+          <Link to="/" className="md:hidden flex items-center shrink-0">
+            <img src={logoSrc} alt="Noxphere" className="h-7 w-auto object-contain" />
+          </Link>
 
-        {user?.role === "coach" ? (
-          <CoachFranchiseSwitcher />
-        ) : (
-          user?.role !== "super_admin" &&
-          !hideFranchiseSwitcher && <FranchiseSwitcher />
-        )}
-      </div>
+          {user?.role === "coach" ? (
+            <CoachFranchiseSwitcher />
+          ) : (
+            user?.role !== "super_admin" &&
+            !hideFranchiseSwitcher && <FranchiseSwitcher />
+          )}
+
+          {geo?.isRestricted && (
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-bold bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-300 shrink-0 select-none shadow-2xs"
+              title={`Viewing in Read-Only mode from ${geo.detectedCountryName || geo.detectedCountry} (Operations restricted to ${geo.allowedCountryName || geo.requiredCountry})`}
+            >
+              <Globe size={11} className="text-amber-500 animate-pulse shrink-0" />
+              <span className="hidden sm:inline">Read-Only</span>
+              <span className="font-mono">({geo.detectedCountry})</span>
+            </div>
+          )}
+        </div>
 
       {/* Right: Theme Toggle + Notifications + Profile */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -488,5 +502,6 @@ export const TopBar: React.FC = () => {
         </Link>
       </div>
     </header>
+  </div>
   );
 };
