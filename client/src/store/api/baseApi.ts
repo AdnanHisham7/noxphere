@@ -7,7 +7,7 @@ import {
   type FetchBaseQueryError,
 } from "@reduxjs/toolkit/query/react";
 import type { RootState } from "../index";
-import { clearCredentials, updateAccessToken } from "../slices/authSlice";
+import { clearCredentials, updateAccessToken, setGeoRestriction } from "../slices/authSlice";
 import { cleanRawMessage } from "../../utils/errorUtils";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
@@ -75,6 +75,29 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
     }
   }
 
+  // Detect Geo Restriction status headers exposed by backend
+  const geoRestricted = result.meta?.response?.headers?.get("x-geo-restricted");
+  if (geoRestricted !== null && geoRestricted !== undefined) {
+    const isRestricted = geoRestricted === "true";
+    const detectedCountry = result.meta?.response?.headers.get("x-detected-country") || undefined;
+    const requiredCountry = result.meta?.response?.headers.get("x-required-country") || undefined;
+    const allowedCountryName = result.meta?.response?.headers.get("x-allowed-country-name") || undefined;
+    const detectedCountryName = result.meta?.response?.headers.get("x-detected-country-name") || undefined;
+    const rawAcademy = result.meta?.response?.headers.get("x-academy-name");
+    const academyName = rawAcademy ? decodeURIComponent(rawAcademy) : undefined;
+
+    api.dispatch(
+      setGeoRestriction({
+        isRestricted,
+        detectedCountry,
+        requiredCountry,
+        allowedCountryName,
+        detectedCountryName,
+        academyName,
+      })
+    );
+  }
+
   // Normalize and clean any stringified JSON or raw errors in the API response message
   if (result.error?.data && typeof result.error.data === "object") {
     const errorData = result.error.data as Record<string, any>;
@@ -82,8 +105,16 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
       errorData.message = cleanRawMessage(errorData.message) || errorData.message;
     }
     if (errorData.code === "GEO_RESTRICTION_ERROR") {
+      api.dispatch(
+        setGeoRestriction({
+          isRestricted: true,
+          detectedCountry: errorData.detectedCountry,
+          requiredCountry: errorData.requiredCountry,
+          currency: errorData.currency,
+        })
+      );
       window.dispatchEvent(
-        new CustomEvent("nox_geo_restriction", {
+        new CustomEvent("nox_geo_mutation_blocked", {
           detail: {
             message: errorData.message,
             detectedCountry: errorData.detectedCountry,

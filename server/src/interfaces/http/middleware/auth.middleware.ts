@@ -2,7 +2,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../../../config/app.config';
-import { UnauthorizedError, ForbiddenError } from '../../../shared/errors/AppError';
+import { UnauthorizedError, ForbiddenError, GeoRestrictionError } from '../../../shared/errors/AppError';
 import { UserRole } from '../../../domain/entities/User.entity';
 import { geoLocationService } from '../../../infrastructure/services/GeoLocationService';
 import { AcademyModel } from '../../../infrastructure/database/models/Academy.model';
@@ -26,7 +26,7 @@ declare global {
   }
 }
 
-export const authenticate = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -73,7 +73,34 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
         if (!academy || academy.isActive === false || academy.deletedAt) {
           throw new UnauthorizedError(`Academy "${academy?.name || 'Your academy'}" has been deactivated by the administrator. Access is denied.`);
         }
-        await geoLocationService.assertAcademyGeoAccess(req, academyId, req.user.role);
+
+        const geoStatus = await geoLocationService.checkAcademyGeoAccess(req, academyId, req.user.role);
+        if (geoStatus) {
+          (req as any).geoStatus = geoStatus;
+          res.setHeader('x-geo-restricted', geoStatus.isRestricted ? 'true' : 'false');
+          if (geoStatus.detectedCountry) res.setHeader('x-detected-country', geoStatus.detectedCountry);
+          if (geoStatus.requiredCountry) res.setHeader('x-required-country', geoStatus.requiredCountry);
+          if (geoStatus.allowedCountryName) res.setHeader('x-allowed-country-name', geoStatus.allowedCountryName);
+          if (geoStatus.detectedCountryName) res.setHeader('x-detected-country-name', geoStatus.detectedCountryName);
+          if (geoStatus.academyName) res.setHeader('x-academy-name', encodeURIComponent(geoStatus.academyName));
+          res.setHeader(
+            'Access-Control-Expose-Headers',
+            'x-geo-restricted, x-detected-country, x-required-country, x-allowed-country-name, x-detected-country-name, x-academy-name'
+          );
+
+          if (geoStatus.isRestricted) {
+            const isSafeMethod = ['GET', 'HEAD', 'OPTIONS'].includes(req.method.toUpperCase());
+            const isAuthExempt = req.originalUrl?.includes('/auth/logout') || req.originalUrl?.includes('/auth/refresh');
+            if (!isSafeMethod && !isAuthExempt) {
+              throw new GeoRestrictionError(
+                `Access Denied (Read-Only Mode): Performing operations or modifying data for "${geoStatus.academyName}" is restricted to its registered country (${geoStatus.allowedCountryName}). You are currently connected from ${geoStatus.detectedCountryName} (${geoStatus.detectedCountry}). Data can be viewed in read-only mode, but creation, edits, and deletions are disabled.`,
+                geoStatus.detectedCountry,
+                geoStatus.requiredCountry,
+                geoStatus.currency
+              );
+            }
+          }
+        }
       }
     }
 

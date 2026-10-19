@@ -1,14 +1,12 @@
 // src/components/layout/GeoRestrictionGate.tsx
 import React, { useState, useEffect } from "react";
-import { useDispatch } from "react-redux";
-import { Globe, MapPin, ShieldAlert, LogOut, RefreshCw } from "lucide-react";
-import { Button } from "../ui";
-import { clearCredentials } from "../../store/slices/authSlice";
-import { clearActiveFranchise } from "../../store/slices/uiSlice";
-import { clearNotifications } from "../../store/slices/notificationSlice";
-import { baseApi } from "../../store/api/baseApi";
+import { useDispatch, useSelector } from "react-redux";
+import { Globe, MapPin, ShieldAlert, X } from "lucide-react";
+import { Button, Modal } from "../ui";
+import { setGeoRestriction, type GeoRestrictionStatus } from "../../store/slices/authSlice";
+import { RootState } from "../../store";
 
-interface GeoBlockInfo {
+interface GeoMutationBlockedInfo {
   message: string;
   detectedCountry?: string;
   requiredCountry?: string;
@@ -17,181 +15,98 @@ interface GeoBlockInfo {
 
 export const GeoRestrictionGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const dispatch = useDispatch();
-  const [geoBlock, setGeoBlock] = useState<GeoBlockInfo | null>(null);
-  const [simulatedCountry, setSimulatedCountry] = useState<string>(
-    () => localStorage.getItem("nox_simulated_country") || ""
-  );
+  const geo = useSelector((s: RootState) => s.auth.geoRestriction);
+  const [mutationBlockedInfo, setMutationBlockedInfo] = useState<GeoMutationBlockedInfo | null>(null);
 
   useEffect(() => {
-    const handleGeoEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<GeoBlockInfo>;
+    const handleMutationBlocked = (e: Event) => {
+      const customEvent = e as CustomEvent<GeoMutationBlockedInfo>;
       if (customEvent.detail) {
-        setGeoBlock(customEvent.detail);
+        setMutationBlockedInfo(customEvent.detail);
+        dispatch(
+          setGeoRestriction({
+            isRestricted: true,
+            detectedCountry: customEvent.detail.detectedCountry,
+            requiredCountry: customEvent.detail.requiredCountry,
+            currency: customEvent.detail.currency,
+          })
+        );
       }
     };
 
-    window.addEventListener("nox_geo_restriction", handleGeoEvent);
-    return () => {
-      window.removeEventListener("nox_geo_restriction", handleGeoEvent);
+    const handleGeoStatus = (e: Event) => {
+      const customEvent = e as CustomEvent<GeoRestrictionStatus>;
+      if (customEvent.detail) {
+        dispatch(setGeoRestriction(customEvent.detail));
+      }
     };
-  }, []);
 
-  const handleLogout = () => {
-    dispatch(clearCredentials());
-    dispatch(clearActiveFranchise());
-    dispatch(clearNotifications());
-    dispatch(baseApi.util.resetApiState());
-    setGeoBlock(null);
-  };
-
-  const handleSetSimulatedCountry = (country: string) => {
-    if (country) {
-      localStorage.setItem("nox_simulated_country", country);
-    } else {
-      localStorage.removeItem("nox_simulated_country");
-    }
-    setSimulatedCountry(country);
-    setGeoBlock(null);
-    window.location.reload();
-  };
-
-  if (!geoBlock) {
-    return <>{children}</>;
-  }
+    window.addEventListener("nox_geo_mutation_blocked", handleMutationBlocked);
+    window.addEventListener("nox_geo_status", handleGeoStatus);
+    return () => {
+      window.removeEventListener("nox_geo_mutation_blocked", handleMutationBlocked);
+      window.removeEventListener("nox_geo_status", handleGeoStatus);
+    };
+  }, [dispatch]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-pitch-950/95 backdrop-blur-md text-white p-4 sm:p-6 overflow-y-auto">
-      <div className="max-w-lg w-full bg-pitch-900 border border-ember-500/30 rounded-2xl p-6 sm:p-8 text-center shadow-2xl shadow-ember-500/10 space-y-5">
-        <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full bg-ember-500/20 animate-ping opacity-25" />
-          <div className="relative w-16 h-16 rounded-full bg-ember-500/10 border border-ember-500/40 flex items-center justify-center text-ember-400">
-            <Globe size={32} />
-          </div>
-          <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-pitch-900 border border-rose-500 flex items-center justify-center text-rose-400">
-            <ShieldAlert size={16} />
-          </div>
-        </div>
+    <>
+      {/* Non-blocking: Children are always rendered so user can view data and present in meetings */}
+      {children}
 
-        <div>
-          <span className="text-[10px] font-mono font-bold tracking-widest uppercase px-2.5 py-1 rounded bg-ember-500/15 text-ember-400 border border-ember-500/30">
-            Geographic Boundary Policy
-          </span>
-          <h2 className="text-xl sm:text-2xl font-black text-white mt-3 uppercase tracking-tight">
-            Operation Geo-Restricted
-          </h2>
-          <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-            {geoBlock.message || "This academy's operations are legally restricted to its registered country."}
+      {/* Warning modal triggered only when an active mutation (POST/PUT/PATCH/DELETE) was attempted and blocked */}
+      <Modal
+        isOpen={!!mutationBlockedInfo}
+        onClose={() => setMutationBlockedInfo(null)}
+        title="Operation Restricted"
+        size="md"
+      >
+        <div className="space-y-4 py-1 text-xs text-slate-600 dark:text-slate-300">
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+              <ShieldAlert size={18} />
+            </div>
+            <div>
+              <p className="font-bold text-amber-900 dark:text-amber-200 text-sm">
+                Read-Only Travel Mode Active
+              </p>
+              <p className="text-slate-700 dark:text-slate-300 mt-1 leading-relaxed">
+                {mutationBlockedInfo?.message ||
+                  "You are connected from outside the academy's registered country. You have full read access to view records and show dashboards in meetings, but saving changes or creating new data is restricted."}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-slate-50 dark:bg-pitch-900 border border-slate-200 dark:border-white/5">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                Your Detected Country
+              </span>
+              <span className="font-mono font-bold text-rose-600 dark:text-rose-400 text-sm mt-0.5 flex items-center gap-1">
+                <MapPin size={13} /> {mutationBlockedInfo?.detectedCountry || geo?.detectedCountry || "—"}
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                Academy Jurisdiction
+              </span>
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm mt-0.5 flex items-center gap-1">
+                <MapPin size={13} /> {mutationBlockedInfo?.requiredCountry || geo?.requiredCountry || "—"}
+              </span>
+            </div>
+          </div>
+
+          <p className="text-2xs text-slate-500 dark:text-slate-400">
+            To make updates, fee recordings, or roster changes, access must originate within the registered country jurisdiction.
           </p>
-        </div>
 
-        <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-pitch-950/70 border border-white/5 text-left text-xs">
-          <div>
-            <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider block">
-              Registered Currency
-            </span>
-            <span className="font-bold text-volt-400 text-sm mt-0.5 block">
-              {geoBlock.currency || "N/A"}
-            </span>
-          </div>
-          <div>
-            <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider block">
-              Required Country
-            </span>
-            <span className="font-bold text-emerald-400 text-sm mt-0.5 flex items-center gap-1">
-              <MapPin size={13} /> {geoBlock.requiredCountry || "N/A"}
-            </span>
-          </div>
-          <div className="col-span-2 pt-2 border-t border-white/5 flex items-center justify-between">
-            <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">
-              Your Detected Location
-            </span>
-            <span className="font-mono font-bold text-rose-400">
-              {geoBlock.detectedCountry || "Unknown"}
-            </span>
+          <div className="flex justify-end pt-2">
+            <Button variant="secondary" onClick={() => setMutationBlockedInfo(null)}>
+              Got it, continue in Read-Only
+            </Button>
           </div>
         </div>
-
-        <p className="text-2xs text-slate-400 leading-normal">
-          In accordance with platform security and national licensing, all accounts (managers, coaches, staff, guardians, and players) under this academy can only operate within the registered country jurisdiction.
-        </p>
-
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          <Button
-            variant="ghost"
-            onClick={handleLogout}
-            className="w-full sm:w-auto text-slate-400 hover:text-rose-400"
-          >
-            <LogOut size={14} className="mr-1.5" /> Sign Out
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => window.location.reload()}
-            className="w-full sm:w-auto"
-          >
-            <RefreshCw size={14} className="mr-1.5" /> Retry Connection
-          </Button>
-        </div>
-
-        {/* Development / Testing Simulation Panel */}
-        <div className="pt-4 border-t border-white/5 text-left">
-          <p className="text-[10px] font-mono font-semibold text-slate-500 uppercase tracking-widest mb-2 flex items-center justify-between">
-            <span>Dev & QA Testing Simulation</span>
-            {simulatedCountry && (
-              <span className="text-volt-400">Active: {simulatedCountry}</span>
-            )}
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              onClick={() => handleSetSimulatedCountry("IN")}
-              className={`text-2xs px-2 py-1 rounded border transition-colors ${
-                simulatedCountry === "IN"
-                  ? "bg-volt-400 text-black font-bold border-volt-400"
-                  : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
-              }`}
-            >
-              Simulate India (IN)
-            </button>
-            <button
-              onClick={() => handleSetSimulatedCountry("SA")}
-              className={`text-2xs px-2 py-1 rounded border transition-colors ${
-                simulatedCountry === "SA"
-                  ? "bg-volt-400 text-black font-bold border-volt-400"
-                  : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
-              }`}
-            >
-              Simulate Saudi Arabia (SA)
-            </button>
-            <button
-              onClick={() => handleSetSimulatedCountry("OM")}
-              className={`text-2xs px-2 py-1 rounded border transition-colors ${
-                simulatedCountry === "OM"
-                  ? "bg-volt-400 text-black font-bold border-volt-400"
-                  : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
-              }`}
-            >
-              Simulate Oman (OM)
-            </button>
-            <button
-              onClick={() => handleSetSimulatedCountry("US")}
-              className={`text-2xs px-2 py-1 rounded border transition-colors ${
-                simulatedCountry === "US"
-                  ? "bg-volt-400 text-black font-bold border-volt-400"
-                  : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
-              }`}
-            >
-              Simulate USA (US)
-            </button>
-            {simulatedCountry && (
-              <button
-                onClick={() => handleSetSimulatedCountry("")}
-                className="text-2xs px-2 py-1 rounded border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition-colors"
-              >
-                Reset
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+      </Modal>
+    </>
   );
 };

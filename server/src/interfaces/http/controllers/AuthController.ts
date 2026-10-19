@@ -31,11 +31,19 @@ export class AuthController {
       const dto = LoginSchema.parse(req.body);
       const result = await this.authUseCases.login(dto);
 
+      let geoStatus = null;
       if (result.user.academyId && result.user.role !== 'super_admin') {
-        await geoLocationService.assertAcademyGeoAccess(req, result.user.academyId, result.user.role);
+        geoStatus = await geoLocationService.checkAcademyGeoAccess(req, result.user.academyId, result.user.role);
       }
 
-      ResponseHandler.success(res, result, 'Login successful');
+      ResponseHandler.success(
+        res,
+        {
+          ...result,
+          geoStatus,
+        },
+        'Login successful'
+      );
     } catch (err) {
       console.log('Error in login controller:', err);
       next(err);
@@ -75,7 +83,15 @@ export class AuthController {
   me = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const profile = await this.authUseCases.getProfile(req.user!.sub);
-      ResponseHandler.success(res, profile, 'Profile retrieved');
+      const geoStatus = (req as any).geoStatus || null;
+      ResponseHandler.success(
+        res,
+        {
+          profile,
+          geoStatus,
+        },
+        'Profile retrieved'
+      );
     } catch (err) {
       next(err);
     }
