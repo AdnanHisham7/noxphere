@@ -257,9 +257,9 @@ class GeoLocationService {
     const currency = academy.currency || 'INR';
     const academyName = academy.name || 'Academy';
 
-    // If running in local dev without explicit simulated header, allow access
-    const isDevLocal = detectedCountry === 'DEV_LOCAL';
-    const isRestricted = !isDevLocal && detectedCountry !== requiredCountry;
+    // Operational geolocation restriction is lifted: the purchased currency applied
+    // to the academy operations already defines its economic jurisdiction and pricing model.
+    const isRestricted = false;
 
     return {
       isRestricted,
@@ -274,33 +274,15 @@ class GeoLocationService {
 
   /**
    * Asserts that mutation operations originate from the academy's designated country.
-   * Read-only requests (GET, HEAD, OPTIONS) and auth session endpoints are permitted globally.
+   * Note: Geolocation restrictions have been removed since purchased currency covers operational boundaries.
    */
   async assertAcademyGeoAccess(
-    req: Request,
-    academyId: string,
-    userRole?: string
+    _req: Request,
+    _academyId: string,
+    _userRole?: string
   ): Promise<void> {
-    const status = await this.checkAcademyGeoAccess(req, academyId, userRole);
-    if (!status || !status.isRestricted) return;
-
-    // Permit read requests globally so managers and coaches can view dashboards and reports abroad
-    const method = req.method?.toUpperCase();
-    if (['GET', 'HEAD', 'OPTIONS'].includes(method)) {
-      return;
-    }
-
-    // Exempt essential session management
-    if (req.originalUrl?.includes('/auth/logout') || req.originalUrl?.includes('/auth/refresh')) {
-      return;
-    }
-
-    throw new GeoRestrictionError(
-      `Access Denied (Read-Only Mode): Performing operations or modifying data for "${status.academyName}" is restricted to its registered country (${status.allowedCountryName}). You are currently connected from ${status.detectedCountryName} (${status.detectedCountry}). Data can be viewed in read-only mode, but creation, edits, and deletions are disabled.`,
-      status.detectedCountry,
-      status.requiredCountry,
-      status.currency
-    );
+    // Operational restriction removed — operations permitted across territories
+    return;
   }
 }
 

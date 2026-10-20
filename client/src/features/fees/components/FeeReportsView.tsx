@@ -19,6 +19,7 @@ import {
   ChevronDown,
   Info,
 } from "lucide-react";
+import { jsPDF } from "jspdf";
 import { Badge, Button } from "../../../components/ui";
 import { formatCurrency } from "../../../utils/currency";
 import type { AdminFeeRecord, FeeInstallment } from "../../../store/api/adminFeesApi";
@@ -30,13 +31,7 @@ export interface FeeReportsViewProps {
   onSelectStudent?: (studentId: string) => void;
 }
 
-type PeriodType =
-  | "all"
-  | "month_single"
-  | "last_3_months"
-  | "last_4_months"
-  | "last_x_months"
-  | "custom";
+type PeriodType = "month_single" | "custom" | "all";
 
 type StatusCategory = "all" | "paid" | "unpaid" | "partial" | "overdue";
 
@@ -74,10 +69,9 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
   const currentMonth = now.getMonth(); // 0-indexed
 
   // Filters State
-  const [periodType, setPeriodType] = useState<PeriodType>("last_3_months");
+  const [periodType, setPeriodType] = useState<PeriodType>("month_single");
   const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
-  const [customXMonths, setCustomXMonths] = useState<number>(6);
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
   const [statusCategory, setStatusCategory] = useState<StatusCategory>("all");
@@ -145,7 +139,6 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
 
   // Compute Active Date Range Window
   const dateRangeWindow = useMemo(() => {
-    const nowDate = new Date();
     if (periodType === "all") {
       return { start: null, end: null, label: "All Time (Complete History)" };
     }
@@ -156,34 +149,6 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
         start,
         end,
         label: `${MONTH_NAMES[selectedMonth]} ${selectedYear}`,
-      };
-    }
-    if (periodType === "last_3_months") {
-      const start = new Date(nowDate.getFullYear(), nowDate.getMonth() - 2, 1, 0, 0, 0, 0);
-      const end = new Date(nowDate.getFullYear(), nowDate.getMonth() + 1, 0, 23, 59, 59, 999);
-      return {
-        start,
-        end,
-        label: `Last 3 Months (${MONTH_NAMES[start.getMonth()]} ${start.getFullYear()} – ${MONTH_NAMES[end.getMonth()]} ${end.getFullYear()})`,
-      };
-    }
-    if (periodType === "last_4_months") {
-      const start = new Date(nowDate.getFullYear(), nowDate.getMonth() - 3, 1, 0, 0, 0, 0);
-      const end = new Date(nowDate.getFullYear(), nowDate.getMonth() + 1, 0, 23, 59, 59, 999);
-      return {
-        start,
-        end,
-        label: `Last 4 Months (${MONTH_NAMES[start.getMonth()]} ${start.getFullYear()} – ${MONTH_NAMES[end.getMonth()]} ${end.getFullYear()})`,
-      };
-    }
-    if (periodType === "last_x_months") {
-      const months = Math.max(1, customXMonths || 1);
-      const start = new Date(nowDate.getFullYear(), nowDate.getMonth() - (months - 1), 1, 0, 0, 0, 0);
-      const end = new Date(nowDate.getFullYear(), nowDate.getMonth() + 1, 0, 23, 59, 59, 999);
-      return {
-        start,
-        end,
-        label: `Last ${months} Months (${MONTH_NAMES[start.getMonth()]} ${start.getFullYear()} – ${MONTH_NAMES[end.getMonth()]} ${end.getFullYear()})`,
       };
     }
     if (periodType === "custom") {
@@ -200,7 +165,6 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
     periodType,
     selectedMonth,
     selectedYear,
-    customXMonths,
     customStartDate,
     customEndDate,
   ]);
@@ -208,13 +172,13 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
   // Filter Installments by Date Window, Status Category, Fee Type, and Search
   const filteredRows = useMemo(() => {
     return allInstallments.filter((row) => {
-      // Date Window filter (checking dueDate or paidAt depending on status)
+      // Date Window filter
       if (dateRangeWindow.start && row.dueDate < dateRangeWindow.start) return false;
       if (dateRangeWindow.end && row.dueDate > dateRangeWindow.end) return false;
 
       // Status filter
       if (statusCategory === "paid" && row.status !== "paid") return false;
-      if (statusCategory === "unpaid" && row.status === "paid") return false; // includes pending, partial, overdue
+      if (statusCategory === "unpaid" && row.status === "paid") return false;
       if (statusCategory === "partial" && row.status !== "partial") return false;
       if (statusCategory === "overdue" && row.status !== "overdue") return false;
 
@@ -242,7 +206,6 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
     let totalOverdue = 0;
     const studentsWithBalance = new Set<string>();
     const uniqueStudents = new Set<string>();
-
     const paymentMethodTotals: Record<string, number> = {};
 
     for (const r of filteredRows) {
@@ -320,6 +283,163 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
     return Array.from(map.values()).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
   }, [filteredRows]);
 
+  // Clean PDF generation using jsPDF with genuine text, cards, and data tables
+  const exportToPdf = () => {
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "pt",
+      format: "a4",
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 36;
+    let y = 40;
+
+    // Header Banner
+    doc.setFillColor(15, 23, 42); // slate-900
+    doc.roundedRect(margin, y, pageWidth - margin * 2, 60, 6, 6, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("NOXPHERE · FINANCIAL REPORT STATEMENT", margin + 16, y + 26);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(203, 213, 225); // slate-300
+    doc.text(
+      `Period: ${dateRangeWindow.label}   |   Status: ${statusCategory.toUpperCase()}   |   Generated: ${new Date().toLocaleDateString("en-IN")}`,
+      margin + 16,
+      y + 46,
+    );
+
+    y += 75;
+
+    // KPI Summary Cards
+    const cardWidth = (pageWidth - margin * 2 - 24) / 4;
+    const cardHeight = 52;
+    const kpis = [
+      { label: "TOTAL INVOICED", val: `${currencySymbol}${reportMetrics.totalInvoiced.toLocaleString()}`, color: [30, 41, 59] },
+      { label: "COLLECTED", val: `${currencySymbol}${reportMetrics.totalCollected.toLocaleString()} (${reportMetrics.collectionRate}%)`, color: [16, 185, 129] },
+      { label: "OUTSTANDING", val: `${currencySymbol}${reportMetrics.totalOutstanding.toLocaleString()}`, color: [245, 158, 11] },
+      { label: "OVERDUE UNPAID", val: `${currencySymbol}${reportMetrics.totalOverdue.toLocaleString()}`, color: [239, 68, 68] },
+    ];
+
+    kpis.forEach((k, idx) => {
+      const cx = margin + idx * (cardWidth + 8);
+      doc.setFillColor(248, 250, 252); // slate-50
+      doc.setDrawColor(226, 232, 240); // slate-200
+      doc.roundedRect(cx, y, cardWidth, cardHeight, 4, 4, "FD");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139); // slate-500
+      doc.text(k.label, cx + 8, y + 16);
+
+      doc.setFontSize(11);
+      doc.setTextColor(k.color[0], k.color[1], k.color[2]);
+      doc.text(k.val, cx + 8, y + 36);
+    });
+
+    y += cardHeight + 20;
+
+    // Table Header
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`Itemized Milestone Ledger (${filteredRows.length} entries)`, margin, y);
+    y += 12;
+
+    const colX = [
+      margin,            // Player: 0
+      margin + 120,      // Plan: 120
+      margin + 180,      // Milestone: 180
+      margin + 235,      // Due Date: 235
+      margin + 300,      // Scheduled: 300
+      margin + 365,      // Collected: 365
+      margin + 430,      // Balance: 430
+      margin + 485,      // Status: 485
+    ];
+
+    doc.setFillColor(241, 245, 249);
+    doc.rect(margin, y, pageWidth - margin * 2, 20, "F");
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+
+    doc.text("PLAYER", colX[0] + 4, y + 13);
+    doc.text("PLAN", colX[1], y + 13);
+    doc.text("MILESTONE", colX[2], y + 13);
+    doc.text("DUE DATE", colX[3], y + 13);
+    doc.text("SCHEDULED", colX[4], y + 13);
+    doc.text("COLLECTED", colX[5], y + 13);
+    doc.text("BALANCE", colX[6], y + 13);
+    doc.text("STATUS", colX[7], y + 13);
+
+    y += 24;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+
+    filteredRows.forEach((r, idx) => {
+      // Page break check
+      if (y > doc.internal.pageSize.getHeight() - 40) {
+        doc.addPage();
+        y = 40;
+        // re-print table header on next page
+        doc.setFillColor(241, 245, 249);
+        doc.rect(margin, y, pageWidth - margin * 2, 20, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(71, 85, 105);
+        doc.text("PLAYER", colX[0] + 4, y + 13);
+        doc.text("PLAN", colX[1], y + 13);
+        doc.text("MILESTONE", colX[2], y + 13);
+        doc.text("DUE DATE", colX[3], y + 13);
+        doc.text("SCHEDULED", colX[4], y + 13);
+        doc.text("COLLECTED", colX[5], y + 13);
+        doc.text("BALANCE", colX[6], y + 13);
+        doc.text("STATUS", colX[7], y + 13);
+        y += 24;
+        doc.setFont("helvetica", "normal");
+      }
+
+      if (idx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin, y - 10, pageWidth - margin * 2, 16, "F");
+      }
+
+      doc.setTextColor(15, 23, 42);
+      const truncatedName = r.studentName.length > 20 ? `${r.studentName.slice(0, 18)}..` : r.studentName;
+      doc.text(truncatedName, colX[0] + 4, y + 2);
+
+      doc.setTextColor(100, 116, 139);
+      doc.text(r.feeType.replace("_", " "), colX[1], y + 2);
+
+      doc.setTextColor(30, 41, 59);
+      doc.text(`#${r.installmentNumber}`, colX[2], y + 2);
+      doc.text(r.dueDateStr, colX[3], y + 2);
+      doc.text(`${currencySymbol}${r.amount.toLocaleString()}`, colX[4], y + 2);
+
+      doc.setTextColor(16, 185, 129);
+      doc.text(`${currencySymbol}${r.paidAmount.toLocaleString()}`, colX[5], y + 2);
+
+      doc.setTextColor(r.balance > 0 ? 217 : 100, r.balance > 0 ? 119 : 116, r.balance > 0 ? 6 : 139);
+      doc.text(r.balance > 0 ? `${currencySymbol}${r.balance.toLocaleString()}` : "—", colX[6], y + 2);
+
+      doc.setTextColor(
+        r.status === "paid" ? 16 : r.status === "overdue" ? 239 : 100,
+        r.status === "paid" ? 185 : r.status === "overdue" ? 68 : 116,
+        r.status === "paid" ? 129 : r.status === "overdue" ? 68 : 139,
+      );
+      doc.text(r.status.toUpperCase(), colX[7], y + 2);
+
+      y += 16;
+    });
+
+    const filename = `noxphere-fee-report-${dateRangeWindow.label.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()}.pdf`;
+    doc.save(filename);
+  };
+
   // CSV Export Handler
   const exportToCsv = () => {
     if (filteredRows.length === 0) return;
@@ -368,6 +488,13 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
     setSelectedYear(year);
   };
 
+  // Calculate Last 2 Months presets relative to currentMonth
+  const prevMonth1 = currentMonth === 0 ? 11 : currentMonth - 1;
+  const prevYear1 = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+  const prevMonth2 = currentMonth <= 1 ? 12 + (currentMonth - 2) : currentMonth - 2;
+  const prevYear2 = currentMonth <= 1 ? currentYear - 1 : currentYear;
+
   return (
     <div className="space-y-6">
       {/* ─── Report Configuration Card ────────────────────────────────────── */}
@@ -379,10 +506,10 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider font-display">
-                Interactive Financial Reports &amp; Analytics
+                Financial Reports &amp; Analytics
               </h3>
               <p className="text-2xs text-slate-500 dark:text-slate-400">
-                Generate monthly, quarterly, customized rolling ranges, or status-based audit reports.
+                Generate monthly, date range, or all-time statements with itemized milestone ledgers.
               </p>
             </div>
           </div>
@@ -391,16 +518,17 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
             <Button
               variant="secondary"
               size="sm"
-              icon={<Printer size={13} />}
-              onClick={() => window.print()}
-              className="text-xs"
+              icon={<Download size={13} />}
+              onClick={exportToPdf}
+              disabled={filteredRows.length === 0}
+              className="text-xs font-semibold"
             >
-              Print
+              Export PDF
             </Button>
             <Button
               variant="primary"
               size="sm"
-              icon={<Download size={13} />}
+              icon={<FileText size={13} />}
               onClick={exportToCsv}
               disabled={filteredRows.length === 0}
               className="text-xs bg-volt-400 hover:bg-volt-300 text-pitch-950 font-bold"
@@ -410,16 +538,13 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
           </div>
         </div>
 
-        {/* Period Selector Tabs */}
+        {/* Period Selector Tabs: Specific Month, Date Range, All Time */}
         <div className="space-y-3">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-2xs font-bold text-slate-400 uppercase tracking-widest mr-1">
               Timeframe:
             </span>
             {[
-              { id: "last_3_months" as const, label: "Last 3 Months" },
-              { id: "last_4_months" as const, label: "Last 4 Months" },
-              { id: "last_x_months" as const, label: `Last ${customXMonths} Months (Custom)` },
               { id: "month_single" as const, label: "Specific Month" },
               { id: "custom" as const, label: "Date Range" },
               { id: "all" as const, label: "All Time" },
@@ -473,59 +598,46 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
                 </select>
               </div>
 
-              {/* Quick Jump Shortcuts for Common Requests */}
+              {/* Exact 3 Quick Jump Shortcuts: This month and last 2 months */}
               <div className="flex items-center gap-1.5 ml-auto flex-wrap text-2xs">
-                <span className="text-slate-400">Quick jumps:</span>
-                <button
-                  type="button"
-                  onClick={() => setMonthPreset(8, currentYear)} // September
-                  className="px-2 py-0.5 rounded bg-slate-200 dark:bg-pitch-700 hover:text-volt-400 transition-colors"
-                >
-                  September {currentYear}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMonthPreset(10, currentYear)} // November
-                  className="px-2 py-0.5 rounded bg-slate-200 dark:bg-pitch-700 hover:text-volt-400 transition-colors"
-                >
-                  November {currentYear}
-                </button>
+                <span className="text-slate-400 font-medium">Quick jumps:</span>
                 <button
                   type="button"
                   onClick={() => setMonthPreset(currentMonth, currentYear)}
-                  className="px-2 py-0.5 rounded bg-slate-200 dark:bg-pitch-700 hover:text-volt-400 transition-colors"
+                  className={clsx(
+                    "px-2.5 py-1 rounded font-medium transition-colors border",
+                    periodType === "month_single" && selectedMonth === currentMonth && selectedYear === currentYear
+                      ? "bg-volt-400 text-pitch-950 border-volt-400 font-bold"
+                      : "bg-slate-200 dark:bg-pitch-700 text-slate-700 dark:text-slate-300 border-transparent hover:text-volt-400",
+                  )}
                 >
-                  This Month
+                  This Month ({MONTH_NAMES[currentMonth].slice(0, 3)} {currentYear})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMonthPreset(prevMonth1, prevYear1)}
+                  className={clsx(
+                    "px-2.5 py-1 rounded font-medium transition-colors border",
+                    periodType === "month_single" && selectedMonth === prevMonth1 && selectedYear === prevYear1
+                      ? "bg-volt-400 text-pitch-950 border-volt-400 font-bold"
+                      : "bg-slate-200 dark:bg-pitch-700 text-slate-700 dark:text-slate-300 border-transparent hover:text-volt-400",
+                  )}
+                >
+                  {MONTH_NAMES[prevMonth1]} {prevYear1}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMonthPreset(prevMonth2, prevYear2)}
+                  className={clsx(
+                    "px-2.5 py-1 rounded font-medium transition-colors border",
+                    periodType === "month_single" && selectedMonth === prevMonth2 && selectedYear === prevYear2
+                      ? "bg-volt-400 text-pitch-950 border-volt-400 font-bold"
+                      : "bg-slate-200 dark:bg-pitch-700 text-slate-700 dark:text-slate-300 border-transparent hover:text-volt-400",
+                  )}
+                >
+                  {MONTH_NAMES[prevMonth2]} {prevYear2}
                 </button>
               </div>
-            </div>
-          )}
-
-          {periodType === "last_x_months" && (
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-pitch-800/60 border border-slate-200 dark:border-white/5">
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                Number of Months (X):
-              </span>
-              <div className="flex items-center gap-2">
-                {[2, 3, 4, 5, 6, 8, 12].map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => setCustomXMonths(num)}
-                    className={clsx(
-                      "w-7 h-7 rounded text-xs font-bold font-mono transition-colors border",
-                      customXMonths === num
-                        ? "bg-volt-400 text-pitch-950 border-volt-400"
-                        : "bg-white dark:bg-pitch-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-volt-400",
-                    )}
-                  >
-                    {num}
-                  </button>
-                ))}
-              </div>
-              <span className="text-2xs text-slate-400 ml-2">
-                Calculates milestones due within the last {customXMonths} months.
-              </span>
             </div>
           )}
 
@@ -551,6 +663,7 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
               </div>
             </div>
           )}
+
 
           {/* Status Filter Row */}
           <div className="flex items-center gap-2 flex-wrap pt-1">

@@ -243,6 +243,9 @@ export class AcademySubscriptionController {
           countryCode: req.body.countryCode,
           countryName: req.body.countryName,
           isActive: req.body.isActive !== undefined ? Boolean(req.body.isActive) : undefined,
+          exchangeRateToInr: req.body.exchangeRateToInr !== undefined ? Number(req.body.exchangeRateToInr) : undefined,
+          nfcCardPrice: req.body.nfcCardPrice !== undefined ? Number(req.body.nfcCardPrice) : undefined,
+          nfcCustomCardPrice: req.body.nfcCustomCardPrice !== undefined ? Number(req.body.nfcCustomCardPrice) : undefined,
         },
         req.user!.sub
       );

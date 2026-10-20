@@ -959,6 +959,9 @@ export class AcademySubscriptionUseCases {
       countryCode?: string;
       countryName?: string;
       isActive?: boolean;
+      exchangeRateToInr?: number;
+      nfcCardPrice?: number;
+      nfcCustomCardPrice?: number;
     },
     updatedBy: string
   ): Promise<CurrencyPricing[]> {
@@ -990,6 +993,8 @@ export class AcademySubscriptionUseCases {
 
     const pricingList = settings.currencyPricing || [];
     const idx = pricingList.findIndex((p) => p.currency.toUpperCase() === currency);
+    const existingEntry = idx >= 0 ? pricingList[idx] : undefined;
+
     const newEntry: CurrencyPricing = {
       currency,
       ratePerStudentPerDay: data.ratePerStudentPerDay,
@@ -998,6 +1003,9 @@ export class AcademySubscriptionUseCases {
       countryCode,
       countryName,
       isActive,
+      exchangeRateToInr: data.exchangeRateToInr !== undefined ? data.exchangeRateToInr : (existingEntry?.exchangeRateToInr ?? (currency === "INR" ? 1 : undefined)),
+      nfcCardPrice: data.nfcCardPrice !== undefined ? data.nfcCardPrice : existingEntry?.nfcCardPrice,
+      nfcCustomCardPrice: data.nfcCustomCardPrice !== undefined ? data.nfcCustomCardPrice : existingEntry?.nfcCustomCardPrice,
     };
 
     if (idx >= 0) {
