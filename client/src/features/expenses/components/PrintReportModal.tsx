@@ -1,11 +1,13 @@
 // src/features/expenses/components/PrintReportModal.tsx
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { Modal, Button } from "../../../components/ui";
 import { type AnalyticsReport } from "../../../store/api/expenseApi";
 import { useCurrency } from "../../../hooks/useCurrency";
 import { format } from "date-fns";
-import { Printer, Download, X, Building, Calendar, DollarSign, PackageCheck } from "lucide-react";
+import { Printer, Download, FileDown, X, Building, Calendar, DollarSign, PackageCheck } from "lucide-react";
 import toast from "react-hot-toast";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 
 interface PrintReportModalProps {
   isOpen: boolean;
@@ -24,13 +26,211 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
 }) => {
   const { format: formatMoney, currencySymbol } = useCurrency();
   const printAreaRef = useRef<HTMLDivElement>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   if (!report) return null;
 
   const { summary, categoryBreakdown, expenses, feeInflows, otherInflows, stockSummary, period } = report;
 
   const handlePrint = () => {
-    window.print();
+    if (!printAreaRef.current) {
+      window.print();
+      return;
+    }
+
+    try {
+      // Remove any previously orphaned print frames
+      const existingFrame = document.getElementById("noxphere-print-frame");
+      if (existingFrame) existingFrame.remove();
+
+      // Create an isolated hidden iframe dedicated to printing
+      const iframe = document.createElement("iframe");
+      iframe.id = "noxphere-print-frame";
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "0";
+      iframe.setAttribute("aria-hidden", "true");
+      iframe.title = "Print Statement Frame";
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) {
+        window.print();
+        return;
+      }
+
+      // Title for the browser's "Save as PDF" filename suggestion
+      const reportTitle = `Noxphere_Financial_Report_${period.timeframe.toUpperCase()}_${format(new Date(period.startDate), "yyyyMMdd")}_to_${format(new Date(period.endDate), "yyyyMMdd")}`;
+      doc.title = reportTitle;
+
+      // Extract stylesheets from main page
+      const styles = Array.from(document.querySelectorAll("link[rel='stylesheet'], style"))
+        .map((node) => node.outerHTML)
+        .join("\n");
+
+      const printStyles = `
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm;
+          }
+          html, body {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            width: 100% !important;
+            min-height: 100% !important;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            box-sizing: border-box !important;
+          }
+          #print-root {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 auto !important;
+            padding: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            page-break-inside: auto;
+          }
+          tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          thead {
+            display: table-header-group !important;
+          }
+          tfoot {
+            display: table-footer-group !important;
+          }
+          .report-section {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+        </style>
+      `;
+
+      // Clone content cleanly
+      const clonedReport = printAreaRef.current.cloneNode(true) as HTMLElement;
+      // Remove any internal style tags that had old @media print rules
+      clonedReport.querySelectorAll("style").forEach((s) => s.remove());
+      clonedReport.id = "print-root";
+      clonedReport.style.border = "none";
+      clonedReport.style.boxShadow = "none";
+      clonedReport.style.padding = "0";
+
+      doc.open();
+      doc.write(`
+        <!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="utf-8" />
+            <title>${reportTitle}</title>
+            ${styles}
+            ${printStyles}
+          </head>
+          <body class="bg-white text-slate-900 p-0 m-0">
+            ${clonedReport.outerHTML}
+          </body>
+        </html>
+      `);
+      doc.close();
+
+      toast("Opening print preview. Choose 'Save as PDF' to save your statement.", {
+        icon: "🖨️",
+        duration: 4000,
+      });
+
+      // Allow fonts and layout to settle in the iframe
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch (e) {
+          console.error("Iframe print error, falling back to window.print():", e);
+          window.print();
+        } finally {
+          setTimeout(() => {
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+          }, 3500);
+        }
+      }, 400);
+    } catch (err) {
+      console.error("Print statement error:", err);
+      window.print();
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!printAreaRef.current) return;
+    setIsExportingPdf(true);
+    const toastId = toast.loading("Generating High-Resolution PDF statement...");
+
+    try {
+      const element = printAreaRef.current;
+      const originalBg = element.style.backgroundColor;
+      element.style.backgroundColor = "#ffffff";
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        windowWidth: 1200,
+      });
+
+      element.style.backgroundColor = originalBg;
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const contentWidth = pdfWidth - margin * 2;
+      const contentHeight = (canvas.height * contentWidth) / canvas.width;
+
+      let heightLeft = contentHeight;
+      let position = margin;
+
+      // First Page
+      pdf.addImage(imgData, "PNG", margin, position, contentWidth, contentHeight, undefined, "FAST");
+      heightLeft -= (pdfHeight - margin * 2);
+
+      // Subsequent pages if statement spans across multiple pages
+      while (heightLeft > 0) {
+        position = position - (pdfHeight - margin * 2);
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", margin, position, contentWidth, contentHeight, undefined, "FAST");
+        heightLeft -= (pdfHeight - margin * 2);
+      }
+
+      const fileName = `Noxphere_Financial_Report_${period.timeframe.toUpperCase()}_${format(new Date(), "yyyyMMdd_HHmm")}.pdf`;
+      pdf.save(fileName);
+      toast.success("PDF statement downloaded successfully!", { id: toastId });
+    } catch (err) {
+      console.error("PDF export failed:", err);
+      toast.error("Failed to generate PDF. Use 'Print Statement' to save as PDF.", { id: toastId });
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   const handleDownloadCsv = () => {
@@ -157,11 +357,30 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
           <div className="text-xs text-slate-600 dark:text-slate-400">
             Previewing complete audit statement for <span className="font-semibold text-slate-900 dark:text-white">{period.timeframe.toUpperCase()}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={handleDownloadCsv} className="text-xs py-1.5 px-3 flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={handleDownloadCsv}
+              className="text-xs py-1.5 px-3 flex items-center gap-1.5"
+              title="Download CSV spreadsheet"
+            >
               <Download size={14} /> Download CSV
             </Button>
-            <Button variant="primary" onClick={handlePrint} className="text-xs py-1.5 px-3 flex items-center gap-1.5">
+            <Button
+              variant="secondary"
+              onClick={handleDownloadPdf}
+              loading={isExportingPdf}
+              className="text-xs py-1.5 px-3 flex items-center gap-1.5"
+              title="Download PDF statement file directly"
+            >
+              <FileDown size={14} /> Download PDF
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handlePrint}
+              className="text-xs py-1.5 px-3 flex items-center gap-1.5 shadow-sm"
+              title="Print statement or export as PDF via print preview"
+            >
               <Printer size={14} /> Print Statement
             </Button>
           </div>
@@ -173,26 +392,52 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
           id="printable-report"
           className="bg-white text-slate-900 p-6 sm:p-8 rounded-lg shadow-sm border border-slate-200 font-sans text-xs space-y-6"
         >
-          {/* Print Stylesheet */}
+          {/* Print Stylesheet (supports direct window.print fallback) */}
           <style>{`
             @media print {
-              body * {
-                visibility: hidden;
+              @page {
+                size: A4 portrait;
+                margin: 10mm 12mm;
               }
-              #printable-report, #printable-report * {
-                visibility: visible;
+              html, body {
+                background: #ffffff !important;
+                color: #0f172a !important;
+                overflow: visible !important;
+                height: auto !important;
+                min-height: auto !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              /* Prevent clipping from modal scroll ancestors */
+              div:has(> #printable-report),
+              .custom-scrollbar,
+              .overflow-y-auto,
+              .card,
+              .shadow-panel {
+                max-height: none !important;
+                height: auto !important;
+                overflow: visible !important;
               }
               #printable-report {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                border: none;
-                box-shadow: none;
-                padding: 1.5cm;
+                position: static !important;
+                width: 100% !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
               }
               .print\\:hidden {
                 display: none !important;
+              }
+              .report-section {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              tr {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              thead {
+                display: table-header-group !important;
               }
             }
           `}</style>
@@ -220,7 +465,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
           </div>
 
           {/* Executive Summary Cards */}
-          <div>
+          <div className="report-section">
             <h4 className="font-bold text-slate-900 uppercase tracking-wider mb-2 text-[11px]">
               1. Executive Cash Flow Summary
             </h4>
@@ -269,7 +514,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
 
           {/* Category Breakdown Table */}
           {categoryBreakdown.length > 0 && (
-            <div>
+            <div className="report-section">
               <h4 className="font-bold text-slate-900 uppercase tracking-wider mb-2 text-[11px]">
                 2. Expense Distribution by Category
               </h4>
@@ -299,7 +544,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
           )}
 
           {/* Itemized Expenses Table */}
-          <div>
+          <div className="report-section">
             <h4 className="font-bold text-slate-900 uppercase tracking-wider mb-2 text-[11px]">
               3. Itemized Expenses ({expenses.length} Records)
             </h4>
@@ -370,7 +615,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
           </div>
 
           {/* Itemized Inflow (Revenues) Table */}
-          <div>
+          <div className="report-section">
             <h4 className="font-bold text-slate-900 uppercase tracking-wider mb-2 text-[11px]">
               4. Itemized Inflow Collections (Fees & Income)
             </h4>
@@ -438,7 +683,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
 
           {/* Current Inventory Snapshot */}
           {stockSummary.length > 0 && (
-            <div>
+            <div className="report-section">
               <h4 className="font-bold text-slate-900 uppercase tracking-wider mb-2 text-[11px]">
                 5. Current Stock Valuation Snapshot
               </h4>
@@ -488,7 +733,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
           )}
 
           {/* Authorization & Signatures */}
-          <div className="pt-8 border-t border-slate-300 grid grid-cols-2 gap-8 text-center text-[11px] text-slate-600">
+          <div className="report-section pt-8 border-t border-slate-300 grid grid-cols-2 gap-8 text-center text-[11px] text-slate-600">
             <div>
               <div className="border-b border-slate-400 w-48 mx-auto mb-1"></div>
               <p className="font-semibold text-slate-800">Prepared By: Finance / Inventory Officer</p>
