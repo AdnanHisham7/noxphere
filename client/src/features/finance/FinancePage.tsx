@@ -25,6 +25,7 @@ import {
   Clock,
   CheckCircle2,
   Wallet,
+  Globe,
 } from "lucide-react";
 import {
   StatCard,
@@ -48,12 +49,18 @@ import {
   type OverdueInvoice,
 } from "../../store/api/financeApi";
 
-const formatCurrency = (n: number) =>
-  n >= 10000000
-    ? `₹${(n / 10000000).toFixed(2)}Cr`
-    : n >= 100000
-      ? `₹${(n / 100000).toFixed(1)}L`
-      : `₹${n.toLocaleString("en-IN")}`;
+const formatMoney = (n: number, symbol = "₹") => {
+  if (symbol === "₹") {
+    return n >= 10000000
+      ? `₹${(n / 10000000).toFixed(2)}Cr`
+      : n >= 100000
+        ? `₹${(n / 100000).toFixed(1)}L`
+        : `₹${n.toLocaleString("en-IN")}`;
+  }
+  return `${symbol}${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+const formatCurrency = (n: number) => formatMoney(n, "₹");
 
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -108,7 +115,7 @@ const FinancePage: React.FC = () => {
   const filteredTransactions = rawTxList.filter((tx) => {
     const isSub =
       tx.type === "academy_subscription" ||
-      (tx.method === "Stripe" && !tx.quantity);
+      ((tx.method === "Razorpay" || tx.method === "Stripe") && !tx.quantity);
     const isNfc = tx.type === "nfc_card_order" || !!tx.quantity;
     const isFee = tx.type === "student_fee" || (!isSub && !isNfc);
 
@@ -176,7 +183,7 @@ const FinancePage: React.FC = () => {
             <strong>Revenue Model:</strong> Platform earnings come directly from{" "}
             <strong>SaaS Subscriptions</strong> and{" "}
             <strong>Smart NFC Card sales</strong>. Student coaching and tuition
-            fees belong exclusively to each respective academy.
+            fees belong exclusively to each respective academy. All figures normalized to <strong>Base INR (₹)</strong>.
           </span>
         </div>
         <Link to="/nfc-cards" className="shrink-0 w-full sm:w-auto">
@@ -202,7 +209,7 @@ const FinancePage: React.FC = () => {
           <StatCard
             label="Total Platform Revenue"
             value={formatCurrency(totalPlatformRev)}
-            sublabel={`SaaS: ${formatCurrency(subRev)} · NFC: ${formatCurrency(nfcRev)}`}
+            sublabel={`SaaS: ${formatCurrency(subRev)} · NFC: ${formatCurrency(nfcRev)} (Base: INR)`}
             icon={<Wallet size={20} />}
             accent="volt"
           />
@@ -223,10 +230,77 @@ const FinancePage: React.FC = () => {
           <StatCard
             label="Active Client Academies"
             value={overview?.activeSubscriptionsCount ?? academies.length}
-            sublabel="Recurring Stripe billing active"
+            sublabel="Recurring online billing active"
             icon={<Building2 size={20} />}
             accent="ember"
           />
+        </div>
+      )}
+
+      {/* Multi-Currency Collections Breakdown */}
+      {overview?.currencyBreakdown && overview.currencyBreakdown.length > 0 && (
+        <div className="card p-4 bg-slate-50 dark:bg-pitch-800/40 border border-slate-200 dark:border-white/5 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Globe size={16} className="text-volt-500 shrink-0" />
+              <div>
+                <h4 className="font-semibold text-xs text-slate-900 dark:text-white flex items-center gap-2">
+                  Multi-Currency Collections Breakdown
+                  <span className="text-3xs font-mono bg-volt-500/10 text-volt-500 dark:text-volt-400 px-1.5 py-0.5 rounded border border-volt-500/20">
+                    Base: INR (₹)
+                  </span>
+                </h4>
+                <p className="text-2xs text-slate-500">
+                  Total revenue collected across different regional currencies, converted to platform base currency via exchange rates.
+                </p>
+              </div>
+            </div>
+            <span className="text-2xs text-slate-400 font-mono">
+              {overview.currencyBreakdown.length} {overview.currencyBreakdown.length === 1 ? "Currency" : "Currencies"} Active
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 pt-1">
+            {overview.currencyBreakdown.map((item) => (
+              <div
+                key={item.currency}
+                className="p-3 rounded-lg bg-white dark:bg-pitch-900/80 border border-slate-200/80 dark:border-white/5 space-y-2 shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-900 dark:text-white font-mono flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-pitch-800 flex items-center justify-center text-2xs text-slate-600 dark:text-slate-300">
+                      {item.symbol}
+                    </span>
+                    {item.currency}
+                  </span>
+                  <span className="text-2xs font-semibold text-field-600 dark:text-volt-400 font-mono">
+                    ≈ {formatCurrency(item.normalizedInr)}
+                  </span>
+                </div>
+
+                <div className="space-y-1 text-2xs border-t border-slate-100 dark:border-white/5 pt-2">
+                  <div className="flex justify-between text-slate-500">
+                    <span>SaaS Subscriptions:</span>
+                    <span className="font-mono text-slate-700 dark:text-slate-300">
+                      {formatMoney(item.subscriptionAmount, item.symbol)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-slate-500">
+                    <span>NFC Card Orders:</span>
+                    <span className="font-mono text-slate-700 dark:text-slate-300">
+                      {formatMoney(item.nfcAmount, item.symbol)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between font-semibold pt-1 border-t border-slate-100 dark:border-white/5 text-slate-900 dark:text-white">
+                    <span>Total Native:</span>
+                    <span className="font-mono">
+                      {formatMoney(item.totalAmount, item.symbol)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -391,23 +465,38 @@ const FinancePage: React.FC = () => {
             <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
               {byAcademyList.map((a) => {
                 const totalPaid = a.platformRevenue ?? a.revenue;
+                const hasForeignCurrency = a.currency && a.currency !== "INR" && (a.nativeRevenue ?? 0) > 0;
                 return (
                   <div
                     key={a.academyId}
                     className="flex items-center justify-between"
                   >
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
-                        {a.academyName}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                          {a.academyName}
+                        </p>
+                        {a.currency && (
+                          <span className="text-3xs font-mono font-medium text-slate-400 bg-slate-100 dark:bg-pitch-800 px-1 py-0.5 rounded">
+                            {a.currency}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-2xs text-slate-500">
                         SaaS: {formatCurrency(a.subscriptionRevenue ?? 0)} ·
                         NFC: {formatCurrency(a.nfcRevenue ?? 0)}
                       </p>
                     </div>
-                    <span className="font-display font-bold text-field-500 dark:text-volt-400 text-sm flex-shrink-0">
-                      {formatCurrency(totalPaid)}
-                    </span>
+                    <div className="text-right flex-shrink-0">
+                      <span className="font-display font-bold text-field-500 dark:text-volt-400 text-sm block">
+                        {formatCurrency(totalPaid)}
+                      </span>
+                      {hasForeignCurrency && (
+                        <span className="text-3xs font-mono text-slate-400">
+                          {formatMoney(a.nativeRevenue ?? 0, a.currencySymbol || a.currency)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -422,7 +511,7 @@ const FinancePage: React.FC = () => {
           <div>
             <p className="section-title">Platform Financial Transactions</p>
             <p className="text-2xs text-slate-500">
-              Audit log of all Stripe subscriptions, hardware NFC payments, and
+              Audit log of all Razorpay subscriptions, hardware NFC payments, and
               academy student tuition
             </p>
           </div>
@@ -492,8 +581,10 @@ const FinancePage: React.FC = () => {
             {filteredTransactions.map((tx, i) => {
               const isSub =
                 tx.type === "academy_subscription" ||
-                (tx.method === "Stripe" && !tx.quantity);
+                ((tx.method === "Razorpay" || tx.method === "Stripe") && !tx.quantity);
               const isNfc = tx.type === "nfc_card_order" || !!tx.quantity;
+              const txSymbol = tx.currencySymbol || (tx.currency === "USD" ? "$" : tx.currency === "EUR" ? "€" : tx.currency === "GBP" ? "£" : tx.currency === "AED" ? "AED " : "₹");
+              const isForeign = tx.currency && tx.currency !== "INR";
 
               return (
                 <div
@@ -529,7 +620,7 @@ const FinancePage: React.FC = () => {
                         })}
                       </span>
                       <span>·</span>
-                      <span>Method: {tx.method || "Stripe"}</span>
+                      <span>Method: {tx.method || "Razorpay"}</span>
                       {tx.billingInterval && (
                         <>
                           <span>·</span>
@@ -556,17 +647,24 @@ const FinancePage: React.FC = () => {
                   </div>
 
                   <div className="text-left sm:text-right shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100 dark:border-white/5 flex sm:block items-center justify-between">
-                    <span
-                      className={`font-display font-bold text-sm ${
-                        isSub
-                          ? "text-indigo-500 dark:text-volt-400"
-                          : isNfc
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-slate-600 dark:text-slate-300"
-                      }`}
-                    >
-                      {formatCurrency(tx.amount)}
-                    </span>
+                    <div>
+                      <span
+                        className={`font-display font-bold text-sm ${
+                          isSub
+                            ? "text-indigo-500 dark:text-volt-400"
+                            : isNfc
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-slate-600 dark:text-slate-300"
+                        }`}
+                      >
+                        {formatMoney(tx.amount, txSymbol)}
+                      </span>
+                      {isForeign && (
+                        <span className="text-3xs text-slate-400 block font-mono">
+                          {tx.currency}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-3xs text-slate-400">
                       {isSub || isNfc ? "Platform Revenue" : "Academy Revenue"}
                     </p>

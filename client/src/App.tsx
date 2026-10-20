@@ -199,7 +199,7 @@ const App: React.FC = () => (
 
           {/* Authenticated */}
           <Route element={<ProtectedRoute />}>
-            {/* Outside MainLayout deliberately — these are Stripe checkout
+            {/* Outside MainLayout deliberately — these are checkout
                 return pages and must render even when the academy's
                 subscription is still "incomplete" or lapsed, which is
                 exactly the state SubscriptionGate (inside MainLayout)

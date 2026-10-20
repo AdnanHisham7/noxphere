@@ -9,6 +9,11 @@ import {
   type BillingInterval,
 } from "../../../infrastructure/database/models/AcademySubscription.model";
 import { NfcCardRequestModel } from "../../../infrastructure/database/models/NfcCardRequest.model";
+import { PlatformSettingsModel } from "../../../infrastructure/database/models/PlatformSettings.model";
+import {
+  convertToInr,
+  getCurrencySymbol,
+} from "../../../infrastructure/services/GeoLocationService";
 
 function computeSubscriptionAmount(sub: {
   ratePerStudentPerDay: number;
@@ -62,6 +67,36 @@ async function resolveSubscriptionAcademyFilter(filters: { academyId?: string; f
 
 export class FinanceUseCases {
   async getOverview(filters: { from?: string; to?: string; academyId?: string; franchiseId?: string }) {
+    const settings = await PlatformSettingsModel.findOne().lean();
+
+    // Map to track breakdown by each currency
+    const breakdownMap = new Map<
+      string,
+      {
+        currency: string;
+        symbol: string;
+        subscriptionAmount: number;
+        nfcAmount: number;
+        totalAmount: number;
+        normalizedInr: number;
+      }
+    >();
+
+    const getOrCreateBreakdown = (curr: string) => {
+      const c = (curr || "INR").toUpperCase();
+      if (!breakdownMap.has(c)) {
+        breakdownMap.set(c, {
+          currency: c,
+          symbol: getCurrencySymbol(c),
+          subscriptionAmount: 0,
+          nfcAmount: 0,
+          totalAmount: 0,
+          normalizedInr: 0,
+        });
+      }
+      return breakdownMap.get(c)!;
+    };
+
     // 1. Academy SaaS Subscriptions (Platform Revenue for Super Admin)
     const subMatch: Record<string, unknown> = {
       status: "active",
@@ -74,9 +109,17 @@ export class FinanceUseCases {
       };
     }
     const subscriptions = await AcademySubscriptionModel.find(subMatch);
-    let subscriptionRevenue = 0;
+    let subscriptionRevenueInr = 0;
     for (const sub of subscriptions) {
-      subscriptionRevenue += computeSubscriptionAmount(sub);
+      const amountNative = computeSubscriptionAmount(sub);
+      const subCurrency = (sub.currency || "INR").toUpperCase();
+      const amountInr = convertToInr(amountNative, subCurrency, settings?.currencyPricing);
+      subscriptionRevenueInr += amountInr;
+
+      const item = getOrCreateBreakdown(subCurrency);
+      item.subscriptionAmount = round2(item.subscriptionAmount + amountNative);
+      item.totalAmount = round2(item.totalAmount + amountNative);
+      item.normalizedInr = round2(item.normalizedInr + amountInr);
     }
 
     // 2. Smart NFC Card Orders (Platform Revenue for Super Admin)
@@ -91,15 +134,23 @@ export class FinanceUseCases {
       };
     }
     const nfcOrders = await NfcCardRequestModel.find(nfcMatch);
-    let nfcRevenue = 0;
+    let nfcRevenueInr = 0;
     let nfcCardsCount = 0;
     for (const o of nfcOrders) {
-      nfcRevenue += o.totalAmount || 0;
+      const amountNative = o.totalAmount || 0;
+      const nfcCurrency = (o.currency || "INR").toUpperCase();
+      const amountInr = convertToInr(amountNative, nfcCurrency, settings?.currencyPricing);
+      nfcRevenueInr += amountInr;
       nfcCardsCount += o.quantity || 0;
+
+      const item = getOrCreateBreakdown(nfcCurrency);
+      item.nfcAmount = round2(item.nfcAmount + amountNative);
+      item.totalAmount = round2(item.totalAmount + amountNative);
+      item.normalizedInr = round2(item.normalizedInr + amountInr);
     }
 
-    // Total Platform Revenue for Super Admin
-    const totalPlatformRevenue = round2(subscriptionRevenue + nfcRevenue);
+    // Total Platform Revenue for Super Admin (normalized in INR)
+    const totalPlatformRevenue = round2(subscriptionRevenueInr + nfcRevenueInr);
 
     // 3. Academy Student Fees (Internal to each Academy — Tuition/Training fees)
     const feeMatch: Record<string, unknown> = { ...(await resolveFranchiseFilter(filters)) };
@@ -130,13 +181,18 @@ export class FinanceUseCases {
     const academyFeesOutstanding = round2(academyFeesTotal - academyFeesCollected);
 
     return {
-      // Super Admin Platform Business Income
+      // Super Admin Platform Business Income (Normalized to Base Currency INR)
+      baseCurrency: "INR",
+      baseCurrencySymbol: "₹",
       totalPlatformRevenue,
-      subscriptionRevenue: round2(subscriptionRevenue),
-      nfcRevenue: round2(nfcRevenue),
+      subscriptionRevenue: round2(subscriptionRevenueInr),
+      nfcRevenue: round2(nfcRevenueInr),
       activeSubscriptionsCount: subscriptions.length,
       nfcOrdersCount: nfcOrders.length,
       nfcCardsCount,
+
+      // Multi-Currency Breakdown
+      currencyBreakdown: Array.from(breakdownMap.values()),
 
       // Academy-Internal Student Tuition (Belongs to respective Academies)
       academyFeesTotal: round2(academyFeesTotal),
@@ -158,6 +214,7 @@ export class FinanceUseCases {
   }
 
   async getRevenueByMonth(filters: { academyId?: string; franchiseId?: string; months?: number }) {
+    const settings = await PlatformSettingsModel.findOne().lean();
     const months = filters.months ?? 6;
     const since = new Date();
     since.setMonth(since.getMonth() - (months - 1));
@@ -205,11 +262,12 @@ export class FinanceUseCases {
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const bucket = buckets.get(key);
       if (!bucket) continue;
-      const amount = computeSubscriptionAmount(sub);
-      bucket.subscriptionRevenue += amount;
-      bucket.platformRevenue += amount;
-      bucket.revenue += amount;
-      bucket.collected += amount;
+      const amountNative = computeSubscriptionAmount(sub);
+      const amountInr = convertToInr(amountNative, sub.currency || "INR", settings?.currencyPricing);
+      bucket.subscriptionRevenue += amountInr;
+      bucket.platformRevenue += amountInr;
+      bucket.revenue += amountInr;
+      bucket.collected += amountInr;
     }
 
     // NFC Card Orders
@@ -224,10 +282,12 @@ export class FinanceUseCases {
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const bucket = buckets.get(key);
       if (!bucket) continue;
-      bucket.nfcRevenue += order.totalAmount || 0;
-      bucket.platformRevenue += order.totalAmount || 0;
-      bucket.revenue += order.totalAmount || 0;
-      bucket.collected += order.totalAmount || 0;
+      const amountNative = order.totalAmount || 0;
+      const amountInr = convertToInr(amountNative, order.currency || "INR", settings?.currencyPricing);
+      bucket.nfcRevenue += amountInr;
+      bucket.platformRevenue += amountInr;
+      bucket.revenue += amountInr;
+      bucket.collected += amountInr;
     }
 
     // Academy Student Fees (tracked for audit reference)
@@ -256,22 +316,32 @@ export class FinanceUseCases {
   }
 
   async getRevenueByAcademy() {
+    const settings = await PlatformSettingsModel.findOne().lean();
     const academies = await AcademyModel.find({ isActive: true }).lean();
     const results = await Promise.all(
       academies.map(async (a: any) => {
+        const currency = (a.currency || "INR").toUpperCase();
+        const currencySymbol = getCurrencySymbol(currency);
+
         // SaaS subscription from this academy to Platform
         const activeSub = await AcademySubscriptionModel.findOne({ academyId: a._id, status: "active" });
-        const subscriptionRevenue = activeSub ? computeSubscriptionAmount(activeSub) : 0;
+        const subscriptionRevenueNative = activeSub ? computeSubscriptionAmount(activeSub) : 0;
+        const subRevenueInr = convertToInr(subscriptionRevenueNative, currency, settings?.currencyPricing);
 
         // NFC Cards purchased by this academy from Platform
         const nfcOrders = await NfcCardRequestModel.find({
           academyId: a._id,
           status: { $in: ["paid", "dispatched", "delivered"] },
         });
-        const nfcRevenue = nfcOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+        const nfcRevenueNative = nfcOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+        const nfcRevenueInr = nfcOrders.reduce((sum, o) => {
+          const oCurr = (o.currency || currency || "INR").toUpperCase();
+          return sum + convertToInr(o.totalAmount || 0, oCurr, settings?.currencyPricing);
+        }, 0);
 
-        // Platform revenue = SaaS + NFC
-        const platformRevenue = round2(subscriptionRevenue + nfcRevenue);
+        // Platform revenue normalized in INR
+        const platformRevenueInr = round2(subRevenueInr + nfcRevenueInr);
+        const totalNative = round2(subscriptionRevenueNative + nfcRevenueNative);
 
         // Academy's own internal student fee collections
         const franchises = await FranchiseModel.find({ academyId: a._id }).select("_id");
@@ -291,19 +361,24 @@ export class FinanceUseCases {
         return {
           academyId: a._id.toString(),
           academyName: a.name,
+          currency,
+          currencySymbol,
           franchiseCount: franchiseIds.length,
-          revenue: platformRevenue, // Platform revenue from this academy
-          platformRevenue,
-          subscriptionRevenue: round2(subscriptionRevenue),
-          nfcRevenue: round2(nfcRevenue),
+          revenue: platformRevenueInr, // Normalized Platform revenue in INR
+          platformRevenue: platformRevenueInr,
+          nativeRevenue: totalNative,
+          subscriptionRevenue: round2(subRevenueInr),
+          subscriptionRevenueNative: round2(subscriptionRevenueNative),
+          nfcRevenue: round2(nfcRevenueInr),
+          nfcRevenueNative: round2(nfcRevenueNative),
           academyFeesCollected: round2(studentFeesCollected),
-          collected: platformRevenue,
+          collected: platformRevenueInr,
           outstanding: 0,
           studentCount,
         };
       }),
     );
-    return results.sort((a, b) => b.revenue - a.revenue);
+    return results.sort((a, b) => b.platformRevenue - a.platformRevenue);
   }
 
   async getOverdueInvoices(filters: { academyId?: string; franchiseId?: string; page?: number; limit?: number }) {
@@ -351,46 +426,56 @@ export class FinanceUseCases {
       ...(await resolveSubscriptionAcademyFilter(filters)),
     };
     const recentSubs = await AcademySubscriptionModel.find(subTransactionsMatch)
-      .populate("academyId", "name")
+      .populate("academyId", "name currency")
       .sort({ updatedAt: -1 })
       .limit(limit);
 
-    const subTransactions = recentSubs.map((s: any) => ({
-      feeId: s._id.toString(),
-      type: "academy_subscription" as const,
-      student: `${s.academyId?.name || "Academy"}`,
-      academyName: s.academyId?.name || "Academy",
-      billingInterval: s.billingInterval,
-      amount: computeSubscriptionAmount(s),
-      paidAt: s.updatedAt || s.createdAt,
-      method: "Stripe",
-      transactionId: s.stripeSubscriptionId || s.stripeCheckoutSessionId || "stripe_sub",
-    }));
+    const subTransactions = recentSubs.map((s: any) => {
+      const currency = (s.currency || s.academyId?.currency || "INR").toUpperCase();
+      return {
+        feeId: s._id.toString(),
+        type: "academy_subscription" as const,
+        student: `${s.academyId?.name || "Academy"}`,
+        academyName: s.academyId?.name || "Academy",
+        billingInterval: s.billingInterval,
+        amount: computeSubscriptionAmount(s),
+        currency,
+        currencySymbol: getCurrencySymbol(currency),
+        paidAt: s.updatedAt || s.createdAt,
+        method: "Razorpay",
+        transactionId: s.razorpayPaymentId || s.razorpayOrderId || "rzp_sub",
+      };
+    });
 
     // 2. Fetch paid NFC Card orders (Platform Revenue)
     const nfcOrders = await NfcCardRequestModel.find({
       status: { $in: ["paid", "dispatched", "delivered"] },
       ...(filters.academyId && { academyId: new mongoose.Types.ObjectId(filters.academyId) }),
     })
-      .populate("academyId", "name")
+      .populate("academyId", "name currency")
       .populate("requesterId", "firstName lastName email")
       .sort({ updatedAt: -1 })
       .limit(limit);
 
-    const nfcTransactions = nfcOrders.map((o: any) => ({
-      feeId: o._id.toString(),
-      type: "nfc_card_order" as const,
-      student: o.academyId?.name
-        ? `${o.academyId.name} (${o.quantity} NFC Cards)`
-        : `${o.shippingAddress?.recipientName || "Player"} (${o.quantity} NFC Card)`,
-      academyName: o.academyId?.name || "Independent Player",
-      quantity: o.quantity,
-      unitPrice: o.unitPrice,
-      amount: o.totalAmount,
-      paidAt: o.paidAt || o.updatedAt || o.createdAt,
-      method: "Stripe",
-      transactionId: o.stripeSessionId || o.stripePaymentIntentId || "nfc_stripe",
-    }));
+    const nfcTransactions = nfcOrders.map((o: any) => {
+      const currency = (o.currency || o.academyId?.currency || "INR").toUpperCase();
+      return {
+        feeId: o._id.toString(),
+        type: "nfc_card_order" as const,
+        student: o.academyId?.name
+          ? `${o.academyId.name} (${o.quantity} NFC Cards)`
+          : `${o.shippingAddress?.recipientName || "Player"} (${o.quantity} NFC Card)`,
+        academyName: o.academyId?.name || "Independent Player",
+        quantity: o.quantity,
+        unitPrice: o.unitPrice,
+        amount: o.totalAmount,
+        currency,
+        currencySymbol: getCurrencySymbol(currency),
+        paidAt: o.paidAt || o.updatedAt || o.createdAt,
+        method: "Razorpay",
+        transactionId: o.razorpayPaymentId || o.razorpayOrderId || "rzp_nfc",
+      };
+    });
 
     // 3. Fetch Academy Student Fees (Academy-Internal Tuition, shown for audit)
     const match: Record<string, unknown> = {
@@ -407,18 +492,23 @@ export class FinanceUseCases {
     const feeTransactions = fees.flatMap((f: any) =>
       f.installments
         .filter((i: any) => i.paidAt)
-        .map((i: any) => ({
-          feeId: f._id.toString(),
-          type: "student_fee" as const,
-          student: f.studentId
-            ? `${f.studentId.firstName} ${f.studentId.lastName}`
-            : "Unknown",
-          academyName: f.franchiseId?.name ? `Franchise: ${f.franchiseId.name}` : "Academy Student",
-          amount: i.paidAmount,
-          paidAt: i.paidAt,
-          method: i.paymentMethod,
-          transactionId: i.transactionId,
-        })),
+        .map((i: any) => {
+          const currency = (f.currency || "INR").toUpperCase();
+          return {
+            feeId: f._id.toString(),
+            type: "student_fee" as const,
+            student: f.studentId
+              ? `${f.studentId.firstName} ${f.studentId.lastName}`
+              : "Unknown",
+            academyName: f.franchiseId?.name ? `Franchise: ${f.franchiseId.name}` : "Academy Student",
+            amount: i.paidAmount,
+            currency,
+            currencySymbol: getCurrencySymbol(currency),
+            paidAt: i.paidAt,
+            method: i.paymentMethod,
+            transactionId: i.transactionId,
+          };
+        }),
     );
 
     const allTransactions = [...subTransactions, ...nfcTransactions, ...feeTransactions];
@@ -432,3 +522,4 @@ export class FinanceUseCases {
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
+

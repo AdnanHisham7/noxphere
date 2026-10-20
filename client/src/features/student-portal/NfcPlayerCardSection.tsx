@@ -525,9 +525,9 @@ export const NfcPlayerCardSection: React.FC<NfcPlayerCardSectionProps> = ({
                 </strong>
                 . Fixed rate:{" "}
                 <strong className="text-slate-900 dark:text-white">
-                  {formatCurrency(cardPrice, "INR")}
+                  {formatCurrency(cardPrice, pricing?.currency ?? "INR")}
                 </strong>{" "}
-                (paid via Stripe once approved).
+                (paid online via Razorpay once approved).
               </p>
             </div>
           </div>

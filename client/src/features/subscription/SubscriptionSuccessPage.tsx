@@ -97,7 +97,7 @@ const SubscriptionSuccessPage: React.FC = () => {
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
             {status?.isActive
               ? `You're all set — provisioned for ${status.provisionedCapacity} players, billed ${status.billingInterval}ly.`
-              : "Confirming your subscription with Stripe — this usually takes a few seconds."}
+              : "Confirming your subscription — this usually takes a few seconds."}
           </p>
         </div>
 

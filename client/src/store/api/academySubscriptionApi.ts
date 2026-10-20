@@ -12,6 +12,9 @@ export interface CurrencyPricing {
   countryCode: string;
   countryName: string;
   isActive: boolean;
+  exchangeRateToInr?: number;
+  nfcCardPrice?: number;
+  nfcCustomCardPrice?: number;
 }
 
 export interface PlatformTrialDefaults {
@@ -174,6 +177,9 @@ export const academySubscriptionApi = baseApi.injectEndpoints({
         countryCode?: string;
         countryName?: string;
         isActive?: boolean;
+        exchangeRateToInr?: number;
+        nfcCardPrice?: number;
+        nfcCustomCardPrice?: number;
       }
     >({
       query: (body) => ({

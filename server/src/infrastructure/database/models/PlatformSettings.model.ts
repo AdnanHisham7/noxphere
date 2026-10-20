@@ -9,6 +9,9 @@ export interface CurrencyPricing {
   countryCode: string;
   countryName: string;
   isActive: boolean;
+  exchangeRateToInr?: number;
+  nfcCardPrice?: number;
+  nfcCustomCardPrice?: number;
 }
 
 export interface PlatformSettingsDocument extends Document {
@@ -39,6 +42,9 @@ const CurrencyPricingSchema = new Schema<CurrencyPricing>(
     countryCode: { type: String, required: true },
     countryName: { type: String, required: true },
     isActive: { type: Boolean, default: true },
+    exchangeRateToInr: { type: Number, default: 1, min: 0 },
+    nfcCardPrice: { type: Number, min: 0 },
+    nfcCustomCardPrice: { type: Number, min: 0 },
   },
   { _id: false },
 );

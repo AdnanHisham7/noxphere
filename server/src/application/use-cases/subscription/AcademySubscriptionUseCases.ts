@@ -352,14 +352,7 @@ export class AcademySubscriptionUseCases {
       }
     }
 
-    let invoices: any[] = [];
-    if (subscription?.stripeCustomerId) {
-      try {
-        invoices = await stripeService.listInvoices(subscription.stripeCustomerId);
-      } catch {
-        invoices = [];
-      }
-    }
+    const invoices: any[] = [];
 
     const recordedPayments = (subscription?.payments || []).map((p: any) => ({
       id: p.paymentId || p.orderId || p._id?.toString(),
@@ -554,75 +547,11 @@ export class AcademySubscriptionUseCases {
   }
 
   async createCheckoutSession(
-    academyId: string,
-    dto: { capacity: number; staffCapacity: number; billingInterval: BillingInterval },
-    requesterId: string,
+    _academyId: string,
+    _dto: { capacity: number; staffCapacity: number; billingInterval: BillingInterval },
+    _requesterId: string,
   ): Promise<{ url: string }> {
-    if (dto.capacity < 1) throw new BadRequestError("Capacity must be at least 1 student");
-    if (dto.staffCapacity < 0) throw new BadRequestError("Staff capacity can't be negative");
-
-    const existing = await AcademySubscriptionModel.findOne({ academyId });
-    if (existing && existing.status === "active") {
-      throw new BadRequestError(
-        "This academy already has an active subscription — use the upgrade flow to change capacity instead.",
-      );
-    }
-
-    const [academy, requester] = await Promise.all([
-      AcademyModel.findById(academyId).select("name subscriptionRateOverride staffRateOverride").lean(),
-      UserModel.findById(requesterId).select("email firstName lastName").lean(),
-    ]);
-    if (!academy) throw new NotFoundError("Academy");
-    if (!requester) throw new NotFoundError("Requester");
-
-    const rate = await this.getEffectiveRate(academyId);
-    const staffRate = await this.getEffectiveStaffRate(academyId);
-    // Combined into a single Stripe price line rather than two separate
-    // subscription items — much simpler and more robust to keep in sync
-    // (no item-add/item-reorder bookkeeping on every future upgrade).
-    // The pricing modal breaks the total back out into "Students" and
-    // "Staff" lines for the manager, even though Stripe only sees one.
-    const totalRupees =
-      studentRupeeAmount(rate, dto.capacity, dto.billingInterval) +
-      staffRupeeAmount(staffRate, dto.staffCapacity, dto.billingInterval);
-    const unitAmountPaise = toPaise(totalRupees);
-
-    const customerId = await stripeService.findOrCreateCustomer({
-      existingCustomerId: existing?.stripeCustomerId,
-      email: requester.email,
-      name: `${requester.firstName} ${requester.lastName}`.trim() || requester.email,
-      academyId,
-    });
-
-    const session = await stripeService.createSubscriptionCheckoutSession({
-      customerId,
-      academyId,
-      billingInterval: dto.billingInterval,
-      unitAmountPaise,
-      capacity: dto.capacity,
-      ratePerStudentPerDay: rate,
-      successUrl: `${config.clientUrl}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${config.clientUrl}/subscription/cancelled`,
-    });
-
-    await AcademySubscriptionModel.findOneAndUpdate(
-      { academyId },
-      {
-        academyId,
-        stripeCustomerId: customerId,
-        stripeCheckoutSessionId: session.id,
-        billingInterval: dto.billingInterval,
-        ratePerStudentPerDay: rate,
-        staffRatePerStaffPerMonth: staffRate,
-        provisionedCapacity: dto.capacity,
-        provisionedStaffCapacity: dto.staffCapacity,
-        status: "incomplete",
-      },
-      { upsert: true, new: true },
-    );
-
-    if (!session.url) throw new BadRequestError("Stripe did not return a checkout URL");
-    return { url: session.url };
+    throw new BadRequestError("Stripe checkout has been decommissioned. Please use Razorpay for subscription payments.");
   }
 
   async createRazorpayOrder(
@@ -804,10 +733,10 @@ export class AcademySubscriptionUseCases {
     dto: { capacity: number; staffCapacity: number },
   ): Promise<{ provisionedCapacity: number; provisionedStaffCapacity: number }> {
     const subscription = await AcademySubscriptionModel.findOne({ academyId });
-    if (!subscription || subscription.status !== "active" || !subscription.stripeSubscriptionId) {
+    if (!subscription || subscription.status !== "active") {
       throw new BadRequestError("This academy doesn't have an active subscription to upgrade");
     }
-    if (dto.capacity < subscription.provisionedCapacity || dto.staffCapacity < subscription.provisionedStaffCapacity) {
+    if (dto.capacity < subscription.provisionedCapacity && dto.staffCapacity < subscription.provisionedStaffCapacity) {
       throw new BadRequestError("New capacity can't be lower than the current capacity");
     }
     if (dto.capacity === subscription.provisionedCapacity && dto.staffCapacity === subscription.provisionedStaffCapacity) {
@@ -816,22 +745,9 @@ export class AcademySubscriptionUseCases {
 
     const rate = await this.getEffectiveRate(academyId);
     const staffRate = await this.getEffectiveStaffRate(academyId);
-    const totalRupees =
-      studentRupeeAmount(rate, dto.capacity, subscription.billingInterval) +
-      staffRupeeAmount(staffRate, dto.staffCapacity, subscription.billingInterval);
-    const unitAmountPaise = toPaise(totalRupees);
 
-    await stripeService.updateSubscriptionCapacity({
-      subscriptionId: subscription.stripeSubscriptionId,
-      academyId,
-      billingInterval: subscription.billingInterval,
-      unitAmountPaise,
-      capacity: dto.capacity,
-      ratePerStudentPerDay: rate,
-    });
-
-    subscription.provisionedCapacity = dto.capacity;
-    subscription.provisionedStaffCapacity = dto.staffCapacity;
+    subscription.provisionedCapacity = Math.max(subscription.provisionedCapacity, dto.capacity);
+    subscription.provisionedStaffCapacity = Math.max(subscription.provisionedStaffCapacity, dto.staffCapacity);
     subscription.ratePerStudentPerDay = rate;
     subscription.staffRatePerStaffPerMonth = staffRate;
     await subscription.save();
@@ -842,48 +758,8 @@ export class AcademySubscriptionUseCases {
     };
   }
 
-  async verifyCheckoutSession(sessionId: string, academyId?: string): Promise<{ status: string; isActive: boolean }> {
-    if (!sessionId) {
-      throw new BadRequestError("Session ID is required to verify checkout");
-    }
-
-    const session = await stripeService.retrieveCheckoutSession(sessionId);
-    const resolvedAcademyId = session.metadata?.academyId || academyId;
-    if (!resolvedAcademyId) {
-      throw new BadRequestError("Academy ID could not be identified from checkout session");
-    }
-
-    const isPaid = session.payment_status === "paid" || session.status === "complete";
-    if (!isPaid) {
-      return { status: "incomplete", isActive: false };
-    }
-
-    const subscription = await AcademySubscriptionModel.findOne({ academyId: resolvedAcademyId });
-    if (!subscription) {
-      throw new NotFoundError("Academy subscription not found");
-    }
-
-    const subId = typeof session.subscription === "string" ? session.subscription : (session.subscription as any)?.id;
-    subscription.status = "active";
-    if (subId) subscription.stripeSubscriptionId = subId;
-
-    if (!subscription.currentPeriodEnd) {
-      const days = subscription.billingInterval === "year" ? 365 : 30;
-      subscription.currentPeriodEnd = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-    }
-    await subscription.save();
-
-    // Alert Super Admins about the payment received!
-    const academy = await AcademyModel.findById(resolvedAcademyId).select("name").lean();
-    const amountRupees = session.amount_total ? session.amount_total / 100 : 0;
-    await notificationService.notifySuperAdmins({
-      type: "payment_received",
-      title: "Academy Subscription Payment Received",
-      body: `${academy?.name || "An academy"} has completed payment of ₹${amountRupees.toLocaleString("en-IN")} for their ${subscription.billingInterval}ly subscription (${subscription.provisionedCapacity} students, ${subscription.provisionedStaffCapacity} staff).`,
-      metadata: { academyId: resolvedAcademyId, amount: String(amountRupees), sessionId },
-    });
-
-    return { status: "active", isActive: true };
+  async verifyCheckoutSession(_sessionId: string, _academyId?: string): Promise<{ status: string; isActive: boolean }> {
+    throw new BadRequestError("Stripe checkout verification has been decommissioned. Please use Razorpay.");
   }
 
   async handleWebhookEvent(event: Stripe.Event): Promise<void> {

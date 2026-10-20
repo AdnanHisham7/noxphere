@@ -85,6 +85,8 @@ export interface NfcCardRequest {
 export interface NfcPricing {
   cardPrice: number;
   customCardPrice: number;
+  currency?: string;
+  currencySymbol?: string;
 }
 
 export interface ListNfcRequestsResponse {
@@ -125,8 +127,8 @@ const normalizeRequest = (raw: any): NfcCardRequest => {
 
 export const nfcCardApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getNfcPricing: builder.query<NfcPricing, void>({
-      query: () => "/nfc/pricing",
+    getNfcPricing: builder.query<NfcPricing, { currency?: string } | void>({
+      query: (params) => ({ url: "/nfc/pricing", params: params ?? {} }),
       transformResponse: (res: { data: NfcPricing }) => res.data,
       providesTags: ["PlatformSettings"],
     }),

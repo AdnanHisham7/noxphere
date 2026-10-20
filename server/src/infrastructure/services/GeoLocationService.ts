@@ -11,6 +11,9 @@ export interface CurrencyConfigItem {
   symbol: string;
   defaultRatePerStudentPerDay: number;
   defaultStaffRatePerStaffPerMonth: number;
+  exchangeRateToInr: number;
+  defaultNfcCardPrice: number;
+  defaultNfcCustomCardPrice: number;
 }
 
 export const SUPPORTED_CURRENCY_MAP: Record<string, CurrencyConfigItem> = {
@@ -21,6 +24,9 @@ export const SUPPORTED_CURRENCY_MAP: Record<string, CurrencyConfigItem> = {
     symbol: '₹',
     defaultRatePerStudentPerDay: 1,
     defaultStaffRatePerStaffPerMonth: 10,
+    exchangeRateToInr: 1,
+    defaultNfcCardPrice: 299,
+    defaultNfcCustomCardPrice: 399,
   },
   SAR: {
     currency: 'SAR',
@@ -29,6 +35,9 @@ export const SUPPORTED_CURRENCY_MAP: Record<string, CurrencyConfigItem> = {
     symbol: 'SAR',
     defaultRatePerStudentPerDay: 0.25,
     defaultStaffRatePerStaffPerMonth: 5,
+    exchangeRateToInr: 23.05,
+    defaultNfcCardPrice: 15,
+    defaultNfcCustomCardPrice: 20,
   },
   OMR: {
     currency: 'OMR',
@@ -37,6 +46,9 @@ export const SUPPORTED_CURRENCY_MAP: Record<string, CurrencyConfigItem> = {
     symbol: 'OMR',
     defaultRatePerStudentPerDay: 0.05,
     defaultStaffRatePerStaffPerMonth: 1,
+    exchangeRateToInr: 224.7,
+    defaultNfcCardPrice: 1.5,
+    defaultNfcCustomCardPrice: 2,
   },
   USD: {
     currency: 'USD',
@@ -45,6 +57,9 @@ export const SUPPORTED_CURRENCY_MAP: Record<string, CurrencyConfigItem> = {
     symbol: '$',
     defaultRatePerStudentPerDay: 0.1,
     defaultStaffRatePerStaffPerMonth: 2,
+    exchangeRateToInr: 86.5,
+    defaultNfcCardPrice: 4,
+    defaultNfcCustomCardPrice: 5.5,
   },
   AED: {
     currency: 'AED',
@@ -53,6 +68,9 @@ export const SUPPORTED_CURRENCY_MAP: Record<string, CurrencyConfigItem> = {
     symbol: 'AED',
     defaultRatePerStudentPerDay: 0.25,
     defaultStaffRatePerStaffPerMonth: 5,
+    exchangeRateToInr: 23.55,
+    defaultNfcCardPrice: 15,
+    defaultNfcCustomCardPrice: 20,
   },
   KWD: {
     currency: 'KWD',
@@ -61,6 +79,9 @@ export const SUPPORTED_CURRENCY_MAP: Record<string, CurrencyConfigItem> = {
     symbol: 'KWD',
     defaultRatePerStudentPerDay: 0.04,
     defaultStaffRatePerStaffPerMonth: 0.8,
+    exchangeRateToInr: 281.5,
+    defaultNfcCardPrice: 1.2,
+    defaultNfcCustomCardPrice: 1.6,
   },
   QAR: {
     currency: 'QAR',
@@ -69,6 +90,9 @@ export const SUPPORTED_CURRENCY_MAP: Record<string, CurrencyConfigItem> = {
     symbol: 'QAR',
     defaultRatePerStudentPerDay: 0.25,
     defaultStaffRatePerStaffPerMonth: 5,
+    exchangeRateToInr: 23.75,
+    defaultNfcCardPrice: 15,
+    defaultNfcCustomCardPrice: 20,
   },
   BHD: {
     currency: 'BHD',
@@ -77,6 +101,9 @@ export const SUPPORTED_CURRENCY_MAP: Record<string, CurrencyConfigItem> = {
     symbol: 'BHD',
     defaultRatePerStudentPerDay: 0.05,
     defaultStaffRatePerStaffPerMonth: 1,
+    exchangeRateToInr: 229.5,
+    defaultNfcCardPrice: 1.5,
+    defaultNfcCustomCardPrice: 2,
   },
   EUR: {
     currency: 'EUR',
@@ -85,6 +112,9 @@ export const SUPPORTED_CURRENCY_MAP: Record<string, CurrencyConfigItem> = {
     symbol: '€',
     defaultRatePerStudentPerDay: 0.09,
     defaultStaffRatePerStaffPerMonth: 1.8,
+    exchangeRateToInr: 93.5,
+    defaultNfcCardPrice: 3.8,
+    defaultNfcCustomCardPrice: 5,
   },
   GBP: {
     currency: 'GBP',
@@ -93,6 +123,9 @@ export const SUPPORTED_CURRENCY_MAP: Record<string, CurrencyConfigItem> = {
     symbol: '£',
     defaultRatePerStudentPerDay: 0.08,
     defaultStaffRatePerStaffPerMonth: 1.6,
+    exchangeRateToInr: 111.0,
+    defaultNfcCardPrice: 3.2,
+    defaultNfcCustomCardPrice: 4.5,
   },
 };
 
@@ -287,3 +320,58 @@ export function getCurrencySymbol(currency?: string): string {
   if (!currency) return '₹';
   return SUPPORTED_CURRENCY_MAP[currency.toUpperCase()]?.symbol || currency;
 }
+
+export function getExchangeRateToInr(currency?: string, customRates?: any[]): number {
+  if (!currency) return 1;
+  const code = currency.toUpperCase();
+  if (code === 'INR') return 1;
+
+  if (Array.isArray(customRates)) {
+    const custom = customRates.find((c) => c.currency?.toUpperCase() === code && c.isActive !== false);
+    if (custom && typeof custom.exchangeRateToInr === 'number' && custom.exchangeRateToInr > 0) {
+      return custom.exchangeRateToInr;
+    }
+  }
+
+  return SUPPORTED_CURRENCY_MAP[code]?.exchangeRateToInr || 1;
+}
+
+export function convertToInr(amount: number, fromCurrency?: string, customRates?: any[]): number {
+  if (!amount || isNaN(amount)) return 0;
+  if (!fromCurrency || fromCurrency.toUpperCase() === 'INR') return Math.round(amount * 100) / 100;
+
+  const rate = getExchangeRateToInr(fromCurrency, customRates);
+  return Math.round(amount * rate * 100) / 100;
+}
+
+export function getNfcPricingForCurrency(
+  currency?: string,
+  customRates?: any[],
+  platformDefaults?: { defaultNfcCardPrice?: number; defaultNfcCustomCardPrice?: number }
+): { cardPrice: number; customCardPrice: number } {
+  const code = (currency || 'INR').toUpperCase();
+
+  if (Array.isArray(customRates)) {
+    const custom = customRates.find((c) => c.currency?.toUpperCase() === code && c.isActive !== false);
+    if (custom && custom.nfcCardPrice && custom.nfcCustomCardPrice) {
+      return {
+        cardPrice: custom.nfcCardPrice,
+        customCardPrice: custom.nfcCustomCardPrice,
+      };
+    }
+  }
+
+  const supported = SUPPORTED_CURRENCY_MAP[code];
+  if (supported && supported.defaultNfcCardPrice && supported.defaultNfcCustomCardPrice) {
+    return {
+      cardPrice: supported.defaultNfcCardPrice,
+      customCardPrice: supported.defaultNfcCustomCardPrice,
+    };
+  }
+
+  return {
+    cardPrice: platformDefaults?.defaultNfcCardPrice ?? 299,
+    customCardPrice: platformDefaults?.defaultNfcCustomCardPrice ?? 399,
+  };
+}
+

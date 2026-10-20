@@ -1,4 +1,3 @@
-// src/application/use-cases/nfc/NfcCardUseCases.ts
 import mongoose from "mongoose";
 import {
   NfcCardRequestModel,
@@ -9,9 +8,13 @@ import { PlatformSettingsModel } from "../../../infrastructure/database/models/P
 import { StudentModel } from "../../../infrastructure/database/models/Student.model";
 import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
-import { stripeService } from "../../../infrastructure/services/StripeService";
+import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
 import { razorpayService } from "../../../infrastructure/services/RazorpayService";
 import { NotificationService } from "../../../infrastructure/services/NotificationService";
+import {
+  getNfcPricingForCurrency,
+  getCurrencySymbol,
+} from "../../../infrastructure/services/GeoLocationService";
 import { config } from "../../../config/app.config";
 import {
   BadRequestError,
@@ -32,11 +35,16 @@ export class NfcCardUseCases {
 
   // ─── Pricing Management ───────────────────────────────────────────────────────
 
-  async getPricing(): Promise<{ cardPrice: number; customCardPrice: number }> {
+  async getPricing(currency: string = "INR"): Promise<{ cardPrice: number; customCardPrice: number; currency: string }> {
     const settings = await PlatformSettingsModel.findOne().lean();
+    const pricing = getNfcPricingForCurrency(currency, settings?.currencyPricing, {
+      defaultNfcCardPrice: settings?.defaultNfcCardPrice,
+      defaultNfcCustomCardPrice: settings?.defaultNfcCustomCardPrice,
+    });
     return {
-      cardPrice: settings?.defaultNfcCardPrice ?? 299,
-      customCardPrice: settings?.defaultNfcCustomCardPrice ?? 399,
+      cardPrice: pricing.cardPrice,
+      customCardPrice: pricing.customCardPrice,
+      currency: (currency || "INR").toUpperCase(),
     };
   }
 
@@ -98,7 +106,17 @@ export class NfcCardUseCases {
       }
     }
 
-    const pricing = await this.getPricing();
+    // Determine currency from student's franchise -> academy, fallback to INR
+    let currency = "INR";
+    if (student.franchiseId) {
+      const fr = await FranchiseModel.findById(student.franchiseId).select("academyId").lean();
+      if (fr?.academyId) {
+        const ac = await AcademyModel.findById(fr.academyId).select("currency").lean();
+        if (ac?.currency) currency = ac.currency.toUpperCase();
+      }
+    }
+
+    const pricing = await this.getPricing(currency);
     const unitPrice = pricing.cardPrice;
     const quantity = 1;
     const totalAmount = unitPrice * quantity;
@@ -122,7 +140,7 @@ export class NfcCardUseCases {
       quantity,
       unitPrice,
       totalAmount,
-      currency: "INR",
+      currency,
       shippingAddress: dto.shippingAddress,
       status: "pending",
     });
@@ -130,7 +148,7 @@ export class NfcCardUseCases {
     // Notify Super Admins
     this.notifySuperAdmins({
       title: "New NFC Card Request",
-      body: `${studentItem.studentName} (Independent Player) requested a Noxphere NFC card.`,
+      body: `${studentItem.studentName} (Independent Player) requested a Noxphere NFC card (${currency} ${totalAmount}).`,
       type: "nfc_request_created",
       data: { requestId: request._id.toString() },
     }).catch(() => {});
@@ -161,7 +179,8 @@ export class NfcCardUseCases {
       throw new BadRequestError("No valid active students found for selection");
     }
 
-    const pricing = await this.getPricing();
+    const currency = (academy.currency || "INR").toUpperCase();
+    const pricing = await this.getPricing(currency);
     const unitPrice =
       dto.cardType === "custom" ? pricing.customCardPrice : pricing.cardPrice;
     const quantity = students.length;
@@ -189,7 +208,7 @@ export class NfcCardUseCases {
       quantity,
       unitPrice,
       totalAmount,
-      currency: "INR",
+      currency,
       shippingAddress: dto.shippingAddress,
       status: "pending",
     });
@@ -197,7 +216,7 @@ export class NfcCardUseCases {
     // Notify Super Admins
     this.notifySuperAdmins({
       title: "New Bulk NFC Card Request",
-      body: `${academy.name} requested ${quantity} ${dto.cardType} NFC card(s).`,
+      body: `${academy.name} requested ${quantity} ${dto.cardType} NFC card(s) (${currency} ${totalAmount}).`,
       type: "nfc_request_created",
       data: { requestId: request._id.toString() },
     }).catch(() => {});
@@ -398,33 +417,7 @@ export class NfcCardUseCases {
       throw new ForbiddenError("Not authorized to pay for this request");
     }
 
-    const requesterUser = await UserModel.findById(user.sub).select("email").lean();
-
-    const unitAmountPaise = Math.round(request.unitPrice * 100);
-
-    const session = await stripeService.createOneTimePaymentCheckoutSession({
-      customerEmail: requesterUser?.email,
-      lineItemName: `Noxphere Smart NFC Cards — ${request.quantity} card(s) (${request.cardType})`,
-      lineItemDescription: `Physical contactless scouting NFC cards for ${request.quantity} player(s)`,
-      unitAmountPaise,
-      quantity: request.quantity,
-      metadata: {
-        nfcRequestId: request._id.toString(),
-        requesterId: user.sub,
-        type: "nfc_card_order",
-      },
-      successUrl: `${config.clientUrl}/nfc-orders/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${config.clientUrl}/nfc-orders/cancelled`,
-    });
-
-    request.stripeSessionId = session.id;
-    await request.save();
-
-    if (!session.url) {
-      throw new BadRequestError("Stripe failed to return a checkout URL");
-    }
-
-    return { url: session.url };
+    throw new BadRequestError("Stripe payments have been decommissioned. Please use Razorpay for online checkout.");
   }
 
   async createRazorpayOrder(
@@ -438,6 +431,7 @@ export class NfcCardUseCases {
     totalAmount: number;
     cardType: string;
     quantity: number;
+    currencySymbol: string;
   }> {
     const request = await NfcCardRequestModel.findById(requestId);
     if (!request) throw new NotFoundError("NFC Card request not found");
@@ -459,16 +453,18 @@ export class NfcCardUseCases {
       throw new ForbiddenError("Not authorized to pay for this request");
     }
 
+    const currency = (request.currency || "INR").toUpperCase();
     const amountPaise = Math.round(request.totalAmount * 100);
     const order = await razorpayService.createOrder({
       amountPaise,
-      currency: "INR",
+      currency,
       receipt: `nfc_${request._id.toString().slice(-10)}`,
       notes: {
         nfcRequestId: request._id.toString(),
         requesterId: user.sub,
         cardType: request.cardType,
         quantity: request.quantity,
+        currency,
       },
     });
 
@@ -483,6 +479,7 @@ export class NfcCardUseCases {
       totalAmount: request.totalAmount,
       cardType: request.cardType,
       quantity: request.quantity,
+      currencySymbol: getCurrencySymbol(currency),
     };
   }
 
@@ -512,11 +509,13 @@ export class NfcCardUseCases {
     request.razorpaySignature = signature;
     await request.save();
 
+    const sym = getCurrencySymbol(request.currency);
+
     // Alert Super Admins about the payment received!
     await this.notificationService.notifySuperAdmins({
       type: "payment_received",
       title: "NFC Cards Paid — Ready to Dispatch",
-      body: `An order of ${request.quantity} ${request.cardType} NFC card(s) has been paid via Razorpay (₹${request.totalAmount}). Please prepare shipment to ${request.shippingAddress?.recipientName}.`,
+      body: `An order of ${request.quantity} ${request.cardType} NFC card(s) has been paid via Razorpay (${sym}${request.totalAmount} ${request.currency || "INR"}). Please prepare shipment to ${request.shippingAddress?.recipientName}.`,
       metadata: { requestId: request._id.toString(), orderId, paymentId },
     });
 
@@ -524,69 +523,10 @@ export class NfcCardUseCases {
   }
 
   async verifyCheckoutSession(
-    sessionId: string,
+    _sessionId: string,
     _user?: { sub?: string; role?: string },
   ): Promise<{ paid: boolean; request: any }> {
-    const session = await stripeService.retrieveCheckoutSession(sessionId);
-    const nfcRequestId = session.metadata?.nfcRequestId;
-
-    if (!nfcRequestId) {
-      throw new BadRequestError("This checkout session does not belong to an NFC card order");
-    }
-
-    const request = await NfcCardRequestModel.findById(nfcRequestId);
-    if (!request) throw new NotFoundError("NFC Card request not found");
-
-    if (session.payment_status === "paid") {
-      if (request.status === "approved" || request.status === "pending") {
-        request.status = "paid";
-        request.paidAt = new Date();
-        request.stripePaymentIntentId =
-          typeof session.payment_intent === "string"
-            ? session.payment_intent
-            : (session.payment_intent as any)?.id;
-        await request.save();
-
-        const requesterIdStr =
-          (request.requesterId as any)?._id?.toString() ||
-          request.requesterId?.toString();
-
-        // Notify purchaser
-        if (requesterIdStr) {
-          this.notificationService.send({
-            userIds: [requesterIdStr],
-            type: "nfc_order_paid",
-            title: "Payment Confirmed — NFC Order Initiated!",
-            body: `Payment of ₹${request.totalAmount} for ${request.quantity} card(s) was received. Production has started.`,
-            data: { requestId: request._id.toString() },
-          }).catch(() => {});
-        }
-
-        // Notify Super Admins
-        this.notifySuperAdmins({
-          title: "NFC Order Payment Received",
-          body: `Order #${request._id.toString().slice(-6)} (${request.quantity} cards, ₹${request.totalAmount}) has been paid and initiated.`,
-          type: "nfc_order_paid",
-          data: { requestId: request._id.toString() },
-        }).catch(() => {});
-      }
-
-      await request.populate([
-        { path: "requesterId", select: "firstName lastName email phone avatar" },
-        { path: "academyId", select: "name code logo" },
-      ]);
-
-      const raw = request.toObject ? request.toObject() : request;
-      return {
-        paid: true,
-        request: {
-          ...raw,
-          id: request._id.toString(),
-        },
-      };
-    }
-
-    return { paid: false, request };
+    throw new BadRequestError("Stripe session verification is deprecated. All online payments are handled via Razorpay.");
   }
 
   // ─── Fulfillment Updates (Super Admin) ───────────────────────────────────────

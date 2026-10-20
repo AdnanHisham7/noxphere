@@ -236,7 +236,7 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
                   Global Dynamic NFC Pricing (₹ INR)
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Set dynamic card prices charged at Stripe checkout for
+                  Set dynamic card prices charged at online checkout for
                   independent players and academy bulk batches.
                 </p>
               </div>

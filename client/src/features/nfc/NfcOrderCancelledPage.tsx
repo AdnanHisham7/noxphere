@@ -32,7 +32,7 @@ export const NfcOrderCancelledPage: React.FC = () => {
             Payment Cancelled
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
-            Your Stripe checkout session was cancelled. No charges were made. Your request remains approved and you can complete payment anytime from your dashboard.
+            Your checkout session was cancelled. No charges were made. Your request remains approved and you can complete payment anytime from your dashboard.
           </p>
         </div>
 

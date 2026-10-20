@@ -9,9 +9,11 @@ import { FranchiseModel } from "../../../infrastructure/database/models/Franchis
 import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { SessionModel } from "../../../infrastructure/database/models/Session.model";
 import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
-import { AcademySubscriptionModel } from "../../../infrastructure/database/models/AcademySubscription.model";
 import { NfcCardRequestModel } from "../../../infrastructure/database/models/NfcCardRequest.model";
+import { PlatformSettingsModel } from "../../../infrastructure/database/models/PlatformSettings.model";
 import { PlatformTicketModel } from "../../../infrastructure/database/models/PlatformTicket.model";
+import { AcademySubscriptionModel } from "../../../infrastructure/database/models/AcademySubscription.model";
+import { convertToInr } from "../../../infrastructure/services/GeoLocationService";
 import { BadRequestError } from "../../../shared/errors/AppError";
 
 function round1(n: number): number {
@@ -552,7 +554,8 @@ export class DashboardUseCases {
       });
     }
 
-    // Revenue calculations
+    // Revenue calculations (Normalized to Base Currency INR)
+    const platformSettings = await PlatformSettingsModel.findOne().lean();
     let totalSubscriptionRevenue = 0;
     for (const s of subscriptions) {
       if (s.status === "active") {
@@ -574,13 +577,16 @@ export class DashboardUseCases {
             : 1;
         const studentTotal = (s.ratePerStudentPerDay || 0) * (s.provisionedCapacity || 0) * days;
         const staffTotal = (s.staffRatePerStaffPerMonth || 0) * (s.provisionedStaffCapacity || 0) * months;
-        totalSubscriptionRevenue += Math.round(studentTotal + staffTotal);
+        const subNative = studentTotal + staffTotal;
+        const subInr = convertToInr(subNative, s.currency || "INR", platformSettings?.currencyPricing);
+        totalSubscriptionRevenue += subInr;
       }
     }
 
     let totalNfcRevenue = 0;
     for (const o of nfcOrders) {
-      totalNfcRevenue += o.totalAmount || 0;
+      const nfcInr = convertToInr(o.totalAmount || 0, o.currency || "INR", platformSettings?.currencyPricing);
+      totalNfcRevenue += nfcInr;
     }
     const totalPlatformRevenue = Math.round(totalSubscriptionRevenue + totalNfcRevenue);
 
@@ -623,10 +629,10 @@ export class DashboardUseCases {
               : s.billingInterval === "quarter"
               ? 3
               : 1;
-          subMonth += Math.round(
+          const nativeAmt =
             (s.ratePerStudentPerDay || 0) * (s.provisionedCapacity || 0) * days +
-              (s.staffRatePerStaffPerMonth || 0) * (s.provisionedStaffCapacity || 0) * months
-          );
+            (s.staffRatePerStaffPerMonth || 0) * (s.provisionedStaffCapacity || 0) * months;
+          subMonth += Math.round(convertToInr(nativeAmt, s.currency || "INR", platformSettings?.currencyPricing));
         }
       }
 
@@ -634,7 +640,7 @@ export class DashboardUseCases {
       for (const o of nfcOrders) {
         const pd = o.paidAt || o.createdAt;
         if (pd && `${pd.getFullYear()}-${String(pd.getMonth() + 1).padStart(2, "0")}` === key) {
-          nfcMonth += o.totalAmount || 0;
+          nfcMonth += Math.round(convertToInr(o.totalAmount || 0, o.currency || "INR", platformSettings?.currencyPricing));
         }
       }
 

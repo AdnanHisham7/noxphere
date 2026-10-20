@@ -26,7 +26,7 @@ export const NfcOrderSuccessPage: React.FC = () => {
           if (res.paid) {
             setVerifiedOrder(res.request);
           } else {
-            setErrorMsg("Payment could not be verified with Stripe yet. Please check again in a few moments.");
+            setErrorMsg("Payment could not be verified yet. Please check again in a few moments.");
           }
         })
         .catch((err: any) => {
@@ -61,14 +61,14 @@ export const NfcOrderSuccessPage: React.FC = () => {
             NFC Card Order Initiated!
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
-            Your payment has been confirmed via Stripe. Your physical NFC player card order is now queued for manufacturing and chip programming.
+            Your online payment has been confirmed. Your physical NFC player card order is now queued for manufacturing and chip programming.
           </p>
         </div>
 
         {isVerifying && (
           <div className="p-3 rounded-xl bg-volt-400/10 border border-volt-400/20 text-volt-300 text-xs flex items-center justify-center gap-2">
             <Loader2 className="animate-spin" size={15} />
-            <span>Confirming order details with Stripe…</span>
+            <span>Confirming order details…</span>
           </div>
         )}
 
