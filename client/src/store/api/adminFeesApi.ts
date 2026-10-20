@@ -51,6 +51,8 @@ export interface AdminFeeRecord {
   totalAmount: number;
   finalAmount: number;
   currency?: string;
+  discount?: number;
+  notes?: string;
   overallStatus: string;
   installments: FeeInstallment[];
   auditLog?: FeeAuditLog[];
@@ -68,6 +70,18 @@ export interface CreateFeeBody {
   notes?: string;
 }
 
+export interface UpdateFeeBody {
+  feeType?: "one_time" | "installment" | "early_bird";
+  totalAmount?: number;
+  discount?: number;
+  notes?: string;
+  installments?: {
+    installmentNumber: number;
+    amount: number;
+    dueDate: string;
+  }[];
+}
+
 export const adminFeesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     listFees: builder.query<AdminFeeRecord[], { franchiseId: string; studentId?: string; status?: string }>({
@@ -79,6 +93,15 @@ export const adminFeesApi = baseApi.injectEndpoints({
       query: (body) => ({ url: "/fees", method: "POST", body }),
       transformResponse: (res: { data: AdminFeeRecord }) => res.data,
       invalidatesTags: ["Fee"],
+    }),
+    updateFee: builder.mutation<AdminFeeRecord, { id: string; body: UpdateFeeBody }>({
+      query: ({ id, body }) => ({ url: `/fees/${id}`, method: "PUT", body }),
+      transformResponse: (res: { data: AdminFeeRecord }) => res.data,
+      invalidatesTags: ["Fee", "Student"],
+    }),
+    deleteFee: builder.mutation<{ success: boolean; message: string }, string>({
+      query: (id) => ({ url: `/fees/${id}`, method: "DELETE" }),
+      invalidatesTags: ["Fee", "Student"],
     }),
     recordPayment: builder.mutation<
       AdminFeeRecord,
@@ -163,6 +186,8 @@ export const adminFeesApi = baseApi.injectEndpoints({
 export const {
   useListFeesQuery,
   useCreateFeeMutation,
+  useUpdateFeeMutation,
+  useDeleteFeeMutation,
   useRecordPaymentMutation,
   useUpdatePaymentMutation,
   useUndoPaymentMutation,

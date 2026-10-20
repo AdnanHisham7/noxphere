@@ -45,6 +45,29 @@ export class AdminFeesController {
     }
   };
 
+  updateFee = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { feeType, totalAmount, discount, notes, installments } = req.body;
+      const fee = await this.feesUseCases.updateFee(
+        req.params.id,
+        { feeType, totalAmount, discount, notes, installments },
+        req.user!.sub,
+      );
+      ResponseHandler.success(res, fee, "Fee schedule updated");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  deleteFee = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await this.feesUseCases.deleteFee(req.params.id, req.user!.sub);
+      ResponseHandler.success(res, result, "Fee schedule deleted");
+    } catch (err) {
+      next(err);
+    }
+  };
+
   recordPayment = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { amount, paymentMethod, transactionId, paymentBreakdown } = req.body;

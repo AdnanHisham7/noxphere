@@ -52,12 +52,15 @@ import { academyApi } from "../../store/api/academyApi";
 import {
   useListFeesQuery,
   useCreateFeeMutation,
+  useUpdateFeeMutation,
+  useDeleteFeeMutation,
   useRecordPaymentMutation,
   useUpdatePaymentMutation,
   useUndoPaymentMutation,
   useSendInstallmentReminderMutation,
   useVerifyPaymentMutation,
   type CreateFeeBody,
+  type UpdateFeeBody,
   type AdminFeeRecord,
   type FeeInstallment,
   type PaymentBreakdownItem,
@@ -65,6 +68,8 @@ import {
 import { useGetStudentsQuery } from "../../store/api/studentsApi";
 import { useCurrency } from "../../hooks/useCurrency";
 import { formatCurrency, getCurrencySymbol } from "../../utils/currency";
+import { FeeReportsView } from "./components/FeeReportsView";
+import { EditFeeScheduleModal } from "./components/EditFeeScheduleModal";
 
 const STATUS_VARIANT: Record<string, "green" | "red" | "yellow" | "gray"> = {
   paid: "green",
@@ -467,7 +472,13 @@ const FeesPage: React.FC = () => {
   );
   const students = studentsResult?.items ?? [];
 
+  // Page navigation tabs: "ledger" (player management) vs "reports" (in-depth monthly/custom reports) vs "settings"
+  const [pageTab, setPageTab] = useState<"ledger" | "reports" | "settings">("ledger");
+  const [editScheduleTarget, setEditScheduleTarget] = useState<AdminFeeRecord | null>(null);
+
   const [createFee, { isLoading: creating }] = useCreateFeeMutation();
+  const [updateFee, { isLoading: updatingFee }] = useUpdateFeeMutation();
+  const [deleteFee, { isLoading: deletingFee }] = useDeleteFeeMutation();
   const [undoPayment] = useUndoPaymentMutation();
   const [sendInstallmentReminder] = useSendInstallmentReminderMutation();
   const [remindingKey, setRemindingKey] = useState<string | null>(null);
@@ -719,21 +730,60 @@ const FeesPage: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         eyebrow="Financial Management"
-        title="Player Fees"
-        subtitle="Track schedules, collection milestones, and due-date alerts across every enrolled player."
+        title="Player Fees &amp; Analytics"
+        subtitle="Manage scheduled milestone fees, generate monthly &amp; multi-month financial reports, and track collection alerts."
         actions={
-          <Button
-            icon={<Plus size={15} />}
-            onClick={() => {
-              setCreateInitialStudentId(undefined);
-              setShowCreate(true);
-            }}
-            className="w-full sm:w-auto justify-center"
-          >
-            Schedule fee
-          </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              icon={<Plus size={15} />}
+              onClick={() => {
+                setCreateInitialStudentId(undefined);
+                setShowCreate(true);
+              }}
+              className="w-full sm:w-auto justify-center"
+            >
+              Schedule fee
+            </Button>
+          </div>
         }
       />
+
+      {/* Top Level Navigation Tabs: Ledger vs Reports & Analytics */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-white/10 pb-1">
+        <button
+          type="button"
+          onClick={() => setPageTab("ledger")}
+          className={clsx(
+            "flex items-center gap-2 px-4 py-2.5 rounded-t-lg text-xs font-bold uppercase tracking-wider transition-all border-b-2",
+            pageTab === "ledger"
+              ? "border-volt-400 text-volt-400 bg-volt-400/5"
+              : "border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white",
+          )}
+        >
+          <Layers size={14} />
+          <span>Player Ledger &amp; Schedules</span>
+          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-pitch-800 text-slate-600 dark:text-slate-300">
+            {fees?.length ?? 0}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setPageTab("reports")}
+          className={clsx(
+            "flex items-center gap-2 px-4 py-2.5 rounded-t-lg text-xs font-bold uppercase tracking-wider transition-all border-b-2",
+            pageTab === "reports"
+              ? "border-volt-400 text-volt-400 bg-volt-400/5"
+              : "border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white",
+          )}
+        >
+          <Clock size={14} />
+          <span>Reports &amp; Monthly Statements</span>
+          <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            New
+          </span>
+        </button>
+      </div>
 
       {/* KPI Overview Metrics Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -801,11 +851,28 @@ const FeesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Collapsible Payment QR Code Setting */}
-      <FeeQrCodeCard
-        isOpen={qrOpen}
-        onToggle={() => setQrOpen((prev) => !prev)}
-      />
+      {/* Reports View Tab */}
+      {pageTab === "reports" && (
+        <FeeReportsView
+          fees={fees ?? []}
+          currencySymbol={currencySymbol}
+          defaultCurrency={currency}
+          onSelectStudent={(sId) => {
+            setPageTab("ledger");
+            setExpandedStudents((prev) => new Set([...prev, sId]));
+            setSearchQuery("");
+          }}
+        />
+      )}
+
+      {/* Ledger & Schedule Management Tab */}
+      {pageTab === "ledger" && (
+        <>
+          {/* Collapsible Payment QR Code Setting */}
+          <FeeQrCodeCard
+            isOpen={qrOpen}
+            onToggle={() => setQrOpen((prev) => !prev)}
+          />
 
       {/* Control & Filter Toolbar */}
       <div className="card p-3.5 space-y-3">
@@ -1140,6 +1207,7 @@ const FeesPage: React.FC = () => {
                           onRecordPayment={(target) => setPayTarget(target)}
                           onEditPayment={(target) => setEditTarget(target)}
                           onVerifyPayment={(target) => setVerifyTarget(target)}
+                          onEditSchedule={(f) => setEditScheduleTarget(f)}
                           isAuditExpanded={expandedAudits.has(fee._id)}
                           onToggleAudit={() => toggleAuditExpanded(fee._id)}
                         />
@@ -1274,6 +1342,7 @@ const FeesPage: React.FC = () => {
                                 onVerifyPayment={(target) =>
                                   setVerifyTarget(target)
                                 }
+                                onEditSchedule={(f) => setEditScheduleTarget(f)}
                                 isAuditExpanded={expandedAudits.has(fee._id)}
                                 onToggleAudit={() =>
                                   toggleAuditExpanded(fee._id)
@@ -1290,6 +1359,8 @@ const FeesPage: React.FC = () => {
             </div>
           </div>
         )}
+        </>
+      )}
 
       {/* Modals */}
       {showCreate && (
@@ -1360,6 +1431,20 @@ const FeesPage: React.FC = () => {
           onClose={() => setVerifyTarget(null)}
         />
       )}
+      {editScheduleTarget && (
+        <EditFeeScheduleModal
+          fee={editScheduleTarget}
+          currencySymbol={currencySymbol}
+          onClose={() => setEditScheduleTarget(null)}
+          onUpdate={async (id, body) => {
+            await updateFee({ id, body }).unwrap();
+          }}
+          onDelete={async (id) => {
+            await deleteFee(id).unwrap();
+          }}
+          isLoading={updatingFee || deletingFee}
+        />
+      )}
       {ConfirmDialog}
     </div>
   );
@@ -1391,6 +1476,7 @@ interface FeePlanDetailBlockProps {
     fee: AdminFeeRecord;
     installment: FeeInstallment;
   }) => void;
+  onEditSchedule?: (fee: AdminFeeRecord) => void;
   isAuditExpanded: boolean;
   onToggleAudit: () => void;
 }
@@ -1403,6 +1489,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
   onRecordPayment,
   onEditPayment,
   onVerifyPayment,
+  onEditSchedule,
   isAuditExpanded,
   onToggleAudit,
 }) => {
@@ -1438,9 +1525,22 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
             </button>
           )}
         </div>
-        <Badge variant={STATUS_VARIANT[fee.overallStatus] ?? "gray"} size="sm">
-          {fee.overallStatus}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {onEditSchedule && (
+            <button
+              type="button"
+              onClick={() => onEditSchedule(fee)}
+              className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 hover:text-volt-400 flex items-center gap-1 border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-pitch-700/60 px-2 py-0.5 rounded transition-colors"
+              title="Edit milestones or delete this scheduled fee"
+            >
+              <Edit2 size={11} />
+              <span>Manage Plan</span>
+            </button>
+          )}
+          <Badge variant={STATUS_VARIANT[fee.overallStatus] ?? "gray"} size="sm">
+            {fee.overallStatus}
+          </Badge>
+        </div>
       </div>
 
       {/* High-density Installments List */}

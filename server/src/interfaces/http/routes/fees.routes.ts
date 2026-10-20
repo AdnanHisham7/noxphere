@@ -12,6 +12,12 @@ feesRouter.get("/", authenticate, requirePermission("canManageFinance"), (req, r
 feesRouter.get("/:id", authenticate, requirePermission("canManageFinance"), (req, res, next) => {
   req.app.locals.controllers.fees.getById(req, res, next);
 });
+feesRouter.put("/:id", authenticate, requirePermission("canManageFinance"), (req, res, next) => {
+  req.app.locals.controllers.fees.updateFee(req, res, next);
+});
+feesRouter.delete("/:id", authenticate, requirePermission("canManageFinance"), (req, res, next) => {
+  req.app.locals.controllers.fees.deleteFee(req, res, next);
+});
 feesRouter.post(
   "/:id/installments/:installmentNumber/pay",
   authenticate,

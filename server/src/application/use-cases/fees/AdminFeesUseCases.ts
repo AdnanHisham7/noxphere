@@ -43,6 +43,18 @@ function computeOverallStatus(installments: { status: string }[]): string {
   return "pending";
 }
 
+export interface UpdateFeeInput {
+  feeType?: "one_time" | "installment" | "early_bird";
+  totalAmount?: number;
+  discount?: number;
+  notes?: string;
+  installments?: {
+    installmentNumber: number;
+    amount: number;
+    dueDate: string;
+  }[];
+}
+
 export class AdminFeesUseCases {
   async createFee(input: CreateFeeInput, createdBy: string) {
     const discount = input.discount ?? 0;
@@ -116,6 +128,130 @@ export class AdminFeesUseCases {
     }
 
     return fees;
+  }
+
+  async updateFee(feeId: string, input: UpdateFeeInput, performedBy: string) {
+    const fee = await FeeModel.findById(feeId);
+    if (!fee) throw new NotFoundError("Fee record not found");
+
+    const user = await UserModel.findById(performedBy).select("firstName lastName").lean();
+    const performedByName = user ? `${user.firstName} ${user.lastName}` : "Manager";
+
+    // If installments are being updated
+    if (input.installments && Array.isArray(input.installments) && input.installments.length > 0) {
+      // Check if any existing installment with payments recorded is being removed or reduced below paid amount
+      for (const existingInst of fee.installments) {
+        if (existingInst.paidAmount > 0) {
+          const matchingUpdated = input.installments.find(
+            (i) => i.installmentNumber === existingInst.installmentNumber,
+          );
+          if (!matchingUpdated) {
+            throw new BadRequestError(
+              `Installment #${existingInst.installmentNumber} has recorded payments of ${existingInst.paidAmount} and cannot be removed.`,
+            );
+          }
+          if (matchingUpdated.amount < existingInst.paidAmount) {
+            throw new BadRequestError(
+              `Installment #${existingInst.installmentNumber} amount (${matchingUpdated.amount}) cannot be less than already paid amount (${existingInst.paidAmount}).`,
+            );
+          }
+        }
+      }
+
+      // Cancel old reminder queue entries before rescheduling
+      await schedulerService.cancelFeeReminders(String(fee._id));
+
+      const now = new Date();
+      // Re-map installments preserving paid status and paidAmounts
+      fee.installments = input.installments.map((item) => {
+        const existing = fee.installments.find(
+          (i) => i.installmentNumber === item.installmentNumber,
+        );
+        const paidAmount = existing ? existing.paidAmount : 0;
+        const dueDate = new Date(item.dueDate);
+        let status = "pending";
+        if (paidAmount >= item.amount) {
+          status = "paid";
+        } else if (paidAmount > 0) {
+          status = "partial";
+        } else if (dueDate < now) {
+          status = "overdue";
+        }
+
+        return {
+          installmentNumber: item.installmentNumber,
+          amount: item.amount,
+          dueDate,
+          paidAmount,
+          paidAt: existing?.paidAt,
+          status,
+          paymentMethod: existing?.paymentMethod,
+          transactionId: existing?.transactionId,
+          paymentBreakdown: existing?.paymentBreakdown,
+          verificationProof: existing?.verificationProof,
+          receiptUrl: existing?.receiptUrl,
+          reminderSentCount: existing?.reminderSentCount ?? 0,
+          lastReminderAt: existing?.lastReminderAt,
+        } as any;
+      });
+    }
+
+    if (input.feeType) {
+      fee.feeType = input.feeType;
+    }
+    if (input.notes !== undefined) {
+      fee.notes = input.notes;
+    }
+    if (input.discount !== undefined) {
+      fee.discount = input.discount;
+    }
+    if (input.totalAmount !== undefined) {
+      fee.totalAmount = input.totalAmount;
+    } else if (input.installments) {
+      fee.totalAmount = input.installments.reduce((sum, i) => sum + i.amount, 0);
+    }
+
+    fee.finalAmount = Math.max(0, fee.totalAmount - (fee.discount || 0));
+    fee.overallStatus = computeOverallStatus(fee.installments);
+
+    fee.auditLog.push({
+      action: "update_fee_schedule",
+      amount: fee.finalAmount,
+      installmentNumber: 0,
+      timestamp: new Date(),
+      performedBy: performedBy as any,
+      performedByName,
+      details: `Fee plan details or schedule updated. Final amount: ${fee.currency || "INR"} ${fee.finalAmount}`,
+    });
+
+    await fee.save();
+
+    // Re-schedule reminders for pending installments
+    this.scheduleInstallmentReminders(fee).catch((err) => {
+      logger.error(`[AdminFeesUseCases] Failed rescheduling reminders for updated fee ${fee._id}:`, err);
+    });
+
+    return FeeModel.findById(fee._id).populate("studentId", "firstName lastName photo").lean();
+  }
+
+  async deleteFee(feeId: string, performedBy: string) {
+    const fee = await FeeModel.findById(feeId);
+    if (!fee) throw new NotFoundError("Fee record not found");
+
+    const totalPaid = fee.installments.reduce((sum, i) => sum + (i.paidAmount || 0), 0);
+    if (totalPaid > 0) {
+      throw new BadRequestError(
+        `Cannot delete a fee plan that already has recorded payments (${fee.currency || "INR"} ${totalPaid.toLocaleString()}). Undo all recorded payments first or mark remaining as settled.`,
+      );
+    }
+
+    // Cancel pending reminder jobs
+    await schedulerService.cancelFeeReminders(String(fee._id));
+
+    await FeeModel.findByIdAndDelete(feeId);
+
+    logger.info(`[AdminFeesUseCases] Fee ${feeId} deleted by user ${performedBy}`);
+    return { success: true, message: "Fee schedule deleted successfully" };
   }
 
   async getFeeById(id: string) {

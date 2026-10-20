@@ -222,6 +222,32 @@ export class SchedulerService {
   }
 
   /**
+   * Cancel queued due-soon reminder jobs for a fee's installments (or a specific installment).
+   * Called when a fee schedule is modified or deleted.
+   */
+  async cancelFeeReminders(feeId: string, installmentNumbers?: number[]): Promise<void> {
+    try {
+      const numbers = installmentNumbers && installmentNumbers.length > 0
+        ? installmentNumbers
+        : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+      for (const num of numbers) {
+        try {
+          const job = await feeReminderQueue.getJob(`fee-due-${feeId}-${num}`);
+          if (job) {
+            await job.remove();
+            logger.info(`[Scheduler] Removed fee reminder job for fee ${feeId} installment ${num}`);
+          }
+        } catch (innerErr) {
+          // ignore individual job removal errors if already processed/removed
+        }
+      }
+    } catch (err) {
+      logger.error(`[Scheduler] Failed cancelling reminders for fee ${feeId}:`, err);
+    }
+  }
+
+  /**
    * Evaluates all pending installments across active academies and franchises,
    * checking if any installment has entered its configured `academy.dueDateAlertDays` window.
    * Sends the due-soon alert with the academy's fee QR code to guardians.
