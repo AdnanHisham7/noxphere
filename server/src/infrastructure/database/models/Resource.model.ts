@@ -5,6 +5,8 @@ export interface ResourceDocument extends Document {
   franchiseId: mongoose.Types.ObjectId;
   academyId: mongoose.Types.ObjectId;
   uploadedBy: mongoose.Types.ObjectId;
+  title?: string;
+  notes?: string;
   fileName: string;
   fileUrl: string;
   publicId: string;
@@ -23,6 +25,8 @@ const ResourceSchema = new Schema<ResourceDocument>(
     franchiseId: { type: Schema.Types.ObjectId, ref: "Franchise", required: true, index: true },
     academyId: { type: Schema.Types.ObjectId, ref: "Academy", required: true, index: true },
     uploadedBy: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    title: { type: String, trim: true },
+    notes: { type: String, trim: true },
     fileName: { type: String, required: true },
     fileUrl: { type: String, required: true },
     publicId: { type: String, required: true },

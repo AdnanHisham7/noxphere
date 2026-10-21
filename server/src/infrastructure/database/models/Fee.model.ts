@@ -14,6 +14,8 @@ export interface FeeAuditLog {
   paymentMethod?: string;
   transactionId?: string;
   paymentBreakdown?: PaymentBreakdownItem[];
+  exchangeRateToInr?: number;
+  amountInInr?: number;
   timestamp: Date;
   performedBy: mongoose.Types.ObjectId;
   performedByName: string;
@@ -39,6 +41,8 @@ export interface FeeDocument extends Document {
     transactionId?: string;
     paymentMethod?: string;
     paymentBreakdown?: PaymentBreakdownItem[];
+    exchangeRateToInr?: number;
+    paidAmountInInr?: number;
     verificationProof?: {
       claimedAmount?: number;
       paymentMethod?: string;
@@ -73,6 +77,8 @@ const InstallmentSchema = new Schema({
   },
   transactionId: String,
   paymentMethod: String,
+  exchangeRateToInr: Number,
+  paidAmountInInr: Number,
   paymentBreakdown: {
     type: [{
       method: { type: String, required: true },
@@ -102,6 +108,8 @@ const AuditLogSchema = new Schema({
   installmentNumber: { type: Number, required: true },
   paymentMethod: String,
   transactionId: String,
+  exchangeRateToInr: Number,
+  amountInInr: Number,
   paymentBreakdown: {
     type: [{
       method: { type: String, required: true },

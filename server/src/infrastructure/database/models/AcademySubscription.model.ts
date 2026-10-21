@@ -17,6 +17,8 @@ export interface SubscriptionPaymentRecord {
   paymentId: string;
   amount: number;
   currency: string;
+  exchangeRateToInr?: number;
+  amountInInr?: number;
   status: string;
   billingInterval: BillingInterval;
   studentCapacity: number;
@@ -96,6 +98,8 @@ const AcademySubscriptionSchema = new Schema<AcademySubscriptionDocument>(
         paymentId: String,
         amount: { type: Number, required: true },
         currency: { type: String, default: "INR" },
+        exchangeRateToInr: Number,
+        amountInInr: Number,
         status: { type: String, default: "paid" },
         billingInterval: String,
         studentCapacity: Number,

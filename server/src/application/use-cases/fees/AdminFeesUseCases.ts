@@ -7,6 +7,7 @@ import { notificationService } from "../../../infrastructure/services/Notificati
 import { StudentModel } from "../../../infrastructure/database/models/Student.model";
 import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { cloudinaryService } from "../../../infrastructure/services/CloudinaryService";
+import { exchangeRateService } from "../../../infrastructure/services/ExchangeRateService";
 import { generateReceiptPdf } from "../../../shared/utils/receiptGenerator";
 import { logger } from "../../../shared/utils/logger";
 
@@ -290,8 +291,13 @@ export class AdminFeesUseCases {
     const installment = fee.installments.find((i) => i.installmentNumber === installmentNumber);
     if (!installment) throw new NotFoundError("Installment not found");
 
+    const feeCurrency = fee.currency || "INR";
+    const { rate: exchangeRateToInr, amountInInr } = await exchangeRateService.convertToInr(effectiveAmount, feeCurrency);
+
     installment.paidAmount = Math.min(installment.amount, installment.paidAmount + effectiveAmount);
     installment.paidAt = new Date();
+    installment.exchangeRateToInr = exchangeRateToInr;
+    installment.paidAmountInInr = (installment.paidAmountInInr || 0) + amountInInr;
 
     // Determine paymentMethod description
     if (paymentBreakdown && paymentBreakdown.length > 1) {
@@ -331,6 +337,8 @@ export class AdminFeesUseCases {
       paymentMethod: installment.paymentMethod,
       transactionId: installment.transactionId,
       paymentBreakdown: paymentBreakdown,
+      exchangeRateToInr,
+      amountInInr,
       timestamp: new Date(),
       performedBy: performedBy as any,
       performedByName,
@@ -373,6 +381,11 @@ export class AdminFeesUseCases {
     const oldAmount = installment.paidAmount;
     installment.paidAmount = Math.min(installment.amount, effectiveAmount);
 
+    const feeCurrency = fee.currency || "INR";
+    const { rate: exchangeRateToInr, amountInInr } = await exchangeRateService.convertToInr(effectiveAmount, feeCurrency);
+    installment.exchangeRateToInr = exchangeRateToInr;
+    installment.paidAmountInInr = amountInInr;
+
     if (paymentBreakdown && paymentBreakdown.length > 1) {
       installment.paymentMethod = input.paymentMethod || "mixed";
       installment.paymentBreakdown = paymentBreakdown;
@@ -404,6 +417,8 @@ export class AdminFeesUseCases {
       paymentMethod: installment.paymentMethod,
       transactionId: installment.transactionId,
       paymentBreakdown: paymentBreakdown,
+      exchangeRateToInr,
+      amountInInr,
       timestamp: new Date(),
       performedBy: performedBy as any,
       performedByName,
@@ -579,8 +594,13 @@ export class AdminFeesUseCases {
       const proof = installment.verificationProof;
       const effectiveAmount = input.adjustedAmount ?? proof?.claimedAmount ?? (installment.amount - installment.paidAmount);
 
+      const feeCurrency = fee.currency || "INR";
+      const { rate: exchangeRateToInr, amountInInr } = await exchangeRateService.convertToInr(effectiveAmount, feeCurrency);
+
       installment.paidAmount = Math.min(installment.amount, installment.paidAmount + effectiveAmount);
       installment.paidAt = new Date();
+      installment.exchangeRateToInr = exchangeRateToInr;
+      installment.paidAmountInInr = (installment.paidAmountInInr || 0) + amountInInr;
       installment.paymentMethod = proof?.paymentMethod || installment.paymentMethod || "upi";
       installment.transactionId = proof?.transactionId || installment.transactionId;
       installment.status = installment.paidAmount >= installment.amount ? "paid" : "partial";
@@ -592,6 +612,8 @@ export class AdminFeesUseCases {
         installmentNumber,
         paymentMethod: installment.paymentMethod,
         transactionId: installment.transactionId,
+        exchangeRateToInr,
+        amountInInr,
         timestamp: new Date(),
         performedBy: performedBy as any,
         performedByName,

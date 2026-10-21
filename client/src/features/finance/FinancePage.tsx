@@ -660,9 +660,21 @@ const FinancePage: React.FC = () => {
                         {formatMoney(tx.amount, txSymbol)}
                       </span>
                       {isForeign && (
-                        <span className="text-3xs text-slate-400 block font-mono">
-                          {tx.currency}
-                        </span>
+                        <div className="text-3xs text-slate-400 font-mono mt-0.5 space-y-0.5">
+                          <div>
+                            <span>{tx.currency}</span>
+                            {tx.exchangeRateToInr && (
+                              <span className="text-slate-400 dark:text-slate-500 ml-1.5 font-sans">
+                                (Recorded @ ₹{Number(tx.exchangeRateToInr).toFixed(2)})
+                              </span>
+                            )}
+                          </div>
+                          {tx.amountInInr ? (
+                            <span className="text-emerald-500 dark:text-volt-400 block font-mono text-[10px] font-semibold">
+                              ≈ ₹{Number(tx.amountInInr).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                            </span>
+                          ) : null}
+                        </div>
                       )}
                     </div>
                     <p className="text-3xs text-slate-400">

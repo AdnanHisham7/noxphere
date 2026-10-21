@@ -7,6 +7,8 @@ export interface Resource {
   academyId: string;
   uploadedBy: string;
   uploadedByName?: string;
+  title?: string;
+  notes?: string;
   fileName: string;
   fileUrl: string;
   mimeType: string;
@@ -34,11 +36,16 @@ export const resourcesApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: ResourceListResult }) => res.data,
       providesTags: [{ type: "Resource", id: "LIST" }],
     }),
-    uploadResource: builder.mutation<Resource, { franchiseId: string; file: File }>({
-      query: ({ franchiseId, file }) => {
+    uploadResource: builder.mutation<
+      Resource,
+      { franchiseId: string; file: File; title?: string; notes?: string }
+    >({
+      query: ({ franchiseId, file, title, notes }) => {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("franchiseId", franchiseId);
+        if (title) formData.append("title", title.trim());
+        if (notes) formData.append("notes", notes.trim());
         return { url: "/resources", method: "POST", body: formData };
       },
       transformResponse: (res: { data: Resource }) => res.data,

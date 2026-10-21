@@ -86,6 +86,8 @@ export interface Transaction {
   amount: number;
   currency?: string;
   currencySymbol?: string;
+  exchangeRateToInr?: number;
+  amountInInr?: number;
   paidAt: string;
   method?: string;
   transactionId?: string;

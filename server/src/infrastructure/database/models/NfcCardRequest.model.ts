@@ -54,6 +54,8 @@ export interface NfcCardRequestDocument extends Document {
   unitPrice: number;
   totalAmount: number;
   currency: string;
+  exchangeRateToInr?: number;
+  totalAmountInInr?: number;
   shippingAddress: NfcShippingAddress;
   status: NfcRequestStatus;
   rejectionReason?: string;
@@ -166,6 +168,8 @@ const NfcCardRequestSchema = new Schema<NfcCardRequestDocument>(
       type: String,
       default: "INR",
     },
+    exchangeRateToInr: Number,
+    totalAmountInInr: Number,
     shippingAddress: {
       type: NfcShippingAddressSchema,
       required: true,

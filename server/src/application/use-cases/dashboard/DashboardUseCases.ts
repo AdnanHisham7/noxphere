@@ -578,14 +578,19 @@ export class DashboardUseCases {
         const studentTotal = (s.ratePerStudentPerDay || 0) * (s.provisionedCapacity || 0) * days;
         const staffTotal = (s.staffRatePerStaffPerMonth || 0) * (s.provisionedStaffCapacity || 0) * months;
         const subNative = studentTotal + staffTotal;
-        const subInr = convertToInr(subNative, s.currency || "INR", platformSettings?.currencyPricing);
+        const paidSub = s.payments?.find((p) => p.status === "paid" && typeof p.amountInInr === "number");
+        const subInr = paidSub?.amountInInr !== undefined
+          ? paidSub.amountInInr
+          : convertToInr(subNative, s.currency || "INR", platformSettings?.currencyPricing);
         totalSubscriptionRevenue += subInr;
       }
     }
 
     let totalNfcRevenue = 0;
     for (const o of nfcOrders) {
-      const nfcInr = convertToInr(o.totalAmount || 0, o.currency || "INR", platformSettings?.currencyPricing);
+      const nfcInr = typeof o.totalAmountInInr === "number"
+        ? o.totalAmountInInr
+        : convertToInr(o.totalAmount || 0, o.currency || "INR", platformSettings?.currencyPricing);
       totalNfcRevenue += nfcInr;
     }
     const totalPlatformRevenue = Math.round(totalSubscriptionRevenue + totalNfcRevenue);
@@ -632,7 +637,11 @@ export class DashboardUseCases {
           const nativeAmt =
             (s.ratePerStudentPerDay || 0) * (s.provisionedCapacity || 0) * days +
             (s.staffRatePerStaffPerMonth || 0) * (s.provisionedStaffCapacity || 0) * months;
-          subMonth += Math.round(convertToInr(nativeAmt, s.currency || "INR", platformSettings?.currencyPricing));
+          const paidSub = s.payments?.find((p) => p.status === "paid" && typeof p.amountInInr === "number");
+          const inrAmt = paidSub?.amountInInr !== undefined
+            ? paidSub.amountInInr
+            : convertToInr(nativeAmt, s.currency || "INR", platformSettings?.currencyPricing);
+          subMonth += Math.round(inrAmt);
         }
       }
 
@@ -640,7 +649,10 @@ export class DashboardUseCases {
       for (const o of nfcOrders) {
         const pd = o.paidAt || o.createdAt;
         if (pd && `${pd.getFullYear()}-${String(pd.getMonth() + 1).padStart(2, "0")}` === key) {
-          nfcMonth += Math.round(convertToInr(o.totalAmount || 0, o.currency || "INR", platformSettings?.currencyPricing));
+          const nfcInr = typeof o.totalAmountInInr === "number"
+            ? o.totalAmountInInr
+            : convertToInr(o.totalAmount || 0, o.currency || "INR", platformSettings?.currencyPricing);
+          nfcMonth += Math.round(nfcInr);
         }
       }
 

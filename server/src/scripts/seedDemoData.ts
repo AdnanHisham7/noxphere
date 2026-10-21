@@ -2539,6 +2539,8 @@ export async function seedDemoData() {
   // Vault Training Resources
   const vaultResources = [
     {
+      title: "High Press Trigger Masterclass",
+      notes: "Tactical breakdown for front-3 pressing triggers against back-4 formations.",
       fileName: "Galacticos_High_Press_Trigger_Masterclass.pdf",
       fileUrl: "https://noxphere.storage/vault/drills/high_press_v2.pdf",
       publicId: "vault_high_press_v2",
@@ -2546,6 +2548,8 @@ export async function seedDemoData() {
       fileSizeBytes: 2450000,
     },
     {
+      title: "Nutrition & Hydration Guidelines",
+      notes: "Microcycle protocols for peak performance, recovery snacks, and match-day hydration.",
       fileName: "Nutrition_Hydration_Microcycle_Guidelines.pdf",
       fileUrl: "https://noxphere.storage/vault/sports_science/nutrition_2026.pdf",
       publicId: "vault_nutrition_2026",
@@ -2553,6 +2557,8 @@ export async function seedDemoData() {
       fileSizeBytes: 1850000,
     },
     {
+      title: "Set-Piece Routine Playbook",
+      notes: "Corner kicks, attacking free-kicks, and defensive wall setups for tournament play.",
       fileName: "Set_Piece_Routine_Playbook_Corners_FreeKicks.pdf",
       fileUrl: "https://noxphere.storage/vault/tactics/set_piece_playbook.pdf",
       publicId: "vault_set_piece_playbook",
@@ -2568,6 +2574,8 @@ export async function seedDemoData() {
         academyId: academy._id,
         franchiseId: franchiseDowntown._id,
         uploadedBy: manager._id,
+        title: res.title,
+        notes: res.notes,
         fileName: res.fileName,
         fileUrl: res.fileUrl,
         publicId: res.publicId,

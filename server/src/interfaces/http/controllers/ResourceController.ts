@@ -33,7 +33,7 @@ export class ResourceController {
   upload = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!req.file) throw new BadRequestError("A file is required");
-      const { franchiseId } = UploadResourceSchema.parse(req.body);
+      const { franchiseId, title, notes } = UploadResourceSchema.parse(req.body);
       const resource = await this.resourceUseCases.uploadResource({
         franchiseId,
         uploadedBy: req.user!.sub,
@@ -44,6 +44,8 @@ export class ResourceController {
         fileName: req.file.originalname,
         mimeType: req.file.mimetype,
         fileSizeBytes: req.file.size,
+        title,
+        notes,
       });
       ResponseHandler.created(res, resource, "Resource uploaded");
     } catch (err) {

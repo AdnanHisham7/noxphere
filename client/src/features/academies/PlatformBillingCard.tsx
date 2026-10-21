@@ -39,7 +39,12 @@ export const PlatformBillingCard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"currencies" | "trials" | "wall" | "ai_prompt">("currencies");
 
   // Multi-Currency Queries & Mutations
-  const { data: currencies = [], isLoading: currenciesLoading } = useGetPlatformCurrenciesQuery();
+  const {
+    data: currencies = [],
+    isLoading: currenciesLoading,
+    isFetching: currenciesFetching,
+    refetch: refetchCurrencies,
+  } = useGetPlatformCurrenciesQuery();
   const [setCurrencyRate, { isLoading: savingCurrency }] = useSetPlatformCurrencyRateMutation();
   const [editingCurrency, setEditingCurrency] = useState<CurrencyPricing | null>(null);
   const [editStudentRate, setEditStudentRate] = useState("");
@@ -141,7 +146,7 @@ export const PlatformBillingCard: React.FC = () => {
         nfcCardPrice: nfcP,
         nfcCustomCardPrice: nfcCustomP,
       }).unwrap();
-      toast.success(`${editingCurrency.currency} pricing rate & exchange settings updated!`);
+      toast.success(`${editingCurrency.currency} pricing settings updated!`);
       setEditingCurrency(null);
     } catch (err: any) {
       toast.error(err?.data?.message || "Failed to update currency rate");
@@ -249,10 +254,23 @@ export const PlatformBillingCard: React.FC = () => {
       {/* Tab 1: Multi-Currency Pricing Table */}
       {activeTab === "currencies" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-400 leading-relaxed">
-              Each currency is configured separately with independent rates for local markets (no automatic INR exchange conversion). Academies registered under a currency are geo-restricted to their respective country.
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <span className="text-slate-400 leading-relaxed text-2xs">
+              Each currency is configured separately with independent rates for local markets. Live market spot rates against INR are automatically synchronized from global forex exchanges.
             </span>
+            <Button
+              size="sm"
+              variant="secondary"
+              loading={currenciesFetching}
+              onClick={async () => {
+                await refetchCurrencies();
+                toast.success("Synchronized real-time market exchange rates");
+              }}
+              className="text-2xs shrink-0 self-start sm:self-auto"
+              icon={<RotateCcw size={12} className={currenciesFetching ? "animate-spin" : ""} />}
+            >
+              Sync Live Rates
+            </Button>
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-white/5 bg-pitch-950/50">
@@ -263,7 +281,7 @@ export const PlatformBillingCard: React.FC = () => {
                   <th className="py-2.5 px-3">Country &amp; Jurisdiction</th>
                   <th className="py-2.5 px-3">Student Rate (/day)</th>
                   <th className="py-2.5 px-3">Staff Rate (/month)</th>
-                  <th className="py-2.5 px-3">Exch. Rate (1 = ? INR)</th>
+                  <th className="py-2.5 px-3">Live Exch. Rate (1 = ? INR)</th>
                   <th className="py-2.5 px-3">NFC Cards (Std / Custom)</th>
                   <th className="py-2.5 px-3 text-right">Actions</th>
                 </tr>
@@ -301,10 +319,20 @@ export const PlatformBillingCard: React.FC = () => {
                       <span className="text-[10px] text-slate-500 block">/ staff / mo</span>
                     </td>
                     <td className="py-2.5 px-3">
-                      <span className="font-mono font-bold text-amber-400 text-xs">
-                        ₹{curr.exchangeRateToInr ?? (curr.currency === "INR" ? 1 : "-")}
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-amber-400 text-xs">
+                          ₹{curr.exchangeRateToInr ? Number(curr.exchangeRateToInr).toFixed(2) : (curr.currency === "INR" ? "1.00" : "-")}
+                        </span>
+                        {curr.currency !== "INR" && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            Live
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-500 block font-mono">
+                        1 {curr.currency} {curr.currency !== "INR" ? "spot rate" : "base"}
                       </span>
-                      <span className="text-[10px] text-slate-500 block font-mono">1 {curr.currency}</span>
                     </td>
                     <td className="py-2.5 px-3">
                       <span className="font-mono font-bold text-emerald-400 text-xs">
@@ -581,15 +609,36 @@ export const PlatformBillingCard: React.FC = () => {
                 required
               />
 
-              <Input
-                label={`Exchange Rate to INR (1 ${editingCurrency.currency} = ? INR)`}
-                type="number"
-                step="0.01"
-                min="0.0001"
-                placeholder={editingCurrency.currency === "INR" ? "1" : "e.g. 85.00"}
-                value={editExchangeRate}
-                onChange={(e) => setEditExchangeRate(e.target.value)}
-              />
+              <div className="p-3 rounded-xl bg-pitch-900/90 border border-white/5 flex items-center justify-between">
+                <div>
+                  <span className="text-2xs text-slate-400 block font-medium">Real-Time Market Rate</span>
+                  <span className="text-xs font-mono font-bold text-amber-400">
+                    1 {editingCurrency.currency} ≈ ₹{editingCurrency.exchangeRateToInr ? Number(editingCurrency.exchangeRateToInr).toFixed(2) : (editingCurrency.currency === "INR" ? "1.00" : "-")} INR
+                  </span>
+                </div>
+                {editingCurrency.currency !== "INR" && (
+                  <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono font-medium flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live Forex
+                  </span>
+                )}
+              </div>
+
+              {editingCurrency.currency !== "INR" && (
+                <div className="space-y-1">
+                  <Input
+                    label={`Exchange Rate to INR (1 ${editingCurrency.currency} = ? INR)`}
+                    type="number"
+                    step="0.01"
+                    min="0.0001"
+                    placeholder={editingCurrency.currency === "INR" ? "1" : "e.g. 25.87"}
+                    value={editExchangeRate}
+                    onChange={(e) => setEditExchangeRate(e.target.value)}
+                  />
+                  <p className="text-[10px] text-slate-400">
+                    Live rates are automatically fetched from international forex when recording payments.
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-2">
                 <Input

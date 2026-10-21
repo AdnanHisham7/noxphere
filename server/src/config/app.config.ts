@@ -1,7 +1,7 @@
 // src/config/app.config.ts
 import dotenv from "dotenv";
 import { SignOptions } from 'jsonwebtoken';
-dotenv.config();
+dotenv.config({ override: true });
 
 export const config = {
   env: process.env.NODE_ENV || "development",
@@ -88,6 +88,7 @@ export const config = {
     accessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
     apiVersion: process.env.WHATSAPP_API_VERSION || "v20.0",
     apiBaseUrl: process.env.WHATSAPP_API_BASE_URL || "https://graph.facebook.com",
+    webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || "noxphere_wa_verify_2026",
   },
 
   rateLimit: {

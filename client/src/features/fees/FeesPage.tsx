@@ -1770,15 +1770,22 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
 
               {/* Right: Amounts, Badge, Actions */}
               <div className="flex items-center gap-3 flex-wrap ml-auto">
-                <span className="font-mono text-xs">
-                  <span className="text-emerald-400 font-semibold">
-                    {formatCurrency(inst.paidAmount, (fee as any).currency)}
+                <div className="flex flex-col items-end">
+                  <span className="font-mono text-xs">
+                    <span className="text-emerald-400 font-semibold">
+                      {formatCurrency(inst.paidAmount, (fee as any).currency)}
+                    </span>
+                    <span className="text-slate-500"> / </span>
+                    <span className="text-slate-700 dark:text-slate-300">
+                      {formatCurrency(inst.amount, (fee as any).currency)}
+                    </span>
                   </span>
-                  <span className="text-slate-500"> / </span>
-                  <span className="text-slate-700 dark:text-slate-300">
-                    {formatCurrency(inst.amount, (fee as any).currency)}
-                  </span>
-                </span>
+                  {(fee as any).currency && (fee as any).currency !== "INR" && (inst as any).exchangeRateToInr && (
+                    <span className="text-[9px] font-mono text-slate-400 mt-0.5">
+                      ≈ ₹{Number((inst as any).paidAmountInInr || (inst.paidAmount * (inst as any).exchangeRateToInr)).toLocaleString("en-IN", { maximumFractionDigits: 2 })} (@ ₹{Number((inst as any).exchangeRateToInr).toFixed(2)})
+                    </span>
+                  )}
+                </div>
 
                 <Badge
                   variant={

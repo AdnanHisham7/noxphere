@@ -17,6 +17,7 @@ import { stripeService } from "../../../infrastructure/services/StripeService";
 import { razorpayService } from "../../../infrastructure/services/RazorpayService";
 import { notificationService } from "../../../infrastructure/services/NotificationService";
 import { geoLocationService, SUPPORTED_CURRENCY_MAP } from "../../../infrastructure/services/GeoLocationService";
+import { exchangeRateService } from "../../../infrastructure/services/ExchangeRateService";
 import { config } from "../../../config/app.config";
 import {
   NotFoundError,
@@ -364,6 +365,8 @@ export class AcademySubscriptionUseCases {
       created: (p.paidAt ? new Date(p.paidAt) : (subscription as any).createdAt || new Date()).toISOString(),
       invoicePdf: null,
       hostedInvoiceUrl: null,
+      exchangeRateToInr: p.exchangeRateToInr,
+      amountInInr: p.amountInInr,
     }));
 
     if (recordedPayments.length === 0 && subscription?.razorpayPaymentId) {
@@ -380,6 +383,8 @@ export class AcademySubscriptionUseCases {
         created: ((subscription as any).updatedAt || (subscription as any).createdAt || new Date()).toISOString(),
         invoicePdf: null,
         hostedInvoiceUrl: null,
+        exchangeRateToInr: currency === "INR" ? 1 : undefined,
+        amountInInr: currency === "INR" ? legacyAmount : undefined,
       });
     }
 
@@ -691,12 +696,16 @@ export class AcademySubscriptionUseCases {
       studentPeriodAmount(rate, subscription.provisionedCapacity, interval) +
       staffPeriodAmount(staffRate, subscription.provisionedStaffCapacity, interval);
 
+    const { rate: exchangeRateToInr, amountInInr } = await exchangeRateService.convertToInr(amountPaid, currency);
+
     subscription.payments = subscription.payments || [];
     subscription.payments.unshift({
       orderId,
       paymentId,
       amount: amountPaid,
       currency,
+      exchangeRateToInr,
+      amountInInr,
       status: "paid",
       billingInterval: interval,
       studentCapacity: subscription.provisionedCapacity,
@@ -929,22 +938,33 @@ export class AcademySubscriptionUseCases {
     const existing = settings?.currencyPricing || [];
     const map = new Map<string, CurrencyPricing>();
 
+    // Fetch live rates so each currency displays its real-time spot rate against INR
+    const liveRates = await exchangeRateService.getAllLiveRates();
+
     // Seed defaults from SUPPORTED_CURRENCY_MAP
     Object.values(SUPPORTED_CURRENCY_MAP).forEach((item) => {
-      map.set(item.currency.toUpperCase(), {
+      const code = item.currency.toUpperCase();
+      map.set(code, {
         currency: item.currency,
         ratePerStudentPerDay: item.defaultRatePerStudentPerDay,
         staffRatePerStaffPerMonth: item.defaultStaffRatePerStaffPerMonth,
         symbol: item.symbol,
         countryCode: item.countryCode,
         countryName: item.countryName,
+        exchangeRateToInr: liveRates[code] || item.exchangeRateToInr || 1,
         isActive: true,
       });
     });
 
-    // Override with DB values
+    // Override with DB values (while keeping exchange rate dynamically synced to live market rate)
     existing.forEach((item) => {
-      map.set(item.currency.toUpperCase(), item);
+      const code = item.currency.toUpperCase();
+      const base = map.get(code);
+      map.set(code, {
+        ...base,
+        ...item,
+        exchangeRateToInr: liveRates[code] || item.exchangeRateToInr || base?.exchangeRateToInr || 1,
+      });
     });
 
     return Array.from(map.values());
