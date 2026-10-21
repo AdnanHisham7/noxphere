@@ -12,9 +12,20 @@ export const whatsappRouter = Router();
  * with hub.mode, hub.verify_token, and hub.challenge.
  */
 whatsappRouter.get("/webhook", (req: Request, res: Response) => {
-  const mode = req.query["hub.mode"] || (req.query.hub as any)?.mode;
-  const token = req.query["hub.verify_token"] || (req.query.hub as any)?.verify_token;
-  const challenge = req.query["hub.challenge"] || (req.query.hub as any)?.challenge;
+  const mode =
+    req.query["hub.mode"] ||
+    req.query["hub_mode"] ||
+    (req.query.hub as any)?.mode;
+
+  const token =
+    req.query["hub.verify_token"] ||
+    req.query["hub_verify_token"] ||
+    (req.query.hub as any)?.verify_token;
+
+  const challenge =
+    req.query["hub.challenge"] ||
+    req.query["hub_challenge"] ||
+    (req.query.hub as any)?.challenge;
 
   const expectedToken =
     config.whatsapp?.webhookVerifyToken ||
