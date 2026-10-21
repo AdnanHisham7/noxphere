@@ -109,6 +109,11 @@ export class StudentUseCases {
     if (dto.teamId) {
       await this.validateTeamAssignment(dto.franchiseId, dto.teamId);
     }
+    if (dto.teamIds && dto.teamIds.length > 0) {
+      for (const tId of dto.teamIds) {
+        await this.validateTeamAssignment(dto.franchiseId, tId);
+      }
+    }
 
     let academyName = "Your Academy";
     try {
@@ -233,10 +238,15 @@ export class StudentUseCases {
       isNewGuardian = true;
     }
 
+    const resolvedTeamIds = Array.from(
+      new Set([...(dto.teamIds || []), ...(dto.teamId ? [dto.teamId] : [])]),
+    ).filter(Boolean);
+
     const studentData: Partial<StudentEntity> = {
       userId: guardianUser._id ? guardianUser._id.toString() : guardianUser.id,
       franchiseId: dto.franchiseId,
-      teamId: dto.teamId,
+      teamId: dto.teamId || resolvedTeamIds[0] || undefined,
+      teamIds: resolvedTeamIds,
       coachId: dto.coachId,
       guardianIds: [
         guardianUser._id ? guardianUser._id.toString() : guardianUser.id,
@@ -390,10 +400,14 @@ export class StudentUseCases {
       if (allowedTeamIds && !allowedTeamIds.includes(filters.teamId)) {
         return { items: [], total: 0 };
       }
-      filter.teamId = filters.teamId;
+      filter.$or = [
+        { teamId: filters.teamId },
+        { teamIds: filters.teamId },
+      ];
     } else if (allowedTeamIds) {
       filter.$or = [
         { teamId: { $in: allowedTeamIds } },
+        { teamIds: { $in: allowedTeamIds } },
         { coachId: restrictToCoachId },
       ];
     }
@@ -434,31 +448,47 @@ export class StudentUseCases {
     id: string,
     dto: UpdateStudentDto,
   ): Promise<StudentEntity> {
-    const { dateOfBirth, teamId, ...rest } = dto;
+    const { dateOfBirth, teamId, teamIds, ...rest } = dto;
     const updateData: Partial<StudentEntity> = {
       ...rest,
     };
     if (dateOfBirth) {
       updateData.dateOfBirth = new Date(dateOfBirth);
     }
-    if (teamId !== undefined) {
-      if (teamId) {
-        const existing = await this.studentRepo.findById(id);
-        if (!existing) throw new NotFoundError("Student");
-        if (!existing.franchiseId) {
+
+    if (teamIds !== undefined || teamId !== undefined) {
+      const existing = await this.studentRepo.findById(id);
+      if (!existing) throw new NotFoundError("Student");
+
+      if (teamIds !== undefined) {
+        if (teamIds.length > 0 && !existing.franchiseId) {
           throw new BadRequestError(
             "Student must belong to a franchise before being assigned to a team",
           );
         }
-        await this.validateTeamAssignment(existing.franchiseId, teamId);
+        for (const tId of teamIds) {
+          await this.validateTeamAssignment(existing.franchiseId!, tId);
+        }
+        (updateData as Record<string, unknown>).teamIds = teamIds;
+        (updateData as Record<string, unknown>).teamId = teamIds[0] || null;
+      } else if (teamId !== undefined) {
+        if (teamId) {
+          if (!existing.franchiseId) {
+            throw new BadRequestError(
+              "Student must belong to a franchise before being assigned to a team",
+            );
+          }
+          await this.validateTeamAssignment(existing.franchiseId, teamId);
+          (updateData as Record<string, unknown>).teamId = teamId;
+          const currentTeamIds = existing.teamIds || (existing.teamId ? [existing.teamId] : []);
+          if (!currentTeamIds.includes(teamId)) {
+            (updateData as Record<string, unknown>).teamIds = [...currentTeamIds, teamId];
+          }
+        } else {
+          (updateData as Record<string, unknown>).teamId = null;
+          (updateData as Record<string, unknown>).teamIds = [];
+        }
       }
-
-      // null explicitly clears the assignment (unassign from team); a
-      // string id sets/reassigns it. StudentEntity's teamId is typed as
-      // string | undefined for normal reads, but the repository passes
-      // this straight through to Mongoose's $set, where null is exactly
-      // what removes the reference — hence the narrow cast here.
-      (updateData as Record<string, unknown>).teamId = teamId;
     }
     const student = await this.studentRepo.update(id, updateData);
     if (!student) throw new NotFoundError("Student");

@@ -273,12 +273,14 @@ export class StudentPortalUseCases {
     if (!student.franchiseId) return [];
 
     const conditions: Array<Record<string, unknown>> = [
+      { playerIds: student._id },
       { rosterPlayerIds: student._id },
     ];
-    if (student.teamId) {
-      const tId = typeof student.teamId === "object" && student.teamId !== null && "_id" in student.teamId
-        ? (student.teamId as any)._id
-        : student.teamId;
+    const studentTeams = [
+      ...(student.teamId ? [typeof student.teamId === "object" && student.teamId !== null && "_id" in student.teamId ? (student.teamId as any)._id : student.teamId] : []),
+      ...(Array.isArray((student as any).teamIds) ? (student as any).teamIds : []),
+    ];
+    for (const tId of studentTeams) {
       conditions.push({ targetType: "team", teamId: tId });
     }
     if (student.ageGroup) {
@@ -288,14 +290,16 @@ export class StudentPortalUseCases {
       );
     }
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    const today = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
 
     // Upcoming sessions: from today onwards
     const upcomingFilter: Record<string, unknown> = {
       franchiseId: student.franchiseId,
       deletedAt: { $exists: false },
-      date: { $gte: todayStart },
+      date: { $gte: todayStr },
+      status: { $ne: "cancelled" },
       $or: conditions,
     };
 
@@ -303,7 +307,7 @@ export class StudentPortalUseCases {
       .populate("teamId", "name")
       .populate("coachId", "firstName lastName")
       .sort({ date: 1, startTime: 1 })
-      .limit(20)
+      .limit(30)
       .lean();
 
     // Past sessions: only those the student actually attended
@@ -313,7 +317,7 @@ export class StudentPortalUseCases {
     })
       .select("sessionId status")
       .sort({ sessionDate: -1 })
-      .limit(20)
+      .limit(30)
       .lean();
 
     const attendedSessionIds = attendedRecords.map((a) => a.sessionId);
@@ -346,17 +350,32 @@ export class StudentPortalUseCases {
       upcomingAttendance.map((a) => [a.sessionId?.toString(), a.status])
     );
 
-    const mappedUpcoming = upcomingSessions.map((s) => ({
-      ...s,
-      isMarked: s.status === "completed" || upcomingAttendanceMap.has(s._id.toString()),
-      attendanceStatus: upcomingAttendanceMap.get(s._id.toString()) || null,
-    }));
+    const mapSession = (s: any, isPast = false) => {
+      const teamName = s.targetType === "category"
+        ? (s.category || (Array.isArray(s.categories) ? s.categories.join(", ") : "Category"))
+        : (s.teamId?.name || "Team");
 
-    const mappedPast = pastSessions.map((s) => ({
-      ...s,
-      isMarked: true,
-      attendanceStatus: attendedMap.get(s._id.toString()) || null,
-    }));
+      const coachName = s.coachId
+        ? `${s.coachId.firstName} ${s.coachId.lastName}`
+        : undefined;
+
+      const isMarked = isPast || s.status === "completed" || upcomingAttendanceMap.has(s._id.toString());
+      const attendanceStatus = isPast
+        ? (attendedMap.get(s._id.toString()) || null)
+        : (upcomingAttendanceMap.get(s._id.toString()) || null);
+
+      return {
+        ...s,
+        id: s._id.toString(),
+        teamName,
+        coachName,
+        isMarked,
+        attendanceStatus,
+      };
+    };
+
+    const mappedUpcoming = upcomingSessions.map((s) => mapSession(s, false));
+    const mappedPast = pastSessions.map((s) => mapSession(s, true));
 
     return [...mappedUpcoming, ...mappedPast];
   }

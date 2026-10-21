@@ -96,6 +96,30 @@ export const teamsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: (_r, _e, { teamId }) => [{ type: "Team", id: teamId }],
     }),
+    addStudentToTeam: builder.mutation<void, { teamId: string; studentId: string }>({
+      query: ({ teamId, studentId }) => ({
+        url: `/teams/${teamId}/roster/add`,
+        method: "POST",
+        body: { studentId },
+      }),
+      invalidatesTags: (_r, _e, { teamId }) => [
+        { type: "Team", id: teamId },
+        "Team",
+        { type: "Student", id: "LIST" },
+      ],
+    }),
+    removeStudentFromTeam: builder.mutation<void, { teamId: string; studentId: string }>({
+      query: ({ teamId, studentId }) => ({
+        url: `/teams/${teamId}/roster/remove`,
+        method: "POST",
+        body: { studentId },
+      }),
+      invalidatesTags: (_r, _e, { teamId }) => [
+        { type: "Team", id: teamId },
+        "Team",
+        { type: "Student", id: "LIST" },
+      ],
+    }),
   }),
 });
 
@@ -107,4 +131,6 @@ export const {
   useDeleteTeamMutation,
   useSaveFormationPresetMutation,
   useDeleteFormationPresetMutation,
+  useAddStudentToTeamMutation,
+  useRemoveStudentFromTeamMutation,
 } = teamsApi;

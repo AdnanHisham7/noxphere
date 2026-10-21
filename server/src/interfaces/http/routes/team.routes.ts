@@ -26,3 +26,11 @@ teamRouter.post("/:id/formation-presets", authenticate, (req, res, next) => {
 teamRouter.delete("/:id/formation-presets/:presetId", authenticate, (req, res, next) => {
   req.app.locals.controllers.team.deleteFormationPreset(req, res, next);
 });
+
+// Squad / Roster management
+teamRouter.post("/:id/roster/add", authenticate, (req, res, next) => {
+  req.app.locals.controllers.team.addStudentToRoster(req, res, next);
+});
+teamRouter.post("/:id/roster/remove", authenticate, (req, res, next) => {
+  req.app.locals.controllers.team.removeStudentFromRoster(req, res, next);
+});

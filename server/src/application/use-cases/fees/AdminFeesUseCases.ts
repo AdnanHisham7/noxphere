@@ -502,6 +502,52 @@ export class AdminFeesUseCases {
     fee.overallStatus = computeOverallStatus(fee.installments) as typeof fee.overallStatus;
     await fee.save();
 
+    // System alerts: Notify academy managers & operational managers
+    try {
+      const student = await StudentModel.findById(fee.studentId).select("firstName lastName").lean();
+      const studentName = student ? `${student.firstName} ${student.lastName}` : "Student";
+
+      const managerUsers = await UserModel.find({
+        isActive: true,
+        $or: [
+          { role: { $in: ["manager", "operational_manager", "super_admin"] } },
+          { "permissions.canManageFinance": true },
+        ],
+        $and: [
+          {
+            $or: [
+              { franchiseId: fee.franchiseId },
+              { role: "super_admin" },
+              { franchiseId: { $exists: false } },
+              { franchiseId: null },
+            ],
+          },
+        ],
+      }).select("_id").lean();
+
+      const recipientIds = managerUsers.map((u) => u._id.toString());
+      if (recipientIds.length > 0) {
+        await notificationService.send({
+          userIds: recipientIds,
+          type: "system_alert" as any,
+          title: "Fee Payment Proof Submitted",
+          body: `${performedByName} submitted payment proof of ${fee.currency || "INR"} ${input.amount} for ${studentName} (Installment #${installmentNumber}). Awaiting verification.`,
+          data: {
+            feeId: fee._id.toString(),
+            installmentNumber: String(installmentNumber),
+            studentId: fee.studentId?.toString() || "",
+            studentName,
+            amount: String(input.amount),
+            currency: fee.currency || "INR",
+            url: `/admin/fees?filter=pending_verification&feeId=${fee._id.toString()}`,
+          },
+          franchiseId: fee.franchiseId?.toString(),
+        });
+      }
+    } catch (notifErr) {
+      logger.error("[AdminFeesUseCases] Failed to send submission alerts to managers:", notifErr);
+    }
+
     return fee.toJSON ? fee.toJSON() : fee;
   }
 
@@ -527,6 +573,7 @@ export class AdminFeesUseCases {
 
     const user = await UserModel.findById(performedBy).select("firstName lastName").lean();
     const performedByName = user ? `${user.firstName} ${user.lastName}` : "Academy Manager";
+    const proofSubmittedBy = installment.verificationProof?.submittedBy?.toString();
 
     if (input.action === "approve") {
       const proof = installment.verificationProof;
@@ -555,6 +602,26 @@ export class AdminFeesUseCases {
       await fee.save();
 
       await this.sendPaymentReceipt(fee, installmentNumber, effectiveAmount);
+
+      if (proofSubmittedBy) {
+        try {
+          const student = await StudentModel.findById(fee.studentId).select("firstName lastName").lean();
+          const studentName = student ? `${student.firstName} ${student.lastName}` : "Student";
+          await notificationService.send({
+            userIds: [proofSubmittedBy],
+            type: "payment_reminder" as any,
+            title: "Payment Proof Approved",
+            body: `Your payment proof of ${fee.currency || 'INR'} ${effectiveAmount} for ${studentName} (Installment #${installmentNumber}) has been approved and verified!`,
+            data: {
+              feeId: fee._id.toString(),
+              installmentNumber: String(installmentNumber),
+            },
+            franchiseId: fee.franchiseId?.toString(),
+          });
+        } catch (e) {
+          logger.error("[AdminFeesUseCases] Failed to notify guardian of approval:", e);
+        }
+      }
     } else {
       const now = new Date();
       const isOverdue = installment.dueDate < now;
@@ -575,6 +642,27 @@ export class AdminFeesUseCases {
 
       fee.overallStatus = computeOverallStatus(fee.installments) as typeof fee.overallStatus;
       await fee.save();
+
+      if (proofSubmittedBy) {
+        try {
+          const student = await StudentModel.findById(fee.studentId).select("firstName lastName").lean();
+          const studentName = student ? `${student.firstName} ${student.lastName}` : "Student";
+          await notificationService.send({
+            userIds: [proofSubmittedBy],
+            type: "system_alert" as any,
+            title: "Payment Proof Verification Rejected",
+            body: `Payment proof for ${studentName} (Installment #${installmentNumber}) was rejected.${input.rejectionReason ? ` Reason: ${input.rejectionReason}` : ''}`,
+            data: {
+              feeId: fee._id.toString(),
+              installmentNumber: String(installmentNumber),
+              rejectionReason: reason,
+            },
+            franchiseId: fee.franchiseId?.toString(),
+          });
+        } catch (e) {
+          logger.error("[AdminFeesUseCases] Failed to notify guardian of rejection:", e);
+        }
+      }
     }
 
     return FeeModel.findById(fee._id).populate("studentId", "firstName lastName photo").lean();

@@ -88,8 +88,12 @@ export class GuardianUseCases {
     for (const s of students) {
       allConditions.push({ playerIds: s._id });
       allConditions.push({ rosterPlayerIds: s._id });
-      if (s.teamId) {
-        allConditions.push({ targetType: "team", teamId: s.teamId });
+      const childTeams = [
+        ...(s.teamId ? [s.teamId] : []),
+        ...(Array.isArray((s as any).teamIds) ? (s as any).teamIds : []),
+      ];
+      for (const tId of childTeams) {
+        allConditions.push({ targetType: "team", teamId: tId });
       }
       if (s.ageGroup) {
         allConditions.push(
@@ -149,7 +153,12 @@ export class GuardianUseCases {
       const matchingChildren = students.filter((child) => {
         if (s.playerIds?.some((p: any) => p.toString() === child._id.toString())) return true;
         if (s.rosterPlayerIds?.some((p: any) => p.toString() === child._id.toString())) return true;
-        if (s.targetType === "team" && child.teamId && (s.teamId?._id?.toString() === child.teamId.toString() || s.teamId?.toString() === child.teamId.toString())) return true;
+        const childTeamIds = [
+          ...(child.teamId ? [child.teamId.toString()] : []),
+          ...(Array.isArray((child as any).teamIds) ? (child as any).teamIds.map((t: any) => t.toString()) : []),
+        ];
+        const sTeamId = s.teamId?._id?.toString() || s.teamId?.toString();
+        if (s.targetType === "team" && sTeamId && childTeamIds.includes(sTeamId)) return true;
         if (s.targetType === "category") {
           if (s.category && s.category === child.ageGroup) return true;
           if (s.categories && s.categories.includes(child.ageGroup)) return true;
@@ -457,8 +466,12 @@ export class GuardianUseCases {
       { playerIds: student._id },
       { rosterPlayerIds: student._id },
     ];
-    if (student.teamId) {
-      conditions.push({ targetType: "team", teamId: student.teamId });
+    const studentTeams = [
+      ...(student.teamId ? [student.teamId] : []),
+      ...(Array.isArray((student as any).teamIds) ? (student as any).teamIds : []),
+    ];
+    for (const tId of studentTeams) {
+      conditions.push({ targetType: "team", teamId: tId });
     }
     if (student.ageGroup) {
       conditions.push(
@@ -467,14 +480,16 @@ export class GuardianUseCases {
       );
     }
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    const today = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
 
     // Upcoming sessions: from today onwards, scoped to this student's team/category/roster
     const upcomingFilter: Record<string, unknown> = {
       franchiseId: student.franchiseId,
       deletedAt: { $exists: false },
-      date: { $gte: todayStart },
+      date: { $gte: todayStr },
+      status: { $ne: "cancelled" },
       $or: conditions,
     };
 
@@ -482,7 +497,7 @@ export class GuardianUseCases {
       .populate("teamId", "name")
       .populate("coachId", "firstName lastName")
       .sort({ date: 1, startTime: 1 })
-      .limit(20)
+      .limit(30)
       .lean();
 
     // Past sessions: only those the student actually attended
@@ -492,7 +507,7 @@ export class GuardianUseCases {
     })
       .select("sessionId status")
       .sort({ sessionDate: -1 })
-      .limit(20)
+      .limit(30)
       .lean();
 
     const attendedSessionIds = attendedRecords.map((a) => a.sessionId);
@@ -525,17 +540,32 @@ export class GuardianUseCases {
       upcomingAttendance.map((a) => [a.sessionId?.toString(), a.status])
     );
 
-    const mappedUpcoming = upcomingSessions.map((s) => ({
-      ...s,
-      isMarked: s.status === "completed" || upcomingAttendanceMap.has(s._id.toString()),
-      attendanceStatus: upcomingAttendanceMap.get(s._id.toString()) || null,
-    }));
+    const mapChildSession = (s: any, isPast = false) => {
+      const teamName = s.targetType === "category"
+        ? (s.category || (Array.isArray(s.categories) ? s.categories.join(", ") : "Category"))
+        : (s.teamId?.name || "Team");
 
-    const mappedPast = pastSessions.map((s) => ({
-      ...s,
-      isMarked: true,
-      attendanceStatus: attendedMap.get(s._id.toString()) || null,
-    }));
+      const coachName = s.coachId
+        ? `${s.coachId.firstName} ${s.coachId.lastName}`
+        : undefined;
+
+      const isMarked = isPast || s.status === "completed" || upcomingAttendanceMap.has(s._id.toString());
+      const attendanceStatus = isPast
+        ? (attendedMap.get(s._id.toString()) || null)
+        : (upcomingAttendanceMap.get(s._id.toString()) || null);
+
+      return {
+        ...s,
+        id: s._id.toString(),
+        teamName,
+        coachName,
+        isMarked,
+        attendanceStatus,
+      };
+    };
+
+    const mappedUpcoming = upcomingSessions.map((s) => mapChildSession(s, false));
+    const mappedPast = pastSessions.map((s) => mapChildSession(s, true));
 
     return [...mappedUpcoming, ...mappedPast];
   }

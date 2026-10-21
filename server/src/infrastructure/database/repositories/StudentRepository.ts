@@ -153,6 +153,9 @@ export class StudentRepository implements IStudentRepository {
       userId: doc.userId.toString(),
       franchiseId: doc.franchiseId.toString(),
       teamId: doc.teamId?.toString(),
+      teamIds: Array.isArray(doc.teamIds) && doc.teamIds.length > 0
+        ? doc.teamIds.map((id: any) => id.toString())
+        : (doc.teamId ? [doc.teamId.toString()] : []),
       coachId: doc.coachId?.toString(),
       guardianIds: doc.guardianIds?.map((id: any) => id.toString()) || [],
       guardian: doc.guardian,

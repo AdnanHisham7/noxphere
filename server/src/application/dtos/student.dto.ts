@@ -30,6 +30,7 @@ export const CreateStudentSchema = z.object({
   ageGroup: z.string().min(1),
   franchiseId: z.string().min(1),
   teamId: z.string().optional(),
+  teamIds: z.array(z.string()).optional(),
   coachId: z.string().optional(),
   jerseyNumber: z.number().min(1).max(99).optional(),
   jerseySize: z.string().optional(),
@@ -42,7 +43,10 @@ export const CreateStudentSchema = z.object({
 
 export const UpdateStudentSchema = CreateStudentSchema.omit({ email: true, franchiseId: true })
   .partial()
-  .extend({ teamId: z.string().nullable().optional() });
+  .extend({
+    teamId: z.string().nullable().optional(),
+    teamIds: z.array(z.string()).optional(),
+  });
 
 export const AddPerformanceSchema = z.object({
   sessionDate: z.string().datetime(),

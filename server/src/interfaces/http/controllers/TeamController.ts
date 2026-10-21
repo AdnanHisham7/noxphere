@@ -102,4 +102,32 @@ export class TeamController {
       next(err);
     }
   };
+
+  addStudentToRoster = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const { studentId } = req.body;
+      if (!studentId) {
+        throw new BadRequestError("studentId is required");
+      }
+      await this.teamUseCases.addStudentToTeam(id, studentId);
+      ResponseHandler.success(res, { success: true }, "Player added to squad");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  removeStudentFromRoster = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const { studentId } = req.body;
+      if (!studentId) {
+        throw new BadRequestError("studentId is required");
+      }
+      await this.teamUseCases.removeStudentFromTeam(id, studentId);
+      ResponseHandler.success(res, { success: true }, "Player removed from squad");
+    } catch (err) {
+      next(err);
+    }
+  };
 }

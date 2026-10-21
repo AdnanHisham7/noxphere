@@ -25,6 +25,7 @@ import {
   Receipt,
   Download,
   AlertTriangle,
+  User,
 } from "lucide-react";
 import QRCode from "react-qr-code";
 import { PayFeeModal } from "./PayFeeModal";
@@ -714,18 +715,19 @@ const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
 
-  const now = new Date();
-  const todayStart = new Date(now.setHours(0, 0, 0, 0));
+  const today = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
 
   const isUpcoming = (s: any) => {
-    if (s.status === "completed" || s.isMarked || s.attendanceStatus) {
+    if (s.status === "completed" || s.status === "cancelled") {
       return false;
     }
-    return new Date(s.date) >= todayStart;
+    return (s.date || "") >= todayStr;
   };
 
   const upcomingSessions = (sessions || []).filter(isUpcoming);
-  const pastSessions = (sessions || []).filter((s: any) => !!s.attendanceStatus);
+  const pastSessions = (sessions || []).filter((s: any) => !isUpcoming(s));
 
   useEffect(() => {
     if (!highlightId || !sessions) return;
@@ -774,7 +776,7 @@ const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
               ? "Custom Batch"
               : s.targetType === "category"
                 ? s.category || "Category"
-                : s.teamName || "Team"}
+                : s.teamName || (typeof s.teamId === "object" ? s.teamId?.name : undefined) || "Team"}
           </span>
           {s.attendanceStatus ? (
             <NoxStatusBadge status={s.attendanceStatus} />
@@ -790,7 +792,7 @@ const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
           <div className="flex items-center gap-1.5">
             <CalendarCheck size={13} className="text-core-500 shrink-0" />
             <span>
-              {new Date(s.date).toLocaleDateString(undefined, {
+              {new Date((s.date || "") + "T00:00:00").toLocaleDateString(undefined, {
                 weekday: "short",
                 month: "short",
                 day: "numeric",
@@ -802,6 +804,12 @@ const ScheduleTab: React.FC<{ studentId: string }> = ({ studentId }) => {
             <Clock size={13} className="text-core-500 shrink-0" />
             <span>{s.startTime} - {s.endTime}</span>
           </div>
+          {s.coachName && (
+            <div className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
+              <User size={13} className="text-core-500 shrink-0" />
+              <span>Coach: {s.coachName}</span>
+            </div>
+          )}
           {s.location && (
             <div className="flex items-center gap-1.5 sm:col-span-2">
               <MapPin size={13} className="text-core-500 shrink-0" />
