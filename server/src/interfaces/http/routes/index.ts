@@ -30,6 +30,7 @@ import { nfcCardRouter } from './nfcCard.routes';
 import { squadInvitationRouter } from './squadInvitation.routes';
 import { platformTicketRouter } from './platformTicket.routes';
 import { expenseRouter } from './expense.routes';
+import { whatsappRouter } from './whatsapp.routes';
 
 export const apiRouter = Router();
 
@@ -63,3 +64,4 @@ apiRouter.use('/registration', registrationRouter);
 apiRouter.use('/nfc', nfcCardRouter);
 apiRouter.use('/squad-invitations', squadInvitationRouter);
 apiRouter.use('/platform-tickets', platformTicketRouter);
+apiRouter.use('/whatsapp', whatsappRouter);
