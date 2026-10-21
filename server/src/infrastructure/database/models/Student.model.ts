@@ -7,6 +7,7 @@ export interface StudentDocument extends Document {
   userId: mongoose.Types.ObjectId;
   franchiseId?: mongoose.Types.ObjectId;
   teamId?: mongoose.Types.ObjectId;
+  teamIds?: mongoose.Types.ObjectId[];
   coachId?: mongoose.Types.ObjectId;
   guardianIds: mongoose.Types.ObjectId[];
   guardian: StudentEntity["guardian"];
@@ -97,6 +98,7 @@ const StudentSchema = new Schema<StudentDocument>(
       index: true,
     },
     teamId: { type: Schema.Types.ObjectId, ref: "Team", index: true },
+    teamIds: [{ type: Schema.Types.ObjectId, ref: "Team", index: true }],
     coachId: { type: Schema.Types.ObjectId, ref: "User", index: true },
     guardianIds: [{ type: Schema.Types.ObjectId, ref: "User" }],
     firstName: { type: String, required: true, trim: true },

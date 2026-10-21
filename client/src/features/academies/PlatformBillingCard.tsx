@@ -44,6 +44,9 @@ export const PlatformBillingCard: React.FC = () => {
   const [editingCurrency, setEditingCurrency] = useState<CurrencyPricing | null>(null);
   const [editStudentRate, setEditStudentRate] = useState("");
   const [editStaffRate, setEditStaffRate] = useState("");
+  const [editExchangeRate, setEditExchangeRate] = useState("");
+  const [editNfcPrice, setEditNfcPrice] = useState("");
+  const [editNfcCustomPrice, setEditNfcCustomPrice] = useState("");
 
   // Trial Defaults Queries & Mutations
   const { data: trialDefaults, isLoading: trialLoading } = useGetPlatformTrialDefaultsQuery();
@@ -99,14 +102,29 @@ export const PlatformBillingCard: React.FC = () => {
     setEditingCurrency(curr);
     setEditStudentRate(String(curr.ratePerStudentPerDay));
     setEditStaffRate(String(curr.staffRatePerStaffPerMonth));
+    setEditExchangeRate(curr.exchangeRateToInr ? String(curr.exchangeRateToInr) : "");
+    setEditNfcPrice(curr.nfcCardPrice ? String(curr.nfcCardPrice) : "");
+    setEditNfcCustomPrice(curr.nfcCustomCardPrice ? String(curr.nfcCustomCardPrice) : "");
   };
 
   const handleSaveCurrency = async () => {
     if (!editingCurrency) return;
     const sRate = parseFloat(editStudentRate);
     const stRate = parseFloat(editStaffRate);
+    const exRate = editExchangeRate ? parseFloat(editExchangeRate) : undefined;
+    const nfcP = editNfcPrice ? parseFloat(editNfcPrice) : undefined;
+    const nfcCustomP = editNfcCustomPrice ? parseFloat(editNfcCustomPrice) : undefined;
+
     if (isNaN(sRate) || sRate < 0 || isNaN(stRate) || stRate < 0) {
       toast.error("Please enter valid positive numbers for rates");
+      return;
+    }
+    if (exRate !== undefined && (isNaN(exRate) || exRate <= 0)) {
+      toast.error("Exchange rate must be a positive number");
+      return;
+    }
+    if (nfcP !== undefined && (isNaN(nfcP) || nfcP < 0)) {
+      toast.error("NFC price must be a valid positive number");
       return;
     }
 
@@ -119,8 +137,11 @@ export const PlatformBillingCard: React.FC = () => {
         countryCode: editingCurrency.countryCode,
         countryName: editingCurrency.countryName,
         isActive: true,
+        exchangeRateToInr: exRate,
+        nfcCardPrice: nfcP,
+        nfcCustomCardPrice: nfcCustomP,
       }).unwrap();
-      toast.success(`${editingCurrency.currency} pricing rate updated!`);
+      toast.success(`${editingCurrency.currency} pricing rate & exchange settings updated!`);
       setEditingCurrency(null);
     } catch (err: any) {
       toast.error(err?.data?.message || "Failed to update currency rate");
@@ -242,6 +263,8 @@ export const PlatformBillingCard: React.FC = () => {
                   <th className="py-2.5 px-3">Country &amp; Jurisdiction</th>
                   <th className="py-2.5 px-3">Student Rate (/day)</th>
                   <th className="py-2.5 px-3">Staff Rate (/month)</th>
+                  <th className="py-2.5 px-3">Exch. Rate (1 = ? INR)</th>
+                  <th className="py-2.5 px-3">NFC Cards (Std / Custom)</th>
                   <th className="py-2.5 px-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -276,6 +299,18 @@ export const PlatformBillingCard: React.FC = () => {
                         {curr.symbol} {curr.staffRatePerStaffPerMonth}
                       </span>
                       <span className="text-[10px] text-slate-500 block">/ staff / mo</span>
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className="font-mono font-bold text-amber-400 text-xs">
+                        ₹{curr.exchangeRateToInr ?? (curr.currency === "INR" ? 1 : "-")}
+                      </span>
+                      <span className="text-[10px] text-slate-500 block font-mono">1 {curr.currency}</span>
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className="font-mono font-bold text-emerald-400 text-xs">
+                        {curr.symbol}{curr.nfcCardPrice ?? "-"} / {curr.symbol}{curr.nfcCustomCardPrice ?? "-"}
+                      </span>
+                      <span className="text-[10px] text-slate-500 block">per card</span>
                     </td>
                     <td className="py-2.5 px-3 text-right">
                       <Button
@@ -545,6 +580,37 @@ export const PlatformBillingCard: React.FC = () => {
                 onChange={(e) => setEditStaffRate(e.target.value)}
                 required
               />
+
+              <Input
+                label={`Exchange Rate to INR (1 ${editingCurrency.currency} = ? INR)`}
+                type="number"
+                step="0.01"
+                min="0.0001"
+                placeholder={editingCurrency.currency === "INR" ? "1" : "e.g. 85.00"}
+                value={editExchangeRate}
+                onChange={(e) => setEditExchangeRate(e.target.value)}
+              />
+
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  label={`Standard NFC Price (${editingCurrency.symbol})`}
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="e.g. 4.00"
+                  value={editNfcPrice}
+                  onChange={(e) => setEditNfcPrice(e.target.value)}
+                />
+                <Input
+                  label={`Custom NFC Price (${editingCurrency.symbol})`}
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="e.g. 5.50"
+                  value={editNfcCustomPrice}
+                  onChange={(e) => setEditNfcCustomPrice(e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">

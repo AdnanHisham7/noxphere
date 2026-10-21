@@ -370,9 +370,15 @@ const StudentDetailPage: React.FC = () => {
     { franchiseId: student?.franchiseId },
     { skip: !student?.franchiseId },
   );
-  const studentTeamName = squadTeams?.find(
-    (t) => t.id === student?.teamId,
-  )?.name;
+  const studentTeamNames = useMemo(() => {
+    if (!squadTeams || !student) return [];
+    const ids = new Set([
+      ...(student.teamId ? [student.teamId] : []),
+      ...((student as any).teamIds || []),
+    ]);
+    return squadTeams.filter((t) => ids.has(t.id)).map((t) => t.name);
+  }, [squadTeams, student]);
+  const studentTeamName = studentTeamNames.join(" · ") || undefined;
   const { data: franchise } = useGetFranchiseByIdQuery(
     student?.franchiseId ?? "",
     {
@@ -3206,7 +3212,15 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
       : "",
   );
   const [ageGroup, setAgeGroup] = useState(student.ageGroup);
-  const [teamId, setTeamId] = useState(student.teamId ?? "");
+  const initialTeamIds = useMemo(() => {
+    const set = new Set<string>();
+    if (student.teamId) set.add(student.teamId);
+    if (Array.isArray((student as any).teamIds)) {
+      (student as any).teamIds.forEach((id: string) => set.add(id));
+    }
+    return Array.from(set);
+  }, [student]);
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>(initialTeamIds);
   const [positions, setPositions] = useState<string[]>(
     student.positions || (student.position ? [student.position] : []),
   );
@@ -3294,7 +3308,8 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
           lastName: lastName.trim(),
           dateOfBirth: new Date(dob).toISOString(),
           ageGroup,
-          teamId: teamId || null,
+          teamId: selectedTeamIds[0] || null,
+          teamIds: selectedTeamIds,
           position: positions[0] || "Forward",
           positions: positions,
           jerseyNumber: jerseyNumber ? parseInt(jerseyNumber, 10) : undefined,
@@ -3446,18 +3461,48 @@ const EditStudentModal: React.FC<{ student: Student; onClose: () => void }> = ({
               </div>
             </div>
 
-            <Select
-              label="Team Assignment"
-              value={teamId}
-              onChange={(e) => setTeamId(e.target.value)}
-            >
-              <option value="">No team assigned</option>
-              {(teams ?? []).map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.ageGroup})
-                </option>
-              ))}
-            </Select>
+            <div>
+              <label className="label">
+                Squad / Team Assignments (Can select multiple)
+              </label>
+              <div className="flex flex-wrap gap-1.5 mt-1 border border-slate-200 dark:border-white/10 rounded-xl p-2.5 max-h-36 overflow-y-auto bg-slate-50 dark:bg-pitch-900">
+                {(!teams || teams.length === 0) ? (
+                  <span className="text-2xs text-slate-500">No teams registered in this branch.</span>
+                ) : (
+                  teams.map((t) => {
+                    const isAssigned = selectedTeamIds.includes(t.id);
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => {
+                          if (isAssigned) {
+                            setSelectedTeamIds(selectedTeamIds.filter((id) => id !== t.id));
+                          } else {
+                            setSelectedTeamIds([...selectedTeamIds, t.id]);
+                          }
+                        }}
+                        className={clsx(
+                          "px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer",
+                          isAssigned
+                            ? "bg-volt-400 border-volt-400 text-pitch-950 font-bold shadow-xs"
+                            : "bg-white dark:bg-pitch-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-volt-400/50",
+                        )}
+                      >
+                        {isAssigned && <Check size={12} className="stroke-[3]" />}
+                        <span>{t.name}</span>
+                        <span className="text-2xs font-mono opacity-70">({t.ageGroup})</span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              <p className="text-2xs text-slate-400 mt-1">
+                {selectedTeamIds.length > 0
+                  ? `Assigned to ${selectedTeamIds.length} squad${selectedTeamIds.length === 1 ? "" : "s"}.`
+                  : "Player is currently not assigned to any team squad."}
+              </p>
+            </div>
 
             <div className="border-t border-white/5 pt-4 mt-2">
               <p className="section-title mb-3 text-volt-400">

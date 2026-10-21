@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { TeamModel } from "../../../infrastructure/database/models/Team.model";
 import { StudentModel } from "../../../infrastructure/database/models/Student.model";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
@@ -76,9 +77,30 @@ export class TeamUseCases {
       .sort({ name: 1 })
       .lean();
 
+    const teamObjectIds = teams.map((t) => t._id);
     const counts = await StudentModel.aggregate([
-      { $match: { teamId: { $in: teams.map((t) => t._id) }, deletedAt: { $exists: false } } },
-      { $group: { _id: "$teamId", count: { $sum: 1 } } },
+      {
+        $match: {
+          $or: [
+            { teamId: { $in: teamObjectIds } },
+            { teamIds: { $in: teamObjectIds } },
+          ],
+          deletedAt: { $exists: false },
+        },
+      },
+      {
+        $project: {
+          allTeams: {
+            $setUnion: [
+              { $ifNull: ["$teamIds", []] },
+              { $cond: [{ $ifNull: ["$teamId", false] }, ["$teamId"], []] },
+            ],
+          },
+        },
+      },
+      { $unwind: "$allTeams" },
+      { $match: { allTeams: { $in: teamObjectIds } } },
+      { $group: { _id: "$allTeams", count: { $sum: 1 } } },
     ]);
     const countMap = new Map(counts.map((c) => [c._id.toString(), c.count]));
 
@@ -107,8 +129,13 @@ export class TeamUseCases {
       .populate("coachId", "firstName lastName")
       .lean();
     if (!team) throw new NotFoundError("Team not found");
-    const students = await StudentModel.find({ teamId: id, deletedAt: { $exists: false } })
-      .select("firstName lastName photo jerseyNumber position attendancePercentage overallRating")
+
+    const teamObjId = new mongoose.Types.ObjectId(id);
+    const students = await StudentModel.find({
+      $or: [{ teamId: teamObjId }, { teamIds: teamObjId }],
+      deletedAt: { $exists: false },
+    })
+      .select("firstName lastName photo jerseyNumber position attendancePercentage overallRating teamId teamIds")
       .lean();
 
     // Normalize formationPresets: squad stored as Mongoose Map, convert to plain object
@@ -168,5 +195,40 @@ export class TeamUseCases {
     const presets: any[] = (team as any).formationPresets ?? [];
     (team as any).formationPresets = presets.filter((p: any) => p.id !== presetId);
     await team.save();
+  }
+
+  async addStudentToTeam(teamId: string, studentId: string) {
+    const team = await TeamModel.findOne({ _id: teamId, deletedAt: { $exists: false } });
+    if (!team) throw new NotFoundError("Team not found");
+
+    const student = await StudentModel.findOne({ _id: studentId, deletedAt: { $exists: false } });
+    if (!student) throw new NotFoundError("Student not found");
+
+    const teamObjId = new mongoose.Types.ObjectId(teamId);
+    await StudentModel.findByIdAndUpdate(studentId, {
+      $addToSet: { teamIds: teamObjId },
+      ...(!student.teamId ? { $set: { teamId: teamObjId } } : {}),
+    });
+  }
+
+  async removeStudentFromTeam(teamId: string, studentId: string) {
+    const student = await StudentModel.findById(studentId);
+    if (!student) throw new NotFoundError("Student not found");
+
+    const teamObjId = new mongoose.Types.ObjectId(teamId);
+    const remainingTeamIds = (student.teamIds || [])
+      .filter((tid: any) => tid.toString() !== teamId);
+
+    const update: Record<string, unknown> = {
+      $pull: { teamIds: teamObjId },
+    };
+
+    if (student.teamId?.toString() === teamId) {
+      update.$set = {
+        teamId: remainingTeamIds.length > 0 ? remainingTeamIds[0] : null,
+      };
+    }
+
+    await StudentModel.findByIdAndUpdate(studentId, update);
   }
 }

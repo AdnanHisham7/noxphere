@@ -316,7 +316,7 @@ const GuardianDashboardPage: React.FC = () => {
                         : sessionsTomorrow.length > 0
                           ? `Next training is scheduled for tomorrow at ${sessionsTomorrow[0].startTime}.`
                           : sessionsUpcoming.length > 0
-                            ? `Next upcoming session is on ${new Date(sessionsUpcoming[0].date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} at ${sessionsUpcoming[0].startTime}.`
+                            ? `Next upcoming session is on ${new Date((sessionsUpcoming[0].date || "") + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} at ${sessionsUpcoming[0].startTime}.`
                             : "Your children are up to date on all training registrations and fee schedules."}
                     </p>
                   </div>
@@ -527,7 +527,7 @@ const GuardianDashboardPage: React.FC = () => {
                             Date &amp; Time
                           </span>
                           <div className="font-medium text-slate-700 dark:text-slate-300 text-xs">
-                            {new Date(s.date).toLocaleDateString(undefined, {
+                            {new Date((s.date || "") + "T00:00:00").toLocaleDateString(undefined, {
                               weekday: "short",
                               month: "short",
                               day: "numeric",

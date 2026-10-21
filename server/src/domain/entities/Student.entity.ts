@@ -51,6 +51,7 @@ export interface StudentEntity {
   userId: string;
   franchiseId?: string;
   teamId?: string;
+  teamIds?: string[];
   coachId?: string;
   guardianIds: string[]; // additional guardian users (if any)
   guardian: GuardianInfo; // primary guardian contact

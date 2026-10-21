@@ -1,10 +1,22 @@
 // src/store/api/financeApi.ts
 import { baseApi } from "./baseApi";
 
+export interface CurrencyBreakdownItem {
+  currency: string;
+  symbol: string;
+  subscriptionAmount: number;
+  nfcAmount: number;
+  totalAmount: number;
+  normalizedInr: number;
+}
+
 export interface FinanceOverview {
+  baseCurrency?: string;
+  baseCurrencySymbol?: string;
   totalPlatformRevenue?: number;
   subscriptionRevenue: number;
   nfcRevenue?: number;
+  currencyBreakdown?: CurrencyBreakdownItem[];
   activeSubscriptionsCount?: number;
   nfcOrdersCount?: number;
   nfcCardsCount?: number;
@@ -45,6 +57,11 @@ export interface AcademyRevenue {
   subscriptionRevenue?: number;
   nfcRevenue?: number;
   academyFeesCollected?: number;
+  currency?: string;
+  currencySymbol?: string;
+  nativeRevenue?: number;
+  nativeSubscriptionRevenue?: number;
+  nativeNfcRevenue?: number;
   collected: number;
   outstanding: number;
   studentCount: number;
@@ -67,6 +84,8 @@ export interface Transaction {
   quantity?: number;
   unitPrice?: number;
   amount: number;
+  currency?: string;
+  currencySymbol?: string;
   paidAt: string;
   method?: string;
   transactionId?: string;

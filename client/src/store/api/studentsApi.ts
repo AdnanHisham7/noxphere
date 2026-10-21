@@ -31,6 +31,7 @@ export interface Student {
   userId: string;
   franchiseId: string;
   teamId?: string;
+  teamIds?: string[];
   coachId?: string;
   guardianIds: string[];
   guardian: GuardianInfo;
@@ -71,6 +72,7 @@ export interface CreateStudentBody {
   ageGroup: string;
   franchiseId: string;
   teamId?: string;
+  teamIds?: string[];
   coachId?: string;
   jerseyNumber?: number;
   jerseySize?: string;
@@ -212,10 +214,23 @@ export const studentsApi = baseApi.injectEndpoints({
       transformResponse: (res: { data: Student }) => res.data,
       invalidatesTags: [{ type: 'Student', id: 'LIST' }, 'Academy'],
     }),
-    updateStudent: builder.mutation<Student, { id: string; data: Omit<Partial<CreateStudentBody>, "teamId" | "franchiseId"> & { teamId?: string | null } }>({
+    updateStudent: builder.mutation<
+      Student,
+      {
+        id: string;
+        data: Omit<Partial<CreateStudentBody>, "teamId" | "franchiseId"> & {
+          teamId?: string | null;
+          teamIds?: string[];
+        };
+      }
+    >({
       query: ({ id, data }) => ({ url: `/students/${id}`, method: 'PUT', body: data }),
       transformResponse: (res: { data: Student }) => res.data,
-      invalidatesTags: (_, __, { id }) => [{ type: 'Student', id }, { type: 'Student', id: 'LIST' }],
+      invalidatesTags: (_, __, { id }) => [
+        { type: 'Student', id },
+        { type: 'Student', id: 'LIST' },
+        'Team',
+      ],
     }),
     updateStudentPhoto: builder.mutation<Student, { id: string; photo: string }>({
       query: ({ id, photo }) => ({ url: `/students/${id}/photo`, method: 'PATCH', body: { photo } }),

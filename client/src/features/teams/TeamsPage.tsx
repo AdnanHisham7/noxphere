@@ -26,6 +26,8 @@ import {
   useDeleteTeamMutation,
   useGetTeamByIdQuery,
   useUpdateTeamMutation,
+  useAddStudentToTeamMutation,
+  useRemoveStudentFromTeamMutation,
   type Team,
 } from "../../store/api/teamsApi";
 import { useGetUsersQuery } from "../../store/api/usersApi";
@@ -509,7 +511,8 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
   const isHeadOffice = (user?.role === "manager" || user?.role === "operational_manager") && !activeFranchiseId;
   const currentAcademyId = useCurrentAcademyId();
   const { data: team, isLoading: teamLoading } = useGetTeamByIdQuery(teamId);
-  const [updateStudent] = useUpdateStudentMutation();
+  const [addStudentToTeam] = useAddStudentToTeamMutation();
+  const [removeStudentFromTeam] = useRemoveStudentFromTeamMutation();
   const { confirm, ConfirmDialog } = useConfirm();
   const { data: franchises } = useGetFranchisesQuery(
     currentAcademyId
@@ -548,15 +551,15 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
   const handleRemove = async (studentId: string, studentName?: string) => {
     const ok = await confirm({
       title: "Remove Player from Team",
-      message: `Are you sure you want to remove ${studentName || "this player"} from ${team?.name ? `"${team.name}"` : "the team roster"}? The player will remain enrolled in the academy.`,
+      message: `Are you sure you want to remove ${studentName || "this player"} from ${team?.name ? `"${team.name}"` : "the team roster"}? The player will remain enrolled in the academy and keep any other team memberships.`,
       confirmLabel: "Remove Player",
       danger: true,
     });
     if (!ok) return;
 
     try {
-      await updateStudent({ id: studentId, data: { teamId: null } }).unwrap();
-      toast.success("Player removed from team");
+      await removeStudentFromTeam({ teamId, studentId }).unwrap();
+      toast.success("Player removed from squad");
     } catch {
       toast.error("Couldn't remove player — try again");
     }
@@ -564,8 +567,8 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
 
   const handleAssign = async (studentId: string) => {
     try {
-      await updateStudent({ id: studentId, data: { teamId } }).unwrap();
-      toast.success("Player assigned to team");
+      await addStudentToTeam({ teamId, studentId }).unwrap();
+      toast.success("Player added to squad");
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't assign player — try again");
     }
@@ -659,6 +662,11 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
                         </p>
                         <p className="text-[10px] text-slate-500 font-mono mt-0.5">
                           {s.attendancePercentage}% attendance
+                          {Array.isArray((s as any).teamIds) && (s as any).teamIds.length > 1 && (
+                            <span className="text-volt-400 font-semibold ml-1.5">
+                              · In {(s as any).teamIds.length} squads
+                            </span>
+                          )}
                         </p>
                       </div>
                       <button
@@ -666,7 +674,7 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
                           handleRemove(s._id, `${s.firstName} ${s.lastName}`)
                         }
                         className="text-slate-500 hover:text-ember-400 transition-colors p-1"
-                        title="Remove player"
+                        title="Remove from this team"
                       >
                         <Trash2 size={13} />
                       </button>
@@ -748,16 +756,22 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
                         <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
                           {s.firstName} {s.lastName}
                         </p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">
-                          {s.ageGroup} ·{" "}
-                          {s.teamId ? "Already on a team" : "Unassigned"}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          <span className="text-[10px] text-slate-500">{s.ageGroup}</span>
+                          {s.teamId || (s.teamIds && s.teamIds.length > 0) ? (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 font-mono font-medium">
+                              In {s.teamIds && s.teamIds.length > 1 ? `${s.teamIds.length} squads` : "1 squad"}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 font-mono">Unassigned</span>
+                          )}
+                        </div>
                       </div>
                       <button
                         onClick={() => handleAssign(s.id)}
-                        className="px-2.5 py-1 rounded bg-volt-400 hover:bg-volt-300 text-pitch-900 text-[10px] font-bold uppercase transition-all"
+                        className="px-2.5 py-1 rounded bg-volt-400 hover:bg-volt-300 text-pitch-900 text-[10px] font-bold uppercase transition-all shrink-0 ml-2"
                       >
-                        {s.teamId ? "Transfer" : "Assign"}
+                        + Add to Team
                       </button>
                     </div>
                   ))
