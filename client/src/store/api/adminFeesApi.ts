@@ -14,6 +14,8 @@ export interface FeeAuditLog {
   paymentMethod?: string;
   transactionId?: string;
   paymentBreakdown?: PaymentBreakdownItem[];
+  exchangeRateToInr?: number;
+  paidAmountInInr?: number;
   timestamp: string;
   performedByName: string;
   details?: string;
@@ -38,6 +40,8 @@ export interface FeeInstallment {
   paymentMethod?: string;
   transactionId?: string;
   paymentBreakdown?: PaymentBreakdownItem[];
+  exchangeRateToInr?: number;
+  paidAmountInInr?: number;
   verificationProof?: VerificationProof;
   receiptUrl?: string;
   reminderSentCount?: number;

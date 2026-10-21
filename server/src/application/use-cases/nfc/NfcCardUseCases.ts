@@ -15,6 +15,7 @@ import {
   getNfcPricingForCurrency,
   getCurrencySymbol,
 } from "../../../infrastructure/services/GeoLocationService";
+import { exchangeRateService } from "../../../infrastructure/services/ExchangeRateService";
 import { config } from "../../../config/app.config";
 import {
   BadRequestError,
@@ -507,6 +508,14 @@ export class NfcCardUseCases {
     request.razorpayOrderId = orderId;
     request.razorpayPaymentId = paymentId;
     request.razorpaySignature = signature;
+
+    const { rate, amountInInr } = await exchangeRateService.convertToInr(
+      request.totalAmount,
+      request.currency,
+    );
+    request.exchangeRateToInr = rate;
+    request.totalAmountInInr = amountInInr;
+
     await request.save();
 
     const sym = getCurrencySymbol(request.currency);

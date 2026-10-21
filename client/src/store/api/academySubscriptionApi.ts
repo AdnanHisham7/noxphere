@@ -245,6 +245,8 @@ export interface BillingTransaction {
   amountPaid: number;
   amountDue: number;
   currency?: string | null;
+  exchangeRateToInr?: number;
+  amountInInr?: number;
   status: string | null;
   created: string;
   invoicePdf: string | null;

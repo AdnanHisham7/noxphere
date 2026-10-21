@@ -113,7 +113,10 @@ export class FinanceUseCases {
     for (const sub of subscriptions) {
       const amountNative = computeSubscriptionAmount(sub);
       const subCurrency = (sub.currency || "INR").toUpperCase();
-      const amountInr = convertToInr(amountNative, subCurrency, settings?.currencyPricing);
+      const paidPayment = sub.payments?.find((p) => p.status === "paid" && typeof p.amountInInr === "number");
+      const amountInr = paidPayment?.amountInInr !== undefined
+        ? paidPayment.amountInInr
+        : convertToInr(amountNative, subCurrency, settings?.currencyPricing);
       subscriptionRevenueInr += amountInr;
 
       const item = getOrCreateBreakdown(subCurrency);
@@ -139,7 +142,9 @@ export class FinanceUseCases {
     for (const o of nfcOrders) {
       const amountNative = o.totalAmount || 0;
       const nfcCurrency = (o.currency || "INR").toUpperCase();
-      const amountInr = convertToInr(amountNative, nfcCurrency, settings?.currencyPricing);
+      const amountInr = typeof o.totalAmountInInr === "number"
+        ? o.totalAmountInInr
+        : convertToInr(amountNative, nfcCurrency, settings?.currencyPricing);
       nfcRevenueInr += amountInr;
       nfcCardsCount += o.quantity || 0;
 
@@ -263,7 +268,10 @@ export class FinanceUseCases {
       const bucket = buckets.get(key);
       if (!bucket) continue;
       const amountNative = computeSubscriptionAmount(sub);
-      const amountInr = convertToInr(amountNative, sub.currency || "INR", settings?.currencyPricing);
+      const paidPayment = sub.payments?.find((p) => p.status === "paid" && typeof p.amountInInr === "number");
+      const amountInr = paidPayment?.amountInInr !== undefined
+        ? paidPayment.amountInInr
+        : convertToInr(amountNative, sub.currency || "INR", settings?.currencyPricing);
       bucket.subscriptionRevenue += amountInr;
       bucket.platformRevenue += amountInr;
       bucket.revenue += amountInr;
@@ -283,7 +291,9 @@ export class FinanceUseCases {
       const bucket = buckets.get(key);
       if (!bucket) continue;
       const amountNative = order.totalAmount || 0;
-      const amountInr = convertToInr(amountNative, order.currency || "INR", settings?.currencyPricing);
+      const amountInr = typeof order.totalAmountInInr === "number"
+        ? order.totalAmountInInr
+        : convertToInr(amountNative, order.currency || "INR", settings?.currencyPricing);
       bucket.nfcRevenue += amountInr;
       bucket.platformRevenue += amountInr;
       bucket.revenue += amountInr;
@@ -326,7 +336,10 @@ export class FinanceUseCases {
         // SaaS subscription from this academy to Platform
         const activeSub = await AcademySubscriptionModel.findOne({ academyId: a._id, status: "active" });
         const subscriptionRevenueNative = activeSub ? computeSubscriptionAmount(activeSub) : 0;
-        const subRevenueInr = convertToInr(subscriptionRevenueNative, currency, settings?.currencyPricing);
+        const paidSubPayment = activeSub?.payments?.find((p) => p.status === "paid" && typeof p.amountInInr === "number");
+        const subRevenueInr = paidSubPayment?.amountInInr !== undefined
+          ? paidSubPayment.amountInInr
+          : convertToInr(subscriptionRevenueNative, currency, settings?.currencyPricing);
 
         // NFC Cards purchased by this academy from Platform
         const nfcOrders = await NfcCardRequestModel.find({
@@ -335,6 +348,9 @@ export class FinanceUseCases {
         });
         const nfcRevenueNative = nfcOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
         const nfcRevenueInr = nfcOrders.reduce((sum, o) => {
+          if (typeof o.totalAmountInInr === "number") {
+            return sum + o.totalAmountInInr;
+          }
           const oCurr = (o.currency || currency || "INR").toUpperCase();
           return sum + convertToInr(o.totalAmount || 0, oCurr, settings?.currencyPricing);
         }, 0);
@@ -432,15 +448,22 @@ export class FinanceUseCases {
 
     const subTransactions = recentSubs.map((s: any) => {
       const currency = (s.currency || s.academyId?.currency || "INR").toUpperCase();
+      const lastPayment = Array.isArray(s.payments) && s.payments.length > 0 ? s.payments[s.payments.length - 1] : null;
+      const subAmount = computeSubscriptionAmount(s);
+      const exchangeRateToInr = lastPayment?.exchangeRateToInr ?? (currency === "INR" ? 1 : undefined);
+      const amountInInr = lastPayment?.amountInInr ?? (currency === "INR" ? subAmount : undefined);
+
       return {
         feeId: s._id.toString(),
         type: "academy_subscription" as const,
         student: `${s.academyId?.name || "Academy"}`,
         academyName: s.academyId?.name || "Academy",
         billingInterval: s.billingInterval,
-        amount: computeSubscriptionAmount(s),
+        amount: subAmount,
         currency,
         currencySymbol: getCurrencySymbol(currency),
+        exchangeRateToInr,
+        amountInInr,
         paidAt: s.updatedAt || s.createdAt,
         method: "Razorpay",
         transactionId: s.razorpayPaymentId || s.razorpayOrderId || "rzp_sub",
@@ -471,6 +494,8 @@ export class FinanceUseCases {
         amount: o.totalAmount,
         currency,
         currencySymbol: getCurrencySymbol(currency),
+        exchangeRateToInr: o.exchangeRateToInr ?? (currency === "INR" ? 1 : undefined),
+        amountInInr: o.totalAmountInInr ?? (currency === "INR" ? o.totalAmount : undefined),
         paidAt: o.paidAt || o.updatedAt || o.createdAt,
         method: "Razorpay",
         transactionId: o.razorpayPaymentId || o.razorpayOrderId || "rzp_nfc",
@@ -504,6 +529,8 @@ export class FinanceUseCases {
             amount: i.paidAmount,
             currency,
             currencySymbol: getCurrencySymbol(currency),
+            exchangeRateToInr: i.exchangeRateToInr ?? (currency === "INR" ? 1 : undefined),
+            amountInInr: i.paidAmountInInr ?? (currency === "INR" ? i.paidAmount : undefined),
             paidAt: i.paidAt,
             method: i.paymentMethod,
             transactionId: i.transactionId,

@@ -475,7 +475,19 @@ export const SubscriptionManagementPage: React.FC = () => {
                       })}
                     </td>
                     <td className="py-3 px-4 text-volt-400 font-bold">
-                      {formatCurrency(tx.amountPaid, tx.currency || details?.currency || currency)}
+                      <div>{formatCurrency(tx.amountPaid, tx.currency || details?.currency || currency)}</div>
+                      {tx.currency && tx.currency !== "INR" && (
+                        <div className="text-[10px] text-slate-400 font-normal font-sans mt-0.5">
+                          {tx.exchangeRateToInr ? (
+                            <>
+                              ≈ ₹{Number(tx.amountInInr || (tx.amountPaid * tx.exchangeRateToInr)).toLocaleString("en-IN", { maximumFractionDigits: 2 })}{" "}
+                              <span className="text-slate-500">(@ ₹{Number(tx.exchangeRateToInr).toFixed(2)})</span>
+                            </>
+                          ) : (
+                            <span>{tx.currency}</span>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 px-4">
                       {tx.status === "paid" ? (
