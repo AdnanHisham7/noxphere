@@ -1,30 +1,30 @@
 // src/features/resources/ResourcesPage.tsx
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import { toast } from "react-hot-toast";
-import { FileText, Image as ImageIcon, Upload, CheckCircle2, Clock, Trash2, ExternalLink, HardDrive } from "lucide-react";
-import { Button, Card, Badge, Skeleton, EmptyState, PageHeader } from "../../components/ui";
+import {
+  FileText,
+  Image as ImageIcon,
+  Upload,
+  CheckCircle2,
+  Clock,
+  Trash2,
+  ExternalLink,
+  HardDrive,
+  Search,
+  Filter,
+} from "lucide-react";
+import { Button, Card, Badge, Skeleton, EmptyState, PageHeader, Input } from "../../components/ui";
 import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import {
   useGetResourcesQuery,
-  useUploadResourceMutation,
   useVerifyResourceMutation,
   useDeleteResourceMutation,
   type Resource,
 } from "../../store/api/resourcesApi";
 import { useConfirm } from "../../hooks/useConfirm";
-
-const ALLOWED_TYPES = [
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-];
-const MAX_BYTES = 20 * 1024 * 1024;
+import { UploadResourceModal } from "./components/UploadResourceModal";
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
@@ -33,40 +33,25 @@ function formatBytes(bytes: number): string {
   return `${bytes} B`;
 }
 
+type FilterStatus = "all" | "verified" | "pending";
+
 const ResourcesPage: React.FC = () => {
   const franchiseId = useCurrentFranchiseId();
   const { user } = useSelector((s: RootState) => s.auth);
-  const isManager = user?.role === "manager" || user?.role === "operational_manager" || user?.role === "super_admin";
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const isManager =
+    user?.role === "manager" || user?.role === "operational_manager" || user?.role === "super_admin";
+
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
 
   const { data, isLoading, isError } = useGetResourcesQuery(
     { franchiseId: franchiseId ?? "" },
     { skip: !franchiseId },
   );
-  const [uploadResource, { isLoading: uploading }] = useUploadResourceMutation();
   const [verifyResource] = useVerifyResourceMutation();
   const [deleteResource] = useDeleteResourceMutation();
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const handleFileSelected = async (file: File | undefined) => {
-    if (!file || !franchiseId) return;
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error("Only PDF, Word, JPEG, PNG, WEBP or GIF files are allowed");
-      return;
-    }
-    if (file.size > MAX_BYTES) {
-      toast.error("File is too large — the limit is 20MB per file");
-      return;
-    }
-    try {
-      await uploadResource({ franchiseId, file }).unwrap();
-      toast.success(isManager ? "Resource uploaded" : "Resource uploaded — visible to you until a manager verifies it");
-    } catch (err: any) {
-      toast.error(err?.data?.message || "Upload failed — try again");
-    } finally {
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
 
   const handleVerify = async (id: string) => {
     try {
@@ -104,6 +89,23 @@ const ResourcesPage: React.FC = () => {
     : 0;
   const storageNearFull = storagePercent >= 90;
 
+  const rawResources = data?.data ?? [];
+
+  const filteredResources = rawResources.filter((resource) => {
+    // Status filter
+    if (filterStatus === "verified" && !resource.verified) return false;
+    if (filterStatus === "pending" && resource.verified) return false;
+
+    // Search query filter
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const titleMatch = (resource.title || "").toLowerCase().includes(q);
+    const fileNameMatch = resource.fileName.toLowerCase().includes(q);
+    const notesMatch = (resource.notes || "").toLowerCase().includes(q);
+    const uploaderMatch = (resource.uploadedByName || "").toLowerCase().includes(q);
+    return titleMatch || fileNameMatch || notesMatch || uploaderMatch;
+  });
+
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
@@ -111,30 +113,25 @@ const ResourcesPage: React.FC = () => {
         title="Resources"
         subtitle={
           isManager
-            ? "Every document and image uploaded by your coaches, for review and verification."
-            : "Your uploads, plus anything a manager has verified for the whole coaching staff."
+            ? "Every document, tactical playbook, and resource uploaded for your academy, with review controls."
+            : "Your uploaded resources, plus verified training materials from the academy coaching staff."
         }
         actions={
-          <div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={ALLOWED_TYPES.join(",")}
-              className="hidden"
-              onChange={(e) => handleFileSelected(e.target.files?.[0])}
-            />
-            <Button
-              icon={<Upload size={16} />}
-              loading={uploading}
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full sm:w-auto"
-            >
-              Upload resource
-            </Button>
-          </div>
+          <Button
+            icon={<Upload size={16} />}
+            onClick={() => {
+              if (!franchiseId) {
+                toast.error("Please select a franchise first");
+                return;
+              }
+              setIsUploadModalOpen(true);
+            }}
+            className="w-full sm:w-auto"
+          >
+            Upload resource
+          </Button>
         }
       />
-
 
       {/* Storage bar — manager/super_admin only */}
       {isManager && data?.storage && (
@@ -148,9 +145,11 @@ const ResourcesPage: React.FC = () => {
               {formatBytes(data.storage.usedBytes)} of {formatBytes(data.storage.limitBytes)} used
             </span>
           </div>
-          <div className="h-2.5 w-full bg-white/5 rounded-full overflow-hidden">
+          <div className="h-2.5 w-full bg-slate-200 dark:bg-white/5 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all ${storageNearFull ? "bg-ember-500" : "bg-volt-400"}`}
+              className={`h-full rounded-full transition-all duration-300 ${
+                storageNearFull ? "bg-ember-500" : "bg-volt-400"
+              }`}
               style={{ width: `${storagePercent}%` }}
             />
           </div>
@@ -162,26 +161,88 @@ const ResourcesPage: React.FC = () => {
         </Card>
       )}
 
+      {/* Search & Filter Controls */}
+      {!isLoading && !isError && rawResources.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Input
+              icon={<Search size={15} />}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by title, notes, or filename..."
+              className="text-sm"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 self-start sm:self-auto bg-slate-100 dark:bg-white/[0.04] p-1 rounded-lg border border-slate-200 dark:border-white/5 text-xs">
+            <button
+              onClick={() => setFilterStatus("all")}
+              className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+                filterStatus === "all"
+                  ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              All ({rawResources.length})
+            </button>
+            <button
+              onClick={() => setFilterStatus("verified")}
+              className={`px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1.5 ${
+                filterStatus === "verified"
+                  ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <CheckCircle2 size={12} className="text-emerald-500" />
+              Verified ({rawResources.filter((r) => r.verified).length})
+            </button>
+            <button
+              onClick={() => setFilterStatus("pending")}
+              className={`px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1.5 ${
+                filterStatus === "pending"
+                  ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <Clock size={12} className="text-amber-500" />
+              Pending ({rawResources.filter((r) => !r.verified).length})
+            </button>
+          </div>
+        </div>
+      )}
+
       {isLoading && (
         <div className="space-y-3">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
         </div>
       )}
 
       {isError && <EmptyState title="Couldn't load resources" description="Try refreshing the page." />}
 
-      {!isLoading && !isError && (!data || data.data.length === 0) && (
+      {!isLoading && !isError && rawResources.length === 0 && (
         <EmptyState
           icon={<Upload size={28} />}
           title="No resources yet"
-          description={isManager ? "Once coaches upload documents, they'll show up here for review." : "Upload session plans, drills, or reference documents — they'll stay visible to just you until a manager verifies them."}
+          description={
+            isManager
+              ? "Once coaches upload documents with title and notes, they'll show up here for review."
+              : "Upload session plans, drills, or reference documents with notes — they'll stay visible to just you until a manager verifies them."
+          }
         />
       )}
 
-      <div className="space-y-2">
-        {data?.data.map((resource) => (
+      {!isLoading && !isError && rawResources.length > 0 && filteredResources.length === 0 && (
+        <EmptyState
+          icon={<Search size={24} />}
+          title="No matching resources"
+          description="Try adjusting your search query or status filter."
+        />
+      )}
+
+      <div className="space-y-3">
+        {filteredResources.map((resource) => (
           <ResourceRow
             key={resource.id}
             resource={resource}
@@ -189,10 +250,21 @@ const ResourcesPage: React.FC = () => {
             isOwner={resource.uploadedBy === user?.id}
             deleting={deletingId === resource.id}
             onVerify={() => handleVerify(resource.id)}
-            onDelete={() => handleDelete(resource.id, resource.fileName)}
+            onDelete={() => handleDelete(resource.id, resource.title || resource.fileName)}
           />
         ))}
       </div>
+
+      <UploadResourceModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        franchiseId={franchiseId ?? ""}
+        isManager={isManager}
+        remainingBytes={
+          data?.storage ? Math.max(0, data.storage.limitBytes - data.storage.usedBytes) : undefined
+        }
+      />
+
       {ConfirmDialog}
     </div>
   );
@@ -210,48 +282,80 @@ const ResourceRow: React.FC<{
   const isDoc = resource.mimeType.includes("word") || resource.mimeType === "application/msword";
   const canDelete = isManager || isOwner;
 
+  const displayName = resource.title?.trim() || resource.fileName;
+  const hasCustomTitle = Boolean(resource.title?.trim() && resource.title.trim() !== resource.fileName);
+
   return (
-    <Card className="p-4 flex items-center gap-4">
-      <div className="w-10 h-10 rounded bg-white/5 flex items-center justify-center shrink-0 text-slate-400">
-        {isPdf || isDoc ? <FileText size={18} /> : <ImageIcon size={18} />}
+    <Card className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-slate-300 dark:hover:border-white/10">
+      <div className="flex items-start gap-3.5 flex-1 min-w-0">
+        <div className="w-10 h-10 rounded-lg bg-volt-400/10 text-volt-500 flex items-center justify-center shrink-0 mt-0.5">
+          {isPdf || isDoc ? <FileText size={20} /> : <ImageIcon size={20} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <a
+              href={resource.fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-semibold text-slate-900 dark:text-white hover:text-volt-600 dark:hover:text-volt-400 transition-colors truncate max-w-full inline-flex items-center gap-1.5 group"
+            >
+              <span className="truncate">{displayName}</span>
+              <ExternalLink size={12} className="text-slate-400 group-hover:text-volt-500 shrink-0" />
+            </a>
+            {hasCustomTitle && (
+              <span className="text-2xs font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/[0.04] px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/5 truncate max-w-[220px]">
+                {resource.fileName}
+              </span>
+            )}
+          </div>
+
+          {resource.notes && (
+            <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 bg-slate-50/80 dark:bg-white/[0.02] border border-slate-200/70 dark:border-white/5 rounded-md px-3 py-1.5 line-clamp-3 leading-relaxed">
+              {resource.notes}
+            </p>
+          )}
+
+          <p className="text-2xs text-slate-500 dark:text-slate-400 mt-1.5">
+            Uploaded by {resource.uploadedByName ?? "Unknown"} · {formatBytes(resource.fileSizeBytes)} ·{" "}
+            {new Date(resource.createdAt).toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
+          </p>
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <a
-          href={resource.fileUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="text-sm font-semibold text-slate-900 dark:text-white hover:text-volt-600 dark:hover:text-volt-400 transition-colors truncate flex items-center gap-1.5"
-        >
-          {resource.fileName}
-          <ExternalLink size={12} className="text-slate-500" />
-        </a>
-        <p className="text-2xs text-slate-500 mt-0.5">
-          {resource.uploadedByName ?? "Unknown"} · {formatBytes(resource.fileSizeBytes)} ·{" "}
-          {new Date(resource.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-        </p>
+
+      <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-white/5">
+        {resource.verified ? (
+          <Badge variant="green" size="sm">
+            <span className="inline-flex items-center gap-1">
+              <CheckCircle2 size={11} /> Verified
+            </span>
+          </Badge>
+        ) : (
+          <Badge variant="yellow" size="sm">
+            <span className="inline-flex items-center gap-1">
+              <Clock size={11} /> Pending review
+            </span>
+          </Badge>
+        )}
+        {isManager && !resource.verified && (
+          <Button size="sm" variant="secondary" onClick={onVerify}>
+            Verify
+          </Button>
+        )}
+        {canDelete && (
+          <button
+            onClick={onDelete}
+            disabled={deleting}
+            className="text-slate-400 hover:text-ember-400 transition-colors p-1.5 rounded-lg disabled:opacity-50"
+            aria-label="Remove resource"
+          >
+            <Trash2 size={15} />
+          </button>
+        )}
       </div>
-      {resource.verified ? (
-        <Badge variant="green" size="sm">
-          <span className="inline-flex items-center gap-1"><CheckCircle2 size={11} /> Verified</span>
-        </Badge>
-      ) : (
-        <Badge variant="yellow" size="sm">
-          <span className="inline-flex items-center gap-1"><Clock size={11} /> Pending review</span>
-        </Badge>
-      )}
-      {isManager && !resource.verified && (
-        <Button size="sm" variant="secondary" onClick={onVerify}>Verify</Button>
-      )}
-      {canDelete && (
-        <button
-          onClick={onDelete}
-          disabled={deleting}
-          className="text-slate-500 hover:text-ember-400 transition-colors p-1.5 disabled:opacity-50"
-          aria-label="Remove resource"
-        >
-          <Trash2 size={15} />
-        </button>
-      )}
     </Card>
   );
 };

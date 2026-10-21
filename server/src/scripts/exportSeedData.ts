@@ -49,6 +49,8 @@ export async function exportSeedImages() {
         avatar: u.avatar || null,
       })),
     resources: resources.map((r) => ({
+      title: (r as any).title,
+      notes: (r as any).notes,
       fileName: r.fileName,
       fileUrl: r.fileUrl,
       mimeType: r.mimeType,

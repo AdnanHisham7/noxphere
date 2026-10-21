@@ -14,6 +14,8 @@ function toCard(doc: any) {
   const uploader = j.uploadedBy && typeof j.uploadedBy === "object" ? j.uploadedBy : undefined;
   return {
     ...j,
+    title: j.title || j.fileName,
+    notes: j.notes || "",
     uploadedBy: uploader ? uploader.id ?? uploader._id?.toString() : j.uploadedBy,
     uploadedByName: uploader ? `${uploader.firstName} ${uploader.lastName}` : undefined,
   };
@@ -62,6 +64,8 @@ export class ResourceUseCases {
     fileName: string;
     mimeType: string;
     fileSizeBytes: number;
+    title?: string;
+    notes?: string;
   }) {
     const academyId = await this.resolveAcademyId(input.franchiseId);
     this.assertSameAcademy(academyId, {
@@ -86,6 +90,8 @@ export class ResourceUseCases {
       franchiseId: input.franchiseId,
       academyId,
       uploadedBy: input.uploadedBy,
+      title: input.title?.trim() || input.fileName,
+      notes: input.notes?.trim() || undefined,
       fileName: input.fileName,
       fileUrl: uploaded.url,
       publicId: uploaded.publicId,
