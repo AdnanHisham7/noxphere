@@ -324,7 +324,7 @@ export const TopBar: React.FC = () => {
           </Link>
 
           {user?.role === "coach" ? (
-            <CoachFranchiseSwitcher />
+            !hideFranchiseSwitcher && <CoachFranchiseSwitcher />
           ) : (
             user?.role !== "super_admin" &&
             !hideFranchiseSwitcher && <FranchiseSwitcher />

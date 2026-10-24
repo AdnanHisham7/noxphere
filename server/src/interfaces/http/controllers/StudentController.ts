@@ -11,7 +11,7 @@ import {
   RegisterPublicStudentSchema,
   ClaimStudentSchema,
 } from '../../../application/dtos/student.dto';
-import { ForbiddenError } from '../../../shared/errors/AppError';
+import { ForbiddenError, BadRequestError } from '../../../shared/errors/AppError';
 
 
 export class StudentController {
@@ -27,8 +27,11 @@ export class StudentController {
 
   list = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { franchiseId } = req.query;
-      if (!franchiseId) throw new Error('franchiseId is required');
+      const { franchiseId, academyId } = req.query;
+      const resolvedAcademyId = (academyId as string) || (req.user as any)?.academyId;
+      if (!franchiseId && !resolvedAcademyId) {
+        throw new BadRequestError('franchiseId or academyId is required');
+      }
       const {
         page = 1,
         limit = 20,
@@ -44,11 +47,12 @@ export class StudentController {
       // is requested.
       const restrictToCoachId = req.user!.role === 'coach' ? req.user!.sub : undefined;
       const result = await this.studentUseCases.getStudents(
-        franchiseId as string,
+        franchiseId as string | undefined,
         { search, teamId, ageGroup, selectionStatus, status, deleted },
         Number(page),
         Number(limit),
         restrictToCoachId,
+        resolvedAcademyId,
       );
       ResponseHandler.success(res, result, 'Students retrieved');
     } catch (err) { next(err); }

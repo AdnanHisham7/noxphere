@@ -30,6 +30,8 @@ export interface Student {
   id: string;
   userId: string;
   franchiseId: string;
+  franchiseName?: string;
+  franchise?: { id: string; name: string };
   teamId?: string;
   teamIds?: string[];
   coachId?: string;
@@ -163,7 +165,8 @@ export const studentsApi = baseApi.injectEndpoints({
     getStudents: builder.query<
       { items: Student[]; total: number },
       {
-        franchiseId: string;
+        franchiseId?: string;
+        academyId?: string;
         page?: number;
         limit?: number;
         search?: string;
@@ -176,6 +179,7 @@ export const studentsApi = baseApi.injectEndpoints({
     >({
       query: ({
         franchiseId,
+        academyId,
         page = 1,
         limit = 20,
         search,
@@ -187,7 +191,8 @@ export const studentsApi = baseApi.injectEndpoints({
       }) => ({
         url: '/students',
         params: {
-          franchiseId,
+          franchiseId: franchiseId || undefined,
+          academyId: academyId || undefined,
           page,
           limit,
           search,

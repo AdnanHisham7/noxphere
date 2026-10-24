@@ -543,6 +543,12 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 italic leading-relaxed">
                     Role: {selectedPlayer.position} specialist <br />
                     Squad number: {selectedPlayer.squadNumber}
+                    {selectedPlayer.branchName && (
+                      <>
+                        <br />
+                        Branch: <span className="font-semibold text-volt-600 dark:text-volt-400">{selectedPlayer.branchName}</span>
+                      </>
+                    )}
                   </p>
                   {(() => {
                     const selectedSlot = Object.entries(squad).find(([_, id]) => id === selectedPlayer.id)?.[0];

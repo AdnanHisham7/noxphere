@@ -44,6 +44,7 @@ export class StudentRepository implements IStudentRepository {
     const queryOptions = options?.includeDeleted ? { includeDeleted: true } : {};
     const [items, total] = await Promise.all([
       StudentModel.find(query)
+        .populate("franchiseId", "name")
         .setOptions(queryOptions)
         .skip((page - 1) * limit)
         .limit(limit)
@@ -151,7 +152,12 @@ export class StudentRepository implements IStudentRepository {
     return {
       id: doc._id.toString(),
       userId: doc.userId.toString(),
-      franchiseId: doc.franchiseId.toString(),
+      franchiseId: doc.franchiseId?._id?.toString() || doc.franchiseId?.toString() || "",
+      franchiseName: doc.franchiseId && typeof doc.franchiseId === "object" ? doc.franchiseId.name : undefined,
+      franchise: doc.franchiseId && typeof doc.franchiseId === "object" ? {
+        id: doc.franchiseId._id?.toString() || doc.franchiseId.toString(),
+        name: doc.franchiseId.name,
+      } : undefined,
       teamId: doc.teamId?.toString(),
       teamIds: Array.isArray(doc.teamIds) && doc.teamIds.length > 0
         ? doc.teamIds.map((id: any) => id.toString())

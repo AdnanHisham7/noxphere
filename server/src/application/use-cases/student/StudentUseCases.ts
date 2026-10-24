@@ -346,11 +346,12 @@ export class StudentUseCases {
   }
 
   async getStudents(
-    franchiseId: string,
+    franchiseId: string | undefined,
     filters: any,
     page = 1,
     limit = 20,
     restrictToCoachId?: string,
+    academyId?: string,
   ): Promise<{ items: StudentEntity[]; total: number }> {
     const isDeletedRequested =
       filters.deleted === true ||
@@ -359,7 +360,14 @@ export class StudentUseCases {
       filters.status === "archived" ||
       filters.status === "dropped_out";
 
-    const filter: any = { franchiseId };
+    const filter: any = {};
+    if (franchiseId && franchiseId !== "all") {
+      filter.franchiseId = franchiseId;
+    } else if (academyId) {
+      const franchises = await FranchiseModel.find({ academyId }).select("_id").lean();
+      const franchiseIds = franchises.map((f) => f._id);
+      filter.franchiseId = { $in: franchiseIds };
+    }
 
     if (isDeletedRequested) {
       filter.$or = [
@@ -386,11 +394,18 @@ export class StudentUseCases {
     // a team reassignment can never leave a coach seeing a stale roster.
     let allowedTeamIds: string[] | null = null;
     if (restrictToCoachId) {
-      const coachTeams = await TeamModel.find({
-        franchiseId,
+      const coachTeamQuery: any = {
         coachId: restrictToCoachId,
         deletedAt: { $exists: false },
-      })
+      };
+      if (franchiseId && franchiseId !== "all") {
+        coachTeamQuery.franchiseId = franchiseId;
+      } else if (academyId) {
+        const franchises = await FranchiseModel.find({ academyId }).select("_id").lean();
+        const franchiseIds = franchises.map((f) => f._id);
+        coachTeamQuery.franchiseId = { $in: franchiseIds };
+      }
+      const coachTeams = await TeamModel.find(coachTeamQuery)
         .select("_id")
         .lean();
       allowedTeamIds = coachTeams.map((t) => t._id.toString());

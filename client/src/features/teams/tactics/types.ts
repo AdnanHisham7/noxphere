@@ -12,6 +12,7 @@ export interface Player {
   position: Position;
   squadNumber: number;
   photo?: string;
+  branchName?: string;
 }
 
 export type TeamFormat = "5s" | "6s" | "7s" | "8s" | "9s" | "10s" | "11s";
