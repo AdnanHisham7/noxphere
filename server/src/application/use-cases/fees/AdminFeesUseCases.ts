@@ -138,6 +138,10 @@ export class AdminFeesUseCases {
     const user = await UserModel.findById(performedBy).select("firstName lastName").lean();
     const performedByName = user ? `${user.firstName} ${user.lastName}` : "Manager";
 
+    if (fee.overallStatus === "paid") {
+      throw new BadRequestError("Cannot edit a fee schedule that is already fully paid.");
+    }
+
     // If installments are being updated
     if (input.installments && Array.isArray(input.installments) && input.installments.length > 0) {
       // Check if any existing installment with payments recorded is being removed or reduced below paid amount
@@ -160,7 +164,9 @@ export class AdminFeesUseCases {
       }
 
       // Cancel old reminder queue entries before rescheduling
-      await schedulerService.cancelFeeReminders(String(fee._id));
+      schedulerService.cancelFeeReminders(String(fee._id)).catch((err) => {
+        logger.error(`[AdminFeesUseCases] Failed cancelling old reminders for fee ${fee._id}:`, err);
+      });
 
       const now = new Date();
       // Re-map installments preserving paid status and paidAmounts
@@ -246,10 +252,13 @@ export class AdminFeesUseCases {
       );
     }
 
-    // Cancel pending reminder jobs
-    await schedulerService.cancelFeeReminders(String(fee._id));
-
+    // Delete fee record from database immediately so deletion is instant
     await FeeModel.findByIdAndDelete(feeId);
+
+    // Cancel pending reminder jobs in background without blocking response
+    schedulerService.cancelFeeReminders(String(fee._id)).catch((err) => {
+      logger.error(`[AdminFeesUseCases] Failed cancelling reminders for deleted fee ${feeId}:`, err);
+    });
 
     logger.info(`[AdminFeesUseCases] Fee ${feeId} deleted by user ${performedBy}`);
     return { success: true, message: "Fee schedule deleted successfully" };

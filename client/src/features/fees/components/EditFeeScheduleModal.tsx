@@ -42,6 +42,7 @@ export const EditFeeScheduleModal: React.FC<EditFeeScheduleModalProps> = ({
   );
 
   const totalPaid = fee.installments.reduce((sum, i) => sum + (i.paidAmount || 0), 0);
+  const isFullyPaid = fee.overallStatus === "paid" || (totalPaid >= fee.finalAmount && totalPaid > 0);
   const canDelete = totalPaid === 0;
 
   const addInstallment = () => {
@@ -78,6 +79,11 @@ export const EditFeeScheduleModal: React.FC<EditFeeScheduleModalProps> = ({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isFullyPaid) {
+      toast.error("This fee plan is already fully paid and cannot be edited.");
+      return;
+    }
 
     if (installments.length === 0) {
       toast.error("Please add at least one installment milestone.");
@@ -165,6 +171,13 @@ export const EditFeeScheduleModal: React.FC<EditFeeScheduleModalProps> = ({
             </span>
           </div>
         </div>
+
+        {isFullyPaid && (
+          <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0" />
+            <span>This fee plan is already fully paid and settled. Amounts and milestones cannot be modified.</span>
+          </div>
+        )}
 
         {/* Plan Settings */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -325,8 +338,9 @@ export const EditFeeScheduleModal: React.FC<EditFeeScheduleModalProps> = ({
             </Button>
             <Button
               type="submit"
+              disabled={isFullyPaid}
               loading={isLoading}
-              className="bg-volt-400 hover:bg-volt-300 text-pitch-950 font-bold"
+              className="bg-volt-400 hover:bg-volt-300 text-pitch-950 font-bold disabled:opacity-40"
             >
               Save Schedule
             </Button>

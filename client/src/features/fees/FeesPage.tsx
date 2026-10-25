@@ -1667,7 +1667,7 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {onEditSchedule && (
+          {onEditSchedule && fee.overallStatus !== "paid" && (
             <button
               type="button"
               onClick={() => onEditSchedule(fee)}
@@ -1805,24 +1805,26 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                 <div className="flex items-center gap-1.5">
                   {inst.paidAmount > 0 && (
                     <>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onEditPayment({
-                            feeId: fee._id,
-                            installmentNumber: inst.installmentNumber,
-                            amount: inst.paidAmount,
-                            paymentMethod: inst.paymentMethod || "cash",
-                            transactionId: inst.transactionId || "",
-                            paymentBreakdown: inst.paymentBreakdown,
-                            currency: (fee as any).currency,
-                          })
-                        }
-                        className="text-[10px] text-slate-600 dark:text-slate-400 hover:text-volt-600 dark:hover:text-volt-400 font-semibold border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-white/5 rounded px-2 py-1 transition-colors"
-                        title="Edit payment details"
-                      >
-                        Edit
-                      </button>
+                      {inst.status !== "paid" && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onEditPayment({
+                              feeId: fee._id,
+                              installmentNumber: inst.installmentNumber,
+                              amount: inst.paidAmount,
+                              paymentMethod: inst.paymentMethod || "cash",
+                              transactionId: inst.transactionId || "",
+                              paymentBreakdown: inst.paymentBreakdown,
+                              currency: (fee as any).currency,
+                            })
+                          }
+                          className="text-[10px] text-slate-600 dark:text-slate-400 hover:text-volt-600 dark:hover:text-volt-400 font-semibold border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-white/5 rounded px-2 py-1 transition-colors"
+                          title="Edit payment details"
+                        >
+                          Edit
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() =>
