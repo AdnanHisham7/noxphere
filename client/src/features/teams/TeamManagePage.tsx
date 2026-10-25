@@ -84,6 +84,7 @@ const TeamManagePage: React.FC = () => {
     position: toTacticalPosition(s.position),
     squadNumber: s.jerseyNumber ?? idx + 1,
     photo: s.photo,
+    branchName: s.branchName || s.franchise?.name,
   }));
 
   return (

@@ -231,17 +231,25 @@ export class SchedulerService {
         ? installmentNumbers
         : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-      for (const num of numbers) {
-        try {
-          const job = await feeReminderQueue.getJob(`fee-due-${feeId}-${num}`);
-          if (job) {
-            await job.remove();
-            logger.info(`[Scheduler] Removed fee reminder job for fee ${feeId} installment ${num}`);
+      const removeJobsPromise = Promise.allSettled(
+        numbers.map(async (num) => {
+          try {
+            const job = await feeReminderQueue.getJob(`fee-due-${feeId}-${num}`);
+            if (job) {
+              await job.remove();
+              logger.info(`[Scheduler] Removed fee reminder job for fee ${feeId} installment ${num}`);
+            }
+          } catch {
+            // ignore individual job removal errors if already processed/removed
           }
-        } catch (innerErr) {
-          // ignore individual job removal errors if already processed/removed
-        }
-      }
+        })
+      );
+
+      // Bound with a 2-second timeout so it never hangs if Redis is slow or unresponsive
+      await Promise.race([
+        removeJobsPromise,
+        new Promise((resolve) => setTimeout(resolve, 2000)),
+      ]);
     } catch (err) {
       logger.error(`[Scheduler] Failed cancelling reminders for fee ${feeId}:`, err);
     }

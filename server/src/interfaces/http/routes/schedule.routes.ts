@@ -24,7 +24,7 @@ scheduleRouter.patch("/:id/cancel", requirePermission("canManageSessions"), (req
 scheduleRouter.patch("/:id/location", requirePermission("canManageSessions"), (req, res, next) => {
   req.app.locals.controllers.schedule.changeLocation(req, res, next);
 });
-scheduleRouter.delete("/:id", requirePermission("canManageFranchises"), (req, res, next) => {
+scheduleRouter.delete("/:id", requirePermission("canManageSessions"), (req, res, next) => {
   req.app.locals.controllers.schedule.delete(req, res, next);
 });
 scheduleRouter.post("/alert-guardians", requirePermission("canSendNotifications"), (req, res, next) => {

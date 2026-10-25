@@ -41,7 +41,7 @@ export interface FormationPresetInput {
 export class TeamUseCases {
   async createTeam(input: CreateTeamInput) {
     let academyId = input.academyId;
-    if (input.franchiseId) {
+    if (!academyId && input.franchiseId) {
       const franchise = await FranchiseModel.findById(input.franchiseId).select("academyId").lean();
       if (franchise) {
         academyId = franchise.academyId.toString();
@@ -59,21 +59,32 @@ export class TeamUseCases {
       throw new BadRequestError("franchiseId or academyId is required");
     }
     let query: Record<string, unknown> = { deletedAt: { $exists: false } };
-    if (filter.franchiseId) {
+    if (filter.academyId) {
+      const franchises = await FranchiseModel.find({ academyId: filter.academyId }).select("_id").lean();
+      const franchiseIds = franchises.map((f) => f._id);
+      query.$or = [
+        { academyId: filter.academyId },
+        { franchiseId: { $in: franchiseIds } },
+      ];
+    } else if (filter.franchiseId) {
       const franchise = await FranchiseModel.findById(filter.franchiseId).select("academyId").lean();
       const academyId = franchise?.academyId;
-      query.$or = [
-        { franchiseId: filter.franchiseId },
-        { academyId: academyId, franchiseId: { $exists: false } },
-        { academyId: academyId, franchiseId: null }
-      ];
-    } else {
-      query.academyId = filter.academyId;
+      if (academyId) {
+        const franchises = await FranchiseModel.find({ academyId }).select("_id").lean();
+        const franchiseIds = franchises.map((f) => f._id);
+        query.$or = [
+          { academyId: academyId },
+          { franchiseId: { $in: franchiseIds } },
+        ];
+      } else {
+        query.franchiseId = filter.franchiseId;
+      }
     }
 
     const teams = await TeamModel.find(query)
       .populate("coachId", "firstName lastName")
       .populate("franchiseId", "name")
+      .populate("academyId", "name")
       .sort({ name: 1 })
       .lean();
 
@@ -109,6 +120,7 @@ export class TeamUseCases {
       name: t.name,
       ageGroup: t.ageGroup,
       teamFormat: t.teamFormat || "11s",
+      academyId: t.academyId?._id?.toString() || t.academyId?.toString(),
       franchiseId: t.franchiseId?._id?.toString() || t.franchiseId?.toString(),
       franchise: t.franchiseId && typeof t.franchiseId === 'object' ? {
         id: t.franchiseId._id.toString(),
@@ -127,6 +139,8 @@ export class TeamUseCases {
   async getTeamById(id: string): Promise<Record<string, unknown>> {
     const team = await TeamModel.findOne({ _id: id, deletedAt: { $exists: false } })
       .populate("coachId", "firstName lastName")
+      .populate("franchiseId", "name")
+      .populate("academyId", "name")
       .lean();
     if (!team) throw new NotFoundError("Team not found");
 
@@ -135,8 +149,20 @@ export class TeamUseCases {
       $or: [{ teamId: teamObjId }, { teamIds: teamObjId }],
       deletedAt: { $exists: false },
     })
-      .select("firstName lastName photo jerseyNumber position attendancePercentage overallRating teamId teamIds")
+      .select("firstName lastName photo jerseyNumber position attendancePercentage overallRating teamId teamIds franchiseId")
+      .populate("franchiseId", "name")
       .lean();
+
+    const formattedStudents = students.map((s: any) => ({
+      ...s,
+      _id: s._id.toString(),
+      franchiseId: s.franchiseId?._id?.toString() || s.franchiseId?.toString(),
+      franchise: s.franchiseId && typeof s.franchiseId === "object" ? {
+        id: s.franchiseId._id?.toString() || s.franchiseId.toString(),
+        name: s.franchiseId.name,
+      } : undefined,
+      branchName: s.franchiseId && typeof s.franchiseId === "object" ? s.franchiseId.name : undefined,
+    }));
 
     // Normalize formationPresets: squad stored as Mongoose Map, convert to plain object
     const formationPresets = ((team as any).formationPresets ?? []).map((fp: any) => ({
@@ -149,7 +175,13 @@ export class TeamUseCases {
         : (fp.squad && typeof fp.squad === "object" ? { ...fp.squad } : {}),
     }));
 
-    return { ...team, id: team._id.toString(), teamFormat: (team as any).teamFormat || "11s", students, formationPresets };
+    return {
+      ...team,
+      id: team._id.toString(),
+      teamFormat: (team as any).teamFormat || "11s",
+      students: formattedStudents,
+      formationPresets,
+    };
   }
 
   async updateTeam(id: string, input: UpdateTeamInput) {

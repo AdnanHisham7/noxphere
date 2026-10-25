@@ -13,6 +13,7 @@ export interface Team {
   primaryColor?: string;
   secondaryColor?: string;
   studentCount: number;
+  academyId?: string;
   franchiseId?: string;
   franchise?: { id: string; name: string };
 }
@@ -36,6 +37,11 @@ export interface TeamDetail extends Omit<Team, "coach"> {
     position?: string;
     attendancePercentage: number;
     overallRating: number;
+    teamId?: string;
+    teamIds?: string[];
+    franchiseId?: string;
+    franchise?: { id: string; name: string };
+    branchName?: string;
   }[];
   formationPresets?: FormationPreset[];
 }

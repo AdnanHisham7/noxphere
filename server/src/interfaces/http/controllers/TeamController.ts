@@ -9,7 +9,8 @@ export class TeamController {
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { name, ageGroup, teamFormat, franchiseId, academyId, coachId, description, logoUrl, bannerUrl, primaryColor, secondaryColor } = req.body;
-      if (!name || !ageGroup || (!franchiseId && !academyId)) {
+      const resolvedAcademyId = academyId || (req.user as any)?.academyId;
+      if (!name || !ageGroup || (!franchiseId && !resolvedAcademyId)) {
         throw new BadRequestError("name, ageGroup and either franchiseId or academyId are required");
       }
       const team = await this.teamUseCases.createTeam({
@@ -17,7 +18,7 @@ export class TeamController {
         ageGroup,
         teamFormat,
         franchiseId,
-        academyId,
+        academyId: resolvedAcademyId,
         coachId,
         description,
         logoUrl,
@@ -34,12 +35,13 @@ export class TeamController {
   list = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { franchiseId, academyId } = req.query;
-      if (!franchiseId && !academyId) {
+      const resolvedAcademyId = (academyId as string) || (req.user as any)?.academyId;
+      if (!franchiseId && !resolvedAcademyId) {
         throw new BadRequestError("franchiseId or academyId is required");
       }
       const teams = await this.teamUseCases.listTeams({
         franchiseId: franchiseId as string | undefined,
-        academyId: academyId as string | undefined,
+        academyId: resolvedAcademyId,
       });
       ResponseHandler.success(res, teams, "Teams retrieved");
     } catch (err) {

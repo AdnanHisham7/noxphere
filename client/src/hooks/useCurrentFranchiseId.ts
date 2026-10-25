@@ -4,6 +4,7 @@ import { RootState } from "../store";
 
 export const NO_SWITCH_PREFIXES = [
   "/dashboard",
+  "/teams",
   "/franchises",
   "/coaches",
   "/employees",

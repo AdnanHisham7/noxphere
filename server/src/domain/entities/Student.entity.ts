@@ -50,6 +50,8 @@ export interface StudentEntity {
   id: string;
   userId: string;
   franchiseId?: string;
+  franchiseName?: string;
+  franchise?: { id: string; name: string };
   teamId?: string;
   teamIds?: string[];
   coachId?: string;

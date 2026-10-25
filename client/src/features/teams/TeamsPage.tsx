@@ -44,15 +44,19 @@ const TeamsPage: React.FC = () => {
   const { user } = useSelector((s: RootState) => s.auth);
   const navigate = useNavigate();
   const franchiseId = useCurrentFranchiseId();
-  const isHeadOffice = (user?.role === "manager" || user?.role === "operational_manager") && !franchiseId;
   const academyId = useCurrentAcademyId();
+  const canManage =
+    user?.role === "manager" ||
+    user?.role === "operational_manager" ||
+    user?.role === "super_admin";
+
   const {
     data: teams,
     isLoading,
     isError,
   } = useListTeamsQuery(
-    franchiseId ? { franchiseId } : { academyId: academyId ?? "" },
-    { skip: !franchiseId && !academyId },
+    academyId ? { academyId } : (franchiseId ? { franchiseId } : { academyId: "" }),
+    { skip: !academyId && !franchiseId },
   );
   const { data: coachesResult } = useGetUsersQuery(
     {
@@ -68,8 +72,8 @@ const TeamsPage: React.FC = () => {
     skip: !academyId,
   });
   const { data: existingAgeCategories = [] } = useGetAgeCategoriesQuery(
-    franchiseId ? { franchiseId } : { academyId: academyId ?? "" },
-    { skip: !franchiseId && !academyId },
+    academyId ? { academyId } : (franchiseId ? { franchiseId } : { academyId: "" }),
+    { skip: !academyId && !franchiseId },
   );
   const categories = Array.from(
     new Set([...existingAgeCategories, ...(academy?.ageGroups ?? [])]),
@@ -112,8 +116,7 @@ const TeamsPage: React.FC = () => {
         name,
         ageGroup,
         teamFormat,
-        franchiseId: isHeadOffice ? undefined : (franchiseId ?? undefined),
-        academyId: isHeadOffice ? (academyId ?? undefined) : undefined,
+        academyId: academyId ?? undefined,
         coachId: coachId || undefined,
         logoUrl,
         bannerUrl,
@@ -159,28 +162,14 @@ const TeamsPage: React.FC = () => {
     }
   };
 
-  if (!franchiseId && !isHeadOffice) {
-    return (
-      <EmptyState
-        icon={<Users size={28} />}
-        title="No branch selected"
-        description="Select a branch from the top bar to manage teams."
-      />
-    );
-  }
-
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        eyebrow="Squad Management"
-        title={isHeadOffice ? "Academy Teams" : "Teams"}
-        subtitle={
-          isHeadOffice
-            ? "All squads across all branches of the academy"
-            : "Batches and squads for this branch"
-        }
+        eyebrow="Academy Squads"
+        title="Teams"
+        subtitle="Manage academy teams and squads composed of players across branches"
         actions={
-          !isHeadOffice && (
+          canManage && (
             <Button
               icon={<Plus size={16} />}
               onClick={() => setShowCreate(true)}
@@ -261,26 +250,19 @@ const TeamsPage: React.FC = () => {
                         <h3 className="font-display font-bold text-slate-900 dark:text-white uppercase tracking-wide leading-tight">
                           {team.name}
                         </h3>
-                        {!team.franchiseId && (
-                          <Badge variant="green" size="sm">
-                            GLOBAL
-                          </Badge>
-                        )}
+                        <Badge variant="green" size="sm">
+                          ACADEMY
+                        </Badge>
                       </div>
                       <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                         <Badge variant="blue">{team.ageGroup}</Badge>
                         <Badge variant="yellow" size="sm" className="font-mono font-bold">
                           {team.teamFormat || "11s"}
                         </Badge>
-                        {team.franchise && (
-                          <Badge variant="gray" size="sm">
-                            {team.franchise.name}
-                          </Badge>
-                        )}
                       </div>
                     </div>
                   </div>
-                  {!isHeadOffice && (
+                  {canManage && (
                     <button
                       onClick={() => handleDelete(team.id, team.name)}
                       className="text-slate-500 hover:text-ember-400 transition-colors p-1"
@@ -296,7 +278,7 @@ const TeamsPage: React.FC = () => {
                     ? `${team.coach.firstName} ${team.coach.lastName}`
                     : "No coach assigned"}
                 </p>
-                {!isHeadOffice && (
+                {canManage && (
                   <Select
                     value={team.coach?._id ?? ""}
                     onChange={(e) => handleAssignCoach(team.id, e.target.value)}
@@ -316,7 +298,7 @@ const TeamsPage: React.FC = () => {
                     {team.studentCount} students
                   </span>
                   <div className="flex items-center flex-wrap gap-2 sm:gap-3">
-                    {!isHeadOffice && (
+                    {canManage && (
                       <button
                         onClick={() => setBrandingTeamId(team.id)}
                         className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -337,7 +319,7 @@ const TeamsPage: React.FC = () => {
                     >
                       <FileSpreadsheet size={12} /> Report
                     </button>
-                    {!isHeadOffice && (
+                    {canManage && (
                       <button
                         onClick={() => navigate(`/teams/${team.id}/manage`)}
                         className="text-xs flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors"
@@ -507,9 +489,12 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
   onClose,
 }) => {
   const { user } = useSelector((s: RootState) => s.auth);
-  const activeFranchiseId = useCurrentFranchiseId();
-  const isHeadOffice = (user?.role === "manager" || user?.role === "operational_manager") && !activeFranchiseId;
   const currentAcademyId = useCurrentAcademyId();
+  const canManage =
+    user?.role === "manager" ||
+    user?.role === "operational_manager" ||
+    user?.role === "super_admin";
+
   const { data: team, isLoading: teamLoading } = useGetTeamByIdQuery(teamId);
   const [addStudentToTeam] = useAddStudentToTeamMutation();
   const [removeStudentFromTeam] = useRemoveStudentFromTeamMutation();
@@ -525,22 +510,23 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
   const [search, setSearch] = useState("");
   const [selectedAgeGroup, setSelectedAgeGroup] = useState("");
 
-  // Auto-select team's franchise initially
+  // Default age category to the team's age category for immediate convenience
   React.useEffect(() => {
-    if (team?.franchiseId && !selectedFranchiseId) {
-      setSelectedFranchiseId(team.franchiseId);
+    if (team?.ageGroup && !selectedAgeGroup) {
+      setSelectedAgeGroup(team.ageGroup);
     }
-  }, [team]);
+  }, [team?.ageGroup]);
 
   const { data: studentsResult, isLoading: studentsLoading } =
     useGetStudentsQuery(
       {
-        franchiseId: selectedFranchiseId,
+        franchiseId: selectedFranchiseId || undefined,
+        academyId: !selectedFranchiseId ? (currentAcademyId ?? undefined) : undefined,
         search: search || undefined,
         ageGroup: selectedAgeGroup || undefined,
         limit: 100,
       },
-      { skip: !selectedFranchiseId || isHeadOffice },
+      { skip: !currentAcademyId && !selectedFranchiseId },
     );
   const availableStudents = studentsResult?.items ?? [];
   const teamStudentIds = new Set(team?.students?.map((s) => s._id) ?? []);
@@ -551,7 +537,7 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
   const handleRemove = async (studentId: string, studentName?: string) => {
     const ok = await confirm({
       title: "Remove Player from Team",
-      message: `Are you sure you want to remove ${studentName || "this player"} from ${team?.name ? `"${team.name}"` : "the team roster"}? The player will remain enrolled in the academy and keep any other team memberships.`,
+      message: `Are you sure you want to remove ${studentName || "this player"} from ${team?.name ? `"${team.name}"` : "the team roster"}? The player will remain enrolled in their branch and keep any other team memberships.`,
       confirmLabel: "Remove Player",
       danger: true,
     });
@@ -580,206 +566,191 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
     <Modal
       isOpen
       onClose={onClose}
-      title={
-        team
-          ? isHeadOffice
-            ? `Roster — ${team.name}`
-            : `Manage Roster — ${team.name}`
-          : "Team roster"
-      }
-      size={isHeadOffice ? "md" : "xl"}
+      title={team ? `Manage Squad — ${team.name}` : "Team roster"}
+      size="xl"
     >
       {teamLoading && <Skeleton className="h-60" />}
-      {team &&
-        (isHeadOffice ? (
-          /* Academy Overview: Read-only View */
-          <div className="flex flex-col h-[50vh] min-h-[350px]">
+      {team && (
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 h-[60vh] min-h-[440px]">
+          {/* LEFT: Current Team Roster (2/5 width) */}
+          <div className="md:col-span-2 flex flex-col h-full border-b md:border-b-0 md:border-r border-slate-200 dark:border-white/5 pb-4 md:pb-0 md:pr-4">
             <div className="mb-3">
-              <h4 className="text-xs font-bold text-volt-400 uppercase tracking-wide">
-                Current Players
-              </h4>
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="text-xs font-bold text-volt-600 dark:text-volt-400 uppercase tracking-wide">
+                  Current Squad ({team.students.length})
+                </h4>
+                <Badge variant="blue" size="sm">
+                  {team.ageGroup}
+                </Badge>
+              </div>
               <p className="text-2xs text-slate-500 mt-0.5">
-                {team.students.length} players assigned
+                Players from multiple branches enrolled in this squad
               </p>
             </div>
             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
               {team.students.length === 0 ? (
-                <div className="h-full flex items-center justify-center border border-dashed border-white/5 rounded-lg p-5">
+                <div className="h-full flex items-center justify-center border border-dashed border-slate-200 dark:border-white/10 rounded-lg p-5">
                   <p className="text-xs text-slate-500 text-center italic">
-                    No players assigned to this team.
+                    No players in this squad yet. Select a branch and add players from the right.
                   </p>
                 </div>
               ) : (
                 team.students.map((s) => (
                   <div
                     key={s._id}
-                    className="flex items-center justify-between px-3 py-2 bg-white/[0.03] border border-white/5 rounded-lg"
+                    className="flex items-center justify-between px-3 py-2.5 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-lg hover:border-slate-300 dark:hover:border-white/10 transition-colors"
                   >
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
-                        {s.firstName} {s.lastName}
-                      </p>
+                    <div className="min-w-0 flex-1 pr-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                          {s.firstName} {s.lastName}
+                        </p>
+                        {(s.branchName || s.franchise?.name) && (
+                          <span
+                            className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium truncate max-w-[110px]"
+                            title={s.branchName || s.franchise?.name}
+                          >
+                            {s.branchName || s.franchise?.name}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                        {s.position || "No position set"} ·{" "}
-                        {s.attendancePercentage}% attendance
+                        {s.position || "Player"} · {s.attendancePercentage}% attendance
+                        {Array.isArray((s as any).teamIds) && (s as any).teamIds.length > 1 && (
+                          <span className="text-volt-600 dark:text-volt-400 font-semibold ml-1.5">
+                            · In {(s as any).teamIds.length} squads
+                          </span>
+                        )}
                       </p>
                     </div>
+                    {canManage && (
+                      <button
+                        onClick={() =>
+                          handleRemove(s._id, `${s.firstName} ${s.lastName}`)
+                        }
+                        className="text-slate-400 hover:text-ember-500 transition-colors p-1 shrink-0"
+                        title="Remove from this team"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </div>
                 ))
               )}
             </div>
           </div>
-        ) : (
-          /* Franchise Level: Full interactive roster management */
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 h-[55vh] min-h-[400px]">
-            {/* LEFT: Current Team Roster (2/5 width) */}
-            <div className="md:col-span-2 flex flex-col h-full border-r border-white/5 pr-4">
-              <div className="mb-3">
-                <h4 className="text-xs font-bold text-volt-400 uppercase tracking-wide">
-                  Current Roster
+
+          {/* RIGHT: Add/Transfer Players (3/5 width) */}
+          <div className="md:col-span-3 flex flex-col h-full md:pl-2">
+            <div className="mb-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-volt-600 dark:text-volt-400 uppercase tracking-wide">
+                  Assign Players from Branches
                 </h4>
-                <p className="text-2xs text-slate-500 mt-0.5">
-                  {team.students.length} players assigned
-                </p>
+                <span className="text-2xs text-slate-500 font-mono">
+                  {filteredAvailable.length} available
+                </span>
               </div>
-              <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                {team.students.length === 0 ? (
-                  <div className="h-full flex items-center justify-center border border-dashed border-white/5 rounded-lg p-5">
-                    <p className="text-xs text-slate-500 text-center italic">
-                      No players assigned. Use the panel on the right to add
-                      players.
-                    </p>
-                  </div>
-                ) : (
-                  team.students.map((s) => (
-                    <div
-                      key={s._id}
-                      className="flex items-center justify-between px-3 py-2 bg-white/[0.03] border border-white/5 rounded-lg hover:border-white/10 transition-colors"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
-                          {s.firstName} {s.lastName}
-                        </p>
-                        <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                          {s.attendancePercentage}% attendance
-                          {Array.isArray((s as any).teamIds) && (s as any).teamIds.length > 1 && (
-                            <span className="text-volt-400 font-semibold ml-1.5">
-                              · In {(s as any).teamIds.length} squads
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() =>
-                          handleRemove(s._id, `${s.firstName} ${s.lastName}`)
-                        }
-                        className="text-slate-500 hover:text-ember-400 transition-colors p-1"
-                        title="Remove from this team"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  ))
-                )}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="col-span-1">
+                  <Select
+                    value={selectedFranchiseId}
+                    onChange={(e) => setSelectedFranchiseId(e.target.value)}
+                    className="!text-[11px] !py-1 !px-2"
+                  >
+                    <option value="">All Branches</option>
+                    {(franchises ?? []).map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="col-span-1">
+                  <Select
+                    value={selectedAgeGroup}
+                    onChange={(e) => setSelectedAgeGroup(e.target.value)}
+                    className="!text-[11px] !py-1 !px-2"
+                  >
+                    <option value="">All Ages</option>
+                    {categoriesList.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="col-span-1">
+                  <input
+                    type="text"
+                    placeholder="Search name..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="input !text-[11px] !py-1 !px-2 !w-full"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* RIGHT: Add/Transfer Players (3/5 width) */}
-            <div className="md:col-span-3 flex flex-col h-full pl-2">
-              <div className="mb-3 space-y-2">
-                <h4 className="text-xs font-bold text-volt-400 uppercase tracking-wide">
-                  Available Players
-                </h4>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-1">
-                    <Select
-                      value={selectedFranchiseId}
-                      onChange={(e) => setSelectedFranchiseId(e.target.value)}
-                      className="!text-[11px] !py-1 !px-2"
-                    >
-                      <option value="" disabled>
-                        Select Branch
-                      </option>
-                      {(franchises ?? []).map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                  <div className="col-span-1">
-                    <Select
-                      value={selectedAgeGroup}
-                      onChange={(e) => setSelectedAgeGroup(e.target.value)}
-                      className="!text-[11px] !py-1 !px-2"
-                    >
-                      <option value="">All Ages</option>
-                      {categoriesList.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                  <div className="col-span-1">
-                    <input
-                      type="text"
-                      placeholder="Search name..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="input !text-[11px] !py-1 !px-2 !w-full"
-                    />
-                  </div>
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              {studentsLoading ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-11 rounded-lg" />
+                  ))}
                 </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                {studentsLoading ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-10 rounded-lg" />
-                    ))}
-                  </div>
-                ) : filteredAvailable.length === 0 ? (
-                  <div className="h-full flex items-center justify-center border border-dashed border-white/5 rounded-lg p-5">
-                    <p className="text-xs text-slate-500 text-center italic">
-                      No available players match filters.
-                    </p>
-                  </div>
-                ) : (
-                  filteredAvailable.map((s) => (
-                    <div
-                      key={s.id}
-                      className="flex items-center justify-between px-3 py-2.5 bg-white/[0.01] border border-white/5 rounded-lg hover:border-white/10 transition-colors"
-                    >
-                      <div className="min-w-0">
+              ) : filteredAvailable.length === 0 ? (
+                <div className="h-full flex items-center justify-center border border-dashed border-slate-200 dark:border-white/10 rounded-lg p-5">
+                  <p className="text-xs text-slate-500 text-center italic">
+                    No available players match filters.
+                  </p>
+                </div>
+              ) : (
+                filteredAvailable.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex items-center justify-between px-3 py-2.5 bg-slate-50/50 dark:bg-white/[0.01] border border-slate-200 dark:border-white/5 rounded-lg hover:border-slate-300 dark:hover:border-white/10 transition-colors"
+                  >
+                    <div className="min-w-0 flex-1 pr-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
                           {s.firstName} {s.lastName}
                         </p>
-                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span className="text-[10px] text-slate-500">{s.ageGroup}</span>
-                          {s.teamId || (s.teamIds && s.teamIds.length > 0) ? (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 font-mono font-medium">
-                              In {s.teamIds && s.teamIds.length > 1 ? `${s.teamIds.length} squads` : "1 squad"}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-slate-500 font-mono">Unassigned</span>
-                          )}
-                        </div>
+                        {(s.franchiseName || s.franchise?.name) && (
+                          <span
+                            className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium truncate max-w-[110px]"
+                            title={s.franchiseName || s.franchise?.name}
+                          >
+                            {s.franchiseName || s.franchise?.name}
+                          </span>
+                        )}
                       </div>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <span className="text-[10px] text-slate-500">{s.ageGroup}</span>
+                        {s.teamId || (s.teamIds && s.teamIds.length > 0) ? (
+                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 font-mono font-medium">
+                            In {s.teamIds && s.teamIds.length > 1 ? `${s.teamIds.length} squads` : "1 squad"}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-mono">Unassigned</span>
+                        )}
+                      </div>
+                    </div>
+                    {canManage && (
                       <button
                         onClick={() => handleAssign(s.id)}
-                        className="px-2.5 py-1 rounded bg-volt-400 hover:bg-volt-300 text-pitch-900 text-[10px] font-bold uppercase transition-all shrink-0 ml-2"
+                        className="px-2.5 py-1 rounded bg-volt-400 hover:bg-volt-300 text-pitch-900 text-[10px] font-bold uppercase transition-all shrink-0 ml-2 shadow-2xs"
                       >
                         + Add to Team
                       </button>
-                    </div>
-                  ))
-                )}
-              </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
-        ))}
+        </div>
+      )}
       {ConfirmDialog}
     </Modal>
   );
