@@ -834,7 +834,7 @@ const FeesPage: React.FC = () => {
           <p className="text-2xs font-semibold uppercase tracking-wider text-slate-400">
             Total Invoiced
           </p>
-          <p className="text-xl font-display font-extrabold text-slate-900 dark:text-white mt-1">
+          <p className="text-xl font-sans font-black tracking-tight tabular-nums text-slate-900 dark:text-white mt-1">
             {format(metrics.invoiced)}
           </p>
           <span className="text-2xs text-slate-500 font-mono">
@@ -851,7 +851,7 @@ const FeesPage: React.FC = () => {
               {metrics.collectionRate}%
             </span>
           </div>
-          <p className="text-xl font-display font-extrabold text-emerald-400 mt-1">
+          <p className="text-xl font-sans font-black tracking-tight tabular-nums text-emerald-400 mt-1">
             {format(metrics.collected)}
           </p>
           {/* Mini progress bar */}
@@ -867,7 +867,7 @@ const FeesPage: React.FC = () => {
           <p className="text-2xs font-semibold uppercase tracking-wider text-amber-400">
             Outstanding Due
           </p>
-          <p className="text-xl font-display font-extrabold text-amber-400 mt-1">
+          <p className="text-xl font-sans font-black tracking-tight tabular-nums text-amber-400 mt-1">
             {format(metrics.pending)}
           </p>
           <span className="text-2xs text-slate-500">
@@ -885,7 +885,7 @@ const FeesPage: React.FC = () => {
               <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
             )}
           </div>
-          <p className="text-xl font-display font-extrabold text-rose-400 mt-1">
+          <p className="text-xl font-sans font-black tracking-tight tabular-nums text-rose-400 mt-1">
             {format(metrics.overdue)}
           </p>
           <span className="text-2xs text-rose-400/80 font-mono">

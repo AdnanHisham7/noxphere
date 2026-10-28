@@ -42,11 +42,14 @@ export const SalaryHistoryModal: React.FC<SalaryHistoryModalProps> = ({
     { skip: !isOpen || !employee?.id || !academyId },
   );
 
-  const currentPeriod = new Date().toISOString().slice(0, 7);
+  const currentPeriod = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }, []);
 
-  // Filter out any future periods strictly: only past months up to current period
+  // Include past months up to current period, PLUS any future periods that have been paid (prepaid/advance)
   const historyRecords = useMemo(
-    () => (history ?? []).filter((r) => r.period <= currentPeriod),
+    () => (history ?? []).filter((r) => r.period <= currentPeriod || r.status === "paid"),
     [history, currentPeriod],
   );
 
@@ -57,6 +60,10 @@ export const SalaryHistoryModal: React.FC<SalaryHistoryModalProps> = ({
   const pendingRecords = useMemo(
     () => historyRecords.filter((r) => r.status === "pending"),
     [historyRecords],
+  );
+  const advancePaidCount = useMemo(
+    () => paidRecords.filter((r) => r.period > currentPeriod).length,
+    [paidRecords, currentPeriod],
   );
 
   const totalPaid = useMemo(
@@ -121,12 +128,12 @@ export const SalaryHistoryModal: React.FC<SalaryHistoryModalProps> = ({
               </span>
               <CheckCircle2 size={14} className="text-emerald-500" />
             </div>
-            <div className="mt-1 flex items-baseline gap-1.5">
+            <div className="mt-1 flex items-baseline gap-1.5 flex-wrap">
               <span className="font-mono font-bold text-base sm:text-lg text-emerald-600 dark:text-emerald-400">
                 {format(totalPaid)}
               </span>
               <span className="text-3xs text-emerald-600/70 dark:text-emerald-400/70">
-                ({paidRecords.length} paid)
+                ({paidRecords.length} paid{advancePaidCount > 0 ? `, ${advancePaidCount} advance` : ""})
               </span>
             </div>
           </div>
@@ -205,13 +212,18 @@ export const SalaryHistoryModal: React.FC<SalaryHistoryModalProps> = ({
                         {isPaid ? <CheckCircle2 size={16} /> : <Clock3 size={16} />}
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-bold text-slate-900 dark:text-white">
                             {formatPeriod(rec.period)}
                           </span>
                           <span className="text-3xs font-mono text-slate-400 dark:text-slate-500">
                             ({rec.period})
                           </span>
+                          {rec.period > currentPeriod && isPaid && (
+                            <span className="text-3xs font-bold px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                              Advance / Prepaid
+                            </span>
+                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5 text-2xs text-slate-500 dark:text-slate-400 mt-0.5">
                           {isPaid && rec.paidAt ? (
@@ -256,8 +268,11 @@ export const SalaryHistoryModal: React.FC<SalaryHistoryModalProps> = ({
                           {format(rec.amount)}
                         </span>
                       </div>
-                      <Badge variant={isPaid ? "green" : "yellow"} className="!text-3xs !py-0.5 !px-2">
-                        {isPaid ? "Paid" : "Pending"}
+                      <Badge
+                        variant={isPaid ? (rec.period > currentPeriod ? "blue" : "green") : "yellow"}
+                        className="!text-3xs !py-0.5 !px-2"
+                      >
+                        {isPaid ? (rec.period > currentPeriod ? "Advance Paid" : "Paid") : "Pending"}
                       </Badge>
                     </div>
                   </div>

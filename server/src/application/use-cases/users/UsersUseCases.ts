@@ -226,6 +226,7 @@ export class UsersUseCases {
             designation: "Operational Manager",
             employeeType: "staff",
             userId: user.id as any,
+            franchiseId: user.franchiseId || undefined,
             salaryAmount: dto.salaryAmount ?? 0,
             joinDate: new Date(),
             isActive: true,
@@ -277,13 +278,14 @@ export class UsersUseCases {
     const user = await this.userRepo.update(id, updates);
     if (!user) throw new NotFoundError("User");
 
-    // Sync any name/phone/salary updates to linked Employee record
-    if (dto.firstName || dto.lastName || dto.phone || dto.salaryAmount !== undefined) {
+    // Sync any name/phone/salary/franchise updates to linked Employee record
+    if (dto.firstName || dto.lastName || dto.phone || dto.salaryAmount !== undefined || updates.franchiseId !== undefined) {
       const empUpdates: any = {};
       if (dto.firstName) empUpdates.firstName = dto.firstName;
       if (dto.lastName) empUpdates.lastName = dto.lastName;
       if (dto.phone) empUpdates.phone = dto.phone;
       if (dto.salaryAmount !== undefined) empUpdates.salaryAmount = dto.salaryAmount;
+      if (updates.franchiseId !== undefined) empUpdates.franchiseId = updates.franchiseId || null;
       try {
         const updatedEmp = await EmployeeModel.findOneAndUpdate({ userId: id }, empUpdates, { new: true });
         if (updatedEmp && dto.salaryAmount !== undefined) {

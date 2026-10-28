@@ -5,11 +5,12 @@ import { clsx } from "clsx";
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
+  helperText?: React.ReactNode;
   icon?: React.ReactNode;
 }
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, icon, className, ...props }, ref) => {
+  ({ label, error, helperText, icon, className, ...props }, ref) => {
     return (
       <div className="space-y-1.5">
         {label && <label className="label">{label}</label>}
@@ -32,7 +33,11 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           />
         </div>
 
-        {error && <p className="text-xs text-ember-400">{error}</p>}
+        {error ? (
+          <p className="text-xs text-ember-400">{error}</p>
+        ) : helperText ? (
+          <p className="text-2xs text-slate-500 dark:text-slate-400">{helperText}</p>
+        ) : null}
       </div>
     );
   },

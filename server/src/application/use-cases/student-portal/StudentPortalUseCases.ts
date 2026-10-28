@@ -283,10 +283,10 @@ export class StudentPortalUseCases {
     for (const tId of studentTeams) {
       conditions.push({ targetType: "team", teamId: tId });
     }
-    if (student.ageGroup) {
+    if (student.ageGroup && student.franchiseId) {
       conditions.push(
-        { targetType: "category", category: student.ageGroup },
-        { targetType: "category", categories: student.ageGroup },
+        { franchiseId: student.franchiseId, targetType: "category", category: student.ageGroup },
+        { franchiseId: student.franchiseId, targetType: "category", categories: student.ageGroup },
       );
     }
 
@@ -296,7 +296,6 @@ export class StudentPortalUseCases {
 
     // Upcoming sessions: from today onwards
     const upcomingFilter: Record<string, unknown> = {
-      franchiseId: student.franchiseId,
       deletedAt: { $exists: false },
       date: { $gte: todayStr },
       status: { $ne: "cancelled" },

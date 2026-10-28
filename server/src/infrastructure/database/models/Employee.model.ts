@@ -14,6 +14,7 @@ export interface EmployeeDocument extends Document {
   employeeType: "external" | "staff";
   userId?: mongoose.Types.ObjectId;
   roleId?: mongoose.Types.ObjectId;
+  franchiseId?: mongoose.Types.ObjectId;
   salaryAmount: number;
   joinDate: Date;
   isActive: boolean;
@@ -33,6 +34,7 @@ const EmployeeSchema = new Schema<EmployeeDocument>(
     employeeType: { type: String, enum: ["external", "staff"], default: "external" },
     userId: { type: Schema.Types.ObjectId, ref: "User" },
     roleId: { type: Schema.Types.ObjectId, ref: "EmployeeRole" },
+    franchiseId: { type: Schema.Types.ObjectId, ref: "Franchise", index: true },
     salaryAmount: { type: Number, required: true, min: 0 },
     joinDate: { type: Date, required: true, default: Date.now },
     isActive: { type: Boolean, default: true, index: true },

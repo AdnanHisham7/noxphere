@@ -1,7 +1,8 @@
 // src/features/student-portal/StudentProgressPage.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useHighlightEffect } from "../../hooks/useEntityHighlight";
+import { computeMajorAndSubmetricSkills } from "../students/skillMetricsHelper";
 import {
   Compass,
   ArrowRight,
@@ -522,6 +523,11 @@ const FeesTab: React.FC = () => {
 const PerformanceTab: React.FC = () => {
   const { data, isLoading } = useGetMyPerformanceQuery();
 
+  const { majorSkills } = useMemo(
+    () => computeMajorAndSubmetricSkills(data?.performance ?? []),
+    [data?.performance],
+  );
+
   if (isLoading) return <NoxSkeleton className="h-64" />;
   if (!data || (data.performance.length === 0 && data.remarks.length === 0)) {
     return (
@@ -534,6 +540,45 @@ const PerformanceTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Major Athletic & Skill Profile */}
+      {majorSkills.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="font-orbital text-xs uppercase tracking-wider text-core-400 font-bold flex items-center gap-2">
+            <Award size={14} /> Athletic &amp; Skill Profile ({majorSkills.length} Major Skills)
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {majorSkills.map((cat) => (
+              <div
+                key={cat.category}
+                className="nox-card p-3.5 space-y-2 hover:border-core-400/30 transition-colors"
+              >
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-nox-high text-sm">
+                    {cat.category}
+                  </span>
+                  <span className="font-orbital font-bold text-core-400 text-sm">
+                    {cat.score.toFixed(1)}{" "}
+                    <span className="text-nox-low text-2xs font-normal">/ 10</span>
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-white/[0.06] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-core-400 transition-all duration-500 rounded-full"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, (cat.score / 10) * 100))}%`,
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between items-center text-3xs font-mono text-nox-low">
+                  <span>Proficiency Rating</span>
+                  <span>{cat.count} Evaluations</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {data.performance.length > 0 && (
         <div className="space-y-3">
           <h3 className="font-orbital text-xs uppercase tracking-wider text-core-400 font-bold flex items-center gap-2">
@@ -550,7 +595,7 @@ const PerformanceTab: React.FC = () => {
               >
                 <div>
                   <span className="text-sm font-semibold text-nox-high block">
-                    Periodic Assessment
+                    {p.sessionType ? `${p.sessionType} Session Evaluation` : "Periodic Assessment"}
                   </span>
                   <span className="text-2xs text-nox-low font-mono">
                     Recorded on{" "}

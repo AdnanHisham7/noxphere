@@ -9,11 +9,18 @@ const LocationSchema = z.object({
   fieldNumber: z.string().optional(),
 });
 
+const SessionTimeSchema = z.object({
+  dayOfWeek: z.number().min(0).max(6),
+  startTime: z.string(),
+  endTime: z.string(),
+});
+
 export const CreateFranchiseSchema = z.object({
   academyId: z.string().min(1),
   name: z.string().min(1),
   managerId: z.string().optional(),
   location: LocationSchema,
+  sessionTimes: z.array(SessionTimeSchema).optional().default([]),
   ageGroups: z.array(z.string()).default([]),
   maxStudents: z.number().min(1).default(100),
   alertBeforeMinutes: z.number().min(0).default(60),
@@ -24,6 +31,7 @@ export const UpdateFranchiseSchema = z.object({
   name: z.string().min(1).optional(),
   managerId: z.string().optional(),
   location: LocationSchema.partial().optional(),
+  sessionTimes: z.array(SessionTimeSchema).optional(),
   ageGroups: z.array(z.string()).optional(),
   maxStudents: z.number().min(1).optional(),
   alertBeforeMinutes: z.number().min(0).optional(),

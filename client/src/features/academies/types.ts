@@ -6,6 +6,13 @@ export interface Location {
   fieldNumber?: string;
 }
 
+export interface AcademySessionType {
+  id: string;
+  name: string;
+  description?: string;
+  submetrics: string[];
+}
+
 export interface AcademyPitch {
   id: string;
   name: string;
@@ -59,6 +66,7 @@ export interface Academy {
   bankDetails?: AcademyBankDetails;
   logo?: string;
   skillParameters: string[];
+  sessionTypes?: AcademySessionType[];
   currency?: string;
   country?: string;
   isTrial?: boolean;
@@ -133,5 +141,6 @@ export interface AcademyConfigPayload {
   feePaymentMethod?: "qr" | "bank_transfer" | "both";
   bankDetails?: AcademyBankDetails;
   logo?: string;
+  sessionTypes?: AcademySessionType[];
   isActive?: boolean;
 }

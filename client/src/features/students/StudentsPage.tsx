@@ -20,6 +20,7 @@ import {
   Eye,
   AlertTriangle,
   Sparkles,
+  PauseCircle,
 } from "lucide-react";
 import {
   Button,
@@ -98,6 +99,12 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
                 ↔ LISTED
               </span>
             )}
+            {student.status === "inactive" && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-500 text-pitch-950 shadow-xs drop-shadow-xs">
+                <PauseCircle size={9} className="stroke-[3]" />
+                <span>PAUSED</span>
+              </span>
+            )}
           </div>
           <h3 className="font-display font-black uppercase leading-none text-slate-900 dark:text-white text-base mt-1 drop-shadow-xs">
             {student.firstName}
@@ -163,11 +170,16 @@ const PlayerCardContent: React.FC<PlayerCardContentProps> = ({
             >
               {selectionBadge[student.selectionStatus]?.label}
             </Badge>
-            {student.status !== "active" && (
+            {student.status === "inactive" ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-tight bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 shrink-0">
+                <PauseCircle size={9} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>Inactive</span>
+              </span>
+            ) : student.status !== "active" ? (
               <Badge variant="gray" size="sm">
                 {student.status.replace("_", " ")}
               </Badge>
-            )}
+            ) : null}
             {hasConsent === false && (
               <span
                 title="Guardian consent pending"
@@ -236,7 +248,8 @@ const StudentsPage: React.FC = () => {
   const [search, setSearch] = useState("");
   const [filterTeam, setFilterTeam] = useState("");
   const [filterAge, setFilterAge] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterPlayerStatus, setFilterPlayerStatus] = useState("");
+  const [filterSelectionStatus, setFilterSelectionStatus] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [showPhotoCards, setShowPhotoCards] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -254,7 +267,8 @@ const StudentsPage: React.FC = () => {
       search: search || undefined,
       teamId: filterTeam || undefined,
       ageGroup: filterAge || undefined,
-      selectionStatus: filterStatus || undefined,
+      status: filterPlayerStatus || undefined,
+      selectionStatus: filterSelectionStatus || undefined,
       limit: 100,
     },
     { skip: !franchiseId },
@@ -694,8 +708,8 @@ const StudentsPage: React.FC = () => {
               />
             </div>
 
-            {/* Mobile 3-column filter grid / desktop flex row */}
-            <div className="grid grid-cols-3 gap-1.5 sm:flex sm:w-auto sm:gap-3 w-full sm:w-auto">
+            {/* Mobile 2x2 grid / desktop flex row */}
+            <div className="grid grid-cols-2 sm:flex sm:w-auto sm:gap-2.5 w-full sm:w-auto gap-2">
               <div className="w-full sm:w-auto sm:min-w-32">
                 <Select
                   value={filterTeam}
@@ -724,11 +738,24 @@ const StudentsPage: React.FC = () => {
               </div>
               <div className="w-full sm:w-auto sm:min-w-36">
                 <Select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
+                  value={filterPlayerStatus}
+                  onChange={(e) => setFilterPlayerStatus(e.target.value)}
                   className="!text-xs !py-2 !px-2 truncate"
                 >
-                  <option value="">All Statuses</option>
+                  <option value="">Roster: All</option>
+                  <option value="active">Active Squad</option>
+                  <option value="inactive">Inactive (Paused)</option>
+                  <option value="on_leave">On Leave</option>
+                  <option value="graduated">Graduated</option>
+                </Select>
+              </div>
+              <div className="w-full sm:w-auto sm:min-w-36">
+                <Select
+                  value={filterSelectionStatus}
+                  onChange={(e) => setFilterSelectionStatus(e.target.value)}
+                  className="!text-xs !py-2 !px-2 truncate"
+                >
+                  <option value="">Selection: All</option>
                   <option value="selected">Selected</option>
                   <option value="shortlisted">Shortlisted</option>
                   <option value="pending">Pending</option>
@@ -787,13 +814,14 @@ const StudentsPage: React.FC = () => {
             <p className="text-xs text-slate-500">
               {students.length} player{students.length !== 1 ? "s" : ""} found
             </p>
-            {(search || filterTeam || filterAge || filterStatus) && (
+            {(search || filterTeam || filterAge || filterPlayerStatus || filterSelectionStatus) && (
               <button
                 onClick={() => {
                   setSearch("");
                   setFilterTeam("");
                   setFilterAge("");
-                  setFilterStatus("");
+                  setFilterPlayerStatus("");
+                  setFilterSelectionStatus("");
                 }}
                 className="text-xs text-volt-600 dark:text-volt-400 font-medium hover:underline"
               >
@@ -801,6 +829,20 @@ const StudentsPage: React.FC = () => {
               </button>
             )}
           </div>
+
+          {filterPlayerStatus === "inactive" && (
+            <div className="card p-3 sm:p-4 bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 rounded-2xl">
+              <PauseCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+              <div className="text-xs text-slate-700 dark:text-slate-300">
+                <p className="font-semibold text-amber-800 dark:text-amber-400">
+                  Viewing Inactive (Paused) Players
+                </p>
+                <p className="mt-0.5 text-slate-600 dark:text-slate-400">
+                  Inactive players have their training paused (e.g. for injury, exam break, or pending fees). They remain enrolled on the squad roster and consume a subscription slot, but are excluded from training attendance rolls and match sheets. To permanently release a subscription slot, archive the player.
+                </p>
+              </div>
+            </div>
+          )}
 
           {isLoading && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -822,14 +864,14 @@ const StudentsPage: React.FC = () => {
               icon={<SearchX className="h-10 w-10 text-slate-600" />}
               title="No players found"
               description={
-                search || filterTeam || filterAge || filterStatus
+                search || filterTeam || filterAge || filterPlayerStatus || filterSelectionStatus
                   ? "Try adjusting your filters"
                   : isCoach
                     ? "No players assigned to your squad yet"
                     : "Add your first player to get started"
               }
               action={
-                !isCoach && canManageSquad && !search && !filterTeam && !filterAge && !filterStatus ? (
+                !isCoach && canManageSquad && !search && !filterTeam && !filterAge && !filterPlayerStatus && !filterSelectionStatus ? (
                   <Button onClick={() => setShowAddModal(true)}>
                     Add Player
                   </Button>
@@ -850,7 +892,12 @@ const StudentsPage: React.FC = () => {
                 >
                   <Link
                     to={`/students/${student.id}`}
-                    className="block relative aspect-[2/3] [perspective:2000px] overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-pitch-950 group transition-all duration-300 hover:border-volt-500 dark:hover:border-volt-400/30 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-2xl dark:hover:shadow-volt-400/10"
+                    className={clsx(
+                      "block relative aspect-[2/3] [perspective:2000px] overflow-hidden rounded-3xl border group transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-2xl",
+                      student.status === "inactive"
+                        ? "border-amber-500/40 bg-amber-950/10 dark:bg-amber-950/20 opacity-90 hover:opacity-100 hover:border-amber-400"
+                        : "border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-pitch-950 hover:border-volt-500 dark:hover:border-volt-400/30 dark:hover:shadow-volt-400/10",
+                    )}
                   >
                     <div
                       className="relative h-full w-full [transform-style:preserve-3d] transition-transform duration-700"
@@ -1034,11 +1081,16 @@ const StudentsPage: React.FC = () => {
                           >
                             {selectionBadge[student.selectionStatus]?.label}
                           </Badge>
-                          {student.status !== "active" && (
+                          {student.status === "inactive" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                              <PauseCircle size={11} className="text-amber-500 shrink-0" />
+                              <span>Inactive (Paused)</span>
+                            </span>
+                          ) : student.status !== "active" ? (
                             <Badge variant="gray">
                               {student.status.replace("_", " ")}
                             </Badge>
-                          )}
+                          ) : null}
                           {consentStatus?.[student.id] === false && (
                             <Badge variant="yellow">Consent pending</Badge>
                           )}

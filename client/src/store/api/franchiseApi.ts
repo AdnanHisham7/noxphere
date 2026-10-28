@@ -17,6 +17,11 @@ export interface Franchise {
   franchiseCode: string;
   managerId?: string;
   location: FranchiseLocation;
+  sessionTimes?: { dayOfWeek: number; startTime: string; endTime: string }[];
+  totalStudents?: number;
+  totalSessions?: number;
+  batches?: { ageGroup: string; count: number }[];
+  nextSession?: { date: string; startTime: string; endTime: string; type: string; category?: string } | null;
   ageGroups: string[];
   maxStudents: number;
   isActive: boolean;
@@ -32,6 +37,7 @@ export interface CreateFranchiseBody {
   name: string;
   managerId?: string;
   location: FranchiseLocation;
+  sessionTimes?: { dayOfWeek: number; startTime: string; endTime: string }[];
   ageGroups?: string[];
   maxStudents?: number;
   alertBeforeMinutes?: number;

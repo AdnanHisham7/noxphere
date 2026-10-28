@@ -302,6 +302,29 @@ export const PublicPlayerPage: React.FC = () => {
                       </div>
                     ))}
                   </div>
+
+                  {player.majorSkills && player.majorSkills.length > 0 && (
+                    <div className="mt-3 pt-2.5 border-t border-slate-200/60 dark:border-white/5 space-y-1.5">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block text-left">
+                        Major Skill Competencies
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                        {player.majorSkills.map((sk) => (
+                          <div
+                            key={sk.category}
+                            className="px-2 py-1 rounded-lg bg-white/60 dark:bg-white/[0.02] border border-slate-200/40 dark:border-white/5 flex items-center justify-between"
+                          >
+                            <span className="text-2xs text-slate-600 dark:text-slate-300 font-medium truncate">
+                              {sk.category}
+                            </span>
+                            <span className="font-mono font-bold text-2xs text-volt-500">
+                              {sk.score.toFixed(1)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : player.isFreeAgent ? (
                 <div className="p-3.5 rounded-2xl bg-amber-500/5 dark:bg-amber-400/5 border border-amber-500/20 dark:border-amber-400/15 flex items-start gap-3">

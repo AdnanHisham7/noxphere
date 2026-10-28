@@ -315,14 +315,18 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
 
     y += 75;
 
+    // Currency representation for PDF: Standard jsPDF fonts (Helvetica) lack unicode ₹ (U+20B9) glyphs.
+    // Use "Rs. " for INR / ₹ to ensure crisp, uncorrupted currency rendering.
+    const pdfCurrency = currencySymbol === "₹" || defaultCurrency === "INR" ? "Rs. " : `${currencySymbol} `;
+
     // KPI Summary Cards
     const cardWidth = (pageWidth - margin * 2 - 24) / 4;
     const cardHeight = 52;
     const kpis = [
-      { label: "TOTAL INVOICED", val: `${currencySymbol}${reportMetrics.totalInvoiced.toLocaleString()}`, color: [30, 41, 59] },
-      { label: "COLLECTED", val: `${currencySymbol}${reportMetrics.totalCollected.toLocaleString()} (${reportMetrics.collectionRate}%)`, color: [16, 185, 129] },
-      { label: "OUTSTANDING", val: `${currencySymbol}${reportMetrics.totalOutstanding.toLocaleString()}`, color: [245, 158, 11] },
-      { label: "OVERDUE UNPAID", val: `${currencySymbol}${reportMetrics.totalOverdue.toLocaleString()}`, color: [239, 68, 68] },
+      { label: "TOTAL INVOICED", val: `${pdfCurrency}${reportMetrics.totalInvoiced.toLocaleString("en-IN")}`, color: [30, 41, 59] },
+      { label: "COLLECTED", val: `${pdfCurrency}${reportMetrics.totalCollected.toLocaleString("en-IN")} (${reportMetrics.collectionRate}%)`, color: [16, 185, 129] },
+      { label: "OUTSTANDING", val: `${pdfCurrency}${reportMetrics.totalOutstanding.toLocaleString("en-IN")}`, color: [245, 158, 11] },
+      { label: "OVERDUE UNPAID", val: `${pdfCurrency}${reportMetrics.totalOverdue.toLocaleString("en-IN")}`, color: [239, 68, 68] },
     ];
 
     kpis.forEach((k, idx) => {
@@ -418,13 +422,13 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
       doc.setTextColor(30, 41, 59);
       doc.text(`#${r.installmentNumber}`, colX[2], y + 2);
       doc.text(r.dueDateStr, colX[3], y + 2);
-      doc.text(`${currencySymbol}${r.amount.toLocaleString()}`, colX[4], y + 2);
+      doc.text(`${pdfCurrency}${r.amount.toLocaleString("en-IN")}`, colX[4], y + 2);
 
       doc.setTextColor(16, 185, 129);
-      doc.text(`${currencySymbol}${r.paidAmount.toLocaleString()}`, colX[5], y + 2);
+      doc.text(`${pdfCurrency}${r.paidAmount.toLocaleString("en-IN")}`, colX[5], y + 2);
 
       doc.setTextColor(r.balance > 0 ? 217 : 100, r.balance > 0 ? 119 : 116, r.balance > 0 ? 6 : 139);
-      doc.text(r.balance > 0 ? `${currencySymbol}${r.balance.toLocaleString()}` : "—", colX[6], y + 2);
+      doc.text(r.balance > 0 ? `${pdfCurrency}${r.balance.toLocaleString("en-IN")}` : "—", colX[6], y + 2);
 
       doc.setTextColor(
         r.status === "paid" ? 16 : r.status === "overdue" ? 239 : 100,
@@ -505,7 +509,7 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
               <TrendingUp size={18} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider font-display">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                 Financial Reports &amp; Analytics
               </h3>
               <p className="text-2xs text-slate-500 dark:text-slate-400">
@@ -713,7 +717,7 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-              Report Summary: <span className="text-volt-500 dark:text-volt-400 font-display">{dateRangeWindow.label}</span>
+              Report Summary: <span className="text-volt-500 dark:text-volt-400 font-bold">{dateRangeWindow.label}</span>
             </h4>
             <Badge variant="gray" size="sm">
               {filteredRows.length} milestone{filteredRows.length === 1 ? "" : "s"}
@@ -726,7 +730,7 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
             <span className="text-2xs font-bold uppercase tracking-wider text-slate-400">
               Total Invoiced
             </span>
-            <p className="text-2xl font-extrabold font-display text-slate-900 dark:text-white mt-1">
+            <p className="text-2xl font-black font-sans tracking-tight tabular-nums text-slate-900 dark:text-white mt-1">
               {formatCurrency(reportMetrics.totalInvoiced, defaultCurrency)}
             </p>
             <span className="text-2xs text-slate-400">
@@ -743,7 +747,7 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
                 {reportMetrics.collectionRate}%
               </span>
             </div>
-            <p className="text-2xl font-extrabold font-display text-emerald-400 mt-1">
+            <p className="text-2xl font-black font-sans tracking-tight tabular-nums text-emerald-400 mt-1">
               {formatCurrency(reportMetrics.totalCollected, defaultCurrency)}
             </p>
             <div className="w-full bg-slate-100 dark:bg-white/5 rounded-full h-1 mt-2 overflow-hidden">
@@ -758,7 +762,7 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
             <span className="text-2xs font-bold uppercase tracking-wider text-amber-400">
               Outstanding Balance
             </span>
-            <p className="text-2xl font-extrabold font-display text-amber-400 mt-1">
+            <p className="text-2xl font-black font-sans tracking-tight tabular-nums text-amber-400 mt-1">
               {formatCurrency(reportMetrics.totalOutstanding, defaultCurrency)}
             </p>
             <span className="text-2xs text-slate-400">
@@ -775,7 +779,7 @@ export const FeeReportsView: React.FC<FeeReportsViewProps> = ({
                 <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
               )}
             </div>
-            <p className="text-2xl font-extrabold font-display text-rose-400 mt-1">
+            <p className="text-2xl font-black font-sans tracking-tight tabular-nums text-rose-400 mt-1">
               {formatCurrency(reportMetrics.totalOverdue, defaultCurrency)}
             </p>
             <span className="text-2xs text-rose-400/80 font-mono">

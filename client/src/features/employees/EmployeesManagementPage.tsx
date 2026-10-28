@@ -272,12 +272,6 @@ const EmployeesManagementPage: React.FC = () => {
                           <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                             {emp.firstName} {emp.lastName}
                           </p>
-                          {isOpManager && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs font-bold bg-volt-500/10 text-volt-600 dark:text-volt-400 border border-volt-500/20">
-                              <ShieldCheck size={11} />
-                              Ops Manager
-                            </span>
-                          )}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 mt-0.5 text-2xs text-slate-500 dark:text-slate-400">
@@ -295,6 +289,17 @@ const EmployeesManagementPage: React.FC = () => {
                           </span>
                           <span>•</span>
                           <span>{emp.employeeType === "staff" ? "System Access" : "Payroll Record Only"}</span>
+                          {isOpManager && (
+                            <>
+                              <span>•</span>
+                              <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
+                                <Building2 size={10} className="text-volt-500" />
+                                {typeof emp.franchiseId === "object" && emp.franchiseId !== null
+                                  ? emp.franchiseId.name
+                                  : franchises?.find((f) => f.id === (emp.franchiseId || (typeof emp.userId === "object" ? emp.userId?.franchiseId : undefined)))?.name || "Academy-wide"}
+                              </span>
+                            </>
+                          )}
                           {emp.phone && (
                             <>
                               <span>•</span>
@@ -435,6 +440,7 @@ const EmployeesManagementPage: React.FC = () => {
         <EditEmployeeModal
           isOpen={!!editEmployee}
           employee={editEmployee}
+          franchises={franchises ?? []}
           loading={updatingEmployee}
           onClose={() => setEditEmployee(null)}
           onSubmit={async (data) => {
@@ -524,7 +530,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add Employee" size="sm">
+    <Modal isOpen={isOpen} onClose={onClose} title="Add Employee" size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="p-3 rounded-lg bg-slate-50 dark:bg-pitch-800/50 border border-slate-200 dark:border-white/10 text-2xs text-slate-600 dark:text-slate-400 flex items-start gap-2">
           <Briefcase size={14} className="text-volt-500 shrink-0 mt-0.5" />
@@ -533,69 +539,96 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="First Name"
-            required
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            placeholder="e.g. Rahul"
-          />
-          <Input
-            label="Last Name"
-            required
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            placeholder="e.g. Sharma"
-          />
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+          {/* Left Column: Personal & Contact Information */}
+          <div className="space-y-3.5">
+            <h4 className="text-2xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pb-1 border-b border-slate-100 dark:border-white/5 flex items-center gap-1.5">
+              <Users size={12} className="text-volt-500" />
+              <span>Personal &amp; Contact Details</span>
+            </h4>
 
-        <Input
-          label="Designation / Role Title"
-          required
-          value={designation}
-          onChange={(e) => setDesignation(e.target.value)}
-          placeholder="e.g. Physiotherapist, Groundsman, Kit Manager, Admin"
-        />
+            <div className="grid grid-cols-2 gap-2.5">
+              <Input
+                label="First Name"
+                required
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="e.g. Rahul"
+              />
+              <Input
+                label="Last Name"
+                required
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="e.g. Sharma"
+              />
+            </div>
 
-        <Input
-          label={`Monthly Salary (${currencySymbol})`}
-          type="number"
-          min="0"
-          step="1"
-          required
-          value={salaryAmount}
-          onChange={(e) => setSalaryAmount(e.target.value)}
-          placeholder="e.g. 25000"
-        />
+            <Input
+              label="Designation / Role Title"
+              required
+              value={designation}
+              onChange={(e) => setDesignation(e.target.value)}
+              placeholder="e.g. Physiotherapist, Groundsman, Kit Manager"
+            />
 
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="Phone (Optional)"
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+91 98765 43210"
-          />
-          <Input
-            label="Email (Optional)"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="staff@example.com"
-          />
-        </div>
+            <Input
+              label="Phone Number"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+91 98765 43210"
+            />
 
-        <div>
-          <label className="label">Notes / Remarks (Optional)</label>
-          <input
-            type="text"
-            className="input text-xs"
-            placeholder="e.g. Part-time matchday physiotherapist"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            maxLength={1000}
-          />
+            <Input
+              label="Email Address (Optional)"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="staff@example.com"
+            />
+          </div>
+
+          {/* Right Column: Compensation & Payroll */}
+          <div className="space-y-3.5">
+            <h4 className="text-2xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pb-1 border-b border-slate-100 dark:border-white/5 flex items-center gap-1.5">
+              <Wallet size={12} className="text-volt-500" />
+              <span>Compensation &amp; Notes</span>
+            </h4>
+
+            <div>
+              <Input
+                label={`Monthly Salary (${currencySymbol})`}
+                type="number"
+                min="0"
+                step="1"
+                required
+                value={salaryAmount}
+                onChange={(e) => setSalaryAmount(e.target.value)}
+                placeholder="e.g. 25000"
+              />
+              <p className="mt-1 text-3xs text-slate-500 dark:text-slate-400">
+                Logged in the academy's monthly payroll for salary disbursement.
+              </p>
+            </div>
+
+            <div>
+              <label className="label">Notes / Remarks (Optional)</label>
+              <textarea
+                rows={3}
+                className="input text-xs resize-none"
+                placeholder="e.g. Part-time matchday physiotherapist, available weekends"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                maxLength={1000}
+              />
+            </div>
+
+            <div className="p-3 rounded-lg bg-slate-50 dark:bg-pitch-800/40 border border-slate-100 dark:border-white/5 text-3xs text-slate-500 dark:text-slate-400 space-y-1">
+              <p className="font-semibold text-slate-700 dark:text-slate-300">Payroll Integration</p>
+              <p>Monthly salary records are tracked automatically in the Salary Tracker tab for payouts.</p>
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-white/10">
@@ -826,14 +859,16 @@ const AddOperationalManagerModal: React.FC<AddOperationalManagerModalProps> = ({
 interface EditEmployeeModalProps {
   isOpen: boolean;
   employee: Employee;
+  franchises: Array<{ id: string; name: string }>;
   loading: boolean;
   onClose: () => void;
-  onSubmit: (data: Partial<Employee>) => Promise<void>;
+  onSubmit: (data: Partial<Employee> & { franchiseId?: string | null }) => Promise<void>;
 }
 
 const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
   isOpen,
   employee,
+  franchises,
   loading,
   onClose,
   onSubmit,
@@ -846,6 +881,16 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
   const [phone, setPhone] = useState(employee.phone || "");
   const [email, setEmail] = useState(employee.email || "");
   const [notes, setNotes] = useState(employee.notes || "");
+
+  const isOpManager = (employee.designation || "").toLowerCase().includes("operational manager");
+  const isStaff = employee.employeeType === "staff" || isOpManager;
+
+  const currentFranchiseId =
+    (typeof employee.franchiseId === "object" && employee.franchiseId?._id) ||
+    (typeof employee.franchiseId === "string" ? employee.franchiseId : "") ||
+    (typeof employee.userId === "object" && employee.userId?.franchiseId) ||
+    "";
+  const [franchiseId, setFranchiseId] = useState(currentFranchiseId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -865,73 +910,114 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
       phone: phone.trim() || undefined,
       email: email.trim() || undefined,
       notes: notes.trim() || undefined,
+      franchiseId: isStaff ? (franchiseId || null) : undefined,
     });
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Edit Employee" size="sm">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Edit Employee · ${employee.firstName} ${employee.lastName}`} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="First Name"
-            required
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-          />
-          <Input
-            label="Last Name"
-            required
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-          />
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+          {/* Left Column: Personal Profile & Contact */}
+          <div className="space-y-3.5">
+            <h4 className="text-2xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pb-1 border-b border-slate-100 dark:border-white/5 flex items-center gap-1.5">
+              <Users size={12} className="text-volt-500" />
+              <span>Profile &amp; Contact</span>
+            </h4>
 
-        <Input
-          label="Designation / Role Title"
-          value={designation}
-          onChange={(e) => setDesignation(e.target.value)}
-          placeholder="e.g. Coach, Physiotherapist, Operational Manager"
-        />
+            <div className="grid grid-cols-2 gap-2.5">
+              <Input
+                label="First Name"
+                required
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+              <Input
+                label="Last Name"
+                required
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
+            </div>
 
-        <div>
-          <Input
-            label={`Monthly Salary (${currencySymbol})`}
-            type="number"
-            min="0"
-            step="1"
-            required
-            value={salaryAmount}
-            onChange={(e) => setSalaryAmount(e.target.value)}
-          />
-          <p className="mt-1 text-3xs text-slate-500 dark:text-slate-400">
-            Updating this salary will automatically update all pending (yet to be paid) salary records for this employee.
-          </p>
-        </div>
+            <Input
+              label="Designation / Role Title"
+              value={designation}
+              onChange={(e) => setDesignation(e.target.value)}
+              placeholder="e.g. Coach, Physiotherapist, Operational Manager"
+            />
 
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="Phone"
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-          <Input
-            label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </div>
+            <Input
+              label="Phone Number"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+91 98765 43210"
+            />
 
-        <div>
-          <label className="label">Notes / Remarks</label>
-          <input
-            type="text"
-            className="input text-xs"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            maxLength={1000}
-          />
+            <Input
+              label="Email Address"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="staff@example.com"
+            />
+          </div>
+
+          {/* Right Column: Role, Branch Scope & Payroll */}
+          <div className="space-y-3.5">
+            <h4 className="text-2xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pb-1 border-b border-slate-100 dark:border-white/5 flex items-center gap-1.5">
+              <Wallet size={12} className="text-volt-500" />
+              <span>Scope &amp; Compensation</span>
+            </h4>
+
+            {isStaff && (
+              <div>
+                <Select
+                  label="Assigned Branch Scope"
+                  value={franchiseId}
+                  onChange={(e) => setFranchiseId(e.target.value)}
+                >
+                  <option value="">Academy-wide (All Branches)</option>
+                  {franchises.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </Select>
+                <p className="text-2xs text-slate-400 dark:text-slate-500 mt-1">
+                  Select a specific branch to restrict operations, or leave academy-wide.
+                </p>
+              </div>
+            )}
+
+            <div>
+              <Input
+                label={`Monthly Salary (${currencySymbol})`}
+                type="number"
+                min="0"
+                step="1"
+                required
+                value={salaryAmount}
+                onChange={(e) => setSalaryAmount(e.target.value)}
+              />
+              <p className="mt-1 text-3xs text-slate-500 dark:text-slate-400">
+                Updating this salary will automatically update all pending (yet to be paid) salary records for this employee.
+              </p>
+            </div>
+
+            <div>
+              <label className="label">Notes / Remarks</label>
+              <textarea
+                rows={isStaff ? 2 : 3}
+                className="input text-xs resize-none"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                maxLength={1000}
+                placeholder="Optional notes or remarks"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-white/10">

@@ -116,6 +116,21 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
+export const optionalAuthenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return next();
+    }
+    const token = authHeader.split(' ')[1];
+    const payload = jwt.verify(token, config.jwt.accessSecret) as JwtPayload;
+    req.user = payload;
+    return next();
+  } catch {
+    return next();
+  }
+};
+
 export const authorize = (...roles: UserRole[]) => {
   return (req: Request, _res: Response, next: NextFunction): void => {
     if (!req.user) {

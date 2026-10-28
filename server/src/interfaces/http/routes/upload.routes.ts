@@ -1,7 +1,7 @@
 // src/interfaces/http/routes/upload.routes.ts
 import { Router, Request, Response, NextFunction } from "express";
 import multer from "multer";
-import { authenticate } from "../middleware/auth.middleware";
+import { optionalAuthenticate } from "../middleware/auth.middleware";
 import { config } from "../../../config/app.config";
 import { BadRequestError } from "../../../shared/errors/AppError";
 
@@ -44,7 +44,7 @@ function singleImage(req: Request, res: Response, next: NextFunction) {
 
 export const uploadRouter = Router();
 
-uploadRouter.use(authenticate);
+uploadRouter.use(optionalAuthenticate);
 
 uploadRouter.post("/image", singleImage, (req, res, next) => {
   req.app.locals.controllers.upload.uploadImage(req, res, next);

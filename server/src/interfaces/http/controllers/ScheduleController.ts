@@ -46,10 +46,10 @@ export class ScheduleController {
       const { franchiseId, from, to, teamId, status } = req.query;
       let academyId = req.query.academyId as string | undefined;
       if (!franchiseId && !academyId) {
-        if (req.user?.role === "coach" && req.user.academyId) {
+        if (req.user?.academyId) {
           academyId = req.user.academyId;
-        } else {
-          throw new BadRequestError("franchiseId or academyId is required");
+        } else if (!teamId) {
+          throw new BadRequestError("franchiseId, academyId or teamId is required");
         }
       }
       // A coach only ever sees their own sessions — regardless of what

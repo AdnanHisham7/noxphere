@@ -32,7 +32,11 @@ export class CoachPortalUseCases {
     const teamIds = teams.map((t) => t._id);
     return {
       deletedAt: { $exists: false },
-      $or: [{ teamId: { $in: teamIds } }, { coachId: coachObjectId }],
+      $or: [
+        { teamId: { $in: teamIds } },
+        { teamIds: { $in: teamIds } },
+        { coachId: coachObjectId },
+      ],
     };
   }
 

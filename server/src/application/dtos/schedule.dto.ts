@@ -2,7 +2,8 @@
 import { z } from "zod";
 
 const SessionBaseSchema = z.object({
-  franchiseId: z.string().min(1),
+  franchiseId: z.string().min(1).optional(),
+  academyId: z.string().min(1).optional(),
   // A session is scheduled either for one specific team, or for every
   // student in an age-group category across the franchise (including
   // students who aren't on any team yet). Exactly one of teamId/category
@@ -25,6 +26,7 @@ const SessionBaseSchema = z.object({
   endDate: z.string().optional(),
   dailyStartTime: z.string().optional(),
   dailyEndTime: z.string().optional(),
+  daysOfWeek: z.array(z.number().min(0).max(6)).optional(),
   location: z.string().min(1),
   fieldNumber: z.string().optional(),
   pitchId: z.string().optional(),
@@ -44,12 +46,12 @@ const SessionBaseSchema = z.object({
 export const CreateSessionSchema = SessionBaseSchema.refine(
   (data) => {
     if (data.targetType === "team") return !!data.teamId;
-    if (data.targetType === "category") return !!data.category || (!!data.categories && data.categories.length > 0);
+    if (data.targetType === "category") return !!data.franchiseId && (!!data.category || (!!data.categories && data.categories.length > 0));
     if (data.targetType === "batch") return !!data.playerIds && data.playerIds.length > 0;
     return true;
   },
   {
-    message: "Select a team for a team session, categories for a category session, or players for a batch session",
+    message: "Select a team for a team session, branch & categories for a category session, or players for a batch session",
     path: ["targetType"],
   },
 );

@@ -377,14 +377,12 @@ export class StudentUseCases {
     } else {
       filter.deletedAt = { $exists: false };
       filter.status = { $ne: "dropped_out" };
-      if (filters.status) {
+      if (filters.status && filters.status !== "all") {
         filter.status = filters.status;
       }
       if (filters.isActive !== undefined) {
         filter.isActive =
           filters.isActive === true || filters.isActive === "true";
-      } else if (!filters.status) {
-        filter.isActive = true;
       }
     }
 
@@ -625,18 +623,15 @@ export class StudentUseCases {
       }
     }
 
-    // A student is active on the roster if status is 'active' or 'on_leave'.
-    // Marking them 'inactive', 'graduated', or 'dropped_out' releases their subscription slot.
-    const willBeActive = status === "active" || status === "on_leave";
+    // Option 1: All enrolled squad members (active, inactive, on_leave) occupy a subscription slot.
+    // Marking a student 'dropped_out' releases their slot and archives them.
+    const isEnrolled = status !== "dropped_out";
 
-    // If student was inactive/deleted and is being reactivated, enforce subscription quota!
-    if (
-      willBeActive &&
-      (!currentStudent.isActive ||
-        currentStudent.deletedAt ||
-        currentStudent.status === "dropped_out") &&
-      currentStudent.franchiseId
-    ) {
+    // If student was previously dropped/archived and is being re-enrolled, enforce subscription quota!
+    const wasDroppedOrArchived =
+      Boolean(currentStudent.deletedAt) || currentStudent.status === "dropped_out";
+
+    if (isEnrolled && wasDroppedOrArchived && currentStudent.franchiseId) {
       const franchise = await FranchiseModel.findById(
         currentStudent.franchiseId,
       )
@@ -651,11 +646,11 @@ export class StudentUseCases {
 
     const updatePayload: any = {
       status,
-      isActive: willBeActive,
+      isActive: isEnrolled,
     };
     if (status === "dropped_out") {
       updatePayload.deletedAt = new Date();
-    } else if (willBeActive && currentStudent.deletedAt) {
+    } else if (isEnrolled && currentStudent.deletedAt) {
       updatePayload.$unset = { deletedAt: 1 };
     }
 
@@ -664,8 +659,8 @@ export class StudentUseCases {
 
     if (currentStudent.userId) {
       await UserModel.findByIdAndUpdate(currentStudent.userId, {
-        isActive: willBeActive,
-        ...(willBeActive ? { $unset: { deletedAt: 1 } } : {}),
+        isActive: isEnrolled,
+        ...(isEnrolled ? { $unset: { deletedAt: 1 } } : {}),
       }).catch(() => undefined);
     }
 

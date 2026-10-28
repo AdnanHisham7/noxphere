@@ -77,6 +77,7 @@ import {
   Trash2,
   Building2,
   Calendar,
+  Clock,
 } from "lucide-react";
 
 type ActiveTab = "overview" | "purchases" | "stocks" | "misc" | "inflows" | "reports";
@@ -91,6 +92,17 @@ const PIE_COLORS = [
   "#facc15", // yellow
   "#94a3b8", // slate
 ];
+
+const formatDateSafe = (dateVal?: string | Date, formatPattern = "dd MMM yyyy") => {
+  if (!dateVal) return "—";
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return "—";
+    return format(d, formatPattern);
+  } catch {
+    return "—";
+  }
+};
 
 export const ExpenseManagementPage: React.FC = () => {
   const { user } = useSelector((s: RootState) => s.auth);
@@ -543,7 +555,7 @@ export const ExpenseManagementPage: React.FC = () => {
                 <StatCard
                   label="Total Outflow (Expenses)"
                   value={formatMoney(summary?.totalOutflow || 0)}
-                  sublabel={`Purchases: ${formatMoney(summary?.purchasesOutflow || 0)} | Misc: ${formatMoney(summary?.miscOutflow || 0)}`}
+                  sublabel={`Purchases: ${formatMoney(summary?.purchasesOutflow || 0)} | Misc: ${formatMoney(summary?.miscOutflow || 0)} | Salaries: ${formatMoney(summary?.salariesOutflow || 0)}`}
                   icon={<Receipt size={22} />}
                   accent="ember"
                 />
@@ -706,19 +718,24 @@ export const ExpenseManagementPage: React.FC = () => {
                     Spending Allocation Ratio
                   </span>
                   <span className="text-slate-500">
-                    Purchases: {formatMoney(summary?.purchasesOutflow || 0)} vs Misc: {formatMoney(summary?.miscOutflow || 0)}
+                    Purchases: {formatMoney(summary?.purchasesOutflow || 0)} | Misc: {formatMoney(summary?.miscOutflow || 0)} | Salaries: {formatMoney(summary?.salariesOutflow || 0)}
                   </span>
                 </div>
                 <div className="w-full h-3 bg-slate-200 dark:bg-pitch-800 rounded-full overflow-hidden flex">
                   <div
                     className="h-full bg-volt-400"
-                    style={{ width: `${reportData?.purchasesVsMisc.purchasesPercent || 50}%` }}
+                    style={{ width: `${reportData?.purchasesVsMisc.purchasesPercent || 0}%` }}
                     title={`Stock Purchases: ${reportData?.purchasesVsMisc.purchasesPercent || 0}%`}
                   />
                   <div
                     className="h-full bg-sky-400"
-                    style={{ width: `${reportData?.purchasesVsMisc.miscPercent || 50}%` }}
+                    style={{ width: `${reportData?.purchasesVsMisc.miscPercent || 0}%` }}
                     title={`Misc Expenses: ${reportData?.purchasesVsMisc.miscPercent || 0}%`}
+                  />
+                  <div
+                    className="h-full bg-amber-400"
+                    style={{ width: `${reportData?.purchasesVsMisc.salariesPercent || 0}%` }}
+                    title={`Staff Salaries: ${reportData?.purchasesVsMisc.salariesPercent || 0}%`}
                   />
                 </div>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 text-[11px] text-slate-500">
@@ -728,7 +745,11 @@ export const ExpenseManagementPage: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-sky-400" />
-                    <span>Operational & Misc Expenses ({reportData?.purchasesVsMisc.miscPercent || 0}%)</span>
+                    <span>Operational & Misc ({reportData?.purchasesVsMisc.miscPercent || 0}%)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                    <span>Staff Salaries ({reportData?.purchasesVsMisc.salariesPercent || 0}%)</span>
                   </div>
                 </div>
               </div>
@@ -1886,7 +1907,28 @@ export const ExpenseManagementPage: React.FC = () => {
                         <td className="px-4 py-2.5 text-right font-extrabold text-rose-500 tabular-nums">
                           {formatMoney(summary.totalOutflow)}
                         </td>
-                        <td className="px-4 py-2.5 text-slate-500">Verified purchases + pitch maintenance + operational bills</td>
+                        <td className="px-4 py-2.5 text-slate-500">Verified purchases + pitch maintenance + operational bills + staff payroll</td>
+                      </tr>
+                      <tr className="text-2xs bg-slate-50/50 dark:bg-white/[0.02]">
+                        <td className="px-6 py-1.5 text-slate-600 dark:text-slate-400 font-medium">↳ Verified Stock Purchases</td>
+                        <td className="px-4 py-1.5 text-right font-semibold text-slate-700 dark:text-slate-300 tabular-nums">
+                          {formatMoney(summary.purchasesOutflow)}
+                        </td>
+                        <td className="px-4 py-1.5 text-slate-400">Inventory assets acquired and verified</td>
+                      </tr>
+                      <tr className="text-2xs bg-slate-50/50 dark:bg-white/[0.02]">
+                        <td className="px-6 py-1.5 text-slate-600 dark:text-slate-400 font-medium">↳ Operational & Misc Expenses</td>
+                        <td className="px-4 py-1.5 text-right font-semibold text-slate-700 dark:text-slate-300 tabular-nums">
+                          {formatMoney(summary.miscOutflow)}
+                        </td>
+                        <td className="px-4 py-1.5 text-slate-400">Pitch maintenance, utilities, transport, misc bills</td>
+                      </tr>
+                      <tr className="text-2xs bg-slate-50/50 dark:bg-white/[0.02]">
+                        <td className="px-6 py-1.5 text-slate-600 dark:text-slate-400 font-medium">↳ Staff Salary Disbursements</td>
+                        <td className="px-4 py-1.5 text-right font-semibold text-rose-500 tabular-nums">
+                          {formatMoney(summary.salariesOutflow)}
+                        </td>
+                        <td className="px-4 py-1.5 text-slate-400">Coach & staff monthly payroll (including advance/prepaid salaries)</td>
                       </tr>
                       <tr className="bg-slate-50 dark:bg-pitch-900/50">
                         <td className="px-4 py-2.5 font-black text-slate-900 dark:text-white uppercase font-display">
@@ -1915,6 +1957,118 @@ export const ExpenseManagementPage: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Staff Salary Disbursements Audit Section */}
+            <div className="pt-2 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-white/5">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider font-display flex items-center gap-2">
+                    Staff Salary Disbursements
+                    <span className="text-2xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-pitch-800 text-slate-500 font-mono">
+                      {reportData?.salaryDisbursements?.length || 0} Records
+                    </span>
+                  </h4>
+                  <p className="text-2xs text-slate-500 mt-0.5">
+                    Itemized payroll disbursements for this timeframe, including current and advance/prepaid periods.
+                  </p>
+                </div>
+                <div className="text-xs font-mono font-bold text-rose-500 sm:text-right">
+                  Total Disbursed: {formatMoney(summary?.salariesOutflow || 0)}
+                </div>
+              </div>
+
+              {(!reportData?.salaryDisbursements || reportData.salaryDisbursements.length === 0) ? (
+                <div className="py-6 text-center text-xs text-slate-500 italic bg-slate-50 dark:bg-pitch-900/30 rounded-lg border border-slate-200 dark:border-white/5">
+                  No staff salary payments logged or disbursed in this timeframe.
+                </div>
+              ) : (
+                <div className="border border-slate-200 dark:border-white/10 rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs divide-y divide-slate-200 dark:divide-white/10">
+                      <thead className="bg-slate-100 dark:bg-pitch-800 text-slate-700 dark:text-slate-300 font-bold">
+                        <tr>
+                          <th className="px-3.5 py-2">Disbursement Date</th>
+                          <th className="px-3.5 py-2">Staff Member</th>
+                          <th className="px-3.5 py-2">Designation</th>
+                          <th className="px-3.5 py-2">Period</th>
+                          <th className="px-3.5 py-2">Disbursement Nature</th>
+                          <th className="px-3.5 py-2">Disbursed By</th>
+                          <th className="px-3.5 py-2 text-right">Amount ({currencySymbol})</th>
+                          <th className="px-3.5 py-2">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                        {reportData.salaryDisbursements.map((sal) => (
+                          <tr key={sal.id} className="hover:bg-slate-50 dark:hover:bg-pitch-800/50">
+                            <td className="px-3.5 py-2 font-mono text-2xs text-slate-500">
+                              {formatDateSafe(sal.paidAt, "dd MMM yyyy")}
+                            </td>
+                            <td className="px-3.5 py-2 font-bold text-slate-900 dark:text-white">
+                              {sal.employeeName}
+                            </td>
+                            <td className="px-3.5 py-2 text-slate-500 text-2xs">
+                              {sal.designation || "Staff"}
+                            </td>
+                            <td className="px-3.5 py-2 font-mono text-2xs font-bold text-slate-700 dark:text-slate-300">
+                              {sal.period}
+                            </td>
+                            <td className="px-3.5 py-2">
+                              {sal.disbursementType === "advance" || sal.isAdvance ? (
+                                <span className="text-3xs font-bold px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                                  Advance (for {sal.period})
+                                </span>
+                              ) : sal.disbursementType === "arrears" || sal.isArrears ? (
+                                <span className="text-3xs font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                  Arrears (for {sal.period})
+                                </span>
+                              ) : (
+                                <span className="text-3xs text-slate-500">Standard Payout</span>
+                              )}
+                            </td>
+                            <td className="px-3.5 py-2 text-2xs text-slate-500">
+                              {sal.paidBy || "—"}
+                            </td>
+                            <td className="px-3.5 py-2 text-right font-bold text-rose-500 font-mono tabular-nums">
+                              {formatMoney(sal.amount)}
+                            </td>
+                            <td className="px-3.5 py-2">
+                              <span className="text-3xs font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                Paid
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Advance Settlement Reconciliation Note */}
+              {reportData?.prepaidPriorDisbursements && reportData.prepaidPriorDisbursements.length > 0 && (
+                <div className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-lg space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
+                    <span className="flex items-center gap-1.5">
+                      <Clock size={14} className="text-sky-500 shrink-0" />
+                      Prepaid Salary Settlement Reconciliation ({reportData.prepaidPriorDisbursements.length} staff)
+                    </span>
+                    <span className="font-mono font-bold">
+                      {formatMoney(reportData.prepaidPriorDisbursements.reduce((sum, s) => sum + s.amount, 0))} Prepaid in Prior Months
+                    </span>
+                  </div>
+                  <p className="text-2xs text-sky-600 dark:text-sky-400">
+                    The staff members below had their salary for this month paid in advance in prior months (accounted for in those months' cash statements). Zero duplicate deductions are applied to this month's operating outflows.
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {reportData.prepaidPriorDisbursements.map((p) => (
+                      <span key={p.id} className="text-2xs px-2 py-0.5 rounded bg-white dark:bg-pitch-800 border border-sky-200 dark:border-sky-500/30 text-slate-700 dark:text-slate-300 font-mono">
+                        {p.employeeName} ({formatMoney(p.amount)}) • Disbursed {formatDateSafe(p.paidAt, "dd MMM yyyy")}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

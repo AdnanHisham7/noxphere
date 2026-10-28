@@ -183,6 +183,7 @@ export interface PerformanceRecord {
     notes?: string;
   } | string;
   sessionDate: string;
+  sessionType?: string;
   skillScores?: { parameter: string; score: number }[];
   overallScore: number;
   remarks?: string;

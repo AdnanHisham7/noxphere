@@ -30,16 +30,17 @@ export interface PublicPlayerProfile {
   preferredFoot?: string;
   isFreeAgent: boolean;
   attributes?: TacticalAttributes | null;
+  majorSkills?: { category: string; score: number; count: number }[];
   totalEvaluations?: number;
 }
 
 /**
- * Computes authentic tactical attributes (1-99) and overall rating from
+ * Computes authentic tactical attributes (1-99), major skills rollup, and overall rating from
  * verified coach session evaluations recorded in PerformanceModel.
  */
 function computeTacticalAttributes(
-  performances: Array<{ overallScore: number; skillScores: { parameter: string; score: number }[] }>
-): { attributes: TacticalAttributes; overallRating: number } {
+  performances: Array<{ overallScore: number; sessionType?: string; skillScores: { parameter: string; score: number }[] }>
+): { attributes: TacticalAttributes; overallRating: number; majorSkills: { category: string; score: number; count: number }[] } {
   const buckets = {
     pace: [] as number[],
     shooting: [] as number[],
@@ -159,6 +160,38 @@ function computeTacticalAttributes(
 
   const calculatedOverall = Math.min(99, Math.max(40, Math.round(baselineScore * 10)));
 
+  const categoryBuckets = new Map<string, number[]>();
+  for (const perf of performances) {
+    const sType = perf.sessionType?.trim();
+    for (const item of perf.skillScores || []) {
+      const p = item.parameter.trim();
+      const s = item.score;
+      if (typeof s !== "number" || isNaN(s)) continue;
+
+      let cat = sType;
+      if (!cat) {
+        const pl = p.toLowerCase();
+        if (pl.includes("speed") || pl.includes("agility") || pl.includes("strength") || pl.includes("stamina") || pl.includes("physical") || pl.includes("balance") || pl.includes("endurance")) cat = "Physical";
+        else if (pl.includes("dribbl") || pl.includes("pass") || pl.includes("touch") || pl.includes("shoot") || pl.includes("finish") || pl.includes("technic") || pl.includes("receiving")) cat = "Technical";
+        else if (pl.includes("position") || pl.includes("decision") || pl.includes("spatial") || pl.includes("tactic") || pl.includes("transition")) cat = "Tactical";
+        else if (pl.includes("mental") || pl.includes("attitude") || pl.includes("focus") || pl.includes("work ethic") || pl.includes("composure")) cat = "Mental";
+        else cat = "Match";
+      }
+      const existing = categoryBuckets.get(cat) || [];
+      existing.push(s);
+      categoryBuckets.set(cat, existing);
+    }
+  }
+
+  const majorSkills = Array.from(categoryBuckets.entries()).map(([category, vals]) => {
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    return {
+      category,
+      score: Math.round(avg * 10) / 10,
+      count: vals.length,
+    };
+  });
+
   return {
     attributes: {
       pace: toRating(buckets.pace),
@@ -168,6 +201,7 @@ function computeTacticalAttributes(
       defending: toRating(buckets.defending),
       physical: toRating(buckets.physical),
     },
+    majorSkills,
     overallRating: calculatedOverall,
   };
 }
@@ -220,6 +254,7 @@ export class PublicPlayerUseCases {
     // Dynamic attribute calculation:
     // Only calculate attributes for players enrolled in an academy who have real performance records
     let attributes: TacticalAttributes | null = null;
+    let majorSkills: { category: string; score: number; count: number }[] | undefined;
     let computedOverallRating: number | undefined;
     let totalEvaluations = 0;
 
@@ -235,6 +270,7 @@ export class PublicPlayerUseCases {
         const computed = computeTacticalAttributes(performances);
         if (showRating) {
           attributes = computed.attributes;
+          majorSkills = computed.majorSkills;
           computedOverallRating = computed.overallRating;
         }
       } else if (showRating && student.overallRating && student.overallRating > 0) {
@@ -258,6 +294,7 @@ export class PublicPlayerUseCases {
       preferredFoot: settings.preferredFoot?.trim() || undefined,
       isFreeAgent,
       attributes,
+      majorSkills,
       totalEvaluations,
     };
   }

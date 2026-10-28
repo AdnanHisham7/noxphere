@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { useHighlightEffect } from "../../hooks/useEntityHighlight";
+import { clearActiveTeam, setActiveTeam } from "../../store/slices/uiSlice";
+import { ScheduleTeamEventModal } from "../teams/ScheduleTeamEventModal";
 import {
   CalendarDays,
   Plus,
@@ -27,7 +29,7 @@ import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
 import { useConfirm } from "../../hooks/useConfirm";
-import { useListTeamsQuery } from "../../store/api/teamsApi";
+import { useListTeamsQuery, useGetTeamByIdQuery } from "../../store/api/teamsApi";
 import { useGetUsersQuery } from "../../store/api/usersApi";
 import { useGetFranchiseByIdQuery, useGetFranchisesQuery } from "../../store/api/franchiseApi";
 import { useGetStudentsQuery, useGetAgeCategoriesQuery } from "../../store/api/studentsApi";
@@ -51,11 +53,35 @@ const STATUS_VARIANT: Record<Session["status"], "green" | "blue" | "gray" | "red
   cancelled: "red",
 };
 
-const TYPE_LABEL: Record<Session["type"], string> = {
-  training: "Training",
+const TYPE_LABEL: Record<string, string> = {
+  technical: "Technical",
+  physical: "Physical",
+  tactical: "Tactical",
+  psychological: "Psychological",
+  social: "Social",
+  mental: "Mental",
   match: "Match",
+  training: "Training",
   trial: "Trial",
   fitness: "Fitness",
+};
+
+const formatSessionType = (type?: string, academySessionTypes?: { name: string }[]): string => {
+  if (!type) return "—";
+  const normalized = type.trim();
+  const lower = normalized.toLowerCase();
+
+  const configured = academySessionTypes?.find(
+    (st) => st.name.toLowerCase() === lower
+  );
+  if (configured) return configured.name;
+
+  if (TYPE_LABEL[lower]) return TYPE_LABEL[lower];
+
+  return normalized
+    .split(/[\s_-]+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
 };
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -79,7 +105,9 @@ const isCoachAvailableOnDate = (coach: CoachAvailabilityFields, dateStr: string)
 };
 
 const SchedulePage: React.FC = () => {
+  const dispatch = useDispatch();
   const franchiseId = useCurrentFranchiseId();
+  const activeTeamId = useSelector((s: RootState) => s.ui.activeTeamId);
   const navigate = useNavigate();
   const { user } = useSelector((s: RootState) => s.auth);
   const isCoach = user?.role === "coach";
@@ -88,8 +116,21 @@ const SchedulePage: React.FC = () => {
 
   // State
   const [searchParams] = useSearchParams();
+  const effectiveTeamId = activeTeamId || searchParams.get("teamId") || undefined;
   const highlightId = searchParams.get("highlightId");
   useHighlightEffect();
+
+  // Synchronize URL ?teamId parameter with Redux activeTeamId
+  useEffect(() => {
+    const urlTeamId = searchParams.get("teamId");
+    if (urlTeamId) {
+      if (urlTeamId !== activeTeamId) {
+        dispatch(setActiveTeam(urlTeamId));
+      }
+    } else if (activeTeamId) {
+      dispatch(clearActiveTeam());
+    }
+  }, [searchParams, activeTeamId, dispatch]);
 
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -104,11 +145,17 @@ const SchedulePage: React.FC = () => {
   // Queries
   const { data: franchise } = useGetFranchiseByIdQuery(franchiseId ?? "", { skip: !franchiseId });
   const resolvedAcademyId = franchiseId ? franchise?.academyId : user?.academyId;
+  const { data: academyData } = academyApi.useGetAcademyByIdQuery(
+    resolvedAcademyId ?? "",
+    { skip: !resolvedAcademyId }
+  );
 
   const { data: allTeams } = useListTeamsQuery(
     franchiseId ? { franchiseId } : { academyId: resolvedAcademyId ?? "" },
     { skip: !franchiseId && !resolvedAcademyId }
   );
+  const { data: fetchedTeam } = useGetTeamByIdQuery(effectiveTeamId ?? "", { skip: !effectiveTeamId });
+  const activeTeam = (allTeams ?? []).find((t) => t.id === effectiveTeamId) ?? (fetchedTeam as any);
   const teams = isCoach
     ? (allTeams ?? []).filter((t) => (t.coach?._id?.toString() || (t.coach as any)?.id?.toString()) === user?.id)
     : allTeams ?? [];
@@ -125,7 +172,12 @@ const SchedulePage: React.FC = () => {
   const coaches = coachesResult?.data ?? [];
 
   const { data: sessions = [], isLoading, isError } = useGetSessionsQuery(
-    franchiseId
+    effectiveTeamId
+      ? {
+          teamId: effectiveTeamId,
+          ...(selectedDate ? { from: selectedDate, to: selectedDate } : {}),
+        }
+      : franchiseId
       ? {
           franchiseId,
           ...(isCoach && user?.id ? { coachId: user.id } : {}),
@@ -135,10 +187,44 @@ const SchedulePage: React.FC = () => {
           academyId: resolvedAcademyId ?? "",
           ...(selectedDate ? { from: selectedDate, to: selectedDate } : {}),
         },
-    { skip: !franchiseId && !resolvedAcademyId }
+    { skip: !effectiveTeamId && !franchiseId && !resolvedAcademyId }
   );
 
   const sessionsList = Array.isArray(sessions) ? sessions : [];
+
+  const availableFilterTypes = useMemo(() => {
+    const typesMap = new Map<string, string>();
+
+    const defaultTypes = [
+      { id: "technical", label: "Technical" },
+      { id: "physical", label: "Physical" },
+      { id: "tactical", label: "Tactical" },
+      { id: "psychological", label: "Psychological" },
+      { id: "social", label: "Social" },
+      { id: "match", label: "Match" },
+      { id: "training", label: "Training" },
+      { id: "trial", label: "Trial" },
+      { id: "fitness", label: "Fitness" },
+    ];
+    defaultTypes.forEach((t) => typesMap.set(t.id.toLowerCase(), t.label));
+
+    if (academyData?.sessionTypes) {
+      academyData.sessionTypes.forEach((st) => {
+        typesMap.set(st.name.toLowerCase(), st.name);
+      });
+    }
+
+    sessionsList.forEach((s) => {
+      if (s.type) {
+        const key = s.type.toLowerCase();
+        if (!typesMap.has(key)) {
+          typesMap.set(key, formatSessionType(s.type, academyData?.sessionTypes));
+        }
+      }
+    });
+
+    return Array.from(typesMap.entries()).map(([id, label]) => ({ id, label }));
+  }, [academyData?.sessionTypes, sessionsList]);
 
   useEffect(() => {
     if (!highlightId || !sessionsList.length) return;
@@ -167,7 +253,9 @@ const SchedulePage: React.FC = () => {
         const loc = (s.location || "").toLowerCase();
         const query = searchQuery.toLowerCase();
         const matchesSearch = !query || targetName.includes(query) || loc.includes(query);
-        const matchesType = typeFilter === "all" || s.type === typeFilter;
+        const matchesType =
+          typeFilter === "all" ||
+          (s.type || "").toLowerCase() === typeFilter.toLowerCase();
         const matchesStatus = statusFilter === "all" || s.status === statusFilter;
 
         return matchesSearch && matchesType && matchesStatus;
@@ -223,26 +311,55 @@ const SchedulePage: React.FC = () => {
     }
   };
 
-  if (!franchiseId) {
+  if (!franchiseId && !effectiveTeamId) {
     return (
       <EmptyState
         icon={<CalendarDays size={32} />}
-        title="No branch selected"
-        description="Select an active branch from the header bar to manage operational schedules."
+        title="No branch or team selected"
+        description="Select an active branch or team from the header bar to manage operational schedules."
       />
     );
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Squad Schedule Banner if a team is active */}
+      {effectiveTeamId && (
+        <div className="p-3.5 rounded-lg bg-volt-400/[0.08] dark:bg-volt-400/[0.05] border border-volt-400/25 flex flex-wrap items-center justify-between gap-2 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-md bg-volt-400/20 text-volt-600 dark:text-volt-400">
+              <Users size={16} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-900 dark:text-white">
+                Squad Schedule · {activeTeam?.name ?? "Team"} {activeTeam?.ageGroup ? `(${activeTeam.ageGroup})` : ""}
+              </p>
+              <p className="text-2xs text-slate-500 dark:text-slate-400">
+                Viewing scheduled matches and training sessions exclusively for this squad.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              dispatch(clearActiveTeam());
+              navigate("/schedule");
+            }}
+            className="text-xs text-volt-600 dark:text-volt-400 font-bold hover:underline px-2.5 py-1 rounded bg-volt-400/10 border border-volt-400/20"
+          >
+            ← Back to Branch Schedule
+          </button>
+        </div>
+      )}
+
       {/* Page Header */}
       <PageHeader
-        eyebrow="Training & Operations"
-        title="Schedule Command Center"
-        subtitle="Operational session dispatcher, field utilization, and roster attendance tracking."
+        eyebrow={effectiveTeamId ? "Squad Operations" : "Training & Operations"}
+        title={effectiveTeamId ? `${activeTeam?.name ?? "Team"} Schedule` : "Schedule Command Center"}
+        subtitle={effectiveTeamId ? `Operational session dispatcher and roster attendance tracking for ${activeTeam?.name ?? "squad"}.` : "Operational session dispatcher, field utilization, and roster attendance tracking."}
         actions={
           <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-            {canBroadcast && (
+            {canBroadcast && !effectiveTeamId && (
               <Button
                 variant="secondary"
                 icon={<Bell size={15} />}
@@ -253,7 +370,7 @@ const SchedulePage: React.FC = () => {
               </Button>
             )}
             <Button icon={<Plus size={15} />} onClick={() => setShowCreate(true)} className="text-xs font-semibold flex-1 sm:flex-initial justify-center">
-              New Session
+              {effectiveTeamId ? "Schedule Squad Event" : "New Session"}
             </Button>
           </div>
         }
@@ -312,16 +429,17 @@ const SchedulePage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="w-32">
+          <div className="w-36">
             <Select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
             >
               <option value="all">All Types</option>
-              <option value="training">Training</option>
-              <option value="match">Match</option>
-              <option value="trial">Trial</option>
-              <option value="fitness">Fitness</option>
+              {availableFilterTypes.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
             </Select>
           </div>
 
@@ -434,13 +552,18 @@ const SchedulePage: React.FC = () => {
                             Batch
                           </Badge>
                         )}
+                        {session.targetType === "team" && (
+                          <Badge variant="green" size="sm">
+                            Squad Event
+                          </Badge>
+                        )}
                       </div>
                     </td>
 
                     {/* Session Type */}
                     <td className="py-3.5 px-4 font-sans whitespace-nowrap">
                       <Badge variant="gray" size="sm">
-                        {TYPE_LABEL[session.type]}
+                        {formatSessionType(session.type, academyData?.sessionTypes)}
                       </Badge>
                     </td>
 
@@ -563,25 +686,36 @@ const SchedulePage: React.FC = () => {
 
       {/* Create Session Modal */}
       {showCreate && (
-        <CreateSessionModal
-          franchiseId={franchiseId || ""}
-          teams={teams ?? []}
-          categories={categories}
-          coaches={coaches}
-          isCoach={isCoach}
-          currentUser={user ? { id: user.id, firstName: user.firstName, lastName: user.lastName } : undefined}
-          onClose={() => setShowCreate(false)}
-          onCreate={async (input) => {
-            try {
-              await createSession(input).unwrap();
-              toast.success("Session scheduled successfully");
-              setShowCreate(false);
-            } catch (err: any) {
-              toast.error(err?.data?.message || "Couldn't schedule session — try again");
-            }
-          }}
-          creating={creating}
-        />
+        effectiveTeamId ? (
+          activeTeam ? (
+            <ScheduleTeamEventModal
+              team={activeTeam}
+              academyId={resolvedAcademyId || activeTeam.academyId || user?.academyId || ""}
+              coaches={coaches}
+              onClose={() => setShowCreate(false)}
+            />
+          ) : null
+        ) : (
+          <CreateSessionModal
+            franchiseId={franchiseId || ""}
+            teams={teams ?? []}
+            categories={categories}
+            coaches={coaches}
+            isCoach={isCoach}
+            currentUser={user ? { id: user.id, firstName: user.firstName, lastName: user.lastName } : undefined}
+            onClose={() => setShowCreate(false)}
+            onCreate={async (input) => {
+              try {
+                await createSession(input).unwrap();
+                toast.success("Session scheduled successfully");
+                setShowCreate(false);
+              } catch (err: any) {
+                toast.error(err?.data?.message || "Couldn't schedule session — try again");
+              }
+            }}
+            creating={creating}
+          />
+        )
       )}
 
       {/* Edit Session Modal */}
@@ -654,18 +788,16 @@ const CreateSessionModal: React.FC<{
   );
   const activeTeams = franchiseId ? teams : (franchiseTeams ?? []);
 
-  const [targetType, setTargetType] = useState<"team" | "category" | "batch">(
-    isCoach || activeTeams.length > 0 ? "team" : "category"
-  );
+  const [targetType, setTargetType] = useState<"category" | "batch">("category");
   const [batchPlayerSearch, setBatchPlayerSearch] = useState("");
-  const [teamId, setTeamId] = useState(activeTeams[0]?.id ?? "");
   const [categoriesState, setCategoriesState] = useState<string[]>([]);
   const [coachIds, setCoachIds] = useState<string[]>(isCoach ? [currentUser?.id ?? ""] : []);
 
-  const [selectedTypeOpt, setSelectedTypeOpt] = useState("training");
+  const [selectedTypeOpt, setSelectedTypeOpt] = useState("technical");
   const [customType, setCustomType] = useState("");
 
   const [isMultiDay, setIsMultiDay] = useState(false);
+  const [daysOfWeek, setDaysOfWeek] = useState<number[]>([]);
   const [date, setDate] = useState(todayStr());
   const [startTime, setStartTime] = useState("16:00");
   const [endTime, setEndTime] = useState("17:30");
@@ -687,6 +819,32 @@ const CreateSessionModal: React.FC<{
   );
   const academyPitches = (academyData?.pitches || []).filter((p) => p.isActive !== false);
   const [selectedPitchId, setSelectedPitchId] = useState<string>("manual");
+
+  const availableSessionTypes = useMemo(() => {
+    if (academyData?.sessionTypes && academyData.sessionTypes.length > 0) {
+      return academyData.sessionTypes.map((st) => ({
+        id: st.name.toLowerCase(),
+        label: st.name,
+      }));
+    }
+    return [
+      { id: "technical", label: "Technical" },
+      { id: "physical", label: "Physical" },
+      { id: "tactical", label: "Tactical" },
+      { id: "psychological", label: "Psychological" },
+      { id: "social", label: "Social" },
+      { id: "match", label: "Match" },
+      { id: "training", label: "Training" },
+      { id: "trial", label: "Trial" },
+      { id: "fitness", label: "Fitness" },
+    ];
+  }, [academyData?.sessionTypes]);
+
+  useEffect(() => {
+    if (availableSessionTypes.length > 0 && !availableSessionTypes.some((t) => t.id === selectedTypeOpt) && selectedTypeOpt !== "custom") {
+      setSelectedTypeOpt(availableSessionTypes[0].id);
+    }
+  }, [availableSessionTypes, selectedTypeOpt]);
 
   const [playerIds, setPlayerIds] = useState<string[]>([]);
   const [documents, setDocuments] = useState<{ name: string; url: string }[]>([]);
@@ -718,34 +876,14 @@ const CreateSessionModal: React.FC<{
   }, [studentsResult?.items]);
 
   React.useEffect(() => {
-    if (activeTeams.length > 0 && !teamId) {
-      setTeamId(activeTeams[0].id);
-      if (!isCoach && activeTeams[0].coach?._id) {
-        setCoachIds([activeTeams[0].coach._id]);
-      }
-    }
-  }, [activeTeams]);
-
-  React.useEffect(() => {
     if (academyFranchises && academyFranchises.length > 0 && !selectedFranchiseId) {
       setSelectedFranchiseId(academyFranchises[0].id);
     }
   }, [academyFranchises]);
 
-  const handleTeamChange = (id: string) => {
-    setTeamId(id);
-    if (!isCoach) {
-      const t = activeTeams.find((tm) => tm.id === id);
-      if (t?.coach?._id) {
-        setCoachIds([t.coach._id]);
-      }
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFranchiseId) return toast.error("Select a branch");
-    if (targetType === "team" && !teamId) return toast.error("Select a team");
     if (targetType === "category" && categoriesState.length === 0) return toast.error("Select at least one category");
     if (targetType === "batch" && playerIds.length === 0) return toast.error("Select at least one player for the custom batch session");
     if (coachIds.length === 0) return toast.error("Select at least one coach");
@@ -760,9 +898,9 @@ const CreateSessionModal: React.FC<{
         : academyPitches.find((p) => p.name.toLowerCase() === location.trim().toLowerCase());
 
     onCreate({
-      franchiseId: selectedFranchiseId,
+      franchiseId: selectedFranchiseId || undefined,
+      academyId: effectiveAcademyId || undefined,
       targetType,
-      teamId: targetType === "team" ? teamId : undefined,
       category: targetType === "category" ? categoriesState[0] : undefined,
       categories: targetType === "category" ? categoriesState : undefined,
       coachId: coachIds[0],
@@ -775,6 +913,7 @@ const CreateSessionModal: React.FC<{
       endDate: isMultiDay ? endDate : date,
       dailyStartTime: isMultiDay ? dailyStartTime : startTime,
       dailyEndTime: isMultiDay ? dailyEndTime : endTime,
+      daysOfWeek: isMultiDay && daysOfWeek.length > 0 ? daysOfWeek : undefined,
       location,
       fieldNumber: fieldNumber || undefined,
       pitchId: matchingPitch?.id,
@@ -814,7 +953,7 @@ const CreateSessionModal: React.FC<{
               Schedule Target
             </label>
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-900 p-1 rounded-lg border border-slate-200 dark:border-white/5 w-fit">
-              {(["team", "category", "batch"] as const).map((t) => (
+              {(["category", "batch"] as const).map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -824,29 +963,16 @@ const CreateSessionModal: React.FC<{
                     targetType === t ? "bg-volt-400 text-pitch-900 font-extrabold shadow-sm" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   )}
                 >
-                  {t === "team" ? <Users size={12} /> : t === "category" ? <Layers size={12} /> : <UserCheck size={12} />}
-                  {t === "team" ? "A Team" : t === "category" ? "Age Categories" : "Custom Batch"}
+                  {t === "category" ? <Layers size={12} /> : <UserCheck size={12} />}
+                  {t === "category" ? "Age Categories" : "Custom Batch"}
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Team, Categories, or Batch Selection */}
-        {targetType === "team" ? (
-          <div>
-            <Select
-              label="Team"
-              value={teamId}
-              onChange={(e) => handleTeamChange(e.target.value)}
-            >
-              <option value="">Select Team</option>
-              {activeTeams.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </Select>
-          </div>
-        ) : targetType === "category" ? (
+        {/* Categories or Batch Selection */}
+        {targetType === "category" ? (
           <div>
             <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1">
               Age Categories (Select all that apply)
@@ -1027,15 +1153,14 @@ const CreateSessionModal: React.FC<{
               value={selectedTypeOpt}
               onChange={(e) => setSelectedTypeOpt(e.target.value)}
             >
-              <option value="training">Training</option>
-              <option value="match">Match</option>
-              <option value="trial">Trial</option>
-              <option value="fitness">Fitness</option>
+              {availableSessionTypes.map((st) => (
+                <option key={st.id} value={st.id}>{st.label}</option>
+              ))}
               <option value="custom">Custom (Specify...)</option>
             </Select>
           </div>
           {selectedTypeOpt === "custom" && (
-            <Input label="Custom Type Name" value={customType} onChange={(e) => setCustomType(e.target.value)} placeholder="e.g. Friendly Match" required />
+            <Input label="Custom Type Name" value={customType} onChange={(e) => setCustomType(e.target.value)} placeholder="e.g. Tactical Drill" required />
           )}
         </div>
 
@@ -1065,11 +1190,51 @@ const CreateSessionModal: React.FC<{
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-3 bg-slate-50 dark:bg-white/[0.02] p-3 rounded-lg border border-slate-200 dark:border-white/5">
-              <Input label="Start Date" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
-              <Input label="End Date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
-              <Input label="Daily Start" type="time" value={dailyStartTime} onChange={(e) => setDailyStartTime(e.target.value)} required />
-              <Input label="Daily End" type="time" value={dailyEndTime} onChange={(e) => setDailyEndTime(e.target.value)} required />
+            <div className="space-y-3 bg-slate-50 dark:bg-white/[0.02] p-3 rounded-lg border border-slate-200 dark:border-white/5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <Input label="Start Date" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+                <Input label="End Date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+                <Input label="Daily Start" type="time" value={dailyStartTime} onChange={(e) => setDailyStartTime(e.target.value)} required />
+                <Input label="Daily End" type="time" value={dailyEndTime} onChange={(e) => setDailyEndTime(e.target.value)} required />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Filter By Specific Days (Leave empty to repeat every day)
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { id: 1, label: "Mon" },
+                    { id: 2, label: "Tue" },
+                    { id: 3, label: "Wed" },
+                    { id: 4, label: "Thu" },
+                    { id: 5, label: "Fri" },
+                    { id: 6, label: "Sat" },
+                    { id: 0, label: "Sun" },
+                  ].map((d) => {
+                    const active = daysOfWeek.includes(d.id);
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() =>
+                          setDaysOfWeek((prev) =>
+                            active ? prev.filter((x) => x !== d.id) : [...prev, d.id]
+                          )
+                        }
+                        className={clsx(
+                          "px-2.5 py-1 text-2xs font-semibold rounded border transition-all",
+                          active
+                            ? "bg-volt-400 text-pitch-900 border-volt-400 font-bold"
+                            : "bg-white dark:bg-pitch-800 text-slate-500 border-slate-200 dark:border-white/10"
+                        )}
+                      >
+                        {d.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1310,8 +1475,8 @@ const EditSessionModal: React.FC<{
   const [categoriesState, setCategoriesState] = useState<string[]>(session.categories || (session.category ? [session.category] : []));
   const [coachIds, setCoachIds] = useState<string[]>(session.coachIds || (session.coachId ? [session.coachId] : []));
 
-  const [selectedTypeOpt, setSelectedTypeOpt] = useState(["training", "match", "trial", "fitness"].includes(session.type) ? session.type : "custom");
-  const [customType, setCustomType] = useState(["training", "match", "trial", "fitness"].includes(session.type) ? "" : session.type);
+  const [selectedTypeOpt, setSelectedTypeOpt] = useState(session.type?.toLowerCase() || "technical");
+  const [customType, setCustomType] = useState(session.type || "");
 
   const [isMultiDay, setIsMultiDay] = useState(!!session.startDate && session.startDate !== session.endDate);
   const [date, setDate] = useState(session.date);
@@ -1344,6 +1509,26 @@ const EditSessionModal: React.FC<{
     { skip: !effectiveAcademyId }
   );
   const academyPitches = (academyData?.pitches || []).filter((p) => p.isActive !== false);
+
+  const availableSessionTypes = useMemo(() => {
+    if (academyData?.sessionTypes && academyData.sessionTypes.length > 0) {
+      return academyData.sessionTypes.map((st) => ({
+        id: st.name.toLowerCase(),
+        label: st.name,
+      }));
+    }
+    return [
+      { id: "technical", label: "Technical" },
+      { id: "physical", label: "Physical" },
+      { id: "tactical", label: "Tactical" },
+      { id: "psychological", label: "Psychological" },
+      { id: "social", label: "Social" },
+      { id: "match", label: "Match" },
+      { id: "training", label: "Training" },
+      { id: "trial", label: "Trial" },
+      { id: "fitness", label: "Fitness" },
+    ];
+  }, [academyData?.sessionTypes]);
 
   const matchedPitch = academyPitches.find(
     (p) => p.name.toLowerCase() === (session.location || "").toLowerCase()
@@ -1534,10 +1719,9 @@ const EditSessionModal: React.FC<{
               value={selectedTypeOpt}
               onChange={(e) => setSelectedTypeOpt(e.target.value)}
             >
-              <option value="training">Training</option>
-              <option value="match">Match</option>
-              <option value="trial">Trial</option>
-              <option value="fitness">Fitness</option>
+              {availableSessionTypes.map((st) => (
+                <option key={st.id} value={st.id}>{st.label}</option>
+              ))}
               <option value="custom">Custom (Specify...)</option>
             </Select>
           </div>

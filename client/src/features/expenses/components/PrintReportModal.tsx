@@ -17,6 +17,17 @@ interface PrintReportModalProps {
   franchiseName?: string;
 }
 
+const formatDateSafe = (dateVal?: string | Date, formatPattern = "dd/MM/yyyy") => {
+  if (!dateVal) return "—";
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return "—";
+    return format(d, formatPattern);
+  } catch {
+    return "—";
+  }
+};
+
 export const PrintReportModal: React.FC<PrintReportModalProps> = ({
   isOpen,
   onClose,
@@ -30,7 +41,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
 
   if (!report) return null;
 
-  const { summary, categoryBreakdown, expenses, feeInflows, otherInflows, stockSummary, period } = report;
+  const { summary, categoryBreakdown, expenses, feeInflows, otherInflows, stockSummary, period, salaryDisbursements = [], prepaidPriorDisbursements = [] } = report;
 
   const handlePrint = () => {
     if (!printAreaRef.current) {
@@ -292,6 +303,47 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
       });
       rows.push([]);
 
+      // Itemized Staff Salaries (Disbursements)
+      rows.push(["ITEMIZED STAFF SALARY DISBURSEMENTS (CASH OUTFLOW)"]);
+      rows.push(["Disbursement Date", "Employee Name", "Designation", "Period", "Payment Nature", "Amount (INR)", "Disbursed By", "Notes"]);
+      salaryDisbursements.forEach((s) => {
+        const nature =
+          s.disbursementType === "advance" || s.isAdvance
+            ? `Advance (for ${s.period})`
+            : s.disbursementType === "arrears" || s.isArrears
+            ? `Arrears (for ${s.period})`
+            : "Standard Payout";
+        rows.push([
+          formatDateSafe(s.paidAt, "yyyy-MM-dd"),
+          s.employeeName,
+          s.designation || "Staff",
+          s.period,
+          nature,
+          s.amount.toString(),
+          s.paidBy || "—",
+          s.notes || "",
+        ]);
+      });
+      rows.push([]);
+
+      if (prepaidPriorDisbursements.length > 0) {
+        rows.push(["PREPAID SALARIES SETTLED IN PRIOR MONTHS (INFORMATIONAL - NOT DOUBLE-DEDUCTED)"]);
+        rows.push(["Disbursement Date", "Employee Name", "Designation", "Salary Period", "Original Payment Month", "Amount (INR)", "Disbursed By", "Notes"]);
+        prepaidPriorDisbursements.forEach((p) => {
+          rows.push([
+            formatDateSafe(p.paidAt, "yyyy-MM-dd"),
+            p.employeeName,
+            p.designation || "Staff",
+            p.period,
+            p.paidMonth || "Prior Month",
+            p.amount.toString(),
+            p.paidBy || "—",
+            p.notes || "Prepaid in advance in prior period cash statement",
+          ]);
+        });
+        rows.push([]);
+      }
+
       // Itemized Inflows
       rows.push(["ITEMIZED INFLOWS (STUDENT FEES & OTHER REVENUES)"]);
       rows.push(["Date", "Type", "Source / Student", "Branch", "Amount (INR)", "Payment Method", "Ref / Txn ID"]);
@@ -486,7 +538,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                   {formatMoney(summary.totalOutflow)}
                 </span>
                 <span className="block text-[10px] text-slate-500 mt-0.5">
-                  Purchases: {formatMoney(summary.purchasesOutflow)}
+                  Purchases: {formatMoney(summary.purchasesOutflow)} | Misc: {formatMoney(summary.miscOutflow)} | Salaries: {formatMoney(summary.salariesOutflow)}
                 </span>
               </div>
 
@@ -614,10 +666,85 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
             )}
           </div>
 
+          {/* Staff Salary Disbursements Table */}
+          <div className="report-section">
+            <h4 className="font-bold text-slate-900 uppercase tracking-wider mb-2 text-[11px]">
+              4. Staff Salary Disbursements ({salaryDisbursements.length} Records)
+            </h4>
+            {salaryDisbursements.length === 0 ? (
+              <p className="text-slate-500 italic text-[11px]">No staff salary disbursements logged in this timeframe.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-slate-200 text-left text-[11px]">
+                  <thead>
+                    <tr className="bg-slate-100 font-bold text-slate-700">
+                      <th className="border border-slate-200 px-2.5 py-1.5">Date</th>
+                      <th className="border border-slate-200 px-2.5 py-1.5">Employee Name</th>
+                      <th className="border border-slate-200 px-2.5 py-1.5">Designation</th>
+                      <th className="border border-slate-200 px-2.5 py-1.5">Period</th>
+                      <th className="border border-slate-200 px-2.5 py-1.5">Disbursement Nature</th>
+                      <th className="border border-slate-200 px-2.5 py-1.5">Disbursed By</th>
+                      <th className="border border-slate-200 px-2.5 py-1.5 text-right">Amount ({currencySymbol})</th>
+                      <th className="border border-slate-200 px-2.5 py-1.5">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {salaryDisbursements.map((s, idx) => (
+                      <tr key={`sal-${idx}`} className="hover:bg-slate-50">
+                        <td className="border border-slate-200 px-2.5 py-1 tabular-nums">
+                          {formatDateSafe(s.paidAt, "dd/MM/yyyy")}
+                        </td>
+                        <td className="border border-slate-200 px-2.5 py-1 font-semibold text-slate-900">
+                          {s.employeeName}
+                        </td>
+                        <td className="border border-slate-200 px-2.5 py-1 text-slate-600">
+                          {s.designation || "Staff"}
+                        </td>
+                        <td className="border border-slate-200 px-2.5 py-1 font-mono text-[10px]">
+                          {s.period}
+                        </td>
+                        <td className="border border-slate-200 px-2.5 py-1 text-[10px]">
+                          {s.disbursementType === "advance" || s.isAdvance ? (
+                            <span className="text-sky-700 font-bold bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded">
+                              Advance (for {s.period})
+                            </span>
+                          ) : s.disbursementType === "arrears" || s.isArrears ? (
+                            <span className="text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                              Arrears (for {s.period})
+                            </span>
+                          ) : (
+                            <span className="text-slate-600">Standard Payout</span>
+                          )}
+                        </td>
+                        <td className="border border-slate-200 px-2.5 py-1 text-slate-600 text-[10px]">
+                          {s.paidBy || "—"}
+                        </td>
+                        <td className="border border-slate-200 px-2.5 py-1 text-right font-bold text-rose-700 tabular-nums">
+                          {formatMoney(s.amount)}
+                        </td>
+                        <td className="border border-slate-200 px-2.5 py-1 text-[10px]">
+                          <span className="text-emerald-700 font-bold">Paid</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {prepaidPriorDisbursements.length > 0 && (
+              <div className="mt-2 p-2 bg-slate-50 border border-slate-200 rounded text-[10px] text-slate-600 space-y-0.5">
+                <span className="font-bold text-sky-800">
+                  * Advance Settlement Reconciliation Note:
+                </span>{" "}
+                {prepaidPriorDisbursements.length} salary payment(s) ({formatMoney(prepaidPriorDisbursements.reduce((sum, s) => sum + s.amount, 0))}) for this month's salary cycle were disbursed in advance in prior months and accounted for in those months' cash statements. Zero duplicate deductions are applied to this month's cash outflow.
+              </div>
+            )}
+          </div>
+
           {/* Itemized Inflow (Revenues) Table */}
           <div className="report-section">
             <h4 className="font-bold text-slate-900 uppercase tracking-wider mb-2 text-[11px]">
-              4. Itemized Inflow Collections (Fees & Income)
+              5. Itemized Inflow Collections (Fees & Income)
             </h4>
             {feeInflows.length === 0 && otherInflows.length === 0 ? (
               <p className="text-slate-500 italic">No incoming funds recorded in this timeframe.</p>
@@ -685,7 +812,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
           {stockSummary.length > 0 && (
             <div className="report-section">
               <h4 className="font-bold text-slate-900 uppercase tracking-wider mb-2 text-[11px]">
-                5. Current Stock Valuation Snapshot
+                6. Current Stock Valuation Snapshot
               </h4>
               <table className="w-full border-collapse border border-slate-200 text-left text-[11px]">
                 <thead>

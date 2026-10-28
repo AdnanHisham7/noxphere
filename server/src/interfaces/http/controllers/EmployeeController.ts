@@ -33,6 +33,7 @@ const UpdateEmployeeSchema = z.object({
   salaryAmount: z.number().min(0).optional(),
   notes: z.string().max(1000).optional(),
   roleId: z.string().optional(),
+  franchiseId: z.string().optional().nullable(),
 });
 
 const ActiveSchema = z.object({ isActive: z.boolean() });

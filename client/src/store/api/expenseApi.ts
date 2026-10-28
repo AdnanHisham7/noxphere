@@ -102,6 +102,26 @@ export interface AnalyticsSummary {
   pendingPurchasesAmount: number;
   totalPurchasesCount: number;
   totalMiscCount: number;
+  totalSalariesCount?: number;
+  prepaidPriorSalariesCount?: number;
+  prepaidPriorSalariesAmount?: number;
+}
+
+export interface SalaryDisbursementRecord {
+  id: string;
+  period: string;
+  amount: number;
+  paidAt: string;
+  paidBy?: string;
+  notes?: string;
+  disbursementType?: "standard" | "advance" | "arrears";
+  isAdvance?: boolean;
+  isArrears?: boolean;
+  paidMonth?: string;
+  employeeId: string;
+  employeeName: string;
+  designation?: string;
+  employeeType?: string;
 }
 
 export interface AnalyticsReport {
@@ -126,10 +146,14 @@ export interface AnalyticsReport {
   purchasesVsMisc: {
     purchases: number;
     misc: number;
+    salaries?: number;
     purchasesPercent: number;
     miscPercent: number;
+    salariesPercent?: number;
   };
   expenses: ExpenseItem[];
+  salaryDisbursements?: SalaryDisbursementRecord[];
+  prepaidPriorDisbursements?: SalaryDisbursementRecord[];
   feeInflows: {
     id: string;
     studentName: string;
@@ -464,7 +488,7 @@ export const expenseApi = baseApi.injectEndpoints({
         params,
       }),
       transformResponse: (res: { data: AnalyticsReport }) => res.data,
-      providesTags: ["Expense", "StockItem", "Income", "Fee"],
+      providesTags: ["Expense", "StockItem", "Income", "Fee", "SalaryPayment"],
     }),
   }),
 });
