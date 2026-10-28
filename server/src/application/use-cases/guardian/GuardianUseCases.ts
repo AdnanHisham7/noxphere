@@ -95,10 +95,10 @@ export class GuardianUseCases {
       for (const tId of childTeams) {
         allConditions.push({ targetType: "team", teamId: tId });
       }
-      if (s.ageGroup) {
+      if (s.ageGroup && s.franchiseId) {
         allConditions.push(
-          { targetType: "category", category: s.ageGroup },
-          { targetType: "category", categories: s.ageGroup },
+          { franchiseId: s.franchiseId, targetType: "category", category: s.ageGroup },
+          { franchiseId: s.franchiseId, targetType: "category", categories: s.ageGroup },
         );
       }
     }
@@ -110,11 +110,10 @@ export class GuardianUseCases {
       }).lean(),
       FeeModel.find({ studentId: { $in: studentIds } }).lean(),
       SessionModel.find({
-        franchiseId: { $in: franchiseIds },
         deletedAt: { $exists: false },
         date: { $gte: todayStr },
         status: { $ne: "cancelled" },
-        ...(allConditions.length > 0 ? { $or: allConditions } : {}),
+        ...(allConditions.length > 0 ? { $or: allConditions } : { _id: null }),
       })
         .populate("teamId", "name ageGroup")
         .populate("coachId", "firstName lastName")
@@ -473,10 +472,10 @@ export class GuardianUseCases {
     for (const tId of studentTeams) {
       conditions.push({ targetType: "team", teamId: tId });
     }
-    if (student.ageGroup) {
+    if (student.ageGroup && student.franchiseId) {
       conditions.push(
-        { targetType: "category", category: student.ageGroup },
-        { targetType: "category", categories: student.ageGroup },
+        { franchiseId: student.franchiseId, targetType: "category", category: student.ageGroup },
+        { franchiseId: student.franchiseId, targetType: "category", categories: student.ageGroup },
       );
     }
 
@@ -486,7 +485,6 @@ export class GuardianUseCases {
 
     // Upcoming sessions: from today onwards, scoped to this student's team/category/roster
     const upcomingFilter: Record<string, unknown> = {
-      franchiseId: student.franchiseId,
       deletedAt: { $exists: false },
       date: { $gte: todayStr },
       status: { $ne: "cancelled" },

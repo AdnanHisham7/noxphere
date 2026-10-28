@@ -69,7 +69,15 @@ export interface FeeRecord {
 }
 
 export interface PerformanceBundle {
-  performance: { _id: string; createdAt: string; overallRating?: number; notes?: string }[];
+  performance: {
+    _id: string;
+    createdAt: string;
+    overallRating?: number;
+    overallScore?: number;
+    notes?: string;
+    sessionType?: string;
+    skillScores?: { parameter: string; score: number }[];
+  }[];
   remarks: { _id: string; text: string; date: string }[];
 }
 

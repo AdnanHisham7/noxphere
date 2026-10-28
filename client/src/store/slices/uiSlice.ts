@@ -8,6 +8,7 @@
     sidebarCollapsed: boolean;
     mobileSidebarOpen: boolean;
     activeFranchiseId: string | null;
+    activeTeamId: string | null;
     theme: ThemeMode;
   }
 
@@ -27,6 +28,7 @@
       sidebarCollapsed: false,
       mobileSidebarOpen: false,
       activeFranchiseId: localStorage.getItem('activeFranchiseId'),
+      activeTeamId: localStorage.getItem('activeTeamId'),
       theme: savedTheme,
     } as UiState,
     reducers: {
@@ -49,6 +51,14 @@
       clearActiveFranchise: (state) => {
         state.activeFranchiseId = null;
         localStorage.removeItem('activeFranchiseId');
+      },
+      setActiveTeam: (state, action: PayloadAction<string>) => {
+        state.activeTeamId = action.payload;
+        localStorage.setItem('activeTeamId', action.payload);
+      },
+      clearActiveTeam: (state) => {
+        state.activeTeamId = null;
+        localStorage.removeItem('activeTeamId');
       },
       toggleTheme: (state) => {
         state.theme = state.theme === 'dark' ? 'light' : 'dark';
@@ -76,12 +86,16 @@
     extraReducers: (builder) => {
       builder.addCase(clearCredentials, (state) => {
         state.activeFranchiseId = null;
+        state.activeTeamId = null;
         localStorage.removeItem('activeFranchiseId');
+        localStorage.removeItem('activeTeamId');
       });
       builder.addCase(setCredentials, (state, action) => {
         if (!action.payload.user?.franchiseId) {
           state.activeFranchiseId = null;
+          state.activeTeamId = null;
           localStorage.removeItem('activeFranchiseId');
+          localStorage.removeItem('activeTeamId');
         }
       });
     },
@@ -94,6 +108,8 @@
     closeMobileSidebar,
     setActiveFranchise,
     clearActiveFranchise,
+    setActiveTeam,
+    clearActiveTeam,
     toggleTheme,
     setTheme,
   } = uiSlice.actions;

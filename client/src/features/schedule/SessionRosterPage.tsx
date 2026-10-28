@@ -465,8 +465,8 @@ const SessionRosterPage: React.FC = () => {
                   : (session.category ?? "Category")
                 : (session.teamName ?? "Team")}
             </h1>
-            <Badge variant="gray" size="sm">
-              {session.type}
+            <Badge variant="blue" size="sm" className="capitalize">
+              {data.sessionType || session.type}
             </Badge>
             <Badge
               variant={

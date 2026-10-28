@@ -39,6 +39,7 @@ export interface CreateEmployeeDto {
   designation?: string;
   employeeType?: "external" | "staff";
   roleId?: string;
+  franchiseId?: string | null;
   salaryAmount: number;
   joinDate?: string;
   notes?: string;
@@ -255,6 +256,7 @@ export class EmployeeUseCases {
             designation: "Operational Manager",
             employeeType: "staff",
             userId: opm._id,
+            franchiseId: opm.franchiseId,
             salaryAmount: (opm as any).salaryAmount ?? 0,
             joinDate: opm.createdAt || new Date(),
             isActive: opm.isActive ?? true,
@@ -273,6 +275,10 @@ export class EmployeeUseCases {
             existing.isActive = opm.isActive;
             needsSave = true;
           }
+          if (opm.franchiseId && (!existing.franchiseId || existing.franchiseId.toString() !== opm.franchiseId.toString())) {
+            existing.franchiseId = opm.franchiseId as any;
+            needsSave = true;
+          }
           if (needsSave) {
             await existing.save();
           }
@@ -288,12 +294,14 @@ export class EmployeeUseCases {
     await this.syncAcademyOperationalManagers(academyId);
     return EmployeeModel.find({ academyId })
       .populate("roleId", "name permissions")
+      .populate("franchiseId", "name franchiseCode")
+      .populate("userId", "role franchiseId email")
       .sort({ createdAt: -1 });
   }
 
   async updateEmployee(
     employeeId: string,
-    dto: Partial<Pick<CreateEmployeeDto, "firstName" | "lastName" | "phone" | "email" | "designation" | "salaryAmount" | "notes" | "roleId">>,
+    dto: Partial<Pick<CreateEmployeeDto, "firstName" | "lastName" | "phone" | "email" | "designation" | "salaryAmount" | "notes" | "roleId" | "franchiseId">>,
   ) {
     const employee = await EmployeeModel.findById(employeeId);
     if (!employee) throw new NotFoundError("Employee");
@@ -303,6 +311,19 @@ export class EmployeeUseCases {
       if (!role) throw new NotFoundError("Role");
       await UserModel.findByIdAndUpdate(employee.userId, { permissions: permissionsFromKeys(role.permissions) });
       employee.roleId = role._id as any;
+    }
+    if (dto.franchiseId !== undefined) {
+      if (dto.franchiseId) {
+        employee.franchiseId = dto.franchiseId as any;
+        if (employee.userId) {
+          await UserModel.findByIdAndUpdate(employee.userId, { franchiseId: dto.franchiseId });
+        }
+      } else {
+        employee.franchiseId = undefined as any;
+        if (employee.userId) {
+          await UserModel.findByIdAndUpdate(employee.userId, { $unset: { franchiseId: 1 } });
+        }
+      }
     }
     if (dto.firstName !== undefined) employee.firstName = dto.firstName;
     if (dto.lastName !== undefined) employee.lastName = dto.lastName;
@@ -392,18 +413,23 @@ export class EmployeeUseCases {
     const employee = await EmployeeModel.findById(employeeId).lean();
     if (!employee) throw new NotFoundError("Employee");
 
-    const currentPeriod = new Date().toISOString().slice(0, 7);
+    const dNow = new Date();
+    const currentPeriod = `${dNow.getFullYear()}-${String(dNow.getMonth() + 1).padStart(2, "0")}`;
     const joinDate = employee.joinDate || (employee as any).createdAt || new Date();
-    const startPeriod = new Date(joinDate).toISOString().slice(0, 7);
+    const jDate = new Date(joinDate);
+    const startPeriod = `${jDate.getFullYear()}-${String(jDate.getMonth() + 1).padStart(2, "0")}`;
 
     // Ensure all past months up to current period are logged from employee creation/join date
     const periods = getPeriodsBetween(startPeriod, currentPeriod);
     await Promise.all(periods.map((p) => this.logSalaryForPeriod(employeeId, p)));
 
-    // Return history strictly from employee creation month up to current month (no future months)
+    // Return history: include past periods from startPeriod up to currentPeriod, PLUS any future periods that have been paid
     return SalaryPaymentModel.find({
       employeeId,
-      period: { $lte: currentPeriod, $gte: startPeriod },
+      $or: [
+        { period: { $gte: startPeriod, $lte: currentPeriod } },
+        { status: "paid" },
+      ],
     })
       .populate("paidBy", "firstName lastName email")
       .sort({ period: -1 });

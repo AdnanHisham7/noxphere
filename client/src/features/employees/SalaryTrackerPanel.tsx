@@ -24,7 +24,10 @@ import {
 import { useCurrency } from "../../hooks/useCurrency";
 import { SalaryHistoryModal } from "./SalaryHistoryModal";
 
-const currentPeriod = () => new Date().toISOString().slice(0, 7);
+const currentPeriod = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
 
 interface MarkPaidModalProps {
   isOpen: boolean;

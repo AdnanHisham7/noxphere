@@ -2,8 +2,48 @@ import mongoose, { Schema, Document } from "mongoose";
 import {
   AcademyEntity,
   AcademyPitch,
+  AcademySessionType,
   Location,
 } from "../../../domain/entities/Academy.entity";
+
+export const DEFAULT_ACADEMY_SESSION_TYPES: AcademySessionType[] = [
+  {
+    id: "technical",
+    name: "Technical",
+    description: "Ball mastery, passing accuracy, receiving, and finishing technique.",
+    submetrics: ["Dribbling", "Passing", "Receiving", "Finishing"],
+  },
+  {
+    id: "physical",
+    name: "Physical",
+    description: "Athleticism, stamina, speed, agility, strength, balance, and endurance.",
+    submetrics: ["Speed", "Agility", "Strength", "Balance", "Endurance"],
+  },
+  {
+    id: "tactical",
+    name: "Tactical",
+    description: "Game awareness, decision making, off-ball movement, and positioning.",
+    submetrics: ["Game Awareness", "Decision Making", "Off Ball Movement", "Positioning"],
+  },
+  {
+    id: "psychological",
+    name: "Psychological",
+    description: "Discipline, confidence, concentration, and coachability.",
+    submetrics: ["Discipline", "Confidence", "Concentration", "Coachability"],
+  },
+  {
+    id: "social",
+    name: "Social",
+    description: "Communication, team work, leadership, and mutual respect.",
+    submetrics: ["Communication", "Team Work", "Leadership", "Respect"],
+  },
+  {
+    id: "match",
+    name: "Match",
+    description: "Competitive matchday execution, tactical impact, effort, and fair play.",
+    submetrics: ["Impact", "Tactical Execution", "Effort", "Fair Play"],
+  },
+];
 
 export interface AcademyDocument extends Document {
   name: string;
@@ -42,6 +82,7 @@ export interface AcademyDocument extends Document {
   };
   logo?: string;
   skillParameters: string[];
+  sessionTypes?: AcademySessionType[];
   currency: string;
   country: string;
   isTrial: boolean;
@@ -139,6 +180,20 @@ const AcademySchema = new Schema<AcademyDocument>(
         "Tactical Awareness",
         "Attitude",
       ],
+    },
+    sessionTypes: {
+      type: [
+        new Schema<AcademySessionType>(
+          {
+            id: { type: String, required: true },
+            name: { type: String, required: true, trim: true },
+            description: { type: String, trim: true },
+            submetrics: [{ type: String, trim: true }],
+          },
+          { _id: false }
+        ),
+      ],
+      default: () => DEFAULT_ACADEMY_SESSION_TYPES,
     },
     currency: { type: String, default: "INR", uppercase: true, trim: true },
     country: { type: String, default: "IN", uppercase: true, trim: true },

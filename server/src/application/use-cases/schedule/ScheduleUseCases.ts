@@ -6,7 +6,11 @@ import { StudentModel } from "../../../infrastructure/database/models/Student.mo
 import { AttendanceModel } from "../../../infrastructure/database/models/Attendance.model";
 import { PerformanceModel } from "../../../infrastructure/database/models/Performance.model";
 import { FranchiseModel } from "../../../infrastructure/database/models/Franchise.model";
-import { AcademyModel } from "../../../infrastructure/database/models/Academy.model";
+import {
+  AcademyModel,
+  DEFAULT_ACADEMY_SESSION_TYPES,
+} from "../../../infrastructure/database/models/Academy.model";
+import { AcademySessionType } from "../../../domain/entities/Academy.entity";
 import { UserModel } from "../../../infrastructure/database/models/User.model";
 import { notificationService } from "../../../infrastructure/services/NotificationService";
 import { NotFoundError, BadRequestError, ForbiddenError } from "../../../shared/errors/AppError";
@@ -55,6 +59,7 @@ function toCard(doc: any) {
   return {
     id: json.id || json._id?.toString(),
     franchiseId: json.franchiseId?.toString ? json.franchiseId.toString() : json.franchiseId,
+    academyId: json.academyId?.toString ? json.academyId.toString() : json.academyId,
     targetType: json.targetType ?? "team",
     teamId: resolveRefId(json.teamId),
     category: json.category ?? json.teamId?.ageGroup ?? undefined,
@@ -102,19 +107,38 @@ export class ScheduleUseCases {
     coachId?: string;
     status?: string;
   }) {
-    const query: Record<string, unknown> = {};
-    if (filters.franchiseId) {
-      query.franchiseId = filters.franchiseId;
+    const conditions: any[] = [];
+
+    if (filters.teamId) {
+      // Querying all sessions for a specific team/squad
+      conditions.push({ teamId: filters.teamId });
+    } else if (filters.franchiseId) {
+      const franchise = await FranchiseModel.findById(filters.franchiseId).select("academyId").lean();
+      if (franchise?.academyId) {
+        // When viewing a branch schedule, show branch sessions AND academy team events!
+        conditions.push({
+          $or: [
+            { franchiseId: filters.franchiseId },
+            { academyId: franchise.academyId, targetType: "team" },
+          ],
+        });
+      } else {
+        conditions.push({ franchiseId: filters.franchiseId });
+      }
     } else if (filters.academyId) {
       const franchises = await FranchiseModel.find({ academyId: filters.academyId }).select("_id").lean();
-      query.franchiseId = { $in: franchises.map((f) => f._id) };
+      const franchiseIds = franchises.map((f) => f._id);
+      conditions.push({
+        $or: [
+          { franchiseId: { $in: franchiseIds } },
+          { academyId: filters.academyId },
+        ],
+      });
     } else if (filters.coachId) {
       // Allowed for a coach querying their assigned sessions across franchises
     } else {
-      throw new BadRequestError("franchiseId or academyId is required");
+      throw new BadRequestError("franchiseId, academyId or teamId is required");
     }
-
-    if (filters.teamId) query.teamId = filters.teamId;
     if (filters.coachId) {
       const coachIdStr = filters.coachId.toString();
       const coachObjId = mongoose.isValidObjectId(coachIdStr) ? new mongoose.Types.ObjectId(coachIdStr) : null;
@@ -122,15 +146,19 @@ export class ScheduleUseCases {
       if (coachObjId) {
         coachConditions.push({ coachId: coachObjId }, { coachIds: coachObjId });
       }
-      query.$or = coachConditions;
+      conditions.push({ $or: coachConditions });
     }
-    if (filters.status) query.status = filters.status;
+    if (filters.status) conditions.push({ status: filters.status });
     if (filters.from || filters.to) {
-      query.date = {
-        ...(filters.from && { $gte: filters.from }),
-        ...(filters.to && { $lte: filters.to }),
-      };
+      conditions.push({
+        date: {
+          ...(filters.from && { $gte: filters.from }),
+          ...(filters.to && { $lte: filters.to }),
+        },
+      });
     }
+
+    const query = conditions.length === 1 ? conditions[0] : conditions.length > 1 ? { $and: conditions } : {};
     const sessions = await SessionModel.find(query)
       .populate("coachId", "firstName lastName")
       .populate("coachIds", "firstName lastName")
@@ -225,15 +253,8 @@ export class ScheduleUseCases {
       if (!dto.teamId) throw new BadRequestError("teamId is required for a team session");
       const team = await TeamModel.findById(dto.teamId);
       if (!team) throw new NotFoundError("Team");
-      if (team.franchiseId) {
-        if (team.franchiseId.toString() !== dto.franchiseId) {
-          throw new BadRequestError("That team doesn't belong to this franchise");
-        }
-      } else {
-        const franchise = await FranchiseModel.findById(dto.franchiseId).select("academyId").lean();
-        if (!franchise || franchise.academyId.toString() !== team.academyId?.toString()) {
-          throw new BadRequestError("That global team is not part of this franchise's academy");
-        }
+      if (team.academyId && !dto.academyId) {
+        dto.academyId = team.academyId.toString();
       }
       if (requestingCoachId && team.coachId?.toString() !== requestingCoachId) {
         throw new ForbiddenError("You can only schedule sessions for a team assigned to you");
@@ -263,8 +284,11 @@ export class ScheduleUseCases {
       }).select("_id").lean();
       resolvedPlayerIds = baseStudents.map((s) => s._id);
     } else {
+      const teamObjId = mongoose.isValidObjectId(dto.teamId)
+        ? new mongoose.Types.ObjectId(dto.teamId)
+        : dto.teamId;
       const baseStudents = await StudentModel.find({
-        teamId: dto.teamId,
+        $or: [{ teamId: teamObjId }, { teamIds: teamObjId }],
         ...activeStudentFilter,
       }).select("_id").lean();
       resolvedPlayerIds = baseStudents.map((s) => s._id);
@@ -277,21 +301,29 @@ export class ScheduleUseCases {
       
       let currentDate = new Date(Date.UTC(startYear, startMonth - 1, startDay));
       const endDateUTC = new Date(Date.UTC(endYear, endMonth - 1, endDay));
+      const selectedDays = dto.daysOfWeek && dto.daysOfWeek.length > 0 ? new Set(dto.daysOfWeek) : null;
       
       datesToCreate = [];
       while (currentDate <= endDateUTC) {
-        const year = currentDate.getUTCFullYear();
-        const month = String(currentDate.getUTCMonth() + 1).padStart(2, "0");
-        const day = String(currentDate.getUTCDate()).padStart(2, "0");
-        datesToCreate.push(`${year}-${month}-${day}`);
+        const dayOfWeek = currentDate.getUTCDay();
+        if (!selectedDays || selectedDays.has(dayOfWeek)) {
+          const year = currentDate.getUTCFullYear();
+          const month = String(currentDate.getUTCMonth() + 1).padStart(2, "0");
+          const day = String(currentDate.getUTCDate()).padStart(2, "0");
+          datesToCreate.push(`${year}-${month}-${day}`);
+        }
         currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+      }
+      if (datesToCreate.length === 0) {
+        throw new BadRequestError("No matching days found in the selected date range");
       }
     }
 
     await this.assertCoachesAvailable(dto.coachIds && dto.coachIds.length > 0 ? dto.coachIds : [dto.coachId!], datesToCreate);
 
     const sessionsToCreate = datesToCreate.map((dateStr) => ({
-      franchiseId: dto.franchiseId,
+      franchiseId: dto.franchiseId || undefined,
+      academyId: dto.academyId || undefined,
       targetType: dto.targetType,
       teamId: dto.targetType === "team" ? dto.teamId : undefined,
       category: dto.targetType === "category" ? dto.category : undefined,
@@ -306,6 +338,7 @@ export class ScheduleUseCases {
       endDate: dateStr,
       dailyStartTime: dto.dailyStartTime || dto.startTime,
       dailyEndTime: dto.dailyEndTime || dto.endTime,
+      daysOfWeek: dto.daysOfWeek,
       location: dto.location,
       fieldNumber: dto.fieldNumber,
       pitchId: dto.pitchId,
@@ -313,7 +346,7 @@ export class ScheduleUseCases {
       latitude: dto.latitude,
       longitude: dto.longitude,
       notes: dto.notes,
-      playerIds: dto.targetType === "category" ? resolvedPlayerIds.map((id) => id.toString()) : dto.playerIds,
+      playerIds: resolvedPlayerIds.map((id) => id.toString()),
       rosterPlayerIds: resolvedPlayerIds,
       documents: dto.documents,
       createdBy,
@@ -355,7 +388,7 @@ export class ScheduleUseCases {
         .sendSessionCreatedAlert(
           cid,
           `A new session has been scheduled for ${target ?? "your squad"} on ${sessionDate}, ${dto.startTime}–${dto.endTime} at ${dto.location}.`,
-          dto.franchiseId,
+          dto.franchiseId || "",
         )
         .catch(() => undefined);
     }
@@ -413,6 +446,21 @@ export class ScheduleUseCases {
         const matchingStudents = await StudentModel.find({
           franchiseId: activeFranchiseId,
           ageGroup: catFilter,
+          isActive: true,
+          deletedAt: { $exists: false },
+        }).select("_id").lean();
+        const resolvedIds = matchingStudents.map((s) => s._id);
+        (dto as any).rosterPlayerIds = resolvedIds;
+        (dto as any).playerIds = resolvedIds.map((id) => id.toString());
+      }
+    } else if (targetType === "team") {
+      const activeTeamId = dto.teamId ?? session.teamId;
+      if (activeTeamId) {
+        const teamObjId = mongoose.isValidObjectId(activeTeamId)
+          ? new mongoose.Types.ObjectId(activeTeamId.toString())
+          : activeTeamId;
+        const matchingStudents = await StudentModel.find({
+          $or: [{ teamId: teamObjId }, { teamIds: teamObjId }],
           isActive: true,
           deletedAt: { $exists: false },
         }).select("_id").lean();
@@ -502,33 +550,80 @@ export class ScheduleUseCases {
    * established when the parent academy was created. Falls back to the
    * platform default set if neither record carries any.
    */
-  private async getSkillParametersForFranchise(franchiseId: mongoose.Types.ObjectId | string): Promise<string[]> {
-    const franchise = await FranchiseModel.findById(franchiseId).select("skillParameters academyId").lean();
-    if (!franchise) throw new NotFoundError("Franchise");
-
-    // Parent academy's parameters configured at academy creation time take top precedence
-    if (franchise.academyId) {
-      const academy = await AcademyModel.findById(franchise.academyId).select("skillParameters").lean();
-      if (academy?.skillParameters && academy.skillParameters.length === 6) {
-        return academy.skillParameters;
-      }
-      if (academy?.skillParameters && academy.skillParameters.length > 0) {
-        return academy.skillParameters;
+  /**
+   * Resolves the academy's dynamic session types and the specific submetrics
+   * belonging to this session's type. If the session type matches one of the
+   * academy's configured session types, its submetrics are returned for evaluation.
+   * Falls back gracefully to standard defaults if unconfigured.
+   */
+  private async getSessionTypesAndSkills(
+    sessionType?: string,
+    franchiseId?: mongoose.Types.ObjectId | string,
+    academyId?: mongoose.Types.ObjectId | string,
+  ): Promise<{ skillParameters: string[]; sessionTypes: AcademySessionType[]; currentSessionType?: string }> {
+    let academy: any = null;
+    if (academyId) {
+      academy = await AcademyModel.findById(academyId).select("skillParameters sessionTypes").lean();
+    } else if (franchiseId) {
+      const franchise = await FranchiseModel.findById(franchiseId).select("academyId").lean();
+      if (franchise?.academyId) {
+        academy = await AcademyModel.findById(franchise.academyId).select("skillParameters sessionTypes").lean();
       }
     }
 
-    // Fallback to franchise-specific skills; fallback to default set if empty
-    return franchise.skillParameters?.length ? franchise.skillParameters : [
-      "Dribbling", "Passing", "Shooting", "Speed", "Tactical Awareness", "Attitude"
-    ];
-  }
+    const sessionTypes: AcademySessionType[] =
+      academy?.sessionTypes && academy.sessionTypes.length > 0
+        ? academy.sessionTypes
+        : DEFAULT_ACADEMY_SESSION_TYPES;
 
+    if (sessionType) {
+      const target = sessionType.toLowerCase().trim();
+      const matched = sessionTypes.find(
+        (st) => st.id.toLowerCase() === target || st.name.toLowerCase() === target
+      );
+      if (matched && matched.submetrics && matched.submetrics.length > 0) {
+        return { skillParameters: matched.submetrics, sessionTypes, currentSessionType: matched.name };
+      }
+      // Common aliases fallback
+      if (target.includes("fit") || target.includes("phys")) {
+        const phys = sessionTypes.find((s) => s.id === "physical" || s.name.toLowerCase() === "physical");
+        if (phys) return { skillParameters: phys.submetrics, sessionTypes, currentSessionType: phys.name };
+      }
+      if (target.includes("tech") || target.includes("train")) {
+        const tech = sessionTypes.find((s) => s.id === "technical" || s.name.toLowerCase() === "technical");
+        if (tech) return { skillParameters: tech.submetrics, sessionTypes, currentSessionType: tech.name };
+      }
+      if (target.includes("match")) {
+        const match = sessionTypes.find((s) => s.id === "match" || s.name.toLowerCase() === "match");
+        if (match) return { skillParameters: match.submetrics, sessionTypes, currentSessionType: match.name };
+      }
+      if (target.includes("tact")) {
+        const tact = sessionTypes.find((s) => s.id === "tactical" || s.name.toLowerCase() === "tactical");
+        if (tact) return { skillParameters: tact.submetrics, sessionTypes, currentSessionType: tact.name };
+      }
+      if (target.includes("ment") || target.includes("psych")) {
+        const ment = sessionTypes.find((s) => s.id === "mental" || s.name.toLowerCase() === "mental");
+        if (ment) return { skillParameters: ment.submetrics, sessionTypes, currentSessionType: ment.name };
+      }
+    }
+
+    // Default to the first session type's submetrics if present
+    if (sessionTypes.length > 0 && sessionTypes[0].submetrics.length > 0) {
+      return { skillParameters: sessionTypes[0].submetrics, sessionTypes, currentSessionType: sessionTypes[0].name };
+    }
+
+    const fallbackSkills = academy?.skillParameters?.length
+      ? academy.skillParameters
+      : ["Dribbling", "Passing", "Shooting", "Speed", "Tactical Awareness", "Attitude"];
+
+    return { skillParameters: fallbackSkills, sessionTypes, currentSessionType: sessionType };
+  }
 
   /**
    * The roster for a session: every student on that session's team, merged
    * with whatever attendance/performance has already been recorded for
-   * this exact session (so re-opening a partially-marked session shows
-   * what's already saved instead of a blank sheet).
+   * this exact session. Also returns the dynamic skill parameters for
+   * this session's type.
    */
   async getSessionRoster(sessionId: string) {
     const session = await SessionModel.findById(sessionId)
@@ -549,7 +644,10 @@ export class ScheduleUseCases {
         const defaultFilter = { franchiseId: session.franchiseId, ageGroup: categoriesFilter };
         studentQuery.$or = playerQueryList ? [defaultFilter, playerQueryList] : [defaultFilter];
       } else {
-        const defaultFilter = { teamId: session.teamId };
+        const teamObjId = session.teamId
+          ? (mongoose.isValidObjectId(session.teamId) ? new mongoose.Types.ObjectId(session.teamId.toString()) : session.teamId)
+          : null;
+        const defaultFilter = { $or: [{ teamId: teamObjId }, { teamIds: teamObjId }] };
         studentQuery.$or = playerQueryList ? [defaultFilter, playerQueryList] : [defaultFilter];
       }
     }
@@ -559,17 +657,19 @@ export class ScheduleUseCases {
       .sort({ firstName: 1 })
       .lean();
 
-    const [attendance, performance, skillParameters] = await Promise.all([
+    const [attendance, performance, sessionSkillsInfo] = await Promise.all([
       AttendanceModel.find({ sessionId }).lean(),
       PerformanceModel.find({ sessionId }).lean(),
-      this.getSkillParametersForFranchise(session.franchiseId),
+      this.getSessionTypesAndSkills(session.type, session.franchiseId, session.academyId),
     ]);
     const attendanceByStudent = new Map(attendance.map((a) => [a.studentId.toString(), a]));
     const performanceByStudent = new Map(performance.map((p) => [p.studentId.toString(), p]));
 
     return {
       session: toCard(session),
-      skillParameters,
+      sessionType: sessionSkillsInfo.currentSessionType || session.type,
+      skillParameters: sessionSkillsInfo.skillParameters,
+      sessionTypes: sessionSkillsInfo.sessionTypes,
       roster: students.map((s) => {
         const att = attendanceByStudent.get(s._id.toString());
         const perf = performanceByStudent.get(s._id.toString());
@@ -618,13 +718,16 @@ export class ScheduleUseCases {
         const defaultFilter = { franchiseId: session.franchiseId, ageGroup: categoriesFilter };
         studentQuery.$or = playerQueryList ? [defaultFilter, playerQueryList] : [defaultFilter];
       } else {
-        const defaultFilter = { teamId: session.teamId };
+        const teamObjId = session.teamId
+          ? (mongoose.isValidObjectId(session.teamId) ? new mongoose.Types.ObjectId(session.teamId.toString()) : session.teamId)
+          : null;
+        const defaultFilter = { $or: [{ teamId: teamObjId }, { teamIds: teamObjId }] };
         studentQuery.$or = playerQueryList ? [defaultFilter, playerQueryList] : [defaultFilter];
       }
     }
 
     const students = await StudentModel.find(studentQuery)
-      .select("_id firstName lastName teamId")
+      .select("_id firstName lastName teamId franchiseId")
       .lean();
 
     if (students.length > 0) {
@@ -642,8 +745,10 @@ export class ScheduleUseCases {
     }
 
     const studentTeamMap = new Map<string, mongoose.Types.ObjectId | undefined>();
-    if (session.targetType === "category") {
-      for (const s of students) studentTeamMap.set(s._id.toString(), s.teamId);
+    const studentFranchiseMap = new Map<string, mongoose.Types.ObjectId | undefined>();
+    for (const s of students) {
+      if (s.teamId) studentTeamMap.set(s._id.toString(), s.teamId);
+      if (s.franchiseId) studentFranchiseMap.set(s._id.toString(), s.franchiseId);
     }
 
     const ops = records.map((r) => ({
@@ -655,7 +760,7 @@ export class ScheduleUseCases {
         update: {
           $set: {
             studentId: new mongoose.Types.ObjectId(r.studentId),
-            franchiseId: session.franchiseId,
+            franchiseId: session.franchiseId || studentFranchiseMap.get(r.studentId),
             teamId: session.targetType === "team" ? session.teamId : studentTeamMap.get(r.studentId),
             coachId: new mongoose.Types.ObjectId(coachId),
             sessionId: new mongoose.Types.ObjectId(sessionId),
@@ -701,7 +806,7 @@ export class ScheduleUseCases {
           student.guardianIds.map((g) => g.toString()),
           `${student.firstName} ${student.lastName}`,
           r.status as "absent" | "late",
-          session.franchiseId.toString(),
+          session.franchiseId ? session.franchiseId.toString() : "",
         )
         .catch(() => undefined);
     }
@@ -737,7 +842,7 @@ export class ScheduleUseCases {
             student.guardianIds.map((g) => g.toString()),
             `${student.firstName} ${student.lastName}`,
             threshold,
-            session.franchiseId.toString(),
+            session.franchiseId ? session.franchiseId.toString() : "",
           )
           .catch(() => undefined);
 
@@ -763,15 +868,26 @@ export class ScheduleUseCases {
       throw new BadRequestError("This session was cancelled — performance can't be logged for it");
     }
 
-    const allowedParameters = await this.getSkillParametersForFranchise(session.franchiseId);
-    const allowedSet = new Set(allowedParameters);
+    const { skillParameters: typeParameters, sessionTypes } = await this.getSessionTypesAndSkills(
+      session.type,
+      session.franchiseId,
+      session.academyId
+    );
+    // Allow any parameter configured for this session type, or anywhere in the academy's session types
+    const allAllowed = Array.from(new Set([
+      ...typeParameters,
+      ...sessionTypes.flatMap((st) => st.submetrics),
+    ]));
+    const allowedSet = new Set(allAllowed);
 
+    const students = await StudentModel.find({ _id: { $in: records.map((r) => r.studentId) } })
+      .select("teamId franchiseId")
+      .lean();
     const studentTeamMap = new Map<string, mongoose.Types.ObjectId | undefined>();
-    if (session.targetType === "category") {
-      const students = await StudentModel.find({ _id: { $in: records.map((r) => r.studentId) } })
-        .select("teamId")
-        .lean();
-      for (const s of students) studentTeamMap.set(s._id.toString(), s.teamId);
+    const studentFranchiseMap = new Map<string, mongoose.Types.ObjectId | undefined>();
+    for (const s of students) {
+      if (s.teamId) studentTeamMap.set(s._id.toString(), s.teamId);
+      if (s.franchiseId) studentFranchiseMap.set(s._id.toString(), s.franchiseId);
     }
 
     for (const r of records) {
@@ -783,7 +899,7 @@ export class ScheduleUseCases {
         .filter((p) => !allowedSet.has(p));
       if (invalidParams.length) {
         throw new BadRequestError(
-          `Invalid skill parameter(s) for this academy: ${invalidParams.join(", ")}. Allowed: ${allowedParameters.join(", ")}`,
+          `Invalid skill parameter(s) for this session: ${invalidParams.join(", ")}. Allowed: ${typeParameters.join(", ")}`,
         );
       }
       const overallScore =
@@ -794,11 +910,12 @@ export class ScheduleUseCases {
         {
           $set: {
             studentId: r.studentId,
-            franchiseId: session.franchiseId,
+            franchiseId: session.franchiseId || studentFranchiseMap.get(r.studentId),
             teamId: session.targetType === "team" ? session.teamId : studentTeamMap.get(r.studentId),
             coachId,
             sessionId,
             sessionDate: new Date(session.date),
+            sessionType: session.type,
             skillScores: r.skillScores,
             overallScore: Math.round(overallScore * 10) / 10,
             remarks: r.remarks,
@@ -840,21 +957,24 @@ export class ScheduleUseCases {
       targetType: string;
       teamId?: mongoose.Types.ObjectId;
       category?: string;
-      franchiseId: mongoose.Types.ObjectId;
+      franchiseId?: mongoose.Types.ObjectId;
       rosterPlayerIds?: mongoose.Types.ObjectId[];
       playerIds?: mongoose.Types.ObjectId[];
     },
     opts: { title: string; body: string; type: "session_location_change" },
   ) {
     let query: any;
-    if (session.rosterPlayerIds !== undefined) {
+    if (session.rosterPlayerIds !== undefined && session.rosterPlayerIds.length > 0) {
       const allRosterPlayerIds = [...(session.rosterPlayerIds || []), ...(session.playerIds || [])];
       query = { _id: { $in: allRosterPlayerIds }, isActive: true };
     } else {
+      const teamObjId = session.teamId
+        ? (mongoose.isValidObjectId(session.teamId) ? new mongoose.Types.ObjectId(session.teamId.toString()) : session.teamId)
+        : null;
       query =
         session.targetType === "category"
           ? { franchiseId: session.franchiseId, ageGroup: session.category, isActive: true }
-          : { teamId: session.teamId, isActive: true };
+          : { $or: [{ teamId: teamObjId }, { teamIds: teamObjId }], isActive: true };
     }
     const students = await StudentModel.find(query);
     const guardianIds = Array.from(
@@ -867,6 +987,7 @@ export class ScheduleUseCases {
       title: opts.title,
       body: opts.body,
       data: { sessionId: ((session as any)._id || (session as any).id || "").toString() },
+      franchiseId: session.franchiseId ? session.franchiseId.toString() : undefined,
       channels: ["push"],
     });
   }

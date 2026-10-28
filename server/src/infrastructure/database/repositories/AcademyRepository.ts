@@ -35,6 +35,7 @@ export class MongoAcademyRepository implements IAcademyRepository {
 
       location: doc.location,
       pitches: doc.pitches || [],
+      sessionTypes: (doc as any).sessionTypes || [],
       ageGroups: doc.ageGroups,
       maxStudents: doc.maxStudents,
       subscriptionRateOverride: doc.subscriptionRateOverride,

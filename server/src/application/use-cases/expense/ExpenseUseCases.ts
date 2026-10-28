@@ -768,6 +768,9 @@ export class ExpenseUseCases {
         e.setHours(23, 59, 59, 999);
         end = e;
       }
+    } else if (params.timeframe === "lifetime") {
+      start = new Date(0);
+      end = new Date("2099-12-31T23:59:59.999Z");
     }
 
     const academyObjId = new mongoose.Types.ObjectId(params.academyId);
@@ -788,7 +791,52 @@ export class ExpenseUseCases {
       ...franchiseFilter,
     };
 
-    const [allExpenses, allIncomes, fees, stockItems, salaryPayments] = await Promise.all([
+    const salaryFilter: any = {
+      academyId: academyObjId,
+      status: "paid",
+    };
+
+    let targetMonthPeriod: string | null = null;
+    if (params.timeframe === "month") {
+      let y = now.getFullYear();
+      let m = now.getMonth();
+      if (params.month) {
+        const parts = params.month.split("-");
+        y = parseInt(parts[0], 10);
+        m = parseInt(parts[1], 10) - 1;
+      }
+      targetMonthPeriod = `${y}-${String(m + 1).padStart(2, "0")}`;
+    }
+
+    // In a Financial Cash Flow & Outflow Audit statement:
+    // Outflows must strictly reflect the date funds actually left the academy (paidAt).
+    // This guarantees zero double-counting (e.g. paying Dec salary early in Oct is counted in Oct outflow, not duplicated in Dec).
+    if (params.timeframe !== "lifetime") {
+      salaryFilter.$or = [
+        { paidAt: { $gte: start, $lte: end } },
+        { paidAt: { $exists: false }, createdAt: { $gte: start, $lte: end } },
+      ];
+    }
+
+    const prepaidPriorSalariesQuery =
+      params.timeframe === "month" && targetMonthPeriod
+        ? SalaryPaymentModel.find({
+            academyId: academyObjId,
+            status: "paid",
+            period: targetMonthPeriod,
+            paidAt: { $lt: start },
+          })
+            .populate({
+              path: "employeeId",
+              select: "firstName lastName designation employeeType franchiseId userId",
+              populate: { path: "userId", select: "franchiseId" },
+            })
+            .populate("paidBy", "firstName lastName email")
+            .sort({ paidAt: -1 })
+            .lean()
+        : null;
+
+    const [allExpenses, allIncomes, fees, stockItems, rawSalaryPayments, rawPrepaidPriorSalaries] = await Promise.all([
       ExpenseModel.find(expensesQuery)
         .populate("franchiseId", "name franchiseCode")
         .sort({ date: -1 })
@@ -812,12 +860,34 @@ export class ExpenseUseCases {
         academyId: academyObjId,
         ...franchiseFilter,
       }).lean(),
-      SalaryPaymentModel.find({
-        academyId: academyObjId,
-        status: "paid",
-        paidAt: { $gte: start, $lte: end },
-      }).lean(),
+      SalaryPaymentModel.find(salaryFilter)
+        .populate({
+          path: "employeeId",
+          select: "firstName lastName designation employeeType franchiseId userId",
+          populate: { path: "userId", select: "franchiseId" },
+        })
+        .populate("paidBy", "firstName lastName email")
+        .sort({ paidAt: -1, period: -1 })
+        .lean(),
+      prepaidPriorSalariesQuery || Promise.resolve([]),
     ]);
+
+    let salaryPayments = rawSalaryPayments;
+    let prepaidPriorSalaries = (rawPrepaidPriorSalaries || []) as any[];
+    if (params.franchiseId && params.franchiseId !== "all") {
+      const matchFranchise = (s: any) => {
+        const emp = s.employeeId as any;
+        const empFranchise = emp?.franchiseId?.toString();
+        const userFranchise = emp?.userId?.franchiseId?.toString();
+        const assignedFranchise = empFranchise || userFranchise;
+        // If employee has a specific branch assigned, it must match that branch.
+        // If employee is an unassigned / academy-wide staff member (no specific branch assigned),
+        // keep them so academy payroll is accurately accounted for.
+        return !assignedFranchise || assignedFranchise === params.franchiseId;
+      };
+      salaryPayments = rawSalaryPayments.filter(matchFranchise);
+      prepaidPriorSalaries = prepaidPriorSalaries.filter(matchFranchise);
+    }
 
     // 2. Extract Individual Paid Fee Installments in Date Range
     const feeInflows: FeeInflowRecord[] = [];
@@ -884,6 +954,13 @@ export class ExpenseUseCases {
       });
     });
 
+    if (salariesOutflow > 0) {
+      categoryMap.set("Staff Salaries", {
+        amount: salariesOutflow,
+        count: salaryPayments.length,
+      });
+    }
+
     const categoryBreakdown = Array.from(categoryMap.entries())
       .map(([category, { amount, count }]) => ({
         category,
@@ -923,6 +1000,16 @@ export class ExpenseUseCases {
           timeSeriesMap.get(key)!.outflow += exp.amount;
         }
       });
+      salaryPayments.forEach((sal) => {
+        const d = sal.paidAt ? new Date(sal.paidAt) : null;
+        if (!d) return;
+        if (d >= start && d <= end) {
+          const key = d.getDate().toString().padStart(2, "0");
+          if (timeSeriesMap.has(key)) {
+            timeSeriesMap.get(key)!.outflow += sal.amount;
+          }
+        }
+      });
     } else if (params.timeframe === "year" || params.timeframe === "lifetime") {
       // Month by month
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -950,6 +1037,16 @@ export class ExpenseUseCases {
           timeSeriesMap.get(key)!.outflow += exp.amount;
         }
       });
+      salaryPayments.forEach((sal) => {
+        const d = sal.paidAt ? new Date(sal.paidAt) : null;
+        if (!d) return;
+        if (d >= start && d <= end) {
+          const key = d.getMonth().toString();
+          if (timeSeriesMap.has(key)) {
+            timeSeriesMap.get(key)!.outflow += sal.amount;
+          }
+        }
+      });
     } else {
       // Day view or custom: simple bucket
       timeSeriesMap.set("period", {
@@ -964,6 +1061,76 @@ export class ExpenseUseCases {
       ...t,
       net: t.inflow - t.outflow,
     }));
+
+    const salaryDisbursements = salaryPayments.map((s: any) => {
+      const emp = s.employeeId;
+      const employeeName = emp
+        ? `${emp.firstName || ""} ${emp.lastName || ""}`.trim()
+        : "Staff Member";
+      const paidBy =
+        s.paidBy && typeof s.paidBy === "object"
+          ? `${s.paidBy.firstName || ""} ${s.paidBy.lastName || ""}`.trim()
+          : undefined;
+
+      const paidDate = s.paidAt ? new Date(s.paidAt) : new Date();
+      const paidMonthStr = `${paidDate.getFullYear()}-${String(paidDate.getMonth() + 1).padStart(2, "0")}`;
+
+      let disbursementType: "standard" | "advance" | "arrears" = "standard";
+      if (s.period > paidMonthStr) {
+        disbursementType = "advance";
+      } else if (s.period < paidMonthStr) {
+        disbursementType = "arrears";
+      }
+
+      return {
+        id: s._id.toString(),
+        period: s.period,
+        amount: s.amount,
+        paidAt: s.paidAt ? new Date(s.paidAt).toISOString() : new Date().toISOString(),
+        paidBy,
+        notes: s.notes,
+        disbursementType,
+        isAdvance: disbursementType === "advance",
+        isArrears: disbursementType === "arrears",
+        employeeId: emp?._id ? emp._id.toString() : (emp?.id || ""),
+        employeeName,
+        designation: emp?.designation || "Staff",
+        employeeType: emp?.employeeType,
+      };
+    });
+
+    const prepaidPriorDisbursements = prepaidPriorSalaries.map((s: any) => {
+      const emp = s.employeeId;
+      const employeeName = emp
+        ? `${emp.firstName || ""} ${emp.lastName || ""}`.trim()
+        : "Staff Member";
+      const paidBy =
+        s.paidBy && typeof s.paidBy === "object"
+          ? `${s.paidBy.firstName || ""} ${s.paidBy.lastName || ""}`.trim()
+          : undefined;
+
+      const paidDate = s.paidAt ? new Date(s.paidAt) : null;
+      const paidMonthStr = paidDate
+        ? `${paidDate.getFullYear()}-${String(paidDate.getMonth() + 1).padStart(2, "0")}`
+        : "Prior Month";
+
+      return {
+        id: s._id.toString(),
+        period: s.period,
+        amount: s.amount,
+        paidAt: s.paidAt ? new Date(s.paidAt).toISOString() : new Date().toISOString(),
+        paidBy,
+        notes: s.notes,
+        paidMonth: paidMonthStr,
+        disbursementType: "advance" as const,
+        isAdvance: true,
+        isArrears: false,
+        employeeId: emp?._id ? emp._id.toString() : (emp?.id || ""),
+        employeeName,
+        designation: emp?.designation || "Staff",
+        employeeType: emp?.employeeType,
+      };
+    });
 
     return {
       period: {
@@ -988,16 +1155,23 @@ export class ExpenseUseCases {
         pendingPurchasesAmount: pendingPurchases.reduce((s, p) => s + p.amount, 0),
         totalPurchasesCount: verifiedPurchases.length + pendingPurchases.length,
         totalMiscCount: miscExpenses.length,
+        totalSalariesCount: salaryPayments.length,
+        prepaidPriorSalariesCount: prepaidPriorDisbursements.length,
+        prepaidPriorSalariesAmount: prepaidPriorDisbursements.reduce((sum, s) => sum + s.amount, 0),
       },
       categoryBreakdown,
       timeSeries,
       purchasesVsMisc: {
         purchases: purchasesOutflow,
         misc: miscOutflow,
+        salaries: salariesOutflow,
         purchasesPercent: totalOutflow > 0 ? Math.round((purchasesOutflow / totalOutflow) * 100) : 0,
         miscPercent: totalOutflow > 0 ? Math.round((miscOutflow / totalOutflow) * 100) : 0,
+        salariesPercent: totalOutflow > 0 ? Math.round((salariesOutflow / totalOutflow) * 100) : 0,
       },
       expenses: allExpenses,
+      salaryDisbursements,
+      prepaidPriorDisbursements,
       feeInflows: feeInflows.slice(0, 500),
       otherInflows: allIncomes,
       stockSummary: stockItems.map((s) => ({

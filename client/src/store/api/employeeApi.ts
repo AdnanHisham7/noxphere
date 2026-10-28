@@ -28,8 +28,9 @@ export interface Employee {
   email?: string;
   designation?: string;
   employeeType: "external" | "staff";
-  userId?: string;
+  userId?: any;
   roleId?: EmployeeRole | string;
+  franchiseId?: any;
   salaryAmount: number;
   joinDate: string;
   isActive: boolean;

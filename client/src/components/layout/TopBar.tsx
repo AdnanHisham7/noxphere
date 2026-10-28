@@ -1,6 +1,6 @@
 import { useSelector, useDispatch } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Building2, ChevronDown, Check, Bell, Repeat2, Menu, FileText, Download, Globe } from "lucide-react";
+import { Building2, ChevronDown, Check, Bell, Repeat2, Menu, FileText, Download, Globe, Users } from "lucide-react";
 import logoSrc from "../../assets/logo.png";
 import { GeoRestrictionBanner } from "./GeoRestrictionBanner";
 import { getNotificationTarget } from "../../utils/notificationRouter";
@@ -12,6 +12,8 @@ import {
 import {
   setActiveFranchise,
   clearActiveFranchise,
+  setActiveTeam,
+  clearActiveTeam,
   toggleMobileSidebar,
 } from "../../store/slices/uiSlice";
 import { Avatar } from "../ui";
@@ -24,6 +26,7 @@ import {
   useGetFranchiseByIdQuery,
   useGetFranchisesQuery,
 } from "../../store/api/franchiseApi";
+import { useListTeamsQuery, useGetTeamByIdQuery } from "../../store/api/teamsApi";
 import { useGetMyFranchisesQuery } from "../../store/api/coachPortalApi";
 import { useTransferWallEnabled } from "../../hooks/useTransferWallEnabled";
 import { ThemeToggle } from "../common/ThemeToggle";
@@ -35,7 +38,11 @@ import {
 
 const FranchiseSwitcher: React.FC = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isSchedulePage = location.pathname.startsWith("/schedule");
   const currentFranchiseId = useCurrentFranchiseId();
+  const activeTeamId = useSelector((s: RootState) => s.ui.activeTeamId);
   const [open, setOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
   useClickOutside(switcherRef, () => setOpen(false), open);
@@ -60,6 +67,24 @@ const FranchiseSwitcher: React.FC = () => {
     { skip: !activeAcademyId || isFranchiseManager },
   );
 
+  // Fetch teams for the academy / franchise when on schedule page
+  const { data: teams } = useListTeamsQuery(
+    isSchedulePage && (activeAcademyId || currentFranchiseId)
+      ? { academyId: activeAcademyId, franchiseId: isFranchiseManager ? currentFranchiseId : undefined }
+      : (undefined as any),
+    { skip: !isSchedulePage || (!activeAcademyId && !currentFranchiseId) },
+  );
+
+  const { data: fetchedTeam } = useGetTeamByIdQuery(activeTeamId ?? "", { skip: !activeTeamId });
+  const currentTeam = teams?.find((t) => t.id === activeTeamId) ?? fetchedTeam;
+
+  // Clear active team if navigating away from schedule page
+  useEffect(() => {
+    if (!isSchedulePage && activeTeamId) {
+      dispatch(clearActiveTeam());
+    }
+  }, [isSchedulePage, activeTeamId, dispatch]);
+
   useEffect(() => {
     if (isFranchiseManager || !franchises || franchises.length === 0) return;
     if (!currentFranchiseId) {
@@ -73,7 +98,7 @@ const FranchiseSwitcher: React.FC = () => {
     }
   }, [franchises, currentFranchiseId, isFranchiseManager, dispatch]);
 
-  if (isFranchiseManager) {
+  if (isFranchiseManager && !isSchedulePage) {
     return (
       <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 rounded px-2 sm:px-3 py-1.5 max-w-[110px] sm:max-w-xs">
         <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />
@@ -84,61 +109,139 @@ const FranchiseSwitcher: React.FC = () => {
     );
   }
 
+  let buttonIcon = <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />;
+  let buttonLabel = "Academy Overview";
+
+  if (activeTeamId) {
+    buttonIcon = <Users size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />;
+    buttonLabel = currentTeam ? `${currentTeam.name} (${currentTeam.ageGroup})` : "Team Schedule";
+  } else if (currentFranchiseId) {
+    buttonIcon = <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />;
+    buttonLabel = currentFranchise?.name ?? "Loading…";
+  }
+
   return (
     <div className="relative" ref={switcherRef}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/20 rounded px-2 sm:px-3 py-1.5 transition-colors max-w-[115px] sm:max-w-xs"
+        className="flex items-center gap-1 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/20 rounded px-2 sm:px-3 py-1.5 transition-colors max-w-[140px] sm:max-w-xs"
       >
-        <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />
+        {buttonIcon}
         <span className="text-xs font-medium truncate">
-          {currentFranchiseId
-            ? (currentFranchise?.name ?? "Loading…")
-            : "Academy Overview"}
+          {buttonLabel}
         </span>
         <ChevronDown size={12} className="text-slate-500 shrink-0" />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-11 w-64 card shadow-panel z-50 animate-slide-up py-1.5">
-            <p className="px-3 py-1.5 section-title">Switch branch</p>
+        <div className="absolute left-0 top-11 w-64 max-h-[80vh] overflow-y-auto card shadow-panel z-50 animate-slide-up py-1.5">
+          <p className="px-3 py-1.5 section-title">Branches</p>
 
+          {!isFranchiseManager && (
             <button
               onClick={() => {
+                dispatch(clearActiveTeam());
                 dispatch(clearActiveFranchise());
+                if (isSchedulePage) {
+                  navigate("/schedule");
+                }
                 setOpen(false);
               }}
               className={clsx(
                 "w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-pitch-700/80 dark:hover:text-white dark:hover:bg-white/10 transition-colors",
-                !currentFranchiseId
+                !currentFranchiseId && !activeTeamId
                   ? "text-volt-600 dark:text-volt-400 font-semibold bg-slate-50 dark:bg-white/5"
                   : "text-slate-700 dark:text-slate-300",
               )}
             >
               <span>Academy Overview</span>
-              {!currentFranchiseId && <Check size={13} />}
+              {!currentFranchiseId && !activeTeamId && <Check size={13} />}
             </button>
+          )}
 
-            {franchises &&
-              franchises.map((f) => (
+          {isFranchiseManager && currentFranchise && (
+            <button
+              onClick={() => {
+                dispatch(clearActiveTeam());
+                dispatch(setActiveFranchise(currentFranchise.id));
+                if (isSchedulePage) {
+                  navigate("/schedule");
+                }
+                setOpen(false);
+              }}
+              className={clsx(
+                "w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-pitch-700/80 dark:hover:text-white dark:hover:bg-white/10 transition-colors",
+                !activeTeamId && currentFranchiseId === currentFranchise.id
+                  ? "text-volt-600 dark:text-volt-400 font-semibold bg-slate-50 dark:bg-white/5"
+                  : "text-slate-700 dark:text-slate-300",
+              )}
+            >
+              <span className="truncate">{currentFranchise.name}</span>
+              {!activeTeamId && currentFranchiseId === currentFranchise.id && <Check size={13} />}
+            </button>
+          )}
+
+          {!isFranchiseManager &&
+            franchises &&
+            franchises.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => {
+                  dispatch(clearActiveTeam());
+                  dispatch(setActiveFranchise(f.id));
+                  if (isSchedulePage) {
+                    navigate("/schedule");
+                  }
+                  setOpen(false);
+                }}
+                className={clsx(
+                  "w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-pitch-700/80 dark:hover:text-white dark:hover:bg-white/10 transition-colors",
+                  !activeTeamId && f.id === currentFranchiseId
+                    ? "text-volt-600 dark:text-volt-400 font-semibold bg-slate-50 dark:bg-white/5"
+                    : "text-slate-700 dark:text-slate-300",
+                )}
+              >
+                <span className="truncate">{f.name}</span>
+                {!activeTeamId && f.id === currentFranchiseId && <Check size={13} />}
+              </button>
+            ))}
+
+          {isSchedulePage && teams && teams.length > 0 && (
+            <>
+              <div className="border-t border-slate-200 dark:border-white/10 my-1" />
+              <p className="px-3 py-1.5 section-title">Teams / Squads</p>
+              {teams.map((t) => (
                 <button
-                  key={f.id}
+                  key={t.id}
                   onClick={() => {
-                    dispatch(setActiveFranchise(f.id));
+                    const franchiseTarget = t.franchiseId || (t.franchise as any)?.id;
+                    if (franchiseTarget) {
+                      dispatch(setActiveFranchise(franchiseTarget));
+                    }
+                    dispatch(setActiveTeam(t.id));
+                    if (isSchedulePage) {
+                      navigate(`/schedule?teamId=${t.id}`);
+                    }
                     setOpen(false);
                   }}
                   className={clsx(
                     "w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-pitch-700/80 dark:hover:text-white dark:hover:bg-white/10 transition-colors",
-                    f.id === currentFranchiseId
+                    activeTeamId === t.id
                       ? "text-volt-600 dark:text-volt-400 font-semibold bg-slate-50 dark:bg-white/5"
                       : "text-slate-700 dark:text-slate-300",
                   )}
                 >
-                  <span className="truncate">{f.name}</span>
-                  {f.id === currentFranchiseId && <Check size={13} />}
+                  <div className="flex items-center gap-1.5 truncate">
+                    <Users size={12} className="shrink-0 text-slate-400" />
+                    <span className="truncate font-medium">{t.name}</span>
+                    <span className="text-2xs text-slate-400">({t.ageGroup})</span>
+                  </div>
+                  {activeTeamId === t.id && <Check size={13} className="shrink-0 ml-1.5" />}
                 </button>
               ))}
-          </div>
+            </>
+          )}
+        </div>
       )}
     </div>
   );
@@ -152,11 +255,20 @@ const FranchiseSwitcher: React.FC = () => {
 // lost access to), the first result is auto-selected.
 const CoachFranchiseSwitcher: React.FC = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isSchedulePage = location.pathname.startsWith("/schedule");
   const currentFranchiseId = useCurrentFranchiseId();
+  const activeTeamId = useSelector((s: RootState) => s.ui.activeTeamId);
   const [open, setOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
   useClickOutside(switcherRef, () => setOpen(false), open);
   const { data: franchises } = useGetMyFranchisesQuery();
+  const { data: teams } = useListTeamsQuery(
+    isSchedulePage ? {} : (undefined as any),
+    { skip: !isSchedulePage },
+  );
+  const { data: fetchedTeam } = useGetTeamByIdQuery(activeTeamId ?? "", { skip: !activeTeamId });
 
   useEffect(() => {
     if (!franchises || franchises.length === 0) return;
@@ -166,9 +278,17 @@ const CoachFranchiseSwitcher: React.FC = () => {
     }
   }, [franchises, currentFranchiseId, dispatch]);
 
-  const currentFranchise = franchises?.find((f) => f.id === currentFranchiseId);
+  // Clear active team if navigating away from schedule page
+  useEffect(() => {
+    if (!isSchedulePage && activeTeamId) {
+      dispatch(clearActiveTeam());
+    }
+  }, [isSchedulePage, activeTeamId, dispatch]);
 
-  if (!franchises || franchises.length === 0) {
+  const currentFranchise = franchises?.find((f) => f.id === currentFranchiseId);
+  const currentTeam = teams?.find((t) => t.id === activeTeamId) ?? fetchedTeam;
+
+  if ((!franchises || franchises.length === 0) && (!teams || teams.length === 0)) {
     return (
       <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 rounded px-2.5 sm:px-3 py-1.5">
         <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />
@@ -179,52 +299,93 @@ const CoachFranchiseSwitcher: React.FC = () => {
     );
   }
 
-  if (franchises.length === 1) {
-    return (
-      <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 rounded px-2.5 sm:px-3 py-1.5">
-        <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />
-        <span className="text-xs font-medium max-w-[120px] sm:max-w-40 truncate">
-          {franchises[0].name}
-        </span>
-      </div>
-    );
+  let buttonIcon = <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />;
+  let buttonLabel = currentFranchise?.name ?? "Loading…";
+
+  if (activeTeamId) {
+    buttonIcon = <Users size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />;
+    buttonLabel = currentTeam ? `${currentTeam.name} (${currentTeam.ageGroup})` : "Team Schedule";
   }
 
   return (
     <div className="relative" ref={switcherRef}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/20 rounded px-2.5 sm:px-3 py-1.5 transition-colors"
+        className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 dark:hover:border-white/20 rounded px-2.5 sm:px-3 py-1.5 transition-colors max-w-[140px] sm:max-w-xs"
       >
-        <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />
+        {buttonIcon}
         <span className="text-xs font-medium max-w-[120px] sm:max-w-40 truncate">
-          {currentFranchise?.name ?? "Loading…"}
+          {buttonLabel}
         </span>
         <ChevronDown size={12} className="text-slate-500 shrink-0" />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-11 w-64 max-w-[85vw] card shadow-panel z-50 animate-slide-up py-1.5">
-            <p className="px-3 py-1.5 section-title">Switch branch</p>
-            {franchises.map((f) => (
-              <button
-                key={f.id}
-                onClick={() => {
-                  dispatch(setActiveFranchise(f.id));
-                  setOpen(false);
-                }}
-                className={clsx(
-                  "w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-pitch-700/80 dark:hover:text-white dark:hover:bg-white/10 transition-colors",
-                  f.id === currentFranchiseId
-                    ? "text-volt-600 dark:text-volt-400 font-semibold bg-slate-50 dark:bg-white/5"
-                    : "text-slate-700 dark:text-slate-300",
-                )}
-              >
-                <span className="truncate">{f.name}</span>
-                {f.id === currentFranchiseId && <Check size={13} />}
-              </button>
-            ))}
-          </div>
+        <div className="absolute left-0 top-11 w-64 max-h-[80vh] overflow-y-auto max-w-[85vw] card shadow-panel z-50 animate-slide-up py-1.5">
+          {franchises && franchises.length > 0 && (
+            <>
+              <p className="px-3 py-1.5 section-title">Branches</p>
+              {franchises.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => {
+                    dispatch(clearActiveTeam());
+                    dispatch(setActiveFranchise(f.id));
+                    if (isSchedulePage) {
+                      navigate("/schedule");
+                    }
+                    setOpen(false);
+                  }}
+                  className={clsx(
+                    "w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-pitch-700/80 dark:hover:text-white dark:hover:bg-white/10 transition-colors",
+                    !activeTeamId && f.id === currentFranchiseId
+                      ? "text-volt-600 dark:text-volt-400 font-semibold bg-slate-50 dark:bg-white/5"
+                      : "text-slate-700 dark:text-slate-300",
+                  )}
+                >
+                  <span className="truncate">{f.name}</span>
+                  {!activeTeamId && f.id === currentFranchiseId && <Check size={13} />}
+                </button>
+              ))}
+            </>
+          )}
+
+          {isSchedulePage && teams && teams.length > 0 && (
+            <>
+              <div className="border-t border-slate-200 dark:border-white/10 my-1" />
+              <p className="px-3 py-1.5 section-title">Teams / Squads</p>
+              {teams.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    const franchiseTarget = t.franchiseId || (t.franchise as any)?.id;
+                    if (franchiseTarget) {
+                      dispatch(setActiveFranchise(franchiseTarget));
+                    }
+                    dispatch(setActiveTeam(t.id));
+                    if (isSchedulePage) {
+                      navigate(`/schedule?teamId=${t.id}`);
+                    }
+                    setOpen(false);
+                  }}
+                  className={clsx(
+                    "w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-pitch-700/80 dark:hover:text-white dark:hover:bg-white/10 transition-colors",
+                    activeTeamId === t.id
+                      ? "text-volt-600 dark:text-volt-400 font-semibold bg-slate-50 dark:bg-white/5"
+                      : "text-slate-700 dark:text-slate-300",
+                  )}
+                >
+                  <div className="flex items-center gap-1.5 truncate">
+                    <Users size={12} className="shrink-0 text-slate-400" />
+                    <span className="truncate font-medium">{t.name}</span>
+                    <span className="text-2xs text-slate-400">({t.ageGroup})</span>
+                  </div>
+                  {activeTeamId === t.id && <Check size={13} className="shrink-0 ml-1.5" />}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
       )}
     </div>
   );

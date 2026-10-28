@@ -65,13 +65,15 @@ export class AcademySubscriptionUseCases {
   // Student documents are scoped by franchiseId, not academyId directly —
   // this resolves every franchise under the academy first so headcount
   // and capacity checks span the whole academy, not just one franchise.
+  // Option 1: All enrolled squad members (active, inactive, on_leave) consume a
+  // subscription slot. Only archived or dropped_out players release their slots.
   private async countActiveStudents(academyId: string): Promise<number> {
     const franchiseIds = await FranchiseModel.find({ academyId }).distinct("_id");
     if (franchiseIds.length === 0) return 0;
     return StudentModel.countDocuments({
       franchiseId: { $in: franchiseIds },
-      isActive: true,
       deletedAt: { $exists: false },
+      status: { $ne: "dropped_out" },
     });
   }
 

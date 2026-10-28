@@ -2,7 +2,8 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface SessionDocument extends Document {
-  franchiseId: mongoose.Types.ObjectId;
+  franchiseId?: mongoose.Types.ObjectId;
+  academyId?: mongoose.Types.ObjectId;
   targetType: "team" | "category" | "batch";
   teamId?: mongoose.Types.ObjectId;
   category?: string;
@@ -17,6 +18,7 @@ export interface SessionDocument extends Document {
   endDate?: string; // YYYY-MM-DD
   dailyStartTime?: string; // HH:MM
   dailyEndTime?: string; // HH:MM
+  daysOfWeek?: number[];
   location: string;
   fieldNumber?: string;
   pitchId?: string;
@@ -37,7 +39,8 @@ export interface SessionDocument extends Document {
 
 const SessionSchema = new Schema<SessionDocument>(
   {
-    franchiseId: { type: Schema.Types.ObjectId, ref: "Franchise", required: true, index: true },
+    franchiseId: { type: Schema.Types.ObjectId, ref: "Franchise", required: false, index: true },
+    academyId: { type: Schema.Types.ObjectId, ref: "Academy", required: false, index: true },
     targetType: {
       type: String,
       enum: ["team", "category", "batch"],

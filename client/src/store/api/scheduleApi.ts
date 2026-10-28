@@ -1,9 +1,11 @@
 // src/store/api/scheduleApi.ts
 import { baseApi } from "./baseApi";
+import { AcademySessionType } from "@/features/academies/types";
 
 export interface Session {
   id: string;
-  franchiseId: string;
+  franchiseId?: string;
+  academyId?: string;
   targetType: "team" | "category" | "batch";
   teamId?: string;
   teamName?: string;
@@ -22,6 +24,7 @@ export interface Session {
   endDate?: string;
   dailyStartTime?: string;
   dailyEndTime?: string;
+  daysOfWeek?: number[];
   location: string;
   fieldNumber?: string;
   pitchId?: string;
@@ -38,7 +41,8 @@ export interface Session {
 }
 
 export interface CreateSessionInput {
-  franchiseId: string;
+  franchiseId?: string;
+  academyId?: string;
   targetType: "team" | "category" | "batch";
   teamId?: string;
   category?: string;
@@ -53,6 +57,7 @@ export interface CreateSessionInput {
   endDate?: string;
   dailyStartTime?: string;
   dailyEndTime?: string;
+  daysOfWeek?: number[];
   location: string;
   fieldNumber?: string;
   pitchId?: string;
@@ -81,7 +86,9 @@ export interface RosterPlayer {
 
 export interface SessionRoster {
   session: Session;
+  sessionType?: string;
   skillParameters: string[];
+  sessionTypes?: AcademySessionType[];
   roster: RosterPlayer[];
 }
 

@@ -1,11 +1,12 @@
-// src/features/teams/TeamsPage.tsx
 import React, { useState } from "react";
+import { clsx } from "clsx";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { Plus, Users, Trash2, Swords, FileSpreadsheet } from "lucide-react";
+import { Plus, Users, Trash2, Swords, FileSpreadsheet, CalendarDays } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { RootState } from "../../store";
 import { TeamReportModal } from "./TeamReportModal";
+import { ScheduleTeamEventModal } from "./ScheduleTeamEventModal";
 import {
   Card,
   Button,
@@ -20,6 +21,7 @@ import {
 } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
+import { useCreateSessionMutation } from "../../store/api/scheduleApi";
 import {
   useListTeamsQuery,
   useCreateTeamMutation,
@@ -96,6 +98,7 @@ const TeamsPage: React.FC = () => {
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [brandingTeamId, setBrandingTeamId] = useState<string | null>(null);
   const [reportTeamId, setReportTeamId] = useState<string | null>(null);
+  const [scheduleEventTeam, setScheduleEventTeam] = useState<Team | null>(null);
 
   const resetCreateForm = () => {
     setName("");
@@ -313,6 +316,13 @@ const TeamsPage: React.FC = () => {
                       View roster →
                     </button>
                     <button
+                      onClick={() => setScheduleEventTeam(team)}
+                      className="text-xs flex items-center gap-1 text-volt-600 dark:text-volt-400 hover:text-volt-500 font-medium transition-colors"
+                      title="Schedule a match or squad training"
+                    >
+                      <CalendarDays size={12} /> Schedule
+                    </button>
+                    <button
                       onClick={() => setReportTeamId(team.id)}
                       className="text-xs flex items-center gap-1 text-emerald-500 hover:text-emerald-400 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors font-medium"
                       title="Generate official squad report and formation"
@@ -476,6 +486,15 @@ const TeamsPage: React.FC = () => {
           teamId={reportTeamId}
           isOpen={Boolean(reportTeamId)}
           onClose={() => setReportTeamId(null)}
+        />
+      )}
+
+      {scheduleEventTeam && (
+        <ScheduleTeamEventModal
+          team={scheduleEventTeam}
+          academyId={academyId ?? ""}
+          coaches={coaches}
+          onClose={() => setScheduleEventTeam(null)}
         />
       )}
 
@@ -892,3 +911,4 @@ const TeamBrandingModal: React.FC<{
     </Modal>
   );
 };
+

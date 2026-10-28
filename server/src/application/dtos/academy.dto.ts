@@ -31,6 +31,13 @@ export const PitchSchemaDto = z.object({
   isActive: z.boolean().optional(),
 });
 
+export const SessionTypeDto = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string().optional(),
+  submetrics: z.array(z.string().min(1)).min(1),
+});
+
 // Create Academy DTO (includes manager creation data)
 export const CreateAcademySchema = z.object({
   name: z.string().min(1).max(100),
@@ -111,6 +118,7 @@ export const UpdateAcademySchema = z.object({
   feePaymentMethod: z.enum(["qr", "bank_transfer", "both"]).optional(),
   bankDetails: BankDetailsSchema.optional().nullable(),
   logo: z.string().optional(),
+  sessionTypes: z.array(SessionTypeDto).optional(),
 });
 
 // Config update — this is the endpoint the manager's own Settings tab
@@ -144,6 +152,7 @@ export const AcademyConfigSchema = z.object({
   feePaymentMethod: z.enum(["qr", "bank_transfer", "both"]).optional(),
   bankDetails: BankDetailsSchema.optional().nullable(),
   logo: z.string().nullable().optional().or(z.literal("")).transform(v => (v === "" || v === null) ? null : v),
+  sessionTypes: z.array(SessionTypeDto).optional(),
   isActive: z.boolean().optional(),
 });
 

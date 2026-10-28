@@ -26,11 +26,13 @@ import {
   Download,
   AlertTriangle,
   User,
+  Award,
 } from "lucide-react";
 import QRCode from "react-qr-code";
 import { PayFeeModal } from "./PayFeeModal";
 import { FeeReceiptModal } from "./FeeReceiptModal";
 import { formatCurrency } from "../../utils/currency";
+import { computeMajorAndSubmetricSkills } from "../students/skillMetricsHelper";
 import {
   useGetChildProfileQuery,
   useGetChildAttendanceQuery,
@@ -1259,8 +1261,64 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
     perfPage * PERF_PER_PAGE,
   );
 
+  const { majorSkills } = useMemo(
+    () => computeMajorAndSubmetricSkills(performanceRecords ?? []),
+    [performanceRecords],
+  );
+
   return (
     <div className="space-y-6">
+      {/* Major Athletic & Skill Profile (Major Categories Rollup) */}
+      {majorSkills.length > 0 && (
+        <div className="nox-card p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-pitch-200/50 dark:border-white/[0.06] pb-3">
+            <div>
+              <h3 className="font-orbital text-sm font-semibold text-nox-high flex items-center gap-2">
+                <Award size={16} className="text-core-400" />
+                Athletic &amp; Skill Profile
+              </h3>
+              <p className="text-xs text-nox-mid mt-0.5">
+                Core performance categories aggregated across all completed evaluations.
+              </p>
+            </div>
+            <span className="text-xs font-mono text-nox-low uppercase">
+              {majorSkills.length} Major Skills
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {majorSkills.map((cat) => (
+              <div
+                key={cat.category}
+                className="bg-white/[0.02] border border-pitch-200/50 dark:border-white/[0.06] rounded-xl p-3.5 space-y-2"
+              >
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-nox-high text-sm">
+                    {cat.category}
+                  </span>
+                  <span className="font-orbital font-bold text-core-400 text-sm">
+                    {cat.score.toFixed(1)}{" "}
+                    <span className="text-nox-low text-2xs font-normal">/ 10</span>
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-pitch-200/50 dark:bg-white/[0.06] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-core-400 transition-all duration-500 rounded-full"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, (cat.score / 10) * 100))}%`,
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between items-center text-3xs font-mono text-nox-low">
+                  <span>Proficiency Rating</span>
+                  <span>{cat.count} Evaluations</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Coach Feedback & Notes Space */}
       <div className="nox-card p-5 space-y-4">
         <div className="flex items-center justify-between border-b border-pitch-200/50 dark:border-white/[0.06] pb-3">
@@ -1435,37 +1493,24 @@ const PerformanceTab: React.FC<{ studentId: string }> = ({ studentId }) => {
                     )}
                   </div>
 
-                  {/* Skill Parameters Breakdown */}
-                  {p.skillScores && p.skillScores.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-2xs uppercase font-mono tracking-wider text-nox-mid font-semibold">
-                        Skill Parameter Breakdown
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                        {p.skillScores.map((skill) => (
-                          <div
-                            key={skill.parameter}
-                            className="bg-white/[0.02] border border-pitch-200/50 dark:border-white/[0.06] rounded-lg p-2.5 flex flex-col justify-between gap-1.5"
-                          >
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-nox-high font-medium truncate">
-                                {skill.parameter}
-                              </span>
-                              <span className="font-orbital font-semibold text-xs text-core-400">
-                                {skill.score} / 10
-                              </span>
-                            </div>
-                            <div className="h-1.5 w-full bg-pitch-200/50 dark:bg-white/[0.06] rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-core-400 transition-all duration-300"
-                                style={{
-                                  width: `${Math.min(100, Math.max(0, (skill.score / 10) * 100))}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                        ))}
+                  {/* Session Focus Category Assessment */}
+                  {(p.sessionType || sessionObj?.type) && (
+                    <div className="p-3 bg-white/[0.02] border border-pitch-200/50 dark:border-white/[0.06] rounded-lg flex items-center justify-between">
+                      <div>
+                        <span className="text-2xs font-mono uppercase tracking-widest text-core-400 font-semibold block">
+                          Major Category Focus
+                        </span>
+                        <span className="text-xs font-semibold text-nox-high">
+                          {String(p.sessionType || sessionObj?.type || "Training")} Training
+                        </span>
                       </div>
+                      {typeof score === "number" && (
+                        <div className="text-right">
+                          <span className="font-orbital font-bold text-core-400 text-sm">
+                            {score.toFixed(1)} / 10
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
 

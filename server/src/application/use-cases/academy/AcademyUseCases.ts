@@ -346,6 +346,7 @@ export class AcademyUseCases {
       if (dto.feePaymentMethod !== undefined) effectiveDto.feePaymentMethod = dto.feePaymentMethod;
       if (dto.bankDetails !== undefined) effectiveDto.bankDetails = dto.bankDetails;
       if (dto.logo !== undefined) effectiveDto.logo = dto.logo;
+      if (dto.sessionTypes !== undefined) effectiveDto.sessionTypes = dto.sessionTypes;
       if (dto.dataProtectionContactEmail !== undefined) effectiveDto.dataProtectionContactEmail = dto.dataProtectionContactEmail;
     } else {
       effectiveDto = { ...dto };

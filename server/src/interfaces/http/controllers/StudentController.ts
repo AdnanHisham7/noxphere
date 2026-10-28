@@ -40,6 +40,7 @@ export class StudentController {
         ageGroup,
         selectionStatus,
         status,
+        isActive,
         deleted,
       } = req.query;
       // A coach only ever sees players on a team assigned to them (or
@@ -48,7 +49,7 @@ export class StudentController {
       const restrictToCoachId = req.user!.role === 'coach' ? req.user!.sub : undefined;
       const result = await this.studentUseCases.getStudents(
         franchiseId as string | undefined,
-        { search, teamId, ageGroup, selectionStatus, status, deleted },
+        { search, teamId, ageGroup, selectionStatus, status, isActive, deleted },
         Number(page),
         Number(limit),
         restrictToCoachId,

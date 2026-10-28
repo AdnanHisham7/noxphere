@@ -50,6 +50,7 @@ import {
   RotateCcw,
   Trash2,
   Sparkles,
+  PauseCircle,
 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
@@ -97,6 +98,7 @@ import { academyApi } from "../../store/api/academyApi";
 import { useListPlayerMutation } from "../../store/api/transferApi";
 import { useUploadImageMutation } from "../../store/api/uploadApi";
 import { PlayerAiPromptModal } from "./PlayerAiPromptModal";
+import { computeMajorAndSubmetricSkills } from "./skillMetricsHelper";
 
 const getRatingColor = (r: number) =>
   r >= 9
@@ -267,6 +269,21 @@ const StudentDetailPage: React.FC = () => {
     user?.role === "super_admin";
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
   const academyId = useCurrentAcademyId();
+  const { data: academyData } = academyApi.useGetAcademyByIdQuery(
+    academyId ?? "",
+    { skip: !academyId },
+  );
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(["Technical", "Physical", "Tactical", "Mental", "Match"]),
+  );
+  const toggleCategory = (cat: string) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  };
   const [restoreStudent, { isLoading: isRestoring }] =
     useRestoreStudentMutation();
   const [deleteStudent, { isLoading: isDeleting }] = useDeleteStudentMutation();
@@ -438,22 +455,20 @@ const StudentDetailPage: React.FC = () => {
     }
   };
 
-  // Aggregate skill scores across recent performances into a radar profile
-  const skillTotals = new Map<string, { sum: number; count: number }>();
-  for (const p of performances) {
-    for (const s of p.skillScores || []) {
-      const bucket = skillTotals.get(s.parameter) ?? { sum: 0, count: 0 };
-      bucket.sum += s.score;
-      bucket.count += 1;
-      skillTotals.set(s.parameter, bucket);
-    }
-  }
-  const skillScores = Array.from(skillTotals.entries()).map(
-    ([parameter, v]) => ({
-      parameter,
-      score: Math.round((v.sum / v.count) * 10) / 10,
-    }),
-  );
+  // Compute major skill category rollups and granular submetrics
+  const { majorSkills: majorSkillScores, allSubmetrics: submetricScores } =
+    useMemo(
+      () =>
+        computeMajorAndSubmetricSkills(
+          performances,
+          academyData?.sessionTypes,
+        ),
+      [performances, academyData?.sessionTypes],
+    );
+
+  // skillScores for RadarChart and high-level athletic profile defaults to major skill categories
+  const skillScores =
+    majorSkillScores.length > 0 ? majorSkillScores : submetricScores;
 
   // Session history for the trend line, oldest → newest
   const sessionHistory = [...performances]
@@ -1223,11 +1238,13 @@ const StudentDetailPage: React.FC = () => {
                           "!py-1 !px-2.5 !text-xs font-bold uppercase tracking-wider border rounded-xl inline-block h-[30px] cursor-pointer leading-none shadow-xs",
                           student.status === "active"
                             ? "text-field-500 dark:text-field-400 border-field-400/30 bg-field-400/10"
-                            : "text-ember-500 dark:text-ember-400 border-ember-400/30 bg-ember-400/10",
+                            : student.status === "inactive"
+                              ? "text-amber-600 dark:text-amber-400 border-amber-400/30 bg-amber-400/10"
+                              : "text-ember-500 dark:text-ember-400 border-ember-400/30 bg-ember-400/10",
                         )}
                       >
                         <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
+                        <option value="inactive">Inactive (Paused)</option>
                         <option value="on_leave">On Leave</option>
                         <option value="graduated">Graduated</option>
                         <option value="dropped_out">Dropped</option>
@@ -1274,6 +1291,31 @@ const StudentDetailPage: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* Inactive Player Notice Banner */}
+              {student.status === "inactive" && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-700 dark:text-amber-300">
+                  <div className="flex items-start gap-2.5">
+                    <PauseCircle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Player is currently Inactive (Training Paused)</p>
+                      <p className="text-[11px] text-amber-600/80 dark:text-amber-300/80 mt-0.5">
+                        This player is paused and excluded from training attendance and match sheets. They remain enrolled on the squad roster. To release a subscription slot, archive the player.
+                      </p>
+                    </div>
+                  </div>
+                  {canEditStatus && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleStatusChange("active")}
+                      className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 border-amber-500/30 shrink-0"
+                    >
+                      Set to Active
+                    </Button>
+                  )}
+                </div>
+              )}
 
               {/* 3 Executive KPI Cards Row */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 items-stretch">
@@ -1954,12 +1996,33 @@ const StudentDetailPage: React.FC = () => {
                     Skill Mastery Breakdown
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Average proficiency rating across all completed evaluations.
+                    Category rollups with expandable drill submetrics for staff.
                   </p>
                 </div>
-                <span className="text-2xs font-mono text-slate-500 uppercase">
-                  {skillScores.length} Skills
-                </span>
+                <div className="flex items-center gap-2">
+                  {majorSkillScores.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (expandedCategories.size > 0) {
+                          setExpandedCategories(new Set());
+                        } else {
+                          setExpandedCategories(
+                            new Set(majorSkillScores.map((c) => c.category)),
+                          );
+                        }
+                      }}
+                      className="text-2xs font-semibold text-volt-400 hover:text-volt-300 transition-colors uppercase tracking-wider px-2 py-0.5 rounded bg-volt-400/10 border border-volt-400/20"
+                    >
+                      {expandedCategories.size > 0 ? "Collapse All" : "Expand Submetrics"}
+                    </button>
+                  )}
+                  <span className="text-2xs font-mono text-slate-500 uppercase">
+                    {majorSkillScores.length > 0
+                      ? `${majorSkillScores.length} Categories`
+                      : `${skillScores.length} Skills`}
+                  </span>
+                </div>
               </div>
 
               {skillScores.length === 0 ? (
@@ -1967,6 +2030,119 @@ const StudentDetailPage: React.FC = () => {
                   title="No skill data yet"
                   description="Ratings will aggregate here as coaches log session evaluations."
                 />
+              ) : majorSkillScores.length > 0 ? (
+                <div className="space-y-3 pt-1">
+                  {majorSkillScores.map((cat) => {
+                    const ratingTier = getRatingTier(cat.score);
+                    const isExpanded = expandedCategories.has(cat.category);
+                    return (
+                      <div
+                        key={cat.category}
+                        className="p-3 rounded-xl bg-slate-50 dark:bg-pitch-900/40 border border-slate-200/80 dark:border-white/5 space-y-2 transition-all"
+                      >
+                        <div
+                          onClick={() => toggleCategory(cat.category)}
+                          className="flex items-center justify-between text-xs cursor-pointer select-none group"
+                        >
+                          <div className="flex items-center gap-2">
+                            {cat.submetrics && cat.submetrics.length > 0 && (
+                              <ChevronDown
+                                size={14}
+                                className={clsx(
+                                  "text-slate-400 group-hover:text-volt-400 transition-transform duration-200",
+                                  isExpanded ? "rotate-180" : "",
+                                )}
+                              />
+                            )}
+                            <span className="text-slate-900 dark:text-white font-bold text-sm">
+                              {cat.category}
+                            </span>
+                            {cat.submetrics && cat.submetrics.length > 0 && (
+                              <span className="text-2xs text-slate-400 font-mono">
+                                ({cat.submetrics.length} metrics)
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={clsx(
+                                "text-2xs font-bold px-1.5 py-0.5 rounded border",
+                                ratingTier.color,
+                              )}
+                            >
+                              {ratingTier.label}
+                            </span>
+                            <span className="font-mono font-bold text-volt-400 w-12 text-right">
+                              {cat.score.toFixed(1)}{" "}
+                              <span className="text-slate-500 text-2xs font-normal">
+                                /10
+                              </span>
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="h-2 w-full bg-slate-200 dark:bg-pitch-900 rounded-full overflow-hidden border border-slate-300 dark:border-white/5">
+                          <div
+                            className={clsx(
+                              "h-full transition-all duration-500 rounded-full",
+                              cat.score >= 8.5
+                                ? "bg-emerald-400"
+                                : cat.score >= 7.0
+                                  ? "bg-volt-400"
+                                  : cat.score >= 5.5
+                                    ? "bg-amber-400"
+                                    : "bg-rose-500",
+                            )}
+                            style={{
+                              width: `${Math.min(100, Math.max(0, (cat.score / 10) * 100))}%`,
+                            }}
+                          />
+                        </div>
+
+                        {/* Expandable submetrics breakdown for coaches and managers */}
+                        {isExpanded && cat.submetrics && cat.submetrics.length > 0 && (
+                          <div className="mt-2.5 pt-2 border-t border-slate-200/80 dark:border-white/5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {cat.submetrics.map((sub) => {
+                              const subTier = getRatingTier(sub.score);
+                              return (
+                                <div
+                                  key={sub.parameter}
+                                  className="p-2 rounded-lg bg-white/70 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/5 flex flex-col justify-between gap-1"
+                                >
+                                  <div className="flex items-center justify-between text-2xs">
+                                    <span className="text-slate-700 dark:text-slate-300 font-medium">
+                                      {sub.parameter}
+                                    </span>
+                                    <span className="font-mono font-bold text-volt-400">
+                                      {sub.score.toFixed(1)} / 10
+                                    </span>
+                                  </div>
+                                  <div className="h-1.5 w-full bg-slate-200 dark:bg-pitch-950 rounded-full overflow-hidden">
+                                    <div
+                                      className={clsx(
+                                        "h-full rounded-full",
+                                        sub.score >= 8.5
+                                          ? "bg-emerald-400"
+                                          : sub.score >= 7.0
+                                            ? "bg-volt-400"
+                                            : sub.score >= 5.5
+                                              ? "bg-amber-400"
+                                              : "bg-rose-500",
+                                      )}
+                                      style={{
+                                        width: `${Math.min(100, Math.max(0, (sub.score / 10) * 100))}%`,
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               ) : (
                 <div className="space-y-3 pt-1">
                   {skillScores.map((s) => {
@@ -2244,9 +2420,9 @@ const StudentDetailPage: React.FC = () => {
                             <span className="font-display font-bold text-slate-900 dark:text-white text-sm">
                               {sessionTitle}
                             </span>
-                            {sessionObj?.type && (
-                              <span className="text-3xs uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-white/5 text-slate-300 border border-white/10">
-                                {sessionObj.type}
+                            {(session.sessionType || sessionObj?.type) && (
+                              <span className="text-3xs uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-volt-400/10 text-volt-400 border border-volt-400/20">
+                                {session.sessionType || sessionObj?.type}
                               </span>
                             )}
                           </div>

@@ -1,7 +1,7 @@
 // src/features/franchises/FranchiseManagementPage.tsx
 import React, { useEffect, useState } from "react";
 import { clsx } from "clsx";
-import { Building2, Plus, Power, Trash2, ListChecks, X, Pencil, LayoutDashboard, Users } from "lucide-react";
+import { Building2, Plus, Power, Trash2, ListChecks, X, Pencil, LayoutDashboard, Users, Calendar, CalendarDays, Clock, MapPin, Layers } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
@@ -21,6 +21,16 @@ import {
   type Franchise,
 } from "../../store/api/franchiseApi";
 import { useGetAcademySubscriptionStatusQuery } from "../../store/api/academySubscriptionApi";
+
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function formatBranchSchedule(sessionTimes?: { dayOfWeek: number; startTime: string; endTime: string }[]) {
+  if (!sessionTimes || sessionTimes.length === 0) return null;
+  const sorted = [...sessionTimes].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+  const uniqueDays = Array.from(new Set(sorted.map((s) => DAY_NAMES[s.dayOfWeek]))).join(", ");
+  const time = sorted[0]?.startTime && sorted[0]?.endTime ? `${sorted[0].startTime} - ${sorted[0].endTime}` : null;
+  return { days: uniqueDays, time };
+}
 
 const FranchiseManagementPage: React.FC = () => {
   const dispatch = useDispatch();
@@ -159,66 +169,167 @@ const FranchiseManagementPage: React.FC = () => {
       {activeAcademyId && !isLoading && franchises && franchises.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {franchises.map((f) => (
-            <div key={f.id} className="card p-5 space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-display font-bold text-slate-900 dark:text-white truncate">{f.name}</p>
-                  <p className="text-2xs text-slate-500 font-mono">{f.franchiseCode}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => setDetailsFranchise(f)}
-                    className="text-slate-400 hover:text-volt-400 transition-colors"
-                    title="Edit details"
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  <Badge variant={f.isActive ? "green" : "gray"} size="sm">{f.isActive ? "Active" : "Inactive"}</Badge>
-                </div>
-              </div>
-              <p className="text-xs text-slate-400">{f.location?.name}</p>
-              <div className="flex items-center gap-2 text-2xs text-slate-500">
-                {subStatus && subStatus.provisionedCapacity > 0 && (
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">
-                    Academy Quota: {subStatus.provisionedCapacity} students
-                  </span>
-                )}
-                {f.ageGroups?.length > 0 && <span>· {f.ageGroups.join(", ")}</span>}
-              </div>
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <span className="text-2xs text-slate-500">Skills:</span>
-                {f.skillParameters?.length ? (
-                  f.skillParameters.map((skill) => (
-                    <Badge key={skill} variant="gray" size="sm">
-                      {skill}
+            <div
+              key={f.id}
+              className="card p-5 flex flex-col justify-between hover:border-volt-500/40 dark:hover:border-volt-400/30 transition-all duration-200"
+            >
+              <div className="space-y-3">
+                {/* Branch Header & Code */}
+                <div className="flex items-start justify-between gap-2.5">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-display font-bold text-slate-900 dark:text-white text-base truncate">
+                        {f.name}
+                      </p>
+                      {f.franchiseCode && (
+                        <span className="font-mono text-3xs font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 shrink-0">
+                          {f.franchiseCode}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      <MapPin size={13} className="shrink-0 text-slate-400" />
+                      <span className="truncate">{f.location?.name || f.location?.address || "Location unassigned"}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => setDetailsFranchise(f)}
+                      className="p-1 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                      title="Edit branch details"
+                      aria-label="Edit branch"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <Badge variant={f.isActive ? "green" : "gray"} size="sm">
+                      {f.isActive ? "Active" : "Inactive"}
                     </Badge>
-                  ))
-                ) : (
-                  <span className="text-2xs text-slate-500 italic">None set</span>
-                )}
+                  </div>
+                </div>
+
+                {/* Core Metrics: Players & Batches */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-pitch-800/60 border border-slate-100 dark:border-white/5">
+                    <div className="flex items-center gap-1.5 text-3xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <Users size={12} className="text-volt-500 shrink-0" />
+                      <span>Total Players</span>
+                    </div>
+                    <p className="text-base font-display font-bold text-slate-900 dark:text-white mt-0.5 tabular-nums">
+                      {f.totalStudents ?? 0}
+                    </p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-pitch-800/60 border border-slate-100 dark:border-white/5">
+                    <div className="flex items-center gap-1.5 text-3xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <Layers size={12} className="text-sky-500 shrink-0" />
+                      <span>Active Batches</span>
+                    </div>
+                    <p className="text-base font-display font-bold text-slate-900 dark:text-white mt-0.5 tabular-nums">
+                      {f.batches?.length || f.ageGroups?.length || 0}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Active Batches / Age Groups */}
+                {f.batches && f.batches.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    {f.batches.slice(0, 5).map((b) => (
+                      <span
+                        key={b.ageGroup}
+                        className="px-2 py-0.5 rounded-md text-3xs font-semibold bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 flex items-center gap-1"
+                      >
+                        <span className="font-bold text-volt-600 dark:text-volt-400">{b.ageGroup}</span>
+                        <span className="text-slate-400 font-normal">({b.count})</span>
+                      </span>
+                    ))}
+                    {f.batches.length > 5 && (
+                      <span className="px-1.5 py-0.5 text-3xs text-slate-400 font-medium">
+                        +{f.batches.length - 5} more
+                      </span>
+                    )}
+                  </div>
+                ) : f.ageGroups && f.ageGroups.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    {f.ageGroups.slice(0, 5).map((ag) => (
+                      <span
+                        key={ag}
+                        className="px-2 py-0.5 rounded-md text-3xs font-semibold bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10"
+                      >
+                        {ag}
+                      </span>
+                    ))}
+                    {f.ageGroups.length > 5 && (
+                      <span className="px-1.5 py-0.5 text-3xs text-slate-400 font-medium">
+                        +{f.ageGroups.length - 5} more
+                      </span>
+                    )}
+                  </div>
+                ) : null}
+
+                {/* Regular Operating Schedule */}
+                {(() => {
+                  const sched = formatBranchSchedule(f.sessionTimes);
+                  return (
+                    <div className="flex items-center gap-2 text-2xs text-slate-500 dark:text-slate-400 py-0.5">
+                      <Clock size={12} className="shrink-0 text-slate-400 dark:text-slate-500" />
+                      <span className="truncate">
+                        {sched ? (
+                          <>
+                            <span className="font-medium text-slate-700 dark:text-slate-300">{sched.days}</span>
+                            {sched.time && <span className="font-mono text-3xs ml-1 text-slate-400">({sched.time})</span>}
+                          </>
+                        ) : (
+                          "Schedule not set"
+                        )}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
-              <button
-                onClick={() => handleViewDashboard(f)}
-                className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-pitch-900 bg-volt-400 hover:bg-volt-300 rounded px-3 py-2 transition-colors"
-              >
-                <LayoutDashboard size={13} />
-                View Dashboard
-              </button>
-              <div className="flex items-center gap-3 pt-2 border-t border-slate-200/80 dark:border-white/5">
-                <button
-                  onClick={() => handleToggle(f.id, f.isActive)}
-                  className={clsx("flex items-center gap-1.5 text-xs transition-colors", f.isActive ? "text-slate-500 hover:text-volt-500 dark:text-slate-400 dark:hover:text-volt-400" : "text-emerald-600 dark:text-field-400 hover:text-emerald-500")}
-                >
-                  <Power size={13} />
-                  {f.isActive ? "Deactivate" : "Activate"}
-                </button>
-                <button
-                  onClick={() => handleDelete(f)}
-                  className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-red-500 dark:hover:text-ember-400 transition-colors ml-auto"
-                >
-                  <Trash2 size={13} />
-                  Remove
-                </button>
+
+              {/* Actions & Footer */}
+              <div className="space-y-3 pt-3 mt-1">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleViewDashboard(f)}
+                    className="flex items-center justify-center gap-1.5 text-xs font-semibold text-pitch-900 bg-volt-400 hover:bg-volt-300 rounded-lg px-3 py-2 transition-colors shadow-xs"
+                  >
+                    <LayoutDashboard size={13} />
+                    <span>Dashboard</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      dispatch(setActiveFranchise(f.id));
+                      navigate(`/schedule?franchiseId=${f.id}`);
+                    }}
+                    className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-pitch-800 dark:hover:bg-pitch-700 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 transition-colors"
+                  >
+                    <CalendarDays size={13} />
+                    <span>Schedule</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-white/5 text-xs">
+                  <button
+                    onClick={() => handleToggle(f.id, f.isActive)}
+                    className={clsx(
+                      "flex items-center gap-1.5 font-medium transition-colors",
+                      f.isActive
+                        ? "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+                        : "text-emerald-600 dark:text-field-400 hover:text-emerald-500",
+                    )}
+                  >
+                    <Power size={12} />
+                    <span>{f.isActive ? "Deactivate" : "Activate"}</span>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(f)}
+                    className="flex items-center gap-1 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"
+                  >
+                    <Trash2 size={12} />
+                    <span>Remove</span>
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -323,11 +434,23 @@ const FranchiseDetailsModal: React.FC<{
   const [longitude, setLongitude] = useState<number>(franchise.location?.longitude ?? 0);
   const [fieldNumber, setFieldNumber] = useState(franchise.location?.fieldNumber ?? "");
 
+  const initialDays = Array.from(new Set((franchise.sessionTimes ?? []).map((s) => s.dayOfWeek)));
+  const [selectedDays, setSelectedDays] = useState<number[]>(initialDays);
+  const [startTime, setStartTime] = useState(franchise.sessionTimes?.[0]?.startTime ?? "16:00");
+  const [endTime, setEndTime] = useState(franchise.sessionTimes?.[0]?.endTime ?? "17:30");
+
   const handleSave = async () => {
     if (!name.trim() || !locationName.trim() || !address.trim()) {
       toast.error("Fill in all required fields");
       return;
     }
+
+    const sessionTimes = selectedDays.map((dayOfWeek) => ({
+      dayOfWeek,
+      startTime: startTime || "16:00",
+      endTime: endTime || "17:30",
+    }));
+
     try {
       await updateFranchise({
         id: franchise.id,
@@ -340,9 +463,10 @@ const FranchiseDetailsModal: React.FC<{
             longitude,
             fieldNumber: fieldNumber.trim() || undefined,
           },
+          sessionTimes,
         },
       }).unwrap();
-      toast.success("Branch details updated");
+      toast.success("Branch details & training schedule updated");
       onClose();
     } catch (err: any) {
       toast.error(err?.data?.message || "Couldn't update branch — try again");
@@ -364,6 +488,60 @@ const FranchiseDetailsModal: React.FC<{
           }}
         />
         <Input label="Field number (optional)" value={fieldNumber} onChange={(e) => setFieldNumber(e.target.value)} />
+
+        {/* Regular Training Days & Timings */}
+        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-white/5">
+          <label className="label">Regular Training Days</label>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { id: 1, label: "Mon" },
+              { id: 2, label: "Tue" },
+              { id: 3, label: "Wed" },
+              { id: 4, label: "Thu" },
+              { id: 5, label: "Fri" },
+              { id: 6, label: "Sat" },
+              { id: 0, label: "Sun" },
+            ].map((d) => {
+              const active = selectedDays.includes(d.id);
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() =>
+                    setSelectedDays((prev) =>
+                      active ? prev.filter((x) => x !== d.id) : [...prev, d.id]
+                    )
+                  }
+                  className={clsx(
+                    "px-3 py-1 text-xs font-semibold rounded-md border transition-all",
+                    active
+                      ? "bg-volt-400 text-pitch-900 border-volt-400 font-bold"
+                      : "bg-slate-50 dark:bg-pitch-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:border-slate-300"
+                  )}
+                >
+                  {d.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-3xs text-slate-400">Click to toggle the days this branch holds training sessions.</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label="Training Start Time"
+            type="time"
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+          />
+          <Input
+            label="Training End Time"
+            type="time"
+            value={endTime}
+            onChange={(e) => setEndTime(e.target.value)}
+          />
+        </div>
+
         <div className="flex gap-3 pt-2">
           <Button loading={isLoading} onClick={handleSave} className="flex-1">Save changes</Button>
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
@@ -372,7 +550,5 @@ const FranchiseDetailsModal: React.FC<{
     </Modal>
   );
 };
-
-
 
 export default FranchiseManagementPage;

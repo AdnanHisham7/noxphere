@@ -26,6 +26,7 @@ export interface PublicPlayerProfile {
   isFreeAgent: boolean;
   attributes?: TacticalAttributes | null;
   totalEvaluations?: number;
+  majorSkills?: Array<{ category: string; score: number; count: number }>;
 }
 
 export const publicPlayerApi = baseApi.injectEndpoints({

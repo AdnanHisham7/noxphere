@@ -8,6 +8,13 @@ export interface Location {
   fieldNumber?: string;
 }
 
+export interface AcademySessionType {
+  id: string;
+  name: string;
+  description?: string;
+  submetrics: string[];
+}
+
 export interface AcademyPitch {
   id: string;
   name: string;
@@ -69,6 +76,7 @@ export interface AcademyEntity {
   bankDetails?: AcademyBankDetails;
   logo?: string;
   skillParameters: string[];
+  sessionTypes?: AcademySessionType[];
   currency?: string;
   country?: string;
   isTrial?: boolean;
@@ -89,6 +97,7 @@ export interface CreateAcademyEntity {
   managerId: string;
   location: Location;
   pitches?: AcademyPitch[];
+  sessionTypes?: AcademySessionType[];
   ageGroups: string[];
   maxStudents: number;
   isActive: boolean;

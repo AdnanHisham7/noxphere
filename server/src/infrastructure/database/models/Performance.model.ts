@@ -8,6 +8,7 @@ export interface PerformanceDocument extends Document {
     coachId?: mongoose.Types.ObjectId;
     sessionId: mongoose.Types.ObjectId;
     sessionDate: Date;
+    sessionType?: string;
     skillScores: { parameter: string; score: number }[];
     overallScore: number;
     remarks?: string;
@@ -31,6 +32,7 @@ const PerformanceSchema = new Schema<PerformanceDocument>({
   // happened.
   sessionId: { type: Schema.Types.ObjectId, ref: 'Session', required: true, index: true },
   sessionDate: { type: Date, required: true, index: true },
+  sessionType: { type: String, trim: true, index: true },
   skillScores: { type: [SkillScoreSchema], required: true },
   overallScore: { type: Number, required: true, min: 0, max: 10 },
   remarks: String,
