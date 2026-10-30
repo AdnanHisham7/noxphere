@@ -17,9 +17,13 @@ export async function cleanDatabase() {
     const count = await collection.countDocuments();
     if (count > 0) {
       await collection.deleteMany({});
-      console.log(`  🧹 Cleaned collection "${collection.collectionName}" (${count} documents removed)`);
+      console.log(
+        `  🧹 Cleaned collection "${collection.collectionName}" (${count} documents removed)`,
+      );
     } else {
-      console.log(`  ⚪ Collection "${collection.collectionName}" was already empty`);
+      console.log(
+        `  ⚪ Collection "${collection.collectionName}" was already empty`,
+      );
     }
   }
 

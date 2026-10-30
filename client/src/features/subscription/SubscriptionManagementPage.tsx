@@ -412,7 +412,7 @@ export const SubscriptionManagementPage: React.FC = () => {
             </div>
             <h4 className="text-base font-bold text-slate-900 dark:text-white">Need more slots for upcoming batches?</h4>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-              You can scale your student and coach capacity instantly. Prorated charges will be applied automatically via your Razorpay billing account.
+              You can scale your student and coach capacity instantly. Prorated charges will be applied automatically via your billing account.
             </p>
           </div>
 
@@ -465,7 +465,17 @@ export const SubscriptionManagementPage: React.FC = () => {
                 {details.transactions.map((tx) => (
                   <tr key={tx.id} className="hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors">
                     <td className="py-3 px-4 text-slate-900 dark:text-white font-medium">
-                      {tx.number || tx.id.slice(-8).toUpperCase()}
+                      <div>{tx.number || tx.id.slice(-8).toUpperCase()}</div>
+                      {tx.paymentMethod && (
+                        <div className="text-3xs text-slate-400 capitalize font-sans">
+                          Method: {tx.paymentMethod.replace(/_/g, " ")}
+                        </div>
+                      )}
+                      {tx.notes && (
+                        <div className="text-3xs text-slate-400 font-sans">
+                          Ref: {tx.notes}
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-slate-500 dark:text-slate-400 font-sans">
                       {new Date(tx.created).toLocaleDateString("en-IN", {
