@@ -578,10 +578,17 @@ export class DashboardUseCases {
         const studentTotal = (s.ratePerStudentPerDay || 0) * (s.provisionedCapacity || 0) * days;
         const staffTotal = (s.staffRatePerStaffPerMonth || 0) * (s.provisionedStaffCapacity || 0) * months;
         const subNative = studentTotal + staffTotal;
-        const paidSub = s.payments?.find((p) => p.status === "paid" && typeof p.amountInInr === "number");
-        const subInr = paidSub?.amountInInr !== undefined
-          ? paidSub.amountInInr
-          : convertToInr(subNative, s.currency || "INR", platformSettings?.currencyPricing);
+        const paidPayments = Array.isArray(s.payments)
+          ? s.payments.filter((p: any) => p.status === "paid")
+          : [];
+        paidPayments.sort((a: any, b: any) => new Date(b.paidAt || 0).getTime() - new Date(a.paidAt || 0).getTime());
+        const latestPayment = paidPayments[0] || null;
+        const effectiveNative = (latestPayment && typeof latestPayment.amount === "number")
+          ? latestPayment.amount
+          : subNative;
+        const subInr = (latestPayment && typeof latestPayment.amountInInr === "number")
+          ? latestPayment.amountInInr
+          : convertToInr(effectiveNative, s.currency || "INR", platformSettings?.currencyPricing);
         totalSubscriptionRevenue += subInr;
       }
     }
@@ -637,10 +644,17 @@ export class DashboardUseCases {
           const nativeAmt =
             (s.ratePerStudentPerDay || 0) * (s.provisionedCapacity || 0) * days +
             (s.staffRatePerStaffPerMonth || 0) * (s.provisionedStaffCapacity || 0) * months;
-          const paidSub = s.payments?.find((p) => p.status === "paid" && typeof p.amountInInr === "number");
-          const inrAmt = paidSub?.amountInInr !== undefined
-            ? paidSub.amountInInr
-            : convertToInr(nativeAmt, s.currency || "INR", platformSettings?.currencyPricing);
+          const paidPayments = Array.isArray(s.payments)
+            ? s.payments.filter((p: any) => p.status === "paid")
+            : [];
+          paidPayments.sort((a: any, b: any) => new Date(b.paidAt || 0).getTime() - new Date(a.paidAt || 0).getTime());
+          const latestPayment = paidPayments[0] || null;
+          const effectiveNative = (latestPayment && typeof latestPayment.amount === "number")
+            ? latestPayment.amount
+            : nativeAmt;
+          const inrAmt = (latestPayment && typeof latestPayment.amountInInr === "number")
+            ? latestPayment.amountInInr
+            : convertToInr(effectiveNative, s.currency || "INR", platformSettings?.currencyPricing);
           subMonth += Math.round(inrAmt);
         }
       }

@@ -115,7 +115,7 @@ const FinancePage: React.FC = () => {
   const filteredTransactions = rawTxList.filter((tx) => {
     const isSub =
       tx.type === "academy_subscription" ||
-      ((tx.method === "Razorpay" || tx.method === "Stripe") && !tx.quantity);
+      (Boolean(tx.billingInterval) && !tx.quantity);
     const isNfc = tx.type === "nfc_card_order" || !!tx.quantity;
     const isFee = tx.type === "student_fee" || (!isSub && !isNfc);
 
@@ -511,7 +511,7 @@ const FinancePage: React.FC = () => {
           <div>
             <p className="section-title">Platform Financial Transactions</p>
             <p className="text-2xs text-slate-500">
-              Audit log of all Razorpay subscriptions, hardware NFC payments, and
+              Audit log of all platform subscriptions, hardware NFC payments, and
               academy student tuition
             </p>
           </div>
@@ -581,7 +581,7 @@ const FinancePage: React.FC = () => {
             {filteredTransactions.map((tx, i) => {
               const isSub =
                 tx.type === "academy_subscription" ||
-                ((tx.method === "Razorpay" || tx.method === "Stripe") && !tx.quantity);
+                (Boolean(tx.billingInterval) && !tx.quantity);
               const isNfc = tx.type === "nfc_card_order" || !!tx.quantity;
               const txSymbol = tx.currencySymbol || (tx.currency === "USD" ? "$" : tx.currency === "EUR" ? "€" : tx.currency === "GBP" ? "£" : tx.currency === "AED" ? "AED " : "₹");
               const isForeign = tx.currency && tx.currency !== "INR";
@@ -619,8 +619,20 @@ const FinancePage: React.FC = () => {
                           year: "numeric",
                         })}
                       </span>
-                      <span>·</span>
-                      <span>Method: {tx.method || "Razorpay"}</span>
+                      {tx.method && (
+                        <>
+                          <span>·</span>
+                          <span className="capitalize">
+                            Method: {tx.method.replace(/_/g, " ")}
+                          </span>
+                        </>
+                      )}
+                      {tx.notes && (
+                        <>
+                          <span>·</span>
+                          <span>Ref: {tx.notes}</span>
+                        </>
+                      )}
                       {tx.billingInterval && (
                         <>
                           <span>·</span>

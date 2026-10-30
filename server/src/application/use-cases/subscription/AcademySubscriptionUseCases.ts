@@ -369,6 +369,8 @@ export class AcademySubscriptionUseCases {
       hostedInvoiceUrl: null,
       exchangeRateToInr: p.exchangeRateToInr,
       amountInInr: p.amountInInr,
+      paymentMethod: p.paymentMethod,
+      notes: p.notes,
     }));
 
     if (recordedPayments.length === 0 && subscription?.razorpayPaymentId) {
@@ -387,6 +389,8 @@ export class AcademySubscriptionUseCases {
         hostedInvoiceUrl: null,
         exchangeRateToInr: currency === "INR" ? 1 : undefined,
         amountInInr: currency === "INR" ? legacyAmount : undefined,
+        paymentMethod: "Razorpay",
+        notes: undefined,
       });
     }
 
@@ -1157,6 +1161,8 @@ export class AcademySubscriptionUseCases {
       staffRate * dto.staffCapacity * staffMonths;
     const amountPaid = dto.amountPaid !== undefined && dto.amountPaid !== null ? dto.amountPaid : calcAmount;
 
+    const { rate: exchangeRateToInr, amountInInr } = await exchangeRateService.convertToInr(amountPaid, currency);
+
     subscription.status = "active";
     subscription.isTrial = false;
     subscription.currency = currency;
@@ -1173,6 +1179,8 @@ export class AcademySubscriptionUseCases {
       paymentId: `OFFLINE-${dto.paymentMethod.toUpperCase()}-${Date.now()}`,
       amount: amountPaid,
       currency,
+      exchangeRateToInr,
+      amountInInr,
       status: "paid",
       billingInterval: interval,
       studentCapacity: dto.studentCapacity,
@@ -1181,7 +1189,7 @@ export class AcademySubscriptionUseCases {
       paidAt: now,
       receiptNumber: `REC-${Date.now().toString().slice(-6)}`,
       paymentMethod: dto.paymentMethod,
-      notes: dto.referenceNote || "Super Admin manual subscription provisioned",
+      notes: dto.referenceNote?.trim() ? dto.referenceNote.trim() : undefined,
     });
 
     await subscription.save();

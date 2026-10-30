@@ -1,6 +1,6 @@
 // src/config/app.config.ts
 import dotenv from "dotenv";
-import { SignOptions } from 'jsonwebtoken';
+import { SignOptions } from "jsonwebtoken";
 dotenv.config({ override: true });
 
 export const config = {
@@ -10,7 +10,8 @@ export const config = {
   clientUrl: process.env.CLIENT_URL || "http://localhost:3000",
 
   db: {
-    uri: process.env.MONGODB_URI || "mongodb://localhost:27017/football-franchise",
+    uri:
+      process.env.MONGODB_URI || "mongodb://localhost:27017/football-franchise",
   },
 
   redis: {
@@ -33,15 +34,36 @@ export const config = {
 
   email: {
     host: process.env.SMTP_HOST || process.env.EMAIL_HOST || "smtp.gmail.com",
-    port: parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || "465", 10),
-    user: (process.env.SMTP_USER || process.env.EMAIL_USER || process.env.MAIL_USER || "").trim(),
-    pass: (process.env.SMTP_PASS || process.env.EMAIL_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD || "").trim(),
-    from: (process.env.FROM_EMAIL || process.env.SMTP_USER || process.env.EMAIL_USER || "noreply@noxphere.com").trim(),
-    fromName: process.env.FROM_NAME || process.env.EMAIL_FROM_NAME || "Football Camp",
+    port: parseInt(
+      process.env.SMTP_PORT || process.env.EMAIL_PORT || "465",
+      10,
+    ),
+    user: (
+      process.env.SMTP_USER ||
+      process.env.EMAIL_USER ||
+      process.env.MAIL_USER ||
+      ""
+    ).trim(),
+    pass: (
+      process.env.SMTP_PASS ||
+      process.env.EMAIL_PASS ||
+      process.env.SMTP_PASSWORD ||
+      process.env.EMAIL_PASSWORD ||
+      ""
+    ).trim(),
+    from: (
+      process.env.FROM_EMAIL ||
+      process.env.SMTP_USER ||
+      process.env.EMAIL_USER ||
+      "noreply@noxphere.com"
+    ).trim(),
+    fromName:
+      process.env.FROM_NAME || process.env.EMAIL_FROM_NAME || "Football Camp",
     secure:
       process.env.SMTP_SECURE === "true" ||
       process.env.EMAIL_SECURE === "true" ||
-      (process.env.SMTP_PORT === "465" || !process.env.SMTP_PORT),
+      process.env.SMTP_PORT === "465" ||
+      !process.env.SMTP_PORT,
   },
 
   resend: {
@@ -75,7 +97,10 @@ export const config = {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME || "",
     apiKey: process.env.CLOUDINARY_API_KEY || "",
     apiSecret: process.env.CLOUDINARY_API_SECRET || "",
-    maxImageSizeBytes: parseInt(process.env.CLOUDINARY_MAX_IMAGE_BYTES || `${5 * 1024 * 1024}`, 10),
+    maxImageSizeBytes: parseInt(
+      process.env.CLOUDINARY_MAX_IMAGE_BYTES || `${15 * 1024 * 1024}`,
+      10,
+    ),
   },
 
   // A single official WhatsApp Business number/account is shared across
@@ -87,8 +112,10 @@ export const config = {
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
     accessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
     apiVersion: process.env.WHATSAPP_API_VERSION || "v20.0",
-    apiBaseUrl: process.env.WHATSAPP_API_BASE_URL || "https://graph.facebook.com",
-    webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || "noxphere_wa_verify_2026",
+    apiBaseUrl:
+      process.env.WHATSAPP_API_BASE_URL || "https://graph.facebook.com",
+    webhookVerifyToken:
+      process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || "noxphere_wa_verify_2026",
   },
 
   rateLimit: {

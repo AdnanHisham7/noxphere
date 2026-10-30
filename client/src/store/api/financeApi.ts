@@ -91,6 +91,7 @@ export interface Transaction {
   paidAt: string;
   method?: string;
   transactionId?: string;
+  notes?: string;
 }
 
 export const financeApi = baseApi.injectEndpoints({

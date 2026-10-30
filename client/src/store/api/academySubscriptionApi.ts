@@ -248,6 +248,8 @@ export interface BillingTransaction {
   exchangeRateToInr?: number;
   amountInInr?: number;
   status: string | null;
+  paymentMethod?: string | null;
+  notes?: string | null;
   created: string;
   invoicePdf: string | null;
   hostedInvoiceUrl: string | null;

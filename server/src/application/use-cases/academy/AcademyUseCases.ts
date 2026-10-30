@@ -27,6 +27,7 @@ import { schedulerService } from "../../../infrastructure/services/SchedulerServ
 import { AcademySubscriptionModel } from "../../../infrastructure/database/models/AcademySubscription.model";
 import { PlatformSettingsModel } from "../../../infrastructure/database/models/PlatformSettings.model";
 import { geoLocationService, SUPPORTED_CURRENCY_MAP } from "../../../infrastructure/services/GeoLocationService";
+import { exchangeRateService } from "../../../infrastructure/services/ExchangeRateService";
 
 function toFranchiseEntity(doc: FranchiseDocument): FranchiseEntity {
   const json = doc.toJSON() as any;
@@ -176,6 +177,8 @@ export class AcademyUseCases {
         staffRatePerStaffPerMonth * (sub.staffCapacity || 5) * staffMonths;
       const amountPaid = sub.amountPaid !== undefined && sub.amountPaid !== null ? sub.amountPaid : calcAmount;
 
+      const { rate: exchangeRateToInr, amountInInr } = await exchangeRateService.convertToInr(amountPaid, currency);
+
       const now = new Date();
       const currentPeriodEnd = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
       const paymentRef = `OFFLINE-${(sub.paymentMethod || "MANUAL").toUpperCase()}-${Date.now()}`;
@@ -199,6 +202,8 @@ export class AcademyUseCases {
               paymentId: paymentRef,
               amount: amountPaid,
               currency,
+              exchangeRateToInr,
+              amountInInr,
               status: "paid",
               billingInterval: interval,
               studentCapacity: sub.studentCapacity || 50,
@@ -207,7 +212,7 @@ export class AcademyUseCases {
               paidAt: now,
               receiptNumber: `REC-${Date.now().toString().slice(-6)}`,
               paymentMethod: sub.paymentMethod || "bank_transfer",
-              notes: sub.referenceNote || "Super admin manual subscription provisioned at creation",
+              notes: sub.referenceNote?.trim() ? sub.referenceNote.trim() : undefined,
             },
           ],
         },

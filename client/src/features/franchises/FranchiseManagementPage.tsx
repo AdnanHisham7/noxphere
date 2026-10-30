@@ -194,14 +194,16 @@ const FranchiseManagementPage: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => setDetailsFranchise(f)}
-                      className="p-1 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
-                      title="Edit branch details"
-                      aria-label="Edit branch"
-                    >
-                      <Pencil size={13} />
-                    </button>
+                    {!isSuperAdmin && (
+                      <button
+                        onClick={() => setDetailsFranchise(f)}
+                        className="p-1 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                        title="Edit branch details"
+                        aria-label="Edit branch"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                    )}
                     <Badge variant={f.isActive ? "green" : "gray"} size="sm">
                       {f.isActive ? "Active" : "Inactive"}
                     </Badge>
@@ -289,7 +291,7 @@ const FranchiseManagementPage: React.FC = () => {
 
               {/* Actions & Footer */}
               <div className="space-y-3 pt-3 mt-1">
-                <div className="grid grid-cols-2 gap-2">
+                <div className={clsx("grid gap-2", isSuperAdmin ? "grid-cols-1" : "grid-cols-2")}>
                   <button
                     onClick={() => handleViewDashboard(f)}
                     className="flex items-center justify-center gap-1.5 text-xs font-semibold text-pitch-900 bg-volt-400 hover:bg-volt-300 rounded-lg px-3 py-2 transition-colors shadow-xs"
@@ -297,16 +299,18 @@ const FranchiseManagementPage: React.FC = () => {
                     <LayoutDashboard size={13} />
                     <span>Dashboard</span>
                   </button>
-                  <button
-                    onClick={() => {
-                      dispatch(setActiveFranchise(f.id));
-                      navigate(`/schedule?franchiseId=${f.id}`);
-                    }}
-                    className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-pitch-800 dark:hover:bg-pitch-700 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 transition-colors"
-                  >
-                    <CalendarDays size={13} />
-                    <span>Schedule</span>
-                  </button>
+                  {!isSuperAdmin && (
+                    <button
+                      onClick={() => {
+                        dispatch(setActiveFranchise(f.id));
+                        navigate(`/schedule?franchiseId=${f.id}`);
+                      }}
+                      className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-pitch-800 dark:hover:bg-pitch-700 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 transition-colors"
+                    >
+                      <CalendarDays size={13} />
+                      <span>Schedule</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-white/5 text-xs">

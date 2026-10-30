@@ -90,11 +90,25 @@ app.set("trust proxy", true);
 
 const httpServer = createServer(app);
 
+const cleanClientUrl = config.clientUrl
+  ? config.clientUrl.replace(/\/$/, "")
+  : "";
+const allowedOrigins: (string | RegExp)[] = [
+  cleanClientUrl,
+  cleanClientUrl ? `${cleanClientUrl}/` : "",
+  "https://noxphere.noxwing.site",
+  "https://noxphere.noxwing.site/",
+  "http://localhost:3000",
+  "http://localhost:5173",
+  /^footballcamp:\/\//,
+].filter(Boolean);
+
 // Socket.IO for real-time features
 export const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: config.clientUrl,
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 setSocketServer(io);
@@ -103,7 +117,7 @@ setSocketServer(io);
 app.use(helmet());
 app.use(
   cors({
-    origin: [config.clientUrl, /^footballcamp:\/\//],
+    origin: allowedOrigins,
     credentials: true,
   }),
 );
@@ -162,7 +176,11 @@ async function bootstrapDI() {
   // Use Cases
   const authUseCases = new AuthUseCases(userRepository as any);
   const academySubscriptionUseCases = new AcademySubscriptionUseCases();
-  const studentUseCases = new StudentUseCases(studentRepository, userRepository, academySubscriptionUseCases);
+  const studentUseCases = new StudentUseCases(
+    studentRepository,
+    userRepository,
+    academySubscriptionUseCases,
+  );
 
   // Controllers
   const authController = new AuthController(authUseCases);
@@ -172,8 +190,11 @@ async function bootstrapDI() {
   const studentController = new StudentController(studentUseCases);
 
   const academyRepository = new MongoAcademyRepository();
-const academyUseCases = new AcademyUseCases(academyRepository as any, userRepository as any);
-const academyController = new AcademyController(academyUseCases);
+  const academyUseCases = new AcademyUseCases(
+    academyRepository as any,
+    userRepository as any,
+  );
+  const academyController = new AcademyController(academyUseCases);
 
   const adminFeesUseCases = new AdminFeesUseCases();
   const feesController = new AdminFeesController(adminFeesUseCases);
@@ -182,7 +203,9 @@ const academyController = new AcademyController(academyUseCases);
   const guardianController = new GuardianController(guardianUseCases);
 
   const studentPortalUseCases = new StudentPortalUseCases();
-  const studentPortalController = new StudentPortalController(studentPortalUseCases);
+  const studentPortalController = new StudentPortalController(
+    studentPortalUseCases,
+  );
 
   const coachPortalUseCases = new CoachPortalUseCases();
   const coachPortalController = new CoachPortalController(coachPortalUseCases);
@@ -191,15 +214,23 @@ const academyController = new AcademyController(academyUseCases);
   const teamController = new TeamController(teamUseCases);
 
   const adminAttendanceUseCases = new AdminAttendanceUseCases();
-  const attendanceController = new AdminAttendanceController(adminAttendanceUseCases);
+  const attendanceController = new AdminAttendanceController(
+    adminAttendanceUseCases,
+  );
 
   const adminPerformanceUseCases = new AdminPerformanceUseCases();
-  const performanceController = new AdminPerformanceController(adminPerformanceUseCases);
+  const performanceController = new AdminPerformanceController(
+    adminPerformanceUseCases,
+  );
 
   const adminNotificationUseCases = new AdminNotificationUseCases();
-  const notificationController = new AdminNotificationController(adminNotificationUseCases);
+  const notificationController = new AdminNotificationController(
+    adminNotificationUseCases,
+  );
   const userNotificationUseCases = new UserNotificationUseCases();
-  const userNotificationController = new UserNotificationController(userNotificationUseCases);
+  const userNotificationController = new UserNotificationController(
+    userNotificationUseCases,
+  );
 
   const scheduleUseCases = new ScheduleUseCases();
   const scheduleController = new ScheduleController(scheduleUseCases);
@@ -223,23 +254,37 @@ const academyController = new AcademyController(academyUseCases);
   const uploadController = new UploadController(cloudinaryService);
   const resourceUseCases = new ResourceUseCases(cloudinaryService);
   const resourceController = new ResourceController(resourceUseCases);
-  const academySubscriptionController = new AcademySubscriptionController(academySubscriptionUseCases);
+  const academySubscriptionController = new AcademySubscriptionController(
+    academySubscriptionUseCases,
+  );
   const consentUseCases = new ConsentUseCases();
   const consentController = new ConsentController(consentUseCases);
   const publicPlayerUseCases = new PublicPlayerUseCases();
-  const publicPlayerController = new PublicPlayerController(publicPlayerUseCases);
+  const publicPlayerController = new PublicPlayerController(
+    publicPlayerUseCases,
+  );
   const employeeUseCases = new EmployeeUseCases(academySubscriptionUseCases);
   const employeeController = new EmployeeController(employeeUseCases);
   const complaintUseCases = new ComplaintUseCases();
   const complaintController = new ComplaintController(complaintUseCases);
-  const registrationUseCases = new RegistrationUseCases(academySubscriptionUseCases);
-  const registrationController = new RegistrationController(registrationUseCases);
+  const registrationUseCases = new RegistrationUseCases(
+    academySubscriptionUseCases,
+  );
+  const registrationController = new RegistrationController(
+    registrationUseCases,
+  );
   const nfcCardUseCases = new NfcCardUseCases();
   const nfcCardController = new NfcCardController(nfcCardUseCases);
-  const squadInvitationUseCases = new SquadInvitationUseCases(academySubscriptionUseCases);
-  const squadInvitationController = new SquadInvitationController(squadInvitationUseCases);
+  const squadInvitationUseCases = new SquadInvitationUseCases(
+    academySubscriptionUseCases,
+  );
+  const squadInvitationController = new SquadInvitationController(
+    squadInvitationUseCases,
+  );
   const platformTicketUseCases = new PlatformTicketUseCases();
-  const platformTicketController = new PlatformTicketController(platformTicketUseCases);
+  const platformTicketController = new PlatformTicketController(
+    platformTicketUseCases,
+  );
   const expenseUseCases = new ExpenseUseCases();
   const expenseController = new ExpenseController(expenseUseCases);
 
@@ -277,7 +322,6 @@ const academyController = new AcademyController(academyUseCases);
     platformTicket: platformTicketController,
   };
 }
-
 
 // ─── Routes ────────────────────────────────────────────────────────────────────
 app.use(config.apiPrefix, apiRouter);
