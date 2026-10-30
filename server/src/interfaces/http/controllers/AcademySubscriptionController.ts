@@ -9,7 +9,9 @@ import { BadRequestError, ForbiddenError } from "../../../shared/errors/AppError
 const CheckoutSchema = z.object({
   capacity: z.number().int().min(1),
   staffCapacity: z.number().int().min(0).default(0),
-  billingInterval: z.enum(["month", "quarter", "half_year", "year"]),
+  billingInterval: z.enum(["month", "quarter", "half_year", "year"]).optional(),
+  isRenewal: z.boolean().optional(),
+  isTopup: z.boolean().optional(),
 });
 
 const UpgradeSchema = z.object({
@@ -72,10 +74,9 @@ export class AcademySubscriptionController {
       const academyId = req.params.academyId;
       assertAcademyAccess(req, academyId);
       const dto = CheckoutSchema.parse(req.body);
-      const isRenewal = Boolean(req.body.isRenewal);
       const result = await this.useCases.createRazorpayOrder(
         academyId,
-        { ...dto, isRenewal },
+        dto,
         req.user!.sub,
       );
       ResponseHandler.success(res, result, "Razorpay subscription order created");
@@ -109,7 +110,7 @@ export class AcademySubscriptionController {
       const academyId = req.params.academyId;
       assertAcademyAccess(req, academyId);
       const dto = CheckoutSchema.parse(req.body);
-      const result = await this.useCases.createCheckoutSession(academyId, dto, req.user!.sub);
+      const result = await this.useCases.createCheckoutSession(academyId, { capacity: dto.capacity, staffCapacity: dto.staffCapacity, billingInterval: (dto.billingInterval as any) || "month" }, req.user!.sub);
       ResponseHandler.success(res, result, "Checkout session created");
     } catch (err) {
       next(err);

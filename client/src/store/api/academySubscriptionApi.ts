@@ -57,7 +57,7 @@ export const academySubscriptionApi = baseApi.injectEndpoints({
     }),
     createRazorpaySubscriptionOrder: builder.mutation<
       { orderId: string; amount: number; currency: string; keyId: string; academyName: string; totalRupees: number },
-      { academyId: string; capacity: number; staffCapacity: number; billingInterval: BillingInterval; isRenewal?: boolean }
+      { academyId: string; capacity: number; staffCapacity: number; billingInterval?: BillingInterval; isRenewal?: boolean; isTopup?: boolean }
     >({
       query: ({ academyId, ...body }) => ({
         url: `/academy-subscriptions/${academyId}/razorpay-order`,

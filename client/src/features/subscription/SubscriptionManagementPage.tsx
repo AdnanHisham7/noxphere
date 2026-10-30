@@ -43,7 +43,7 @@ export const SubscriptionManagementPage: React.FC = () => {
   const { currency, currencySymbol } = useCurrency();
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"subscribe" | "upgrade">("upgrade");
+  const [modalMode, setModalMode] = useState<"subscribe" | "upgrade" | "renew">("upgrade");
 
   const {
     data: details,
@@ -71,7 +71,7 @@ export const SubscriptionManagementPage: React.FC = () => {
 
   const sym = details?.currencySymbol || currencySymbol || "₹";
 
-  const openModal = (mode: "subscribe" | "upgrade") => {
+  const openModal = (mode: "subscribe" | "upgrade" | "renew") => {
     setModalMode(mode);
     setModalOpen(true);
   };
@@ -152,20 +152,43 @@ export const SubscriptionManagementPage: React.FC = () => {
               Sync
             </Button>
 
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => openModal(hasSubscription ? "upgrade" : "subscribe")}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs font-bold"
-            >
-              <Zap size={14} />
-              {hasSubscription ? "Upgrade Capacity" : "Subscribe Now"}
-            </Button>
+            {hasSubscription && details?.isActive ? (
+              <>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => openModal("renew")}
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs font-semibold"
+                >
+                  <RefreshCw size={13} />
+                  Renew / Change Plan
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => openModal("upgrade")}
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs font-bold"
+                >
+                  <Zap size={14} />
+                  Top Up Slots
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => openModal(hasSubscription ? "renew" : "subscribe")}
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs font-bold"
+              >
+                <Zap size={14} />
+                {hasSubscription ? "Renew Plan" : "Subscribe Now"}
+              </Button>
+            )}
           </div>
         }
       />
 
-      {/* Active System Warnings / Alerts */}
+            {/* Active System Warnings / Alerts */}
       {details?.alerts && details.alerts.length > 0 && (
         <div className="space-y-2.5">
           {details.alerts.map((alert, idx) => (
@@ -408,11 +431,11 @@ export const SubscriptionManagementPage: React.FC = () => {
         <Card className="p-5 border-volt-400/30 bg-gradient-to-br from-volt-400/[0.08] via-transparent to-transparent flex flex-col justify-between space-y-4">
           <div>
             <div className="flex items-center gap-2 text-volt-500 dark:text-volt-400 font-bold text-xs uppercase tracking-wider mb-2">
-              <Zap size={14} /> Instant Capacity Upgrade
+              <Zap size={14} /> Capacity &amp; Plan Management
             </div>
-            <h4 className="text-base font-bold text-slate-900 dark:text-white">Need more slots for upcoming batches?</h4>
-            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-              You can scale your student and coach capacity instantly. Prorated charges will be applied automatically via your billing account.
+            <h4 className="text-base font-bold text-slate-900 dark:text-white">Need extra slots or want to renew?</h4>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+              Scale your player or coach slots instantly with transparent prorated billing for your remaining days, or extend your cycle and switch plans.
             </p>
           </div>
 
@@ -420,9 +443,16 @@ export const SubscriptionManagementPage: React.FC = () => {
             <Button
               variant="primary"
               onClick={() => openModal("upgrade")}
-              className="w-full text-xs font-bold py-2.5"
+              className="w-full text-xs font-bold py-2.5 flex items-center justify-center gap-1.5"
             >
-              Modify Provisioned Capacity
+              <Zap size={13} /> Top Up Slots (Prorated)
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => openModal("renew")}
+              className="w-full text-xs font-bold py-2 flex items-center justify-center gap-1.5"
+            >
+              <RefreshCw size={12} /> Renew / Change Billing Cycle
             </Button>
             <p className="text-center text-[11px] text-slate-500">
               Zero downtime · Instant activation
@@ -431,7 +461,7 @@ export const SubscriptionManagementPage: React.FC = () => {
         </Card>
       </div>
 
-      {/* Invoice & Payment History */}
+            {/* Invoice & Payment History */}
       <Card className="p-0 overflow-hidden">
         <div className="p-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -486,18 +516,6 @@ export const SubscriptionManagementPage: React.FC = () => {
                     </td>
                     <td className="py-3 px-4 text-volt-400 font-bold">
                       <div>{formatCurrency(tx.amountPaid, tx.currency || details?.currency || currency)}</div>
-                      {tx.currency && tx.currency !== "INR" && (
-                        <div className="text-[10px] text-slate-400 font-normal font-sans mt-0.5">
-                          {tx.exchangeRateToInr ? (
-                            <>
-                              ≈ ₹{Number(tx.amountInInr || (tx.amountPaid * tx.exchangeRateToInr)).toLocaleString("en-IN", { maximumFractionDigits: 2 })}{" "}
-                              <span className="text-slate-500">(@ ₹{Number(tx.exchangeRateToInr).toFixed(2)})</span>
-                            </>
-                          ) : (
-                            <span>{tx.currency}</span>
-                          )}
-                        </div>
-                      )}
                     </td>
                     <td className="py-3 px-4">
                       {tx.status === "paid" ? (
