@@ -32,7 +32,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   mode = "upgrade",
 }) => {
   const user = useSelector((s: RootState) => s.auth.user);
-  const { currency: defaultCurrency, currencySymbol: defaultSymbol } = useCurrency();
+  const { currency: defaultCurrency } = useCurrency();
   const { data: status, isLoading } = useGetAcademySubscriptionStatusQuery(academyId);
   const { data: platformStudentRate } = useGetPlatformDefaultRateQuery();
   const { data: platformStaffRate } = useGetPlatformDefaultStaffRateQuery();
@@ -55,15 +55,28 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
     isAlreadyActive && mode === "upgrade" ? "topup" : "renew"
   );
 
-  const [capacity, setCapacity] = useState(20);
-  const [staffCapacity, setStaffCapacity] = useState(0);
+  // Inputs for renewal / initial subscribe (full total capacity)
+  const [capacityInput, setCapacityInput] = useState("20");
+  const [staffCapacityInput, setStaffCapacityInput] = useState("0");
+
+  // Inputs for mid-cycle top-up (additional slots to add)
+  const [extraStudentsInput, setExtraStudentsInput] = useState("5");
+  const [extraStaffInput, setExtraStaffInput] = useState("0");
+
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("month");
   const [initialized, setInitialized] = useState(false);
 
+  const baselineCapacity = status?.provisionedCapacity ?? 0;
+  const baselineStaff = status?.provisionedStaffCapacity ?? 0;
+
   useEffect(() => {
     if (status && !initialized) {
-      setCapacity(Math.max(status.activeStudentCount || 10, status.provisionedCapacity || 10));
-      setStaffCapacity(status.provisionedStaffCapacity || 0);
+      const initialCap = Math.max(status.activeStudentCount || 10, status.provisionedCapacity || 10);
+      const initialStaff = status.provisionedStaffCapacity || 0;
+      setCapacityInput(String(initialCap));
+      setStaffCapacityInput(String(initialStaff));
+      setExtraStudentsInput("5");
+      setExtraStaffInput("0");
       if (status.billingInterval) setBillingInterval(status.billingInterval);
       if (isAlreadyActive && mode === "upgrade") {
         setActiveTab("topup");
@@ -93,11 +106,19 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   }, [status?.currentPeriodEnd]);
 
-  // Delta for mid-cycle topup
-  const baselineCapacity = status?.provisionedCapacity ?? 0;
-  const baselineStaff = status?.provisionedStaffCapacity ?? 0;
-  const extraStudents = Math.max(0, capacity - baselineCapacity);
-  const extraStaff = Math.max(0, staffCapacity - baselineStaff);
+  // Quantities for Top-Up
+  const extraStudents = Math.max(0, parseInt(extraStudentsInput, 10) || 0);
+  const extraStaff = Math.max(0, parseInt(extraStaffInput, 10) || 0);
+  const topupTotalStudents = baselineCapacity + extraStudents;
+  const topupTotalStaff = baselineStaff + extraStaff;
+
+  // Quantities for Renewal / Initial Subscribe
+  const renewalStudents = Math.max(1, parseInt(capacityInput, 10) || 1);
+  const renewalStaff = Math.max(0, parseInt(staffCapacityInput, 10) || 0);
+
+  // Effective capacity submitted to backend
+  const capacity = activeTab === "topup" ? topupTotalStudents : renewalStudents;
+  const staffCapacity = activeTab === "topup" ? topupTotalStaff : renewalStaff;
 
   // Prorated Top-Up calculation
   const topupStudentCost = useMemo(
@@ -129,12 +150,12 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       : 12;
 
   const renewalStudentCost = useMemo(
-    () => Math.round((rate * capacity * cycleDays + Number.EPSILON) * 100) / 100,
-    [rate, capacity, cycleDays]
+    () => Math.round((rate * renewalStudents * cycleDays + Number.EPSILON) * 100) / 100,
+    [rate, renewalStudents, cycleDays]
   );
   const renewalStaffCost = useMemo(
-    () => Math.round((staffRate * staffCapacity * cycleMonths + Number.EPSILON) * 100) / 100,
-    [staffRate, staffCapacity, cycleMonths]
+    () => Math.round((staffRate * renewalStaff * cycleMonths + Number.EPSILON) * 100) / 100,
+    [staffRate, renewalStaff, cycleMonths]
   );
   const renewalTotal = Math.round((renewalStudentCost + renewalStaffCost + Number.EPSILON) * 100) / 100;
 
@@ -221,11 +242,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             <div className="flex rounded-lg bg-slate-100 dark:bg-pitch-800 p-1 border border-slate-200 dark:border-white/5">
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab("topup");
-                  setCapacity(Math.max(status?.activeStudentCount || 10, baselineCapacity));
-                  setStaffCapacity(baselineStaff);
-                }}
+                onClick={() => setActiveTab("topup")}
                 className={clsx(
                   "flex-1 py-2 px-3 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5",
                   activeTab === "topup"
@@ -284,52 +301,147 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           )}
 
           {/* Inputs Section */}
-          <div className="space-y-3">
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  {isAlreadyActive && activeTab === "topup" ? "New Total Student Capacity" : "Student Capacity"}
-                </label>
-                {isAlreadyActive && activeTab === "topup" && (
-                  <span className="text-2xs text-slate-500 dark:text-slate-400 font-mono">
-                    Current: {baselineCapacity} slots {extraStudents > 0 && <span className="text-emerald-500 font-bold">(+{extraStudents} extra)</span>}
-                  </span>
-                )}
-              </div>
-              <Input
-                type="number"
-                min={isAlreadyActive && activeTab === "topup" ? baselineCapacity : 1}
-                value={capacity}
-                onChange={(e) => {
-                  const val = Number(e.target.value) || 0;
-                  const min = isAlreadyActive && activeTab === "topup" ? baselineCapacity : 1;
-                  setCapacity(Math.max(min, val));
-                }}
-              />
-            </div>
+          <div className="space-y-4">
+            {isAlreadyActive && activeTab === "topup" ? (
+              <>
+                {/* Mid-cycle top-up student slots */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      Additional Student Slots to Add
+                    </label>
+                    <span className="text-2xs text-slate-500 dark:text-slate-400 font-mono">
+                      Current: {baselineCapacity} slots →{" "}
+                      <strong className="text-emerald-500 font-bold">New: {topupTotalStudents}</strong>
+                      {extraStudents > 0 && <span className="text-emerald-500"> (+{extraStudents})</span>}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="e.g. 5"
+                      value={extraStudentsInput}
+                      onChange={(e) => setExtraStudentsInput(e.target.value)}
+                      onBlur={() => {
+                        const val = parseInt(extraStudentsInput, 10);
+                        if (isNaN(val) || val < 0) setExtraStudentsInput("0");
+                      }}
+                      className="flex-1"
+                    />
+                    <div className="flex gap-1">
+                      {[5, 10, 25, 50].map((inc) => (
+                        <button
+                          key={inc}
+                          type="button"
+                          onClick={() => {
+                            const current = parseInt(extraStudentsInput, 10) || 0;
+                            setExtraStudentsInput(String(Math.max(0, current + inc)));
+                          }}
+                          className="px-2.5 py-2 text-2xs font-semibold rounded-lg bg-slate-100 hover:bg-volt-400 hover:text-pitch-900 dark:bg-pitch-800 dark:hover:bg-volt-400 dark:hover:text-pitch-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-colors"
+                        >
+                          +{inc}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
 
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  {isAlreadyActive && activeTab === "topup" ? "New Total Staff Seats (Coaches/Ops)" : "Staff Seats"}
-                </label>
-                {isAlreadyActive && activeTab === "topup" && (
-                  <span className="text-2xs text-slate-500 dark:text-slate-400 font-mono">
-                    Current: {baselineStaff} seats {extraStaff > 0 && <span className="text-emerald-500 font-bold">(+{extraStaff} extra)</span>}
-                  </span>
-                )}
-              </div>
-              <Input
-                type="number"
-                min={isAlreadyActive && activeTab === "topup" ? baselineStaff : 0}
-                value={staffCapacity}
-                onChange={(e) => {
-                  const val = Number(e.target.value) || 0;
-                  const min = isAlreadyActive && activeTab === "topup" ? baselineStaff : 0;
-                  setStaffCapacity(Math.max(min, val));
-                }}
-              />
-            </div>
+                {/* Mid-cycle top-up staff seats */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      Additional Staff Seats to Add (Coaches / Ops)
+                    </label>
+                    <span className="text-2xs text-slate-500 dark:text-slate-400 font-mono">
+                      Current: {baselineStaff} seats →{" "}
+                      <strong className="text-emerald-500 font-bold">New: {topupTotalStaff}</strong>
+                      {extraStaff > 0 && <span className="text-emerald-500"> (+{extraStaff})</span>}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                      value={extraStaffInput}
+                      onChange={(e) => setExtraStaffInput(e.target.value)}
+                      onBlur={() => {
+                        const val = parseInt(extraStaffInput, 10);
+                        if (isNaN(val) || val < 0) setExtraStaffInput("0");
+                      }}
+                      className="flex-1"
+                    />
+                    <div className="flex gap-1">
+                      {[1, 2, 5].map((inc) => (
+                        <button
+                          key={inc}
+                          type="button"
+                          onClick={() => {
+                            const current = parseInt(extraStaffInput, 10) || 0;
+                            setExtraStaffInput(String(Math.max(0, current + inc)));
+                          }}
+                          className="px-2.5 py-2 text-2xs font-semibold rounded-lg bg-slate-100 hover:bg-volt-400 hover:text-pitch-900 dark:bg-pitch-800 dark:hover:bg-volt-400 dark:hover:text-pitch-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-colors"
+                        >
+                          +{inc}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Full renewal or new subscription capacity */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      Student Capacity for Next Cycle
+                    </label>
+                    {status?.activeStudentCount ? (
+                      <span className="text-2xs text-slate-500 dark:text-slate-400 font-mono">
+                        Active Students: {status.activeStudentCount}
+                      </span>
+                    ) : null}
+                  </div>
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="e.g. 50"
+                    value={capacityInput}
+                    onChange={(e) => setCapacityInput(e.target.value)}
+                    onBlur={() => {
+                      const val = parseInt(capacityInput, 10);
+                      if (isNaN(val) || val < 1) setCapacityInput("1");
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      Staff Seats for Next Cycle (Coaches / Ops)
+                    </label>
+                    {baselineStaff > 0 && (
+                      <span className="text-2xs text-slate-500 dark:text-slate-400 font-mono">
+                        Current Staff: {baselineStaff}
+                      </span>
+                    )}
+                  </div>
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="0"
+                    value={staffCapacityInput}
+                    onChange={(e) => setStaffCapacityInput(e.target.value)}
+                    onBlur={() => {
+                      const val = parseInt(staffCapacityInput, 10);
+                      if (isNaN(val) || val < 0) setStaffCapacityInput("0");
+                    }}
+                  />
+                </div>
+              </>
+            )}
 
             {/* Cycle Selection: Hidden during mid-cycle topup, visible for renewals and new subscriptions */}
             {(!isAlreadyActive || activeTab === "renew") && (
@@ -392,13 +504,13 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               <>
                 <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
                   <span>
-                    Students ({capacity} × {formatCurrency(rate)}/day × {cycleDays}d)
+                    Students ({renewalStudents} × {formatCurrency(rate)}/day × {cycleDays}d)
                   </span>
                   <span className="font-mono text-slate-700 dark:text-slate-200">{formatCurrency(renewalStudentCost)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
                   <span>
-                    Staff ({staffCapacity} × {formatCurrency(staffRate)}/mo × {cycleMonths}mo)
+                    Staff ({renewalStaff} × {formatCurrency(staffRate)}/mo × {cycleMonths}mo)
                   </span>
                   <span className="font-mono text-slate-700 dark:text-slate-200">{formatCurrency(renewalStaffCost)}</span>
                 </div>
@@ -421,7 +533,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             {isAlreadyActive && activeTab === "topup"
               ? extraStudents === 0 && extraStaff === 0
                 ? "Enter Additional Slots Above"
-                : `Pay ${formatCurrency(topupTotal)} & Add Slots`
+                : `Pay ${formatCurrency(topupTotal)} & Add ${extraStudents > 0 ? `${extraStudents} Student${extraStudents > 1 ? "s" : ""}` : ""}${extraStudents > 0 && extraStaff > 0 ? " & " : ""}${extraStaff > 0 ? `${extraStaff} Staff` : ""}`
               : `Pay ${formatCurrency(renewalTotal)} & Confirm Plan`}
           </Button>
         </div>
