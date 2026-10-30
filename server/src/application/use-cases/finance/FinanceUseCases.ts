@@ -192,12 +192,16 @@ export class FinanceUseCases {
       totalPlatformRevenue,
       subscriptionRevenue: round2(subscriptionRevenueInr),
       nfcRevenue: round2(nfcRevenueInr),
-      activeSubscriptionsCount: subscriptions.length,
+      activeSubscriptionsCount: subscriptions.filter(
+        (s) =>
+          computeSubscriptionAmount(s) > 0 ||
+          (Array.isArray(s.payments) && s.payments.some((p) => p.status === "paid" && p.amount > 0))
+      ).length,
       nfcOrdersCount: nfcOrders.length,
       nfcCardsCount,
 
       // Multi-Currency Breakdown
-      currencyBreakdown: Array.from(breakdownMap.values()),
+      currencyBreakdown: Array.from(breakdownMap.values()).filter((item) => item.totalAmount > 0),
 
       // Academy-Internal Student Tuition (Belongs to respective Academies)
       academyFeesTotal: round2(academyFeesTotal),
@@ -394,7 +398,9 @@ export class FinanceUseCases {
         };
       }),
     );
-    return results.sort((a, b) => b.platformRevenue - a.platformRevenue);
+    return results
+      .filter((a) => a.platformRevenue > 0)
+      .sort((a, b) => b.platformRevenue - a.platformRevenue);
   }
 
   async getOverdueInvoices(filters: { academyId?: string; franchiseId?: string; page?: number; limit?: number }) {
@@ -446,7 +452,12 @@ export class FinanceUseCases {
       .sort({ updatedAt: -1 })
       .limit(limit);
 
-    const subTransactions = recentSubs.map((s: any) => {
+    const payingSubs = recentSubs.filter((s: any) => {
+      const hasPaid = Array.isArray(s.payments) && s.payments.some((p: any) => p.status === "paid" && p.amount > 0);
+      return hasPaid || computeSubscriptionAmount(s) > 0;
+    });
+
+    const subTransactions = payingSubs.map((s: any) => {
       const currency = (s.currency || s.academyId?.currency || "INR").toUpperCase();
       const lastPayment = Array.isArray(s.payments) && s.payments.length > 0 ? s.payments[s.payments.length - 1] : null;
       const subAmount = computeSubscriptionAmount(s);
@@ -473,6 +484,7 @@ export class FinanceUseCases {
     // 2. Fetch paid NFC Card orders (Platform Revenue)
     const nfcOrders = await NfcCardRequestModel.find({
       status: { $in: ["paid", "dispatched", "delivered"] },
+      totalAmount: { $gt: 0 },
       ...(filters.academyId && { academyId: new mongoose.Types.ObjectId(filters.academyId) }),
     })
       .populate("academyId", "name currency")

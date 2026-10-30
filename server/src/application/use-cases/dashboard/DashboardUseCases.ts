@@ -683,7 +683,7 @@ export class DashboardUseCases {
       .select("name createdAt currency")
       .lean();
 
-    const recentNfc = await NfcCardRequestModel.find()
+    const recentNfc = await NfcCardRequestModel.find({ totalAmount: { $gt: 0 } })
       .sort({ createdAt: -1 })
       .limit(3)
       .populate("academyId", "name")

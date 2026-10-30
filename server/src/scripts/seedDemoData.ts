@@ -212,14 +212,20 @@ export async function seedDemoData() {
         swiftCode: "HDFCINBB",
       },
       skillParameters: ["Dribbling", "Passing", "Shooting", "Speed", "Tactical Awareness", "Attitude"],
+      subscriptionRateOverride: 0,
+      staffRateOverride: 0,
       isTrial: false,
     });
+  } else {
+    academy.subscriptionRateOverride = 0;
+    academy.staffRateOverride = 0;
+    await academy.save();
   }
 
   // Update manager's academyId
   await UserModel.findByIdAndUpdate(manager._id, { academyId: academy._id });
 
-  // 1-Year Full Paid Enterprise Subscription
+  // 1-Year Active Enterprise Plan for Demo Academy (Demo account: zero financial amounts for clean platform financials)
   const oneYearFromNow = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
   await AcademySubscriptionModel.findOneAndUpdate(
     { academyId: academy._id },
@@ -228,29 +234,13 @@ export async function seedDemoData() {
       billingInterval: "year",
       currency: "INR",
       isTrial: false,
-      ratePerStudentPerDay: 2,
-      staffRatePerStaffPerMonth: 50,
+      ratePerStudentPerDay: 0,
+      staffRatePerStaffPerMonth: 0,
       provisionedCapacity: 250,
       provisionedStaffCapacity: 25,
       status: "active",
       currentPeriodEnd: oneYearFromNow,
-      payments: [
-        {
-          orderId: "order_saas_annual_2026",
-          paymentId: "pay_saas_annual_success_8932",
-          amount: 197500, // (250 * 2 * 365) + (25 * 50 * 12)
-          currency: "INR",
-          status: "paid",
-          billingInterval: "year",
-          studentCapacity: 250,
-          staffCapacity: 25,
-          type: "subscription",
-          paidAt: new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000),
-          receiptNumber: "RCP-GEFA-2026-SAAS-01",
-          paymentMethod: "Razorpay Corporate Net Banking",
-          notes: "Annual Enterprise Tier - 250 Student Slots & 25 Staff Tier Paid in Full",
-        },
-      ],
+      payments: [],
     },
     { upsert: true, new: true }
   );
@@ -2256,100 +2246,16 @@ export async function seedDemoData() {
     );
   }
 
-  console.log("🌱 [14/17] Seeding Smart NFC Card Bulk & Custom Orders...");
-  const u17CardsList = createdStudents.slice(0, 11).map((s) => ({
-    studentId: s._id as mongoose.Types.ObjectId,
-    studentName: `${s.firstName} ${s.lastName}`,
-    jerseyNumber: s.jerseyNumber,
-    franchiseName: franchiseDowntown.name,
-    ageGroup: s.ageGroup,
-    publicProfileToken: s.publicProfileToken,
-  }));
-
-  await NfcCardRequestModel.findOneAndUpdate(
-    { requesterId: manager._id, cardType: "official" },
-    {
-      requesterId: manager._id,
-      requesterRole: "manager",
-      requesterType: "academy",
-      academyId: academy._id,
-      franchiseId: franchiseDowntown._id,
-      cardType: "official",
-      students: u17CardsList,
-      quantity: 11,
-      unitPrice: 299,
-      totalAmount: 3289,
-      currency: "INR",
-      shippingAddress: {
-        recipientName: "Zinedine Zidane (Academy Director)",
-        phone: "+919876543210",
-        addressLine1: "74 Champions Boulevard, Elite Sports Enclave",
-        city: "Bengaluru",
-        state: "Karnataka",
-        postalCode: "560001",
-        country: "India",
-      },
-      status: "delivered",
-      paidAt: new Date(now.getTime() - 25 * 24 * 60 * 60 * 1000),
-      dispatchDetails: {
-        courierName: "BlueDart Express",
-        trackingNumber: "BD-889912344-IN",
-        trackingUrl: "https://www.bluedart.com/tracking/BD-889912344-IN",
-        dispatchedAt: new Date(now.getTime() - 22 * 24 * 60 * 60 * 1000),
-      },
-      deliveredAt: new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000),
-    },
-    { upsert: true }
-  );
-
-  // Custom NFC Card request for Lamine Yamal
+  console.log("🌱 [14/17] Cleaning Demo NFC Card Orders (Zero Platform Financial Impact)...");
   const yamalStudent = createdStudents.find((s) => s.firstName === "Lamine");
-  if (yamalStudent) {
-    await NfcCardRequestModel.findOneAndUpdate(
-      { requesterId: yamalStudent.userId, cardType: "custom" },
-      {
-        requesterId: yamalStudent.userId,
-        requesterRole: "student",
-        requesterType: "independent_player",
-        academyId: academy._id,
-        franchiseId: franchiseDowntown._id,
-        cardType: "custom",
-        customDesignFileName: "yamal_gold_signature_card.png",
-        students: [
-          {
-            studentId: yamalStudent._id,
-            studentName: "Lamine Yamal",
-            jerseyNumber: 19,
-            franchiseName: franchiseDowntown.name,
-            ageGroup: "U17",
-            publicProfileToken: yamalStudent.publicProfileToken,
-          },
-        ],
-        quantity: 1,
-        unitPrice: 399,
-        totalAmount: 399,
-        currency: "INR",
-        shippingAddress: {
-          recipientName: "Mounir Nasraoui",
-          phone: "+919870000001",
-          addressLine1: "Villa 12, Gold Crest Greens, Stadium View",
-          city: "Bengaluru",
-          state: "Karnataka",
-          postalCode: "560001",
-          country: "India",
-        },
-        status: "dispatched",
-        paidAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000),
-        dispatchDetails: {
-          courierName: "DHL Express",
-          trackingNumber: "DHL-99432100-IN",
-          trackingUrl: "https://www.dhl.com/tracking/DHL-99432100-IN",
-          dispatchedAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
-        },
-      },
-      { upsert: true }
-    );
-  }
+  const demoStudentUserIds = createdStudents.map((s) => s.userId).filter(Boolean);
+  await NfcCardRequestModel.deleteMany({
+    $or: [
+      { academyId: academy._id },
+      { requesterId: manager._id },
+      { requesterId: { $in: demoStudentUserIds } },
+    ],
+  });
 
   console.log("🌱 [15/17] Seeding Support Tickets, Guardian Complaints & Feedback...");
   await PlatformTicketModel.findOneAndUpdate(
