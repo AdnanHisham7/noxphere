@@ -567,7 +567,13 @@ export class AcademySubscriptionUseCases {
 
   async createRazorpayOrder(
     academyId: string,
-    dto: { capacity: number; staffCapacity: number; billingInterval: BillingInterval; isRenewal?: boolean },
+    dto: {
+      capacity: number;
+      staffCapacity: number;
+      billingInterval?: BillingInterval;
+      isRenewal?: boolean;
+      isTopup?: boolean;
+    },
     requesterUserId: string,
   ): Promise<{
     orderId: string;
@@ -591,9 +597,42 @@ export class AcademySubscriptionUseCases {
     const rate = await this.getEffectiveRate(academyId);
     const staffRate = await this.getEffectiveStaffRate(academyId);
 
-    const totalAmount =
-      studentPeriodAmount(rate, dto.capacity, dto.billingInterval) +
-      staffPeriodAmount(staffRate, dto.staffCapacity, dto.billingInterval);
+    const now = new Date();
+    const isTopup = Boolean(
+      dto.isTopup &&
+      existing?.status === "active" &&
+      existing.currentPeriodEnd &&
+      new Date(existing.currentPeriodEnd) > now &&
+      !existing.isTrial
+    );
+
+    let totalAmount = 0;
+    let orderType = "new_subscription";
+    let extraStudents = 0;
+    let extraStaff = 0;
+    let remainingDays = 0;
+    const interval: BillingInterval = dto.billingInterval || (existing?.billingInterval as BillingInterval) || "month";
+
+    if (isTopup) {
+      orderType = "capacity_topup";
+      remainingDays = Math.max(1, Math.ceil((new Date(existing!.currentPeriodEnd!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+      extraStudents = Math.max(0, dto.capacity - (existing!.provisionedCapacity || 0));
+      extraStaff = Math.max(0, dto.staffCapacity - (existing!.provisionedStaffCapacity || 0));
+
+      if (extraStudents === 0 && extraStaff === 0) {
+        throw new BadRequestError("Choose a higher student or staff capacity to top up");
+      }
+
+      const studentProrated = rate * extraStudents * remainingDays;
+      const staffProrated = staffRate * extraStaff * (remainingDays / 30);
+      totalAmount = Math.max(1, Math.round((studentProrated + staffProrated) * 100) / 100);
+    } else {
+      orderType = dto.isRenewal ? "renewal" : "new_subscription";
+      totalAmount =
+        studentPeriodAmount(rate, dto.capacity, interval) +
+        staffPeriodAmount(staffRate, dto.staffCapacity, interval);
+    }
+
     const unitAmountPaise = toPaise(totalAmount);
 
     const order = await razorpayService.createOrder({
@@ -605,31 +644,57 @@ export class AcademySubscriptionUseCases {
         currency,
         capacity: dto.capacity,
         staffCapacity: dto.staffCapacity,
-        billingInterval: dto.billingInterval,
-        type: dto.isRenewal ? "renewal" : "new_subscription",
+        billingInterval: interval,
+        type: orderType,
+        extraStudents,
+        extraStaff,
+        remainingDays,
       },
     });
 
-    await AcademySubscriptionModel.findOneAndUpdate(
-      { academyId },
-      {
-        academyId,
-        currency,
-        razorpayOrderId: order.id,
-        billingInterval: dto.billingInterval,
-        ratePerStudentPerDay: rate,
-        staffRatePerStaffPerMonth: staffRate,
-        provisionedCapacity: dto.capacity,
-        provisionedStaffCapacity: dto.staffCapacity,
-        status:
-          existing?.status === "active" &&
-          existing.currentPeriodEnd &&
-          new Date() < new Date(existing.currentPeriodEnd)
-            ? "active"
-            : "incomplete",
-      },
-      { upsert: true, new: true },
-    );
+    if (isTopup) {
+      existing!.razorpayOrderId = order.id;
+      (existing as any).pendingOrder = {
+        orderId: order.id,
+        type: "capacity_topup",
+        capacity: dto.capacity,
+        staffCapacity: dto.staffCapacity,
+        extraStudents,
+        extraStaff,
+        remainingDays,
+        amount: totalAmount,
+      };
+      await existing!.save();
+    } else {
+      await AcademySubscriptionModel.findOneAndUpdate(
+        { academyId },
+        {
+          academyId,
+          currency,
+          razorpayOrderId: order.id,
+          billingInterval: interval,
+          ratePerStudentPerDay: rate,
+          staffRatePerStaffPerMonth: staffRate,
+          provisionedCapacity: dto.capacity,
+          provisionedStaffCapacity: dto.staffCapacity,
+          pendingOrder: {
+            orderId: order.id,
+            type: dto.isRenewal ? "renewal" : "new_subscription",
+            capacity: dto.capacity,
+            staffCapacity: dto.staffCapacity,
+            billingInterval: interval,
+            amount: totalAmount,
+          },
+          status:
+            existing?.status === "active" &&
+            existing.currentPeriodEnd &&
+            new Date() < new Date(existing.currentPeriodEnd)
+              ? "active"
+              : "incomplete",
+        },
+        { upsert: true, new: true },
+      );
+    }
 
     return {
       orderId: order.id,
@@ -638,7 +703,7 @@ export class AcademySubscriptionUseCases {
       keyId: razorpayService.getKeyId(),
       academyName: academy.name,
       totalAmount,
-      totalRupees: totalAmount, // backward compatibility
+      totalRupees: totalAmount,
       currencySymbol: geoLocationService.getCurrencySymbol(currency),
     };
   }
@@ -671,10 +736,55 @@ export class AcademySubscriptionUseCases {
     const currency = (academy?.currency || subscription.currency || "INR").toUpperCase();
     const rate = await this.getEffectiveRate(academyId);
     const staffRate = await this.getEffectiveStaffRate(academyId);
-    const interval = (subscription.billingInterval as BillingInterval) || "month";
-
-    const days = DAYS_IN_PERIOD[interval] || 30;
     const now = new Date();
+
+    const pending = (subscription as any).pendingOrder;
+    const isTopup = pending?.type === "capacity_topup" && pending.orderId === orderId;
+
+    if (isTopup) {
+      subscription.provisionedCapacity = Math.max(subscription.provisionedCapacity, pending.capacity);
+      subscription.provisionedStaffCapacity = Math.max(subscription.provisionedStaffCapacity, pending.staffCapacity);
+      subscription.razorpayPaymentId = paymentId;
+      subscription.razorpaySignature = signature;
+
+      const { rate: exchangeRateToInr, amountInInr } = await exchangeRateService.convertToInr(pending.amount, currency);
+
+      subscription.payments = subscription.payments || [];
+      subscription.payments.unshift({
+        orderId,
+        paymentId,
+        amount: pending.amount,
+        currency,
+        exchangeRateToInr,
+        amountInInr,
+        status: "paid",
+        billingInterval: subscription.billingInterval,
+        studentCapacity: pending.extraStudents,
+        staffCapacity: pending.extraStaff,
+        type: "upgrade",
+        paidAt: now,
+        receiptNumber: `INV-${paymentId.slice(-8).toUpperCase()}`,
+        paymentMethod: "Razorpay",
+        notes: `Prorated top-up: +${pending.extraStudents} students, +${pending.extraStaff} staff (${pending.remainingDays} days remaining)`,
+      });
+
+      delete (subscription as any).pendingOrder;
+      await subscription.save();
+
+      const symbol = geoLocationService.getCurrencySymbol(currency);
+      await notificationService.notifySuperAdmins({
+        type: "payment_received",
+        title: "Academy Capacity Top-Up Payment Received",
+        body: `${academy?.name || "An academy"} topped up capacity by +${pending.extraStudents} students & +${pending.extraStaff} staff (${symbol} ${pending.amount} ${currency}).`,
+        metadata: { academyId, orderId, paymentId, currency, amount: String(pending.amount) },
+      });
+
+      return { status: "active", isActive: true };
+    }
+
+    // Standard new subscription or renewal
+    const interval: BillingInterval = (pending?.billingInterval as BillingInterval) || (subscription.billingInterval as BillingInterval) || "month";
+    const days = DAYS_IN_PERIOD[interval] || 30;
     const isRenewal = Boolean(
       subscription.currentPeriodEnd &&
       new Date(subscription.currentPeriodEnd) > now &&
@@ -690,17 +800,21 @@ export class AcademySubscriptionUseCases {
     }
 
     subscription.status = "active";
-    subscription.isTrial = false; // Transitioned to paid subscription!
+    subscription.isTrial = false;
     subscription.currency = currency;
+    subscription.billingInterval = interval;
+    subscription.provisionedCapacity = pending?.capacity ?? subscription.provisionedCapacity;
+    subscription.provisionedStaffCapacity = pending?.staffCapacity ?? subscription.provisionedStaffCapacity;
     subscription.razorpayOrderId = orderId;
     subscription.razorpayPaymentId = paymentId;
     subscription.razorpaySignature = signature;
     subscription.ratePerStudentPerDay = rate;
     subscription.staffRatePerStaffPerMonth = staffRate;
 
-    const amountPaid =
+    const amountPaid = pending?.amount ?? (
       studentPeriodAmount(rate, subscription.provisionedCapacity, interval) +
-      staffPeriodAmount(staffRate, subscription.provisionedStaffCapacity, interval);
+      staffPeriodAmount(staffRate, subscription.provisionedStaffCapacity, interval)
+    );
 
     const { rate: exchangeRateToInr, amountInInr } = await exchangeRateService.convertToInr(amountPaid, currency);
 
@@ -719,24 +833,24 @@ export class AcademySubscriptionUseCases {
       type: isRenewal ? "renewal" : "subscription",
       paidAt: now,
       receiptNumber: `INV-${paymentId.slice(-8).toUpperCase()}`,
+      paymentMethod: "Razorpay",
+      notes: isRenewal ? `Plan renewal for ${interval} (${days} days)` : `New ${interval} plan subscription`,
     });
 
+    delete (subscription as any).pendingOrder;
     await subscription.save();
-
-    // Also update academy isTrial flag
     await AcademyModel.findByIdAndUpdate(academyId, { isTrial: false });
 
     const symbol = geoLocationService.getCurrencySymbol(currency);
     await notificationService.notifySuperAdmins({
       type: "payment_received",
       title: "Academy Subscription Payment Received",
-      body: `${academy?.name || "An academy"} has completed payment of ${symbol} ${amountPaid} (${currency}) for their ${subscription.billingInterval}ly subscription.`,
+      body: `${academy?.name || "An academy"} has completed payment of ${symbol} ${amountPaid} (${currency}) for their ${interval} plan.`,
       metadata: { academyId, orderId, paymentId, currency, amount: String(amountPaid) },
     });
 
     return { status: "active", isActive: true };
   }
-
 
   // Increases student and/or staff capacity on an already-active
   // subscription by repricing it in place (see
