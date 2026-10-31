@@ -250,6 +250,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
         prefill: {
           name: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || user?.email,
           email: user?.email || "",
+          contact: user?.phone || "",
         },
         theme: {
           color: "#10b981",

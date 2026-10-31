@@ -212,13 +212,13 @@ export async function seedDemoData() {
         swiftCode: "HDFCINBB",
       },
       skillParameters: ["Dribbling", "Passing", "Shooting", "Speed", "Tactical Awareness", "Attitude"],
-      subscriptionRateOverride: 0,
-      staffRateOverride: 0,
+      // uses platform default rate
+      
       isTrial: false,
     });
   } else {
-    academy.subscriptionRateOverride = 0;
-    academy.staffRateOverride = 0;
+    academy.subscriptionRateOverride = undefined;
+    academy.staffRateOverride = undefined;
     await academy.save();
   }
 
@@ -234,8 +234,8 @@ export async function seedDemoData() {
       billingInterval: "year",
       currency: "INR",
       isTrial: false,
-      ratePerStudentPerDay: 0,
-      staffRatePerStaffPerMonth: 0,
+      ratePerStudentPerDay: 1,
+      staffRatePerStaffPerMonth: 10,
       provisionedCapacity: 250,
       provisionedStaffCapacity: 25,
       status: "active",

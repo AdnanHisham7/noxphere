@@ -58,15 +58,15 @@ export const SubscriptionManagementPage: React.FC = () => {
   const { data: platformStaffRate } = useGetPlatformDefaultStaffRateQuery();
 
   const effectiveStudentRate =
-    details?.ratePerStudentPerDay ??
-    platformStudentRate ??
-    details?.platformDefaultRate ??
+    (details?.ratePerStudentPerDay && Number(details.ratePerStudentPerDay) > 0 ? Number(details.ratePerStudentPerDay) : undefined) ??
+    (platformStudentRate && Number(platformStudentRate) > 0 ? Number(platformStudentRate) : undefined) ??
+    (details?.platformDefaultRate && Number(details.platformDefaultRate) > 0 ? Number(details.platformDefaultRate) : undefined) ??
     1;
 
   const effectiveStaffRate =
-    details?.staffRatePerStaffPerMonth ??
-    platformStaffRate ??
-    details?.platformDefaultStaffRate ??
+    (details?.staffRatePerStaffPerMonth && Number(details.staffRatePerStaffPerMonth) > 0 ? Number(details.staffRatePerStaffPerMonth) : undefined) ??
+    (platformStaffRate && Number(platformStaffRate) > 0 ? Number(platformStaffRate) : undefined) ??
+    (details?.platformDefaultStaffRate && Number(details.platformDefaultStaffRate) > 0 ? Number(details.platformDefaultStaffRate) : undefined) ??
     10;
 
   const sym = details?.currencySymbol || currencySymbol || "₹";

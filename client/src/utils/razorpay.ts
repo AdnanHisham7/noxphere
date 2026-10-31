@@ -17,7 +17,7 @@ export const loadRazorpayScript = (): Promise<boolean> => {
 
 export interface RazorpayCheckoutOptions {
   key: string;
-  amount: number; // in paise
+  amount: number; // in paise / smallest currency unit
   currency?: string;
   name: string;
   description?: string;
@@ -31,6 +31,7 @@ export interface RazorpayCheckoutOptions {
   theme?: {
     color?: string;
   };
+  config?: any;
 }
 
 export interface RazorpayPaymentSuccessResponse {
@@ -48,7 +49,9 @@ export const openRazorpayCheckout = async (
   }
 
   return new Promise((resolve, reject) => {
-    const rzpOptions = {
+    const isINR = (options.currency || "INR").toUpperCase() === "INR";
+
+    const rzpOptions: any = {
       ...options,
       currency: options.currency || "INR",
       handler: function (response: RazorpayPaymentSuccessResponse) {
@@ -60,6 +63,42 @@ export const openRazorpayCheckout = async (
         },
       },
     };
+
+    // For INR transactions, prioritize UPI (Google Pay, PhonePe, Paytm, QR) so it appears prominently
+    if (isINR) {
+      rzpOptions.config = {
+        display: {
+          blocks: {
+            upi: {
+              name: "Pay using UPI (Google Pay, PhonePe, Paytm, QR)",
+              instruments: [
+                {
+                  method: "upi",
+                },
+              ],
+            },
+            other: {
+              name: "Cards, Netbanking & Other Methods",
+              instruments: [
+                {
+                  method: "card",
+                },
+                {
+                  method: "netbanking",
+                },
+                {
+                  method: "wallet",
+                },
+              ],
+            },
+          },
+          sequence: ["block.upi", "block.other"],
+          preferences: {
+            show_default_blocks: true,
+          },
+        },
+      };
+    }
 
     const rzp = new (window as any).Razorpay(rzpOptions);
     rzp.on("payment.failed", function (response: any) {
