@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { toast } from "react-hot-toast";
-import { Zap, RefreshCw, Calendar, Users, Info, ShieldCheck } from "lucide-react";
+import { Zap, RefreshCw, Calendar, Users, Info, ShieldCheck, AlertTriangle } from "lucide-react";
 import { clsx } from "clsx";
 import { Modal, Button, Input, Card } from "../../components/ui";
 import {
@@ -112,9 +112,15 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   const topupTotalStudents = baselineCapacity + extraStudents;
   const topupTotalStaff = baselineStaff + extraStaff;
 
-  // Quantities for Renewal / Initial Subscribe
+  // Quantities for Renewal / Initial Subscribe with Active Floor Protection
+  const minAllowedStudents = status?.activeStudentCount ? Math.max(1, status.activeStudentCount) : 1;
+  const minAllowedStaff = status?.activeStaffCount ? Math.max(0, status.activeStaffCount) : 0;
+
   const renewalStudents = Math.max(1, parseInt(capacityInput, 10) || 1);
   const renewalStaff = Math.max(0, parseInt(staffCapacityInput, 10) || 0);
+
+  const isUnderStudentFloor = activeTab === "renew" && renewalStudents < minAllowedStudents;
+  const isUnderStaffFloor = activeTab === "renew" && renewalStaff < minAllowedStaff;
 
   // Effective capacity submitted to backend
   const capacity = activeTab === "topup" ? topupTotalStudents : renewalStudents;
@@ -166,6 +172,16 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
       if (isTopup && extraStudents === 0 && extraStaff === 0) {
         toast.error("Please specify additional students or staff to top up.");
+        return;
+      }
+
+      if (!isTopup && isUnderStudentFloor) {
+        toast.error(`Cannot select ${renewalStudents} student slots because you currently have ${minAllowedStudents} enrolled active players.`);
+        return;
+      }
+
+      if (!isTopup && isUnderStaffFloor) {
+        toast.error(`Cannot select ${renewalStaff} staff seats because you currently have ${minAllowedStaff} active staff members.`);
         return;
       }
 
@@ -284,7 +300,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               </p>
             </div>
           ) : isAlreadyActive && activeTab === "renew" ? (
-            <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs space-y-1">
+            <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs space-y-2">
               <div className="flex items-center justify-between font-bold text-slate-900 dark:text-white">
                 <span>Stack Renewal to Current Expiration</span>
                 <span className="font-mono text-indigo-400">
@@ -292,8 +308,20 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 </span>
               </div>
               <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
-                Renew now to secure your capacity or change your cadence. The new period will automatically begin when your current period concludes. Zero active days are lost.
+                Your current plan with <strong>{baselineCapacity} slots</strong> remains fully active until <strong>{new Date(status!.currentPeriodEnd!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</strong>. Renewing extends your subscription for the selected cycle without losing active days.
               </p>
+              {remainingDays > 30 && (
+                <div className="p-2 bg-indigo-500/15 rounded-lg text-indigo-700 dark:text-indigo-300 text-[11px] flex items-center justify-between">
+                  <span>Need extra slots right now for ongoing batches?</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("topup")}
+                    className="font-bold underline text-volt-500 hover:text-volt-400 shrink-0 ml-2"
+                  >
+                    Use Prorated Top-Up
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-xs text-slate-600 dark:text-slate-300">
@@ -401,21 +429,32 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                     </label>
                     {status?.activeStudentCount ? (
                       <span className="text-2xs text-slate-500 dark:text-slate-400 font-mono">
-                        Active Students: {status.activeStudentCount}
+                        Active Enrolled: {status.activeStudentCount} (Floor min)
                       </span>
                     ) : null}
                   </div>
                   <Input
                     type="number"
-                    min={1}
-                    placeholder="e.g. 50"
+                    min={minAllowedStudents}
+                    placeholder={`Min ${minAllowedStudents}`}
                     value={capacityInput}
                     onChange={(e) => setCapacityInput(e.target.value)}
                     onBlur={() => {
                       const val = parseInt(capacityInput, 10);
-                      if (isNaN(val) || val < 1) setCapacityInput("1");
+                      if (isNaN(val) || val < minAllowedStudents) setCapacityInput(String(minAllowedStudents));
                     }}
                   />
+                  {isUnderStudentFloor && (
+                    <div className="mt-1.5 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-2xs text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
+                      <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Cannot downsize below active roster ({minAllowedStudents} players).</strong>
+                        <p className="mt-0.5 text-slate-500 dark:text-slate-400">
+                          You have {minAllowedStudents} active players enrolled. To renew for {renewalStudents} slots, archive or drop out {minAllowedStudents - renewalStudents} player{minAllowedStudents - renewalStudents > 1 ? "s" : ""} in Students Management first.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -423,23 +462,31 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                     <label className="text-xs font-semibold text-slate-800 dark:text-slate-200">
                       Staff Seats for Next Cycle (Coaches / Ops)
                     </label>
-                    {baselineStaff > 0 && (
+                    {minAllowedStaff > 0 && (
                       <span className="text-2xs text-slate-500 dark:text-slate-400 font-mono">
-                        Current Staff: {baselineStaff}
+                        Active Staff: {minAllowedStaff} (Floor min)
                       </span>
                     )}
                   </div>
                   <Input
                     type="number"
-                    min={0}
-                    placeholder="0"
+                    min={minAllowedStaff}
+                    placeholder={`Min ${minAllowedStaff}`}
                     value={staffCapacityInput}
                     onChange={(e) => setStaffCapacityInput(e.target.value)}
                     onBlur={() => {
                       const val = parseInt(staffCapacityInput, 10);
-                      if (isNaN(val) || val < 0) setStaffCapacityInput("0");
+                      if (isNaN(val) || val < minAllowedStaff) setStaffCapacityInput(String(minAllowedStaff));
                     }}
                   />
+                  {isUnderStaffFloor && (
+                    <div className="mt-1.5 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-2xs text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
+                      <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Cannot downsize below active staff count ({minAllowedStaff}).</strong>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -528,13 +575,21 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             variant="primary"
             className="w-full font-bold uppercase tracking-wide justify-center py-2.5"
             loading={creatingOrder || verifyingPayment}
-            disabled={isAlreadyActive && activeTab === "topup" && extraStudents === 0 && extraStaff === 0}
+            disabled={
+              (isAlreadyActive && activeTab === "topup" && extraStudents === 0 && extraStaff === 0) ||
+              isUnderStudentFloor ||
+              isUnderStaffFloor
+            }
             onClick={handlePayment}
           >
             {isAlreadyActive && activeTab === "topup"
               ? extraStudents === 0 && extraStaff === 0
                 ? "Enter Additional Slots Above"
                 : `Pay ${formatCurrency(topupTotal)} & Add ${extraStudents > 0 ? `${extraStudents} Student${extraStudents > 1 ? "s" : ""}` : ""}${extraStudents > 0 && extraStaff > 0 ? " & " : ""}${extraStaff > 0 ? `${extraStaff} Staff` : ""}`
+              : isUnderStudentFloor
+              ? `Active Roster (${minAllowedStudents}) Exceeds ${renewalStudents} Slots`
+              : isUnderStaffFloor
+              ? `Active Staff (${minAllowedStaff}) Exceeds ${renewalStaff} Seats`
               : `Pay ${formatCurrency(renewalTotal)} & Confirm Plan`}
           </Button>
         </div>
