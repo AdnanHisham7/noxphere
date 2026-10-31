@@ -83,6 +83,7 @@ export const CreateAcademySchema = z.object({
       referenceNote: z.string().optional(),
     })
     .optional(),
+  sessionTypes: z.array(SessionTypeDto).max(6, "An academy can have a maximum of 6 session types").optional(),
   manager: ManagerAccountSchema,
 });
 
@@ -118,7 +119,7 @@ export const UpdateAcademySchema = z.object({
   feePaymentMethod: z.enum(["qr", "bank_transfer", "both"]).optional(),
   bankDetails: BankDetailsSchema.optional().nullable(),
   logo: z.string().optional(),
-  sessionTypes: z.array(SessionTypeDto).optional(),
+  sessionTypes: z.array(SessionTypeDto).max(6, "An academy can have a maximum of 6 session types").optional(),
 });
 
 // Config update — this is the endpoint the manager's own Settings tab
@@ -152,7 +153,7 @@ export const AcademyConfigSchema = z.object({
   feePaymentMethod: z.enum(["qr", "bank_transfer", "both"]).optional(),
   bankDetails: BankDetailsSchema.optional().nullable(),
   logo: z.string().nullable().optional().or(z.literal("")).transform(v => (v === "" || v === null) ? null : v),
-  sessionTypes: z.array(SessionTypeDto).optional(),
+  sessionTypes: z.array(SessionTypeDto).max(6, "An academy can have a maximum of 6 session types").optional(),
   isActive: z.boolean().optional(),
 });
 

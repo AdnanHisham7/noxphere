@@ -33,6 +33,7 @@ import {
 import { openRazorpayCheckout } from "../../utils/razorpay";
 import { Button, Input, Modal, Badge } from "../../components/ui";
 import { formatCurrency } from "../../utils/currency";
+import { useCurrency } from "../../hooks/useCurrency";
 
 interface NfcPlayerCardSectionProps {
   player: {
@@ -48,7 +49,10 @@ interface NfcPlayerCardSectionProps {
 export const NfcPlayerCardSection: React.FC<NfcPlayerCardSectionProps> = ({
   player,
 }) => {
-  const { data: pricing, isLoading: pricingLoading } = useGetNfcPricingQuery();
+  const { currency, format } = useCurrency();
+  const { data: pricing, isLoading: pricingLoading } = useGetNfcPricingQuery({
+    currency: currency || undefined,
+  });
   const { data: requestsData, isLoading: requestsLoading } =
     useListNfcRequestsQuery();
   const [createRequest, { isLoading: isSubmitting }] =
@@ -160,7 +164,7 @@ export const NfcPlayerCardSection: React.FC<NfcPlayerCardSectionProps> = ({
     }
   };
 
-  const cardPrice = pricing?.cardPrice ?? 299;
+  const cardPrice = pricing?.cardPrice ?? 0;
 
   // Realistic 3D NFC Card component (shared between hero promo and preview modal)
   const renderCardMockup = () => (
@@ -471,7 +475,7 @@ export const NfcPlayerCardSection: React.FC<NfcPlayerCardSectionProps> = ({
                   <Sparkles size={13} /> Physical Smart NFC Card
                 </span>
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
-                  {formatCurrency(cardPrice, "INR")} Flat Rate
+                  {format(cardPrice)} Flat Rate
                 </span>
               </div>
 
@@ -492,7 +496,7 @@ export const NfcPlayerCardSection: React.FC<NfcPlayerCardSectionProps> = ({
                   onClick={() => setIsModalOpen(true)}
                   className="!bg-volt-400 hover:!bg-volt-300 !text-pitch-950 font-bold shadow-sm"
                 >
-                  Request NFC Player Card ({formatCurrency(cardPrice, "INR")}){" "}
+                  Request NFC Player Card ({format(cardPrice)}){" "}
                   <ArrowRight size={16} className="ml-1.5" />
                 </Button>
               </div>
@@ -525,7 +529,7 @@ export const NfcPlayerCardSection: React.FC<NfcPlayerCardSectionProps> = ({
                 </strong>
                 . Fixed rate:{" "}
                 <strong className="text-slate-900 dark:text-white">
-                  {formatCurrency(cardPrice, pricing?.currency ?? "INR")}
+                  {format(cardPrice)}
                 </strong>{" "}
                 (paid online via Razorpay once approved).
               </p>

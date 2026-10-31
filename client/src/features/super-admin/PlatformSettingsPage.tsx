@@ -15,15 +15,11 @@ import { PageHeader, Button, Badge } from "../../components/ui";
 import { PlatformBillingCard } from "../academies/PlatformBillingCard";
 import {
   useGetPlatformCurrenciesQuery,
-  useGetPlatformDefaultRateQuery,
-  useGetPlatformDefaultStaffRateQuery,
   useGetPlatformTrialDefaultsQuery,
 } from "../../store/api/academySubscriptionApi";
 
 export const PlatformSettingsPage: React.FC = () => {
   const { data: currencies = [] } = useGetPlatformCurrenciesQuery();
-  const { data: defaultRate } = useGetPlatformDefaultRateQuery();
-  const { data: defaultStaffRate } = useGetPlatformDefaultStaffRateQuery();
   const { data: trialDefaults } = useGetPlatformTrialDefaultsQuery();
 
   const activeCurrenciesCount = currencies.filter((c) => c.isActive !== false).length;
@@ -72,7 +68,7 @@ export const PlatformSettingsPage: React.FC = () => {
       </div>
 
       {/* Quick Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="card p-4 border border-slate-200 dark:border-white/10 space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-2xs font-bold uppercase tracking-wider text-slate-500">
@@ -84,39 +80,7 @@ export const PlatformSettingsPage: React.FC = () => {
             {activeCurrenciesCount} Currencies
           </p>
           <p className="text-2xs text-slate-500">
-            Multi-currency geolocated pricing active
-          </p>
-        </div>
-
-        <div className="card p-4 border border-slate-200 dark:border-white/10 space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-2xs font-bold uppercase tracking-wider text-slate-500">
-              Default Player Rate
-            </span>
-            <ShieldCheck size={16} className="text-emerald-500" />
-          </div>
-          <p className="text-2xl font-display font-extrabold text-slate-900 dark:text-white">
-            ₹{defaultRate ?? 1}{" "}
-            <span className="text-xs font-normal text-slate-400">/ player / day</span>
-          </p>
-          <p className="text-2xs text-slate-500">
-            Base platform student seat rate
-          </p>
-        </div>
-
-        <div className="card p-4 border border-slate-200 dark:border-white/10 space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-2xs font-bold uppercase tracking-wider text-slate-500">
-              Default Staff Rate
-            </span>
-            <ShieldCheck size={16} className="text-volt-400" />
-          </div>
-          <p className="text-2xl font-display font-extrabold text-slate-900 dark:text-white">
-            ₹{defaultStaffRate ?? 10}{" "}
-            <span className="text-xs font-normal text-slate-400">/ staff / mo</span>
-          </p>
-          <p className="text-2xs text-slate-500">
-            Base platform staff seat rate
+            Multi-currency geolocated SaaS &amp; NFC pricing active
           </p>
         </div>
 
@@ -132,6 +96,21 @@ export const PlatformSettingsPage: React.FC = () => {
           </p>
           <p className="text-2xs text-slate-500">
             {trialDefaults?.defaultTrialCapacity ?? 50} players · {trialDefaults?.defaultTrialStaffCapacity ?? 5} staff capacity
+          </p>
+        </div>
+
+        <div className="card p-4 border border-slate-200 dark:border-white/10 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-2xs font-bold uppercase tracking-wider text-slate-500">
+              Licensing Engine
+            </span>
+            <ShieldCheck size={16} className="text-emerald-500" />
+          </div>
+          <p className="text-2xl font-display font-extrabold text-slate-900 dark:text-white">
+            Registered Currency
+          </p>
+          <p className="text-2xs text-slate-500">
+            Billing &amp; NFC card orders inherit academy local currency
           </p>
         </div>
       </div>

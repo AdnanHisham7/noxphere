@@ -17,10 +17,6 @@ import {
 } from "lucide-react";
 import { Button, Input, Modal, Badge } from "../../components/ui";
 import {
-  useGetPlatformDefaultRateQuery,
-  useSetPlatformDefaultRateMutation,
-  useGetPlatformDefaultStaffRateQuery,
-  useSetPlatformDefaultStaffRateMutation,
   useGetPlatformCurrenciesQuery,
   useSetPlatformCurrencyRateMutation,
   useGetPlatformTrialDefaultsQuery,
