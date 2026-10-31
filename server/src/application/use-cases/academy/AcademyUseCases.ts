@@ -104,6 +104,9 @@ export class AcademyUseCases {
     }
 
     // 5. Create academy with currency, country, and subscription parameters
+    if (dto.sessionTypes && dto.sessionTypes.length > 6) {
+      throw new BadRequestError("An academy can have a maximum of 6 session types (representing 6 core performance skills)");
+    }
     const currency = (dto.currency || "INR").toUpperCase();
     const country = (dto.country || geoLocationService.getCountryForCurrency(currency)).toUpperCase();
 
@@ -301,6 +304,10 @@ export class AcademyUseCases {
   ): Promise<AcademyEntity> {
     const academy = await this.academyRepository.findById(id);
     if (!academy) throw new NotFoundError("Academy");
+
+    if (dto.sessionTypes && dto.sessionTypes.length > 6) {
+      throw new BadRequestError("An academy can have a maximum of 6 session types (representing 6 core performance skills)");
+    }
 
     // A manager may only edit the academy their own franchise belongs to.
     // super_admin is unrestricted. This is what makes the settings tab —

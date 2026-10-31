@@ -1,5 +1,6 @@
 // src/features/nfc/SuperAdminNfcManagementPage.tsx
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   CreditCard,
   DollarSign,
@@ -23,8 +24,6 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
-  useGetNfcPricingQuery,
-  useUpdateNfcPricingMutation,
   useListNfcRequestsQuery,
   useApproveNfcRequestMutation,
   useRejectNfcRequestMutation,
@@ -46,21 +45,6 @@ import {
 import { formatCurrency } from "../../utils/currency";
 
 export const SuperAdminNfcManagementPage: React.FC = () => {
-  const { data: pricing, isLoading: pricingLoading } = useGetNfcPricingQuery();
-  const [updatePricing, { isLoading: isUpdatingPricing }] =
-    useUpdateNfcPricingMutation();
-
-  const [standardPriceInput, setStandardPriceInput] = useState<string>("");
-  const [customPriceInput, setCustomPriceInput] = useState<string>("");
-
-  // Populate pricing inputs when pricing is loaded
-  React.useEffect(() => {
-    if (pricing) {
-      setStandardPriceInput(String(pricing.cardPrice));
-      setCustomPriceInput(String(pricing.customCardPrice));
-    }
-  }, [pricing]);
-
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -100,29 +84,6 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
   });
 
   const requests = requestsData?.requests ?? [];
-
-  const handleSavePricing = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cardPrice = parseFloat(standardPriceInput);
-    const customCardPrice = parseFloat(customPriceInput);
-
-    if (
-      isNaN(cardPrice) ||
-      cardPrice < 0 ||
-      isNaN(customCardPrice) ||
-      customCardPrice < 0
-    ) {
-      toast.error("Please enter valid prices");
-      return;
-    }
-
-    try {
-      await updatePricing({ cardPrice, customCardPrice }).unwrap();
-      toast.success("NFC Card pricing updated globally!");
-    } catch (err: any) {
-      toast.error(err?.data?.message || "Failed to update pricing");
-    }
-  };
 
   const handleApprove = async (id: string) => {
     try {
@@ -223,65 +184,37 @@ export const SuperAdminNfcManagementPage: React.FC = () => {
         subtitle="Configure dynamic pricing, review incoming card requests, and oversee order fulfillment"
       />
 
-      {/* Dynamic Pricing Configuration Card */}
+      {/* Multi-Currency NFC Pricing Status Banner */}
       <div className="card p-5 border-slate-200 dark:border-volt-400/20 bg-gradient-to-r from-slate-50 via-white to-slate-50 dark:from-pitch-900 dark:via-pitch-950 dark:to-pitch-900 shadow-xl">
-        <form onSubmit={handleSavePricing}>
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-volt-400/10 border border-volt-400/30 flex items-center justify-center text-volt-400 shrink-0">
-                <CreditCard size={20} />
-              </div>
-              <div>
-                <h3 className="font-display font-bold text-slate-900 dark:text-white text-sm">
-                  Global Dynamic NFC Pricing (₹ INR)
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Set dynamic card prices charged at online checkout for
-                  independent players and academy bulk batches.
-                </p>
-              </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-volt-400/10 border border-volt-400/30 flex items-center justify-center text-volt-400 shrink-0">
+              <CreditCard size={20} />
             </div>
-
-            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-end gap-3 w-full lg:w-auto">
-              <div className="w-full sm:w-36">
-                <Input
-                  label="Official Card (₹)"
-                  type="number"
-                  step="1"
-                  min="0"
-                  value={standardPriceInput}
-                  onChange={(e) => setStandardPriceInput(e.target.value)}
-                  disabled={pricingLoading}
-                  required
-                />
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-display font-bold text-slate-900 dark:text-white text-sm">
+                  Multi-Currency NFC Card Pricing Engine
+                </h3>
+                <Badge variant="blue" className="text-2xs">Active</Badge>
               </div>
-
-              <div className="w-full sm:w-36">
-                <Input
-                  label="Custom Card (₹)"
-                  type="number"
-                  step="1"
-                  min="0"
-                  value={customPriceInput}
-                  onChange={(e) => setCustomPriceInput(e.target.value)}
-                  disabled={pricingLoading}
-                  required
-                />
-              </div>
-
-              <div className="pt-1 sm:pt-0">
-                <Button
-                  type="submit"
-                  size="md"
-                  loading={isUpdatingPricing}
-                  className="!bg-volt-400 hover:!bg-volt-300 !text-pitch-950 font-bold w-full sm:w-auto justify-center"
-                >
-                  Save Pricing
-                </Button>
-              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
+                Standard and Custom NFC card prices are configured per currency (INR, OMR, SAR, USD, EUR, etc.) in the Platform Licensing &amp; Currency Engine. Academies and players automatically see and checkout in their registered currency.
+              </p>
             </div>
           </div>
-        </form>
+
+          <Link to="/settings/platform">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="font-bold whitespace-nowrap"
+              icon={<ExternalLink size={14} />}
+            >
+              Configure NFC Rates in Currency Engine
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Metrics Row */}

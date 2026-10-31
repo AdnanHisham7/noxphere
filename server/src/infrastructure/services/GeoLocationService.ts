@@ -333,27 +333,25 @@ export function getNfcPricingForCurrency(
 ): { cardPrice: number; customCardPrice: number } {
   const code = (currency || 'INR').toUpperCase();
 
-  if (Array.isArray(customRates)) {
-    const custom = customRates.find((c) => c.currency?.toUpperCase() === code && c.isActive !== false);
-    if (custom && custom.nfcCardPrice && custom.nfcCustomCardPrice) {
-      return {
-        cardPrice: custom.nfcCardPrice,
-        customCardPrice: custom.nfcCustomCardPrice,
-      };
-    }
-  }
-
+  const custom = Array.isArray(customRates)
+    ? customRates.find((c) => c.currency?.toUpperCase() === code && c.isActive !== false)
+    : undefined;
   const supported = SUPPORTED_CURRENCY_MAP[code];
-  if (supported && supported.defaultNfcCardPrice && supported.defaultNfcCustomCardPrice) {
-    return {
-      cardPrice: supported.defaultNfcCardPrice,
-      customCardPrice: supported.defaultNfcCustomCardPrice,
-    };
-  }
 
-  return {
-    cardPrice: platformDefaults?.defaultNfcCardPrice ?? 299,
-    customCardPrice: platformDefaults?.defaultNfcCustomCardPrice ?? 399,
-  };
+  const cardPrice =
+    typeof custom?.nfcCardPrice === 'number' && custom.nfcCardPrice > 0
+      ? custom.nfcCardPrice
+      : typeof supported?.defaultNfcCardPrice === 'number' && supported.defaultNfcCardPrice > 0
+      ? supported.defaultNfcCardPrice
+      : platformDefaults?.defaultNfcCardPrice ?? 299;
+
+  const customCardPrice =
+    typeof custom?.nfcCustomCardPrice === 'number' && custom.nfcCustomCardPrice > 0
+      ? custom.nfcCustomCardPrice
+      : typeof supported?.defaultNfcCustomCardPrice === 'number' && supported.defaultNfcCustomCardPrice > 0
+      ? supported.defaultNfcCustomCardPrice
+      : platformDefaults?.defaultNfcCustomCardPrice ?? 399;
+
+  return { cardPrice, customCardPrice };
 }
 

@@ -36,7 +36,7 @@ export class NfcCardUseCases {
 
   // ─── Pricing Management ───────────────────────────────────────────────────────
 
-  async getPricing(currency: string = "INR"): Promise<{ cardPrice: number; customCardPrice: number; currency: string }> {
+  async getPricing(currency: string = "INR"): Promise<{ cardPrice: number; customCardPrice: number; currency: string; currencySymbol: string }> {
     const settings = await PlatformSettingsModel.findOne().lean();
     const pricing = getNfcPricingForCurrency(currency, settings?.currencyPricing, {
       defaultNfcCardPrice: settings?.defaultNfcCardPrice,
@@ -46,6 +46,7 @@ export class NfcCardUseCases {
       cardPrice: pricing.cardPrice,
       customCardPrice: pricing.customCardPrice,
       currency: (currency || "INR").toUpperCase(),
+      currencySymbol: getCurrencySymbol(currency),
     };
   }
 

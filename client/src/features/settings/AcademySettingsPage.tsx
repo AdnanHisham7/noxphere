@@ -19,6 +19,7 @@ import {
   Shield,
   Sliders,
   Calendar,
+  Info,
 } from "lucide-react";
 import {
   Button,
@@ -242,6 +243,10 @@ const AcademySettingsPage: React.FC = () => {
   // (Instant persistence on every action)
   // ----------------------------------------------------
   const openAddSessionType = () => {
+    if (sessionTypes.length >= 6) {
+      toast.error("Maximum 6 session types allowed per academy to maintain clean 6-pillar player performance radars.");
+      return;
+    }
     setEditingSessionTypeId(null);
     setSessionTypeForm({
       name: "",
@@ -281,6 +286,11 @@ const AcademySettingsPage: React.FC = () => {
 
     if (finalSubmetrics.length === 0) {
       toast.error("At least one performance skill/submetric is required");
+      return;
+    }
+
+    if (!editingSessionTypeId && sessionTypes.length >= 6) {
+      toast.error("An academy can have a maximum of 6 session types (to maintain 6 major performance skills)");
       return;
     }
 
@@ -898,12 +908,12 @@ const AcademySettingsPage: React.FC = () => {
                   <h2 className="font-display text-base font-bold text-slate-900 dark:text-white tracking-wide">
                     Session Types & Performance Metrics
                   </h2>
-                  <Badge variant="gray" size="sm">
-                    {sessionTypes.length}
+                  <Badge variant={sessionTypes.length >= 6 ? "yellow" : "gray"} size="sm">
+                    {sessionTypes.length} / 6
                   </Badge>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
-                  Configure training session classifications (e.g. Technical, Physical, Match) and their evaluation metrics. When coaches assess players in a session, evaluation criteria dynamically matches the session's type.
+                  Configure training session classifications (e.g. Technical, Physical, Match) and their evaluation metrics. Each type represents one of the major skills on player evaluation radars.
                 </p>
               </div>
             </div>
@@ -921,11 +931,22 @@ const AcademySettingsPage: React.FC = () => {
                 size="sm"
                 icon={<Plus size={14} />}
                 onClick={openAddSessionType}
+                disabled={sessionTypes.length >= 6}
+                title={sessionTypes.length >= 6 ? "Maximum 6 session types reached" : "Add Session Type"}
               >
                 Add Session Type
               </Button>
             </div>
           </div>
+
+          {sessionTypes.length >= 6 && (
+            <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
+              <Info size={14} className="shrink-0 text-amber-500" />
+              <span>
+                <strong>Maximum capacity reached (6/6 session types).</strong> Each session type powers one of the 6 major performance skills on player profile radars and evaluations. Edit an existing type or remove one to configure another.
+              </span>
+            </div>
+          )}
 
           {sessionTypes.length === 0 ? (
             <div className="py-10 px-4 text-center border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl bg-slate-50/50 dark:bg-slate-900/20">

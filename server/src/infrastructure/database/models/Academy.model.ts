@@ -193,6 +193,10 @@ const AcademySchema = new Schema<AcademyDocument>(
           { _id: false }
         ),
       ],
+      validate: [
+        (val: AcademySessionType[]) => !val || val.length <= 6,
+        "An academy can have a maximum of 6 session types",
+      ],
       default: () => DEFAULT_ACADEMY_SESSION_TYPES,
     },
     currency: { type: String, default: "INR", uppercase: true, trim: true },

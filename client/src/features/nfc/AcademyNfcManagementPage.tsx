@@ -59,7 +59,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
   const currentFranchiseId = useCurrentFranchiseId();
   const { currency, currencySymbol, format } = useCurrency();
 
-  const { data: pricing } = useGetNfcPricingQuery();
+  const { data: pricing } = useGetNfcPricingQuery({ currency: currency || undefined });
   const {
     data: requestsData,
     isLoading: requestsLoading,
@@ -169,8 +169,8 @@ export const AcademyNfcManagementPage: React.FC = () => {
 
   const unitPrice =
     cardType === "custom"
-      ? (pricing?.customCardPrice ?? 399)
-      : (pricing?.cardPrice ?? 299);
+      ? (pricing?.customCardPrice ?? 0)
+      : (pricing?.cardPrice ?? 0);
   const totalAmount = selectedStudentIds.length * unitPrice;
 
   const validateShippingAddress = (): string | null => {
@@ -890,7 +890,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
                     NFC chip, and verified Noxphere ID branding.
                   </p>
                   <span className="font-mono text-xs text-volt-700 dark:text-volt-400 font-bold block pt-1">
-                    {format(pricing?.cardPrice ?? 299)} / card
+                    {pricing ? `${format(pricing.cardPrice)} / card` : "—"}
                   </span>
                 </div>
 
@@ -920,7 +920,7 @@ export const AcademyNfcManagementPage: React.FC = () => {
                     and background artwork. Upload your design file below.
                   </p>
                   <span className="font-mono text-xs text-purple-700 dark:text-purple-400 font-bold block pt-1">
-                    {format(pricing?.customCardPrice ?? 399)} / card
+                    {pricing ? `${format(pricing.customCardPrice)} / card` : "—"}
                   </span>
                 </div>
               </div>

@@ -16,9 +16,10 @@ import { BadRequestError } from "../../../shared/errors/AppError";
 export class NfcCardController {
   constructor(private useCases: NfcCardUseCases) {}
 
-  getPricing = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getPricing = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const pricing = await this.useCases.getPricing();
+      const currency = (req.query.currency as string) || (req.user as any)?.currency || "INR";
+      const pricing = await this.useCases.getPricing(currency);
       ResponseHandler.success(res, pricing, "NFC pricing retrieved successfully");
     } catch (err) {
       next(err);
