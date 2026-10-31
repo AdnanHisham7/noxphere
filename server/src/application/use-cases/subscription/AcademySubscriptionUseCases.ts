@@ -88,39 +88,50 @@ export class AcademySubscriptionUseCases {
   async getEffectiveRate(academyId: string): Promise<number> {
     const academy = await AcademyModel.findById(academyId).select("subscriptionRateOverride currency").lean();
     if (academy?.subscriptionRateOverride !== undefined && academy.subscriptionRateOverride !== null) {
-      return academy.subscriptionRateOverride;
+      const val = Number(academy.subscriptionRateOverride);
+      if (val > 0) return val;
+      // If stored as 0 or non-positive, clear it in the background so it stops shadowing platform rates
+      AcademyModel.findByIdAndUpdate(academyId, { $unset: { subscriptionRateOverride: 1 } }).exec().catch(() => {});
     }
     const currency = (academy?.currency || "INR").toUpperCase();
     const settings = await PlatformSettingsModel.findOne().lean();
     const customCurrencySetting = settings?.currencyPricing?.find(
       (c) => c.currency.toUpperCase() === currency && c.isActive !== false
     );
-    if (customCurrencySetting) {
-      return customCurrencySetting.ratePerStudentPerDay;
+    if (customCurrencySetting && Number(customCurrencySetting.ratePerStudentPerDay) > 0) {
+      return Number(customCurrencySetting.ratePerStudentPerDay);
     }
-    if (SUPPORTED_CURRENCY_MAP[currency]) {
+    if (SUPPORTED_CURRENCY_MAP[currency]?.defaultRatePerStudentPerDay) {
       return SUPPORTED_CURRENCY_MAP[currency].defaultRatePerStudentPerDay;
     }
-    return settings?.defaultRatePerStudentPerDay ?? 1;
+    if (settings?.defaultRatePerStudentPerDay && Number(settings.defaultRatePerStudentPerDay) > 0) {
+      return Number(settings.defaultRatePerStudentPerDay);
+    }
+    return 1;
   }
 
   async getEffectiveStaffRate(academyId: string): Promise<number> {
     const academy = await AcademyModel.findById(academyId).select("staffRateOverride currency").lean();
     if (academy?.staffRateOverride !== undefined && academy.staffRateOverride !== null) {
-      return academy.staffRateOverride;
+      const val = Number(academy.staffRateOverride);
+      if (val > 0) return val;
+      AcademyModel.findByIdAndUpdate(academyId, { $unset: { staffRateOverride: 1 } }).exec().catch(() => {});
     }
     const currency = (academy?.currency || "INR").toUpperCase();
     const settings = await PlatformSettingsModel.findOne().lean();
     const customCurrencySetting = settings?.currencyPricing?.find(
       (c) => c.currency.toUpperCase() === currency && c.isActive !== false
     );
-    if (customCurrencySetting) {
-      return customCurrencySetting.staffRatePerStaffPerMonth;
+    if (customCurrencySetting && Number(customCurrencySetting.staffRatePerStaffPerMonth) > 0) {
+      return Number(customCurrencySetting.staffRatePerStaffPerMonth);
     }
-    if (SUPPORTED_CURRENCY_MAP[currency]) {
+    if (SUPPORTED_CURRENCY_MAP[currency]?.defaultStaffRatePerStaffPerMonth) {
       return SUPPORTED_CURRENCY_MAP[currency].defaultStaffRatePerStaffPerMonth;
     }
-    return settings?.defaultStaffRatePerStaffPerMonth ?? 10;
+    if (settings?.defaultStaffRatePerStaffPerMonth && Number(settings.defaultStaffRatePerStaffPerMonth) > 0) {
+      return Number(settings.defaultStaffRatePerStaffPerMonth);
+    }
+    return 10;
   }
 
   async getStatus(academyId: string) {
@@ -201,10 +212,10 @@ export class AcademySubscriptionUseCases {
       provisionedCapacity,
       provisionedStaffCapacity,
       currentPeriodEnd: subscription?.currentPeriodEnd ?? trialEndsAt ?? null,
-      ratePerStudentPerDay: subscription?.ratePerStudentPerDay ?? rate,
-      staffRatePerStaffPerMonth: subscription?.staffRatePerStaffPerMonth ?? staffRate,
-      currentDefaultRate: rate,
-      currentDefaultStaffRate: staffRate,
+      ratePerStudentPerDay: (subscription?.ratePerStudentPerDay && Number(subscription.ratePerStudentPerDay) > 0) ? Number(subscription.ratePerStudentPerDay) : (rate > 0 ? rate : 1),
+      staffRatePerStaffPerMonth: (subscription?.staffRatePerStaffPerMonth && Number(subscription.staffRatePerStaffPerMonth) > 0) ? Number(subscription.staffRatePerStaffPerMonth) : (staffRate > 0 ? staffRate : 10),
+      currentDefaultRate: rate > 0 ? rate : 1,
+      currentDefaultStaffRate: staffRate > 0 ? staffRate : 10,
       activeStudentCount,
       pendingInvitationCount,
       remainingInviteSlots,
@@ -429,8 +440,8 @@ export class AcademySubscriptionUseCases {
       staffRatePerStaffPerMonth: currentStaffRate,
       platformDefaultRate: platformSettings?.defaultRatePerStudentPerDay ?? 1,
       platformDefaultStaffRate: platformSettings?.defaultStaffRatePerStaffPerMonth ?? 10,
-      hasCustomRate: academy?.subscriptionRateOverride !== undefined && academy?.subscriptionRateOverride !== null,
-      hasCustomStaffRate: academy?.staffRateOverride !== undefined && academy?.staffRateOverride !== null,
+      hasCustomRate: academy?.subscriptionRateOverride !== undefined && academy?.subscriptionRateOverride !== null && Number(academy.subscriptionRateOverride) > 0,
+      hasCustomStaffRate: academy?.staffRateOverride !== undefined && academy?.staffRateOverride !== null && Number(academy.staffRateOverride) > 0,
       estimatedRenewalRupees: estimatedRenewalAmount, // kept for backward-compatibility
       estimatedRenewalAmount,
       alerts,

@@ -88,15 +88,15 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   }, [status, initialized, isAlreadyActive, mode]);
 
   const rate =
-    status?.currentDefaultRate ??
-    platformStudentRate ??
-    status?.ratePerStudentPerDay ??
+    (status?.currentDefaultRate && Number(status.currentDefaultRate) > 0 ? Number(status.currentDefaultRate) : undefined) ??
+    (status?.ratePerStudentPerDay && Number(status.ratePerStudentPerDay) > 0 ? Number(status.ratePerStudentPerDay) : undefined) ??
+    (platformStudentRate && Number(platformStudentRate) > 0 ? Number(platformStudentRate) : undefined) ??
     1;
 
   const staffRate =
-    status?.currentDefaultStaffRate ??
-    platformStaffRate ??
-    status?.staffRatePerStaffPerMonth ??
+    (status?.currentDefaultStaffRate && Number(status.currentDefaultStaffRate) > 0 ? Number(status.currentDefaultStaffRate) : undefined) ??
+    (status?.staffRatePerStaffPerMonth && Number(status.staffRatePerStaffPerMonth) > 0 ? Number(status.staffRatePerStaffPerMonth) : undefined) ??
+    (platformStaffRate && Number(platformStaffRate) > 0 ? Number(platformStaffRate) : undefined) ??
     10;
 
   // Remaining days in active cycle
@@ -192,6 +192,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
         prefill: {
           name: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || user?.email,
           email: user?.email || "",
+          contact: user?.phone || "",
         },
         theme: {
           color: "#10b981",
