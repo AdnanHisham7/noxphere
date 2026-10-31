@@ -617,6 +617,24 @@ export class AcademySubscriptionUseCases {
       !existing.isTrial
     );
 
+    const [activeStudentCount, activeStaffCount] = await Promise.all([
+      this.countActiveStudents(academyId),
+      this.countActiveStaff(academyId),
+    ]);
+
+    if (!isTopup) {
+      if (dto.capacity < activeStudentCount) {
+        throw new BadRequestError(
+          `Cannot select ${dto.capacity} student slots because your academy currently has ${activeStudentCount} active enrolled students. Archive or drop out inactive players first before downsizing.`
+        );
+      }
+      if (dto.staffCapacity < activeStaffCount) {
+        throw new BadRequestError(
+          `Cannot select ${dto.staffCapacity} staff seats because your academy currently has ${activeStaffCount} active staff members.`
+        );
+      }
+    }
+
     let totalAmount = 0;
     let orderType = "new_subscription";
     let extraStudents = 0;
@@ -806,16 +824,27 @@ export class AcademySubscriptionUseCases {
       subscription.currentPeriodEnd = new Date(
         new Date(subscription.currentPeriodEnd!).getTime() + days * 24 * 60 * 60 * 1000
       );
+      // Protect existing paid capacity during remaining active term:
+      // An academy that paid for 100 slots until June 2027 should not have their capacity
+      // immediately cut to 50 today if they renewed for the future.
+      subscription.provisionedCapacity = Math.max(
+        subscription.provisionedCapacity || 0,
+        pending?.capacity ?? subscription.provisionedCapacity
+      );
+      subscription.provisionedStaffCapacity = Math.max(
+        subscription.provisionedStaffCapacity || 0,
+        pending?.staffCapacity ?? subscription.provisionedStaffCapacity
+      );
     } else {
       subscription.currentPeriodEnd = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      subscription.provisionedCapacity = pending?.capacity ?? subscription.provisionedCapacity;
+      subscription.provisionedStaffCapacity = pending?.staffCapacity ?? subscription.provisionedStaffCapacity;
     }
 
     subscription.status = "active";
     subscription.isTrial = false;
     subscription.currency = currency;
     subscription.billingInterval = interval;
-    subscription.provisionedCapacity = pending?.capacity ?? subscription.provisionedCapacity;
-    subscription.provisionedStaffCapacity = pending?.staffCapacity ?? subscription.provisionedStaffCapacity;
     subscription.razorpayOrderId = orderId;
     subscription.razorpayPaymentId = paymentId;
     subscription.razorpaySignature = signature;
