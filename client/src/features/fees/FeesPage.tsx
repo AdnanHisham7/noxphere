@@ -1780,11 +1780,6 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                       {formatCurrency(inst.amount, (fee as any).currency)}
                     </span>
                   </span>
-                  {(fee as any).currency && (fee as any).currency !== "INR" && (inst as any).exchangeRateToInr && (
-                    <span className="text-[9px] font-mono text-slate-400 mt-0.5">
-                      ≈ ₹{Number((inst as any).paidAmountInInr || (inst.paidAmount * (inst as any).exchangeRateToInr)).toLocaleString("en-IN", { maximumFractionDigits: 2 })} (@ ₹{Number((inst as any).exchangeRateToInr).toFixed(2)})
-                    </span>
-                  )}
                 </div>
 
                 <Badge
