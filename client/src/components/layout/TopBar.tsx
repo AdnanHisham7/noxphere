@@ -87,9 +87,12 @@ const FranchiseSwitcher: React.FC = () => {
 
   useEffect(() => {
     if (isFranchiseManager || !franchises || franchises.length === 0) return;
+    const userWantsOverview = typeof window !== "undefined" && sessionStorage.getItem("overview_selected") === "true";
     if (!currentFranchiseId) {
-      // Auto-select the first franchise on pages requiring a franchise instead of remaining on Academy Overview
-      dispatch(setActiveFranchise(franchises[0].id));
+      if (!userWantsOverview) {
+        // Auto-select the first franchise on initial load
+        dispatch(setActiveFranchise(franchises[0].id));
+      }
       return;
     }
     const stillValid = franchises.some((f) => f.id === currentFranchiseId);
@@ -140,6 +143,7 @@ const FranchiseSwitcher: React.FC = () => {
           {!isFranchiseManager && (
             <button
               onClick={() => {
+                sessionStorage.setItem("overview_selected", "true");
                 dispatch(clearActiveTeam());
                 dispatch(clearActiveFranchise());
                 if (isSchedulePage) {
@@ -154,7 +158,7 @@ const FranchiseSwitcher: React.FC = () => {
                   : "text-slate-700 dark:text-slate-300",
               )}
             >
-              <span>Academy Overview</span>
+              <span>Academy Overview (All Branches)</span>
               {!currentFranchiseId && !activeTeamId && <Check size={13} />}
             </button>
           )}
@@ -187,6 +191,7 @@ const FranchiseSwitcher: React.FC = () => {
               <button
                 key={f.id}
                 onClick={() => {
+                  sessionStorage.removeItem("overview_selected");
                   dispatch(clearActiveTeam());
                   dispatch(setActiveFranchise(f.id));
                   if (isSchedulePage) {

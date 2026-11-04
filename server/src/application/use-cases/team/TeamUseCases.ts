@@ -22,6 +22,7 @@ export interface UpdateTeamInput {
   name?: string;
   ageGroup?: string;
   teamFormat?: string;
+  franchiseId?: string;
   coachId?: string;
   description?: string;
   logoUrl?: string;
@@ -41,15 +42,17 @@ export interface FormationPresetInput {
 export class TeamUseCases {
   async createTeam(input: CreateTeamInput) {
     let academyId = input.academyId;
-    if (!academyId && input.franchiseId) {
-      const franchise = await FranchiseModel.findById(input.franchiseId).select("academyId").lean();
+    const franchiseId = input.franchiseId;
+    if (!academyId && franchiseId) {
+      const franchise = await FranchiseModel.findById(franchiseId).select("academyId").lean();
       if (franchise) {
         academyId = franchise.academyId.toString();
       }
     }
     const team = await TeamModel.create({
       ...input,
-      academyId,
+      franchiseId: franchiseId ? new mongoose.Types.ObjectId(franchiseId) : undefined,
+      academyId: academyId ? new mongoose.Types.ObjectId(academyId) : undefined,
     });
     return team.toJSON();
   }
@@ -59,26 +62,18 @@ export class TeamUseCases {
       throw new BadRequestError("franchiseId or academyId is required");
     }
     let query: Record<string, unknown> = { deletedAt: { $exists: false } };
-    if (filter.academyId) {
+
+    // If a specific branch is selected, filter strictly by that branch
+    if (filter.franchiseId && filter.franchiseId !== "all") {
+      query.franchiseId = new mongoose.Types.ObjectId(filter.franchiseId);
+    } else if (filter.academyId) {
+      // Academy Overview (all branches): list all teams across all branches in this academy
       const franchises = await FranchiseModel.find({ academyId: filter.academyId }).select("_id").lean();
       const franchiseIds = franchises.map((f) => f._id);
       query.$or = [
-        { academyId: filter.academyId },
+        { academyId: new mongoose.Types.ObjectId(filter.academyId) },
         { franchiseId: { $in: franchiseIds } },
       ];
-    } else if (filter.franchiseId) {
-      const franchise = await FranchiseModel.findById(filter.franchiseId).select("academyId").lean();
-      const academyId = franchise?.academyId;
-      if (academyId) {
-        const franchises = await FranchiseModel.find({ academyId }).select("_id").lean();
-        const franchiseIds = franchises.map((f) => f._id);
-        query.$or = [
-          { academyId: academyId },
-          { franchiseId: { $in: franchiseIds } },
-        ];
-      } else {
-        query.franchiseId = filter.franchiseId;
-      }
     }
 
     const teams = await TeamModel.find(query)
@@ -185,9 +180,21 @@ export class TeamUseCases {
   }
 
   async updateTeam(id: string, input: UpdateTeamInput) {
+    const updateData: Record<string, unknown> = { ...input };
+    if (input.franchiseId !== undefined) {
+      if (input.franchiseId) {
+        updateData.franchiseId = new mongoose.Types.ObjectId(input.franchiseId);
+        const franchise = await FranchiseModel.findById(input.franchiseId).select("academyId").lean();
+        if (franchise) {
+          updateData.academyId = franchise.academyId;
+        }
+      } else {
+        updateData.franchiseId = null;
+      }
+    }
     const team = await TeamModel.findOneAndUpdate(
       { _id: id, deletedAt: { $exists: false } },
-      { $set: input },
+      { $set: updateData },
       { new: true },
     );
     if (!team) throw new NotFoundError("Team not found");

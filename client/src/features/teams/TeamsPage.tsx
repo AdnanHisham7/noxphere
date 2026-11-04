@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { clsx } from "clsx";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { Plus, Users, Trash2, Swords, FileSpreadsheet, CalendarDays } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import { Plus, Users, Trash2, Swords, FileSpreadsheet, CalendarDays, Building2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { RootState } from "../../store";
 import { TeamReportModal } from "./TeamReportModal";
@@ -21,6 +21,7 @@ import {
 } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
+import { setActiveFranchise, clearActiveFranchise } from "../../store/slices/uiSlice";
 import { useCreateSessionMutation } from "../../store/api/scheduleApi";
 import {
   useListTeamsQuery,
@@ -44,20 +45,30 @@ import { useConfirm } from "../../hooks/useConfirm";
 
 const TeamsPage: React.FC = () => {
   const { user } = useSelector((s: RootState) => s.auth);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const franchiseId = useCurrentFranchiseId();
   const academyId = useCurrentAcademyId();
+  const isFranchiseManager = (user?.role === "manager" || user?.role === "operational_manager") && !!user?.franchiseId;
   const canManage =
     user?.role === "manager" ||
     user?.role === "operational_manager" ||
     user?.role === "super_admin";
+
+  const { data: franchises } = useGetFranchisesQuery(
+    academyId ? { academyId, isActive: true } : undefined,
+    { skip: !academyId },
+  );
+  const currentFranchise = franchises?.find((f) => f.id === franchiseId);
 
   const {
     data: teams,
     isLoading,
     isError,
   } = useListTeamsQuery(
-    academyId ? { academyId } : (franchiseId ? { franchiseId } : { academyId: "" }),
+    franchiseId
+      ? { franchiseId, academyId: academyId ?? undefined }
+      : (academyId ? { academyId } : { academyId: "" }),
     { skip: !academyId && !franchiseId },
   );
   const { data: coachesResult } = useGetUsersQuery(
@@ -91,6 +102,7 @@ const TeamsPage: React.FC = () => {
   const [ageGroup, setAgeGroup] = useState("");
   const [teamFormat, setTeamFormat] = useState("11s");
   const [coachId, setCoachId] = useState("");
+  const [createFranchiseId, setCreateFranchiseId] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
   const [bannerUrl, setBannerUrl] = useState<string | undefined>(undefined);
   const [primaryColor, setPrimaryColor] = useState("#1f2937");
@@ -100,11 +112,20 @@ const TeamsPage: React.FC = () => {
   const [reportTeamId, setReportTeamId] = useState<string | null>(null);
   const [scheduleEventTeam, setScheduleEventTeam] = useState<Team | null>(null);
 
+  useEffect(() => {
+    if (franchiseId) {
+      setCreateFranchiseId(franchiseId);
+    } else if (franchises && franchises.length > 0) {
+      setCreateFranchiseId(franchises[0].id);
+    }
+  }, [franchiseId, franchises]);
+
   const resetCreateForm = () => {
     setName("");
     setAgeGroup("");
     setTeamFormat("11s");
     setCoachId("");
+    setCreateFranchiseId(franchiseId || (franchises && franchises[0]?.id) || "");
     setLogoUrl(undefined);
     setBannerUrl(undefined);
     setPrimaryColor("#1f2937");
@@ -119,6 +140,7 @@ const TeamsPage: React.FC = () => {
         name,
         ageGroup,
         teamFormat,
+        franchiseId: createFranchiseId || franchiseId || undefined,
         academyId: academyId ?? undefined,
         coachId: coachId || undefined,
         logoUrl,
@@ -168,14 +190,21 @@ const TeamsPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        eyebrow="Academy Squads"
-        title="Teams"
-        subtitle="Manage academy teams and squads composed of players across branches"
+        eyebrow={currentFranchise ? `${currentFranchise.name} • Branch Teams` : "Academy Squads"}
+        title={currentFranchise ? `${currentFranchise.name} Teams` : "All Academy Teams"}
+        subtitle={
+          currentFranchise
+            ? `Showing teams managed under ${currentFranchise.name}. You can add players from this or any other branch to these squads.`
+            : "Showing all teams across branches. Use the branch switcher above or below to filter by branch."
+        }
         actions={
           canManage && (
             <Button
               icon={<Plus size={16} />}
-              onClick={() => setShowCreate(true)}
+              onClick={() => {
+                setCreateFranchiseId(franchiseId || (franchises && franchises[0]?.id) || "");
+                setShowCreate(true);
+              }}
               className="w-full sm:w-auto justify-center"
             >
               New team
@@ -183,6 +212,50 @@ const TeamsPage: React.FC = () => {
           )
         }
       />
+
+      {/* In-page Branch Switcher Pills */}
+      {franchises && franchises.length > 1 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider shrink-0 flex items-center gap-1.5 mr-1">
+            <Building2 size={13} className="text-volt-600 dark:text-volt-400" /> Branch:
+          </span>
+          {!isFranchiseManager && (
+            <button
+              type="button"
+              onClick={() => {
+                sessionStorage.setItem("overview_selected", "true");
+                dispatch(clearActiveFranchise());
+              }}
+              className={clsx(
+                "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shrink-0 flex items-center gap-1.5",
+                !franchiseId
+                  ? "bg-volt-400 text-pitch-950 font-bold shadow-xs"
+                  : "bg-slate-100 hover:bg-slate-200 dark:bg-pitch-800 dark:hover:bg-pitch-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10",
+              )}
+            >
+              All Branches
+            </button>
+          )}
+          {franchises.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => {
+                sessionStorage.removeItem("overview_selected");
+                dispatch(setActiveFranchise(f.id));
+              }}
+              className={clsx(
+                "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shrink-0 flex items-center gap-1.5",
+                franchiseId === f.id
+                  ? "bg-volt-400 text-pitch-950 font-bold shadow-xs"
+                  : "bg-slate-100 hover:bg-slate-200 dark:bg-pitch-800 dark:hover:bg-pitch-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10",
+              )}
+            >
+              <span>{f.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {isLoading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -203,10 +276,23 @@ const TeamsPage: React.FC = () => {
       {teams && teams.length === 0 && (
         <EmptyState
           icon={<Users size={28} />}
-          title="No teams yet"
-          description="Create your first team to start assigning students and coaches."
+          title={currentFranchise ? `No teams in ${currentFranchise.name} yet` : "No teams yet"}
+          description={
+            currentFranchise
+              ? `Create a team under ${currentFranchise.name} to start building squads and assigning coaches and players.`
+              : "Create your first team to start assigning students and coaches."
+          }
           action={
-            <Button onClick={() => setShowCreate(true)}>Create a team</Button>
+            canManage ? (
+              <Button
+                onClick={() => {
+                  setCreateFranchiseId(franchiseId || (franchises && franchises[0]?.id) || "");
+                  setShowCreate(true);
+                }}
+              >
+                Create a team
+              </Button>
+            ) : undefined
           }
         />
       )}
@@ -253,9 +339,16 @@ const TeamsPage: React.FC = () => {
                         <h3 className="font-display font-bold text-slate-900 dark:text-white uppercase tracking-wide leading-tight">
                           {team.name}
                         </h3>
-                        <Badge variant="green" size="sm">
-                          ACADEMY
-                        </Badge>
+                        {team.franchise?.name ? (
+                          <Badge variant="yellow" size="sm" className="truncate max-w-[140px]" title={`Branch: ${team.franchise.name}`}>
+                            <Building2 size={10} className="mr-1 inline shrink-0" />
+                            {team.franchise.name}
+                          </Badge>
+                        ) : (
+                          <Badge variant="green" size="sm">
+                            ACADEMY-WIDE
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                         <Badge variant="blue">{team.ageGroup}</Badge>
@@ -359,6 +452,20 @@ const TeamsPage: React.FC = () => {
             placeholder="e.g. U-15 Eagles"
             required
           />
+          <Select
+            label="Branch"
+            value={createFranchiseId}
+            onChange={(e) => setCreateFranchiseId(e.target.value)}
+            required
+            helperText="Teams are organized under branches. You can still add players from any branch in the academy to this team's squad."
+          >
+            <option value="" disabled>Select a branch</option>
+            {(franchises ?? []).map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </Select>
           <Select
             label="Age group"
             value={ageGroup}
@@ -503,7 +610,7 @@ const TeamsPage: React.FC = () => {
   );
 };
 
-const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
+export const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
   teamId,
   onClose,
 }) => {
@@ -585,7 +692,11 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
     <Modal
       isOpen
       onClose={onClose}
-      title={team ? `Manage Squad — ${team.name}` : "Team roster"}
+      title={
+        team
+          ? `Manage Squad — ${team.name}${team.franchise?.name ? ` (${team.franchise.name})` : ""}`
+          : "Team roster"
+      }
       size="xl"
     >
       {teamLoading && <Skeleton className="h-60" />}
@@ -663,9 +774,14 @@ const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> = ({
           <div className="md:col-span-3 flex flex-col h-full md:pl-2">
             <div className="mb-3 space-y-2">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-volt-600 dark:text-volt-400 uppercase tracking-wide">
-                  Assign Players from Branches
-                </h4>
+                <div>
+                  <h4 className="text-xs font-bold text-volt-600 dark:text-volt-400 uppercase tracking-wide">
+                    Assign Players from Branches
+                  </h4>
+                  <p className="text-2xs text-slate-500 mt-0.5">
+                    Filter by any branch to recruit players across the academy
+                  </p>
+                </div>
                 <span className="text-2xs text-slate-500 font-mono">
                   {filteredAvailable.length} available
                 </span>
@@ -783,7 +899,13 @@ const TeamBrandingModal: React.FC<{
   onClose: () => void;
 }> = ({ team, categories, onClose }) => {
   const [updateTeam, { isLoading: saving }] = useUpdateTeamMutation();
+  const academyId = useCurrentAcademyId();
+  const { data: franchises } = useGetFranchisesQuery(
+    academyId ? { academyId, isActive: true } : undefined,
+    { skip: !academyId },
+  );
   const [name, setName] = useState(team?.name ?? "");
+  const [franchiseId, setFranchiseId] = useState(team?.franchiseId ?? "");
   const [ageGroup, setAgeGroup] = useState(team?.ageGroup ?? "");
   const [logoUrl, setLogoUrl] = useState(team?.logoUrl);
   const [bannerUrl, setBannerUrl] = useState(team?.bannerUrl);
@@ -811,6 +933,7 @@ const TeamBrandingModal: React.FC<{
         body: {
           name: name.trim(),
           ageGroup,
+          franchiseId: franchiseId || undefined,
           logoUrl,
           bannerUrl,
           primaryColor,
@@ -833,6 +956,19 @@ const TeamBrandingModal: React.FC<{
           onChange={(e) => setName(e.target.value)}
           required
         />
+        <Select
+          label="Branch"
+          value={franchiseId}
+          onChange={(e) => setFranchiseId(e.target.value)}
+          helperText="Select which branch this team belongs to."
+        >
+          <option value="">Academy-wide (No Branch)</option>
+          {(franchises ?? []).map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name}
+            </option>
+          ))}
+        </Select>
         <Select
           label="Age group"
           value={ageGroup}
