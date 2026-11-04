@@ -83,6 +83,10 @@ export class TeamUseCases {
       .sort({ name: 1 })
       .lean();
 
+    if (teams.length === 0) {
+      return [];
+    }
+
     const teamObjectIds = teams.map((t) => t._id);
     const counts = await StudentModel.aggregate([
       {

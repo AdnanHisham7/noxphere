@@ -71,5 +71,7 @@ const TeamSchema = new Schema<TeamDocument>(
 );
 
 TeamSchema.index({ franchiseId: 1, name: 1 });
+TeamSchema.index({ franchiseId: 1, deletedAt: 1 });
+TeamSchema.index({ academyId: 1, deletedAt: 1 });
 
 export const TeamModel = mongoose.model<TeamDocument>("Team", TeamSchema);
