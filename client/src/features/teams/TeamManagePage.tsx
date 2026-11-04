@@ -5,6 +5,7 @@ import { useGetTeamByIdQuery } from "../../store/api/teamsApi";
 import { EmptyState, Skeleton, Button } from "../../components/ui";
 import { ManageTeamView } from "./tactics/ManageTeamView";
 import { TeamReportModal } from "./TeamReportModal";
+import { TeamRosterModal } from "./TeamsPage";
 import type { Player, Position } from "./tactics/types";
 
 const MIN_PLAYERS_FOR_CONSOLE = 0;
@@ -44,6 +45,7 @@ const TeamManagePage: React.FC = () => {
   // ── All hooks MUST be declared unconditionally before any early returns ──
   // React error #310 was caused by useState being called AFTER conditional returns.
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isRosterOpen, setIsRosterOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -92,6 +94,7 @@ const TeamManagePage: React.FC = () => {
       <ManageTeamView
         teamId={id!}
         teamName={team.name}
+        branchName={team.franchise?.name}
         players={players}
         coach={team.coachId ?? null}
         primaryColor={team.primaryColor ?? "#1f2937"}
@@ -99,6 +102,7 @@ const TeamManagePage: React.FC = () => {
         onBack={() => navigate("/teams")}
         onEditColors={() => navigate("/teams")}
         onGenerateReport={() => setIsReportOpen(true)}
+        onManageRoster={() => setIsRosterOpen(true)}
         initialFormationPresets={(team.formationPresets ?? []) as any}
         initialTeamFormat={(team.teamFormat as any) || "11s"}
       />
@@ -108,6 +112,13 @@ const TeamManagePage: React.FC = () => {
           teamId={id}
           isOpen={isReportOpen}
           onClose={() => setIsReportOpen(false)}
+        />
+      )}
+
+      {isRosterOpen && id && (
+        <TeamRosterModal
+          teamId={id}
+          onClose={() => setIsRosterOpen(false)}
         />
       )}
     </div>

@@ -1,7 +1,7 @@
 // src/features/teams/tactics/ManageTeamView.tsx
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { ArrowLeft, ArrowLeftRight, Sparkles, X, Palette, ChevronDown, ChevronUp, FileSpreadsheet, Trash2, UserMinus } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, Sparkles, X, Palette, ChevronDown, ChevronUp, FileSpreadsheet, Trash2, UserMinus, Users, Building2 } from "lucide-react";
 import {
   Player,
   FormationType,
@@ -25,6 +25,7 @@ import {
 interface ManageTeamViewProps {
   teamId: string;
   teamName: string;
+  branchName?: string;
   players: Player[];
   coach?: { firstName: string; lastName: string } | null;
   primaryColor: string;
@@ -32,6 +33,7 @@ interface ManageTeamViewProps {
   onBack: () => void;
   onEditColors: () => void;
   onGenerateReport?: () => void;
+  onManageRoster?: () => void;
   initialFormationPresets?: SavedFormation[];
   initialTeamFormat?: TeamFormat;
 }
@@ -39,6 +41,7 @@ interface ManageTeamViewProps {
 export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
   teamId,
   teamName,
+  branchName,
   players,
   coach,
   primaryColor,
@@ -46,6 +49,7 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
   onBack,
   onEditColors,
   onGenerateReport,
+  onManageRoster,
   initialFormationPresets = [],
   initialTeamFormat = "11s",
 }) => {
@@ -229,17 +233,33 @@ export const ManageTeamView: React.FC<ManageTeamViewProps> = ({
             <ArrowLeft size={13} /> Back
           </button>
           <h2
-            className="text-base sm:text-lg font-display font-black uppercase text-slate-900 dark:text-white tracking-wide truncate min-w-0 flex-1"
+            className="text-base sm:text-lg font-display font-black uppercase text-slate-900 dark:text-white tracking-wide truncate min-w-0 flex items-center gap-2 flex-wrap"
             title={`${teamName} Management Console`}
           >
-            <span className="truncate">{teamName}</span>{" "}
-            <span className="text-slate-400 dark:text-slate-500 font-mono text-xs font-normal hidden sm:inline ml-1.5">
+            <span className="truncate">{teamName}</span>
+            {branchName && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0 inline-flex items-center gap-1">
+                <Building2 size={10} />
+                {branchName}
+              </span>
+            )}
+            <span className="text-slate-400 dark:text-slate-500 font-mono text-xs font-normal hidden sm:inline ml-1">
               Management Console
             </span>
           </h2>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {onManageRoster && (
+            <button
+              onClick={onManageRoster}
+              className="bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-pitch-950 dark:hover:text-volt-400 hover:bg-slate-100 dark:hover:bg-pitch-800 uppercase px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition-colors"
+              title="Manage Squad Roster & Recruit Players Across Branches"
+            >
+              <Users size={13} className="text-volt-600 dark:text-volt-400" />
+              <span>Squad Roster</span>
+            </button>
+          )}
           {/* Sidebar toggle — mobile only */}
           <button
             onClick={() => setIsSidebarOpen((v) => !v)}

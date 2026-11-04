@@ -6,10 +6,11 @@ interface BadgeProps {
   variant?: BadgeVariant;
   size?: BadgeSize;
   className?: string;
+  title?: string;
   children: React.ReactNode;
 }
 
-export const Badge: React.FC<BadgeProps> = ({ variant = "gray", size = "md", className, children }) => {
+export const Badge: React.FC<BadgeProps> = ({ variant = "gray", size = "md", className, title, children }) => {
   const variants: Record<BadgeVariant, string> = {
     green: "pill-green",
     red: "pill-red",
@@ -18,5 +19,5 @@ export const Badge: React.FC<BadgeProps> = ({ variant = "gray", size = "md", cla
     gray: "pill-gray",
   };
   const sizeClass = size === "sm" ? "text-[10px] px-2 py-0.5" : "";
-  return <span className={`${variants[variant]} ${sizeClass}${className ? ` ${className}` : ""}`}>{children}</span>;
+  return <span title={title} className={`${variants[variant]} ${sizeClass}${className ? ` ${className}` : ""}`}>{children}</span>;
 };
