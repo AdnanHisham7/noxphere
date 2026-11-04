@@ -14,6 +14,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { getCurrencySymbol, formatCurrency } from "../../utils/currency";
+import { generateVectorReceiptPdf } from "../fees/components/EditableReceiptModal";
 
 export interface FeeReceiptModalProps {
   academyName?: string;
@@ -74,6 +75,24 @@ export const FeeReceiptModal: React.FC<FeeReceiptModalProps> = ({
     window.print();
   };
 
+  const handleDownloadPdf = () => {
+    generateVectorReceiptPdf({
+      academyName,
+      tagline: "ATHLETIC TRAINING ACADEMY · OFFICIAL FEE RECEIPT",
+      studentName,
+      receiptNumber: finalReceiptNumber,
+      date: formattedDate,
+      time: formattedTime,
+      paymentMethod,
+      transactionId,
+      itemDescription: `${feeType.replace("_", " ")} - Installment #${installmentNumber}`,
+      installmentNumber,
+      totalAmount,
+      amountPaid,
+      currency,
+    });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in print:p-0 print:bg-white print:static">
       <div className="card w-full max-w-xl max-h-[92vh] overflow-y-auto border-slate-200 dark:border-white/10 bg-white dark:bg-pitch-800 shadow-2xl p-0 rounded-2xl flex flex-col print:shadow-none print:border-none print:max-h-none print:w-full">
@@ -103,18 +122,15 @@ export const FeeReceiptModal: React.FC<FeeReceiptModalProps> = ({
               <Printer size={13} />
               <span className="hidden sm:inline">Print</span>
             </button>
-            {receiptUrl && (
-              <a
-                href={receiptUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-pitch-950 bg-volt-400 hover:bg-volt-300 transition-colors shadow-sm"
-                title="Download Official PDF"
-              >
-                <Download size={13} />
-                <span className="hidden sm:inline">PDF</span>
-              </a>
-            )}
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-pitch-950 bg-volt-400 hover:bg-volt-300 transition-colors shadow-sm"
+              title="Download Official PDF"
+            >
+              <Download size={13} />
+              <span>PDF</span>
+            </button>
             <button
               type="button"
               onClick={onClose}
@@ -290,15 +306,23 @@ export const FeeReceiptModal: React.FC<FeeReceiptModalProps> = ({
             <button
               type="button"
               onClick={handlePrint}
-              className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5"
+              className="btn-secondary text-xs py-2 px-3 sm:px-4 flex items-center gap-1.5"
             >
               <Printer size={13} />
-              <span>Print Receipt</span>
+              <span>Print</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs font-semibold text-pitch-950 bg-volt-400 hover:bg-volt-300 transition-colors shadow-sm"
+            >
+              <Download size={13} />
+              <span>Download PDF</span>
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="btn-primary text-xs py-2 px-5"
+              className="btn-secondary text-xs py-2 px-4"
             >
               Close
             </button>
