@@ -101,12 +101,15 @@ const FranchiseSwitcher: React.FC = () => {
     }
   }, [franchises, currentFranchiseId, isFranchiseManager, dispatch]);
 
+  const matchedFranchise = franchises?.find((f) => f.id === currentFranchiseId);
+  const activeBranchName = matchedFranchise?.name || currentFranchise?.name;
+
   if (isFranchiseManager && !isSchedulePage) {
     return (
       <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 rounded px-2 sm:px-3 py-1.5 max-w-[110px] sm:max-w-xs">
         <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />
         <span className="text-xs font-medium truncate">
-          {currentFranchise?.name ?? "Loading…"}
+          {activeBranchName ?? "Loading…"}
         </span>
       </div>
     );
@@ -120,7 +123,7 @@ const FranchiseSwitcher: React.FC = () => {
     buttonLabel = currentTeam ? `${currentTeam.name} (${currentTeam.ageGroup})` : "Team Schedule";
   } else if (currentFranchiseId) {
     buttonIcon = <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />;
-    buttonLabel = currentFranchise?.name ?? "Loading…";
+    buttonLabel = activeBranchName ?? "Loading…";
   }
 
   return (

@@ -30,6 +30,7 @@ import {
   ShieldCheck,
   CheckCircle,
   User,
+  FileText,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
@@ -68,8 +69,10 @@ import {
 import { useGetStudentsQuery } from "../../store/api/studentsApi";
 import { useCurrency } from "../../hooks/useCurrency";
 import { formatCurrency, getCurrencySymbol } from "../../utils/currency";
+import { useGetFranchiseByIdQuery } from "../../store/api/franchiseApi";
 import { FeeReportsView } from "./components/FeeReportsView";
 import { EditFeeScheduleModal } from "./components/EditFeeScheduleModal";
+import { EditableReceiptModal } from "./components/EditableReceiptModal";
 
 const STATUS_VARIANT: Record<string, "green" | "red" | "yellow" | "gray"> = {
   paid: "green",
@@ -394,6 +397,13 @@ const FeeQrCodeCard: React.FC<{ isOpen: boolean; onToggle: () => void }> = ({
 
 const FeesPage: React.FC = () => {
   const franchiseId = useCurrentFranchiseId();
+  const academyId = useCurrentAcademyId();
+  const { data: academyData } = academyApi.useGetAcademyByIdQuery(academyId ?? "", {
+    skip: !academyId,
+  });
+  const { data: currentFranchise } = useGetFranchiseByIdQuery(franchiseId ?? "", {
+    skip: !franchiseId,
+  });
   const { currency, currencySymbol, format } = useCurrency();
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -423,6 +433,11 @@ const FeesPage: React.FC = () => {
   const [verifyTarget, setVerifyTarget] = useState<{
     fee: AdminFeeRecord;
     installment: FeeInstallment;
+  } | null>(null);
+  const [receiptTarget, setReceiptTarget] = useState<{
+    fee: AdminFeeRecord;
+    installment: FeeInstallment;
+    studentName: string;
   } | null>(null);
 
   // Accordion expansion tracking
@@ -1312,21 +1327,32 @@ const FeesPage: React.FC = () => {
                   {/* Expanded Fee Details for this Student */}
                   {isExpanded && (
                     <div className="border-t border-slate-200/80 dark:border-white/5 bg-slate-50/70 dark:bg-pitch-900/60 p-3.5 sm:p-4 space-y-4">
-                      {group.fees.map((fee) => (
-                        <FeePlanDetailBlock
-                          key={fee._id}
-                          fee={fee}
-                          remindingKey={remindingKey}
-                          onSendReminder={handleSendReminder}
-                          onUndoPayment={handleUndoPayment}
-                          onRecordPayment={(target) => setPayTarget(target)}
-                          onEditPayment={(target) => setEditTarget(target)}
-                          onVerifyPayment={(target) => setVerifyTarget(target)}
-                          onEditSchedule={(f) => setEditScheduleTarget(f)}
-                          isAuditExpanded={expandedAudits.has(fee._id)}
-                          onToggleAudit={() => toggleAuditExpanded(fee._id)}
-                        />
-                      ))}
+                      {group.fees.map((fee) => {
+                        const sName = `${group.student.firstName} ${group.student.lastName}`;
+                        return (
+                          <FeePlanDetailBlock
+                            key={fee._id}
+                            fee={fee}
+                            studentName={sName}
+                            remindingKey={remindingKey}
+                            onSendReminder={handleSendReminder}
+                            onUndoPayment={handleUndoPayment}
+                            onRecordPayment={(target) => setPayTarget(target)}
+                            onEditPayment={(target) => setEditTarget(target)}
+                            onVerifyPayment={(target) => setVerifyTarget(target)}
+                            onOpenReceipt={(target) =>
+                              setReceiptTarget({
+                                fee: target.fee,
+                                installment: target.installment,
+                                studentName: target.studentName || sName,
+                              })
+                            }
+                            onEditSchedule={(f) => setEditScheduleTarget(f)}
+                            isAuditExpanded={expandedAudits.has(fee._id)}
+                            onToggleAudit={() => toggleAuditExpanded(fee._id)}
+                          />
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1456,6 +1482,11 @@ const FeesPage: React.FC = () => {
                             >
                               <FeePlanDetailBlock
                                 fee={fee}
+                                studentName={
+                                  fee.studentId?.firstName
+                                    ? `${fee.studentId.firstName} ${fee.studentId.lastName}`
+                                    : "Athlete"
+                                }
                                 remindingKey={remindingKey}
                                 onSendReminder={handleSendReminder}
                                 onUndoPayment={handleUndoPayment}
@@ -1467,6 +1498,17 @@ const FeesPage: React.FC = () => {
                                 }
                                 onVerifyPayment={(target) =>
                                   setVerifyTarget(target)
+                                }
+                                onOpenReceipt={(target) =>
+                                  setReceiptTarget({
+                                    fee: target.fee,
+                                    installment: target.installment,
+                                    studentName:
+                                      target.studentName ||
+                                      (fee.studentId?.firstName
+                                        ? `${fee.studentId.firstName} ${fee.studentId.lastName}`
+                                        : "Athlete"),
+                                  })
                                 }
                                 onEditSchedule={(f) => setEditScheduleTarget(f)}
                                 isAuditExpanded={expandedAudits.has(fee._id)}
@@ -1571,6 +1613,28 @@ const FeesPage: React.FC = () => {
           isLoading={updatingFee || deletingFee}
         />
       )}
+      {receiptTarget && (
+        <EditableReceiptModal
+          academyName={academyData?.name || "Noxphere Athletic Academy"}
+          branchName={currentFranchise?.name}
+          studentName={receiptTarget.studentName}
+          feeType={receiptTarget.fee.feeType}
+          installmentNumber={receiptTarget.installment.installmentNumber}
+          amountPaid={receiptTarget.installment.paidAmount || 0}
+          totalAmount={receiptTarget.installment.amount}
+          currency={(receiptTarget.fee as any).currency || currency}
+          paymentMethod={receiptTarget.installment.paymentMethod || "Cash"}
+          transactionId={receiptTarget.installment.transactionId || ""}
+          paymentBreakdown={receiptTarget.installment.paymentBreakdown}
+          paidAt={receiptTarget.installment.paidAt}
+          receiptNumber={
+            receiptTarget.installment.receiptUrl
+              ? undefined
+              : `${String(receiptTarget.fee._id).slice(-8).toUpperCase()}-${receiptTarget.installment.installmentNumber}`
+          }
+          onClose={() => setReceiptTarget(null)}
+        />
+      )}
       {ConfirmDialog}
     </div>
   );
@@ -1580,6 +1644,7 @@ const FeesPage: React.FC = () => {
 
 interface FeePlanDetailBlockProps {
   fee: AdminFeeRecord;
+  studentName?: string;
   remindingKey: string | null;
   onSendReminder: (feeId: string, installmentNumber: number) => void;
   onUndoPayment: (feeId: string, installmentNumber: number) => void;
@@ -1602,6 +1667,11 @@ interface FeePlanDetailBlockProps {
     fee: AdminFeeRecord;
     installment: FeeInstallment;
   }) => void;
+  onOpenReceipt?: (target: {
+    fee: AdminFeeRecord;
+    installment: FeeInstallment;
+    studentName?: string;
+  }) => void;
   onEditSchedule?: (fee: AdminFeeRecord) => void;
   isAuditExpanded: boolean;
   onToggleAudit: () => void;
@@ -1609,12 +1679,14 @@ interface FeePlanDetailBlockProps {
 
 const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
   fee,
+  studentName,
   remindingKey,
   onSendReminder,
   onUndoPayment,
   onRecordPayment,
   onEditPayment,
   onVerifyPayment,
+  onOpenReceipt,
   onEditSchedule,
   isAuditExpanded,
   onToggleAudit,
@@ -1780,11 +1852,6 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                       {formatCurrency(inst.amount, (fee as any).currency)}
                     </span>
                   </span>
-                  {(fee as any).currency && (fee as any).currency !== "INR" && (inst as any).exchangeRateToInr && (
-                    <span className="text-[9px] font-mono text-slate-400 mt-0.5">
-                      ≈ ₹{Number((inst as any).paidAmountInInr || (inst.paidAmount * (inst as any).exchangeRateToInr)).toLocaleString("en-IN", { maximumFractionDigits: 2 })} (@ ₹{Number((inst as any).exchangeRateToInr).toFixed(2)})
-                    </span>
-                  )}
                 </div>
 
                 <Badge
@@ -1805,6 +1872,21 @@ const FeePlanDetailBlock: React.FC<FeePlanDetailBlockProps> = ({
                 <div className="flex items-center gap-1.5">
                   {inst.paidAmount > 0 && (
                     <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onOpenReceipt?.({
+                            fee,
+                            installment: inst,
+                            studentName,
+                          })
+                        }
+                        className="flex items-center gap-1 text-[10px] text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-semibold border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-white/5 rounded px-2 py-1 transition-colors"
+                        title="View, customize, or download official receipt"
+                      >
+                        <FileText size={11} />
+                        <span>Receipt</span>
+                      </button>
                       {inst.status !== "paid" && (
                         <button
                           type="button"

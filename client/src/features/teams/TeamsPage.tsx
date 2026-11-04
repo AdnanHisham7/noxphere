@@ -62,13 +62,21 @@ const TeamsPage: React.FC = () => {
   const {
     data: teams,
     isLoading,
+    isFetching,
     isError,
   } = useListTeamsQuery(
     franchiseId
-      ? { franchiseId, academyId: academyId ?? undefined }
+      ? { franchiseId }
       : (academyId ? { academyId } : { academyId: "" }),
     { skip: !academyId && !franchiseId },
   );
+
+  // If switching branches, ensure that any cached teams from a different branch
+  // or ongoing re-fetch show a clean loading skeleton instead of lingering old teams.
+  const isBranchMismatch = Boolean(
+    franchiseId && teams?.some((t) => t.franchiseId && t.franchiseId !== franchiseId),
+  );
+  const showLoading = isLoading || isFetching || isBranchMismatch;
   const { data: coachesResult } = useGetUsersQuery(
     {
       roles: "coach",
@@ -211,7 +219,7 @@ const TeamsPage: React.FC = () => {
         }
       />
 
-      {isLoading && (
+      {showLoading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-32 rounded-xl" />
@@ -219,7 +227,7 @@ const TeamsPage: React.FC = () => {
         </div>
       )}
 
-      {isError && (
+      {!showLoading && isError && (
         <EmptyState
           icon={<Users size={28} />}
           title="Couldn't load teams"
@@ -227,7 +235,7 @@ const TeamsPage: React.FC = () => {
         />
       )}
 
-      {teams && teams.length === 0 && (
+      {!showLoading && teams && teams.length === 0 && (
         <EmptyState
           icon={<Users size={28} />}
           title={currentFranchise ? `No teams in ${currentFranchise.name} yet` : "No teams yet"}
@@ -251,7 +259,7 @@ const TeamsPage: React.FC = () => {
         />
       )}
 
-      {teams && teams.length > 0 && (
+      {!showLoading && teams && teams.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {teams.map((team) => (
             <Card key={team.id} className="p-0 flex flex-col overflow-hidden">
