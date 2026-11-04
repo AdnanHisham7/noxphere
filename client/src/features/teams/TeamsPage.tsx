@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { clsx } from "clsx";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -77,7 +77,14 @@ const TeamsPage: React.FC = () => {
   // Once the fetch completes, if the branch has 0 teams, currentData is []
   // and showLoading immediately becomes false, displaying the EmptyState.
   const showLoading = isLoading || (isFetching && currentData === undefined);
-  const teams = currentData ?? [];
+  const rawTeams = currentData ?? [];
+  const teams = useMemo(() => {
+    if (!franchiseId) return rawTeams;
+    return rawTeams.filter((t) => {
+      const tFranchiseId = t.franchiseId || (t.franchise as any)?.id;
+      return tFranchiseId === franchiseId;
+    });
+  }, [rawTeams, franchiseId]);
   const { data: coachesResult } = useGetUsersQuery(
     {
       roles: "coach",
@@ -209,7 +216,7 @@ const TeamsPage: React.FC = () => {
             <Button
               icon={<Plus size={16} />}
               onClick={() => {
-                setCreateFranchiseId(franchiseId || (franchises && franchises[0]?.id) || "");
+                resetCreateForm();
                 setShowCreate(true);
               }}
               className="w-full sm:w-auto justify-center"
@@ -249,7 +256,7 @@ const TeamsPage: React.FC = () => {
             canManage ? (
               <Button
                 onClick={() => {
-                  setCreateFranchiseId(franchiseId || (franchises && franchises[0]?.id) || "");
+                  resetCreateForm();
                   setShowCreate(true);
                 }}
               >
