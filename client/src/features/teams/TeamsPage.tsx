@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { clsx } from "clsx";
 import { useNavigate } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 import { Plus, Users, Trash2, Swords, FileSpreadsheet, CalendarDays, Building2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { RootState } from "../../store";
@@ -21,7 +21,6 @@ import {
 } from "../../components/ui";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
-import { setActiveFranchise, clearActiveFranchise } from "../../store/slices/uiSlice";
 import { useCreateSessionMutation } from "../../store/api/scheduleApi";
 import {
   useListTeamsQuery,
@@ -45,7 +44,6 @@ import { useConfirm } from "../../hooks/useConfirm";
 
 const TeamsPage: React.FC = () => {
   const { user } = useSelector((s: RootState) => s.auth);
-  const dispatch = useDispatch();
   const navigate = useNavigate();
   const franchiseId = useCurrentFranchiseId();
   const academyId = useCurrentAcademyId();
@@ -195,7 +193,7 @@ const TeamsPage: React.FC = () => {
         subtitle={
           currentFranchise
             ? `Showing teams managed under ${currentFranchise.name}. You can add players from this or any other branch to these squads.`
-            : "Showing all teams across branches. Use the branch switcher above or below to filter by branch."
+            : "Showing all teams across branches. Use the branch switcher in the topbar to filter by branch."
         }
         actions={
           canManage && (
@@ -212,50 +210,6 @@ const TeamsPage: React.FC = () => {
           )
         }
       />
-
-      {/* In-page Branch Switcher Pills */}
-      {franchises && franchises.length > 1 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider shrink-0 flex items-center gap-1.5 mr-1">
-            <Building2 size={13} className="text-volt-600 dark:text-volt-400" /> Branch:
-          </span>
-          {!isFranchiseManager && (
-            <button
-              type="button"
-              onClick={() => {
-                sessionStorage.setItem("overview_selected", "true");
-                dispatch(clearActiveFranchise());
-              }}
-              className={clsx(
-                "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shrink-0 flex items-center gap-1.5",
-                !franchiseId
-                  ? "bg-volt-400 text-pitch-950 font-bold shadow-xs"
-                  : "bg-slate-100 hover:bg-slate-200 dark:bg-pitch-800 dark:hover:bg-pitch-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10",
-              )}
-            >
-              All Branches
-            </button>
-          )}
-          {franchises.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => {
-                sessionStorage.removeItem("overview_selected");
-                dispatch(setActiveFranchise(f.id));
-              }}
-              className={clsx(
-                "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shrink-0 flex items-center gap-1.5",
-                franchiseId === f.id
-                  ? "bg-volt-400 text-pitch-950 font-bold shadow-xs"
-                  : "bg-slate-100 hover:bg-slate-200 dark:bg-pitch-800 dark:hover:bg-pitch-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10",
-              )}
-            >
-              <span>{f.name}</span>
-            </button>
-          ))}
-        </div>
-      )}
 
       {isLoading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
