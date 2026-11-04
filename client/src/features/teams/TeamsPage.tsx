@@ -60,7 +60,7 @@ const TeamsPage: React.FC = () => {
   const currentFranchise = franchises?.find((f) => f.id === franchiseId);
 
   const {
-    data: teams,
+    currentData,
     isLoading,
     isFetching,
     isError,
@@ -71,12 +71,13 @@ const TeamsPage: React.FC = () => {
     { skip: !academyId && !franchiseId },
   );
 
-  // If switching branches, ensure that any cached teams from a different branch
-  // or ongoing re-fetch show a clean loading skeleton instead of lingering old teams.
-  const isBranchMismatch = Boolean(
-    franchiseId && teams?.some((t) => t.franchiseId && t.franchiseId !== franchiseId),
-  );
-  const showLoading = isLoading || isFetching || isBranchMismatch;
+  // currentData gives the exact teams for the currently selected branch.
+  // When switching branches, currentData is undefined while fetching, so
+  // showLoading displays clean skeletons without lingering old teams.
+  // Once the fetch completes, if the branch has 0 teams, currentData is []
+  // and showLoading immediately becomes false, displaying the EmptyState.
+  const showLoading = isLoading || (isFetching && currentData === undefined);
+  const teams = currentData ?? [];
   const { data: coachesResult } = useGetUsersQuery(
     {
       roles: "coach",
@@ -235,7 +236,7 @@ const TeamsPage: React.FC = () => {
         />
       )}
 
-      {!showLoading && teams && teams.length === 0 && (
+      {!showLoading && !isError && teams.length === 0 && (
         <EmptyState
           icon={<Users size={28} />}
           title={currentFranchise ? `No teams in ${currentFranchise.name} yet` : "No teams yet"}
@@ -259,7 +260,7 @@ const TeamsPage: React.FC = () => {
         />
       )}
 
-      {!showLoading && teams && teams.length > 0 && (
+      {!showLoading && !isError && teams.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {teams.map((team) => (
             <Card key={team.id} className="p-0 flex flex-col overflow-hidden">
