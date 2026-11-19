@@ -25,6 +25,7 @@ import {
 import toast from "react-hot-toast";
 import { Select } from "@/components/ui";
 import { calculateAgeCategory, ALL_AGE_GROUPS } from "@/utils/ageCategory";
+import { usePhonePlaceholder } from "@/hooks/usePhonePlaceholder";
 
 const AGE_GROUPS = ALL_AGE_GROUPS;
 const POSITIONS = ["Forward", "Winger", "Midfielder", "Defensive Midfielder", "Defender", "Full Back", "Goalkeeper"];
@@ -32,6 +33,7 @@ const POSITIONS = ["Forward", "Winger", "Midfielder", "Defensive Midfielder", "D
 export const StudentSignupPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { placeholder: phonePlaceholder } = usePhonePlaceholder();
   const [registerPublicStudent, { isLoading }] = useRegisterPublicStudentMutation();
   const [checkAvailability, { isFetching: checkingAvailability }] = useLazyCheckAvailabilityQuery();
 
@@ -411,7 +413,7 @@ export const StudentSignupPage: React.FC = () => {
                           name="phone"
                           value={formData.phone}
                           onChange={handleChange}
-                          placeholder="+91 9876543210"
+                          placeholder={phonePlaceholder}
                           className="input pl-9"
                         />
                         <Phone size={15} className="absolute left-3 top-3 text-slate-400" />

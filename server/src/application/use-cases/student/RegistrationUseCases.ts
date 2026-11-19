@@ -87,7 +87,7 @@ export class RegistrationUseCases {
       throw new NotFoundError("Academy not found");
     }
     const academy = await AcademyModel.findById(academyId)
-      .select("name location ageGroups")
+      .select("name location ageGroups currency country")
       .lean();
     if (!academy) throw new NotFoundError("Academy");
 
@@ -101,6 +101,8 @@ export class RegistrationUseCases {
         name: academy.name,
         location: academy.location,
         ageGroups: academy.ageGroups ?? [],
+        currency: (academy as any).currency,
+        country: (academy as any).country,
       },
       franchises: franchises.map((f: any) => ({
         id: f._id.toString(),

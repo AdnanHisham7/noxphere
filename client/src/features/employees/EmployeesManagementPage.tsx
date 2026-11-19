@@ -577,7 +577,6 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="+91 98765 43210"
             />
 
             <Input
@@ -766,7 +765,6 @@ const AddOperationalManagerModal: React.FC<AddOperationalManagerModalProps> = ({
             required
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="+91 98765 43210"
           />
         </div>
 
@@ -952,7 +950,6 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="+91 98765 43210"
             />
 
             <Input

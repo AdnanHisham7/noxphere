@@ -1628,7 +1628,6 @@ const AddPlayerModal: React.FC<{
                     onChange={(e) =>
                       setGuardian({ ...guardian, phone: e.target.value })
                     }
-                    placeholder="+91 9876543210"
                     required
                   />
                   <Input
