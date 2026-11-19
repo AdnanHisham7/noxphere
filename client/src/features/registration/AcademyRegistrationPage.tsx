@@ -11,6 +11,7 @@ import {
 import { useLazyCheckAvailabilityQuery } from "@/store/api/authApi";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { ImageUploadField, Select } from "@/components/ui";
+import { usePhonePlaceholder } from "@/hooks/usePhonePlaceholder";
 import {
   Building2,
   CheckCircle2,
@@ -50,6 +51,10 @@ export const AcademyRegistrationPage: React.FC = () => {
     isLoading: loadingInfo,
     error: infoError,
   } = useGetAcademyPublicInfoQuery(academyId || "", { skip: !academyId });
+
+  const { placeholder: phonePlaceholder, dialCode } = usePhonePlaceholder(
+    academyInfo?.academy?.country || (academyInfo as any)?.country || academyInfo?.academy?.currency || (academyInfo as any)?.currency
+  );
 
   const [sendOtp, { isLoading: sendingOtp }] = useSendRegistrationOtpMutation();
   const [verifyOtp, { isLoading: verifyingOtp }] =
@@ -571,7 +576,7 @@ export const AcademyRegistrationPage: React.FC = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <input
                             type="tel"
-                            placeholder="Registered phone (+91...)"
+                            placeholder={`Registered phone (${dialCode}...)`}
                             value={otpPhone}
                             onChange={(e) => setOtpPhone(e.target.value)}
                             className="input text-xs"
@@ -919,7 +924,7 @@ export const AcademyRegistrationPage: React.FC = () => {
                               phone: e.target.value,
                             })
                           }
-                          placeholder="+91 9876543210"
+                          placeholder={phonePlaceholder}
                           className="input"
                         />
                       </div>

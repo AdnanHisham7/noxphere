@@ -7,6 +7,7 @@ import {
   useSendGuardianOtpMutation,
   useRespondToSquadInvitationMutation,
 } from "@/store/api/squadInvitationApi";
+import { usePhonePlaceholder } from "@/hooks/usePhonePlaceholder";
 import {
   X,
   ShieldCheck,
@@ -32,16 +33,16 @@ interface AcceptSquadInvitationModalProps {
   onSuccess: () => void;
 }
 
-export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProps> = ({
-  isOpen,
-  onClose,
-  invitation,
-  onSuccess,
-}) => {
+export const AcceptSquadInvitationModal: React.FC<
+  AcceptSquadInvitationModalProps
+> = ({ isOpen, onClose, invitation, onSuccess }) => {
   const currentUser = useSelector((state: RootState) => state.auth.user);
+  const { placeholder: phonePlaceholder } = usePhonePlaceholder();
 
-  const [sendGuardianOtp, { isLoading: isSendingOtp }] = useSendGuardianOtpMutation();
-  const [respondToInvitation, { isLoading: isResponding }] = useRespondToSquadInvitationMutation();
+  const [sendGuardianOtp, { isLoading: isSendingOtp }] =
+    useSendGuardianOtpMutation();
+  const [respondToInvitation, { isLoading: isResponding }] =
+    useRespondToSquadInvitationMutation();
 
   // Form states
   const [guardianEmail, setGuardianEmail] = useState("");
@@ -72,7 +73,10 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
   // Resend countdown timer
   useEffect(() => {
     if (resendCountdown > 0) {
-      const timer = setTimeout(() => setResendCountdown((prev) => prev - 1), 1000);
+      const timer = setTimeout(
+        () => setResendCountdown((prev) => prev - 1),
+        1000,
+      );
       return () => clearTimeout(timer);
     }
   }, [resendCountdown]);
@@ -105,7 +109,9 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
     }
 
     if (isSelfEmail) {
-      toast.error("Guardian email cannot be the same as your student login email.");
+      toast.error(
+        "Guardian email cannot be the same as your student login email.",
+      );
       return;
     }
 
@@ -118,9 +124,14 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
       setOtpSent(true);
       setIsExistingGuardian(res.isExistingGuardian);
       setResendCountdown(60);
-      toast.success(res.message || `Verification code sent to ${guardianEmail}`);
+      toast.success(
+        res.message || `Verification code sent to ${guardianEmail}`,
+      );
     } catch (err: any) {
-      toast.error(err?.data?.message || "Failed to send verification code to guardian email");
+      toast.error(
+        err?.data?.message ||
+          "Failed to send verification code to guardian email",
+      );
     }
   };
 
@@ -133,7 +144,9 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
     }
 
     if (!otp.trim() || otp.trim().length !== 6) {
-      toast.error("Please enter the 6-digit verification code sent to the guardian email");
+      toast.error(
+        "Please enter the 6-digit verification code sent to the guardian email",
+      );
       return;
     }
 
@@ -167,7 +180,9 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
         guardianPassword: isExistingGuardian ? undefined : guardianPassword,
       }).unwrap();
 
-      toast.success(`Congratulations! You have officially joined ${academyName}!`);
+      toast.success(
+        `Congratulations! You have officially joined ${academyName}!`,
+      );
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -194,7 +209,11 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
               Accept Squad Offer & Link Guardian
             </h2>
             <p className="text-xs text-slate-600 dark:text-slate-400">
-              Join <span className="font-semibold text-slate-900 dark:text-white">{academyName}</span> as an official academy player.
+              Join{" "}
+              <span className="font-semibold text-slate-900 dark:text-white">
+                {academyName}
+              </span>{" "}
+              as an official academy player.
             </p>
           </div>
           <button
@@ -210,19 +229,28 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
           {/* Squad Details Summary */}
           <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
             <div>
-              <p className="text-slate-400 uppercase font-mono text-[10px]">Club / Branch</p>
+              <p className="text-slate-400 uppercase font-mono text-[10px]">
+                Club / Branch
+              </p>
               <p className="font-semibold text-slate-800 dark:text-white truncate">
                 {franchiseName || academyName}
               </p>
             </div>
             <div>
-              <p className="text-slate-400 uppercase font-mono text-[10px]">Squad / Team</p>
-              <p className="font-semibold text-slate-800 dark:text-white truncate">{teamName}</p>
+              <p className="text-slate-400 uppercase font-mono text-[10px]">
+                Squad / Team
+              </p>
+              <p className="font-semibold text-slate-800 dark:text-white truncate">
+                {teamName}
+              </p>
             </div>
             <div>
-              <p className="text-slate-400 uppercase font-mono text-[10px]">Position & Jersey</p>
+              <p className="text-slate-400 uppercase font-mono text-[10px]">
+                Position & Jersey
+              </p>
               <p className="font-semibold text-volt-600 dark:text-volt-400">
-                {invitation.position || "Player"} {invitation.jerseyNumber ? `(#${invitation.jerseyNumber})` : ""}
+                {invitation.position || "Player"}{" "}
+                {invitation.jerseyNumber ? `(#${invitation.jerseyNumber})` : ""}
               </p>
             </div>
           </div>
@@ -233,14 +261,18 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
             <div className="space-y-0.5">
               <p className="font-semibold">Guardian Verification Required</p>
               <p className="text-sky-700 dark:text-sky-400 text-[11px] leading-relaxed">
-                Noxphere connects a parent or guardian portal account to youth academy players for attendance notifications, fee invoicing, and coach communication.
+                Noxphere connects a parent or guardian portal account to youth
+                academy players for attendance notifications, fee invoicing, and
+                coach communication.
               </p>
             </div>
           </div>
 
           {/* STEP 1: Guardian Email */}
           <div className="space-y-1.5">
-            <label className="label text-xs font-semibold">Parent / Guardian Email Address *</label>
+            <label className="label text-xs font-semibold">
+              Parent / Guardian Email Address *
+            </label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <input
@@ -252,13 +284,18 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
                   placeholder="parent@example.com"
                   className="input pl-9 text-xs sm:text-sm"
                 />
-                <Mail size={15} className="absolute left-3 top-3 text-slate-400" />
+                <Mail
+                  size={15}
+                  className="absolute left-3 top-3 text-slate-400"
+                />
               </div>
               {!otpSent ? (
                 <button
                   type="button"
                   onClick={handleSendOtp}
-                  disabled={isSendingOtp || !guardianEmail.trim() || isSelfEmail}
+                  disabled={
+                    isSendingOtp || !guardianEmail.trim() || isSelfEmail
+                  }
                   className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shrink-0"
                 >
                   {isSendingOtp ? (
@@ -288,7 +325,8 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
             {isSelfEmail && (
               <p className="text-xs text-rose-500 flex items-center gap-1 mt-1">
                 <AlertCircle size={12} />
-                Guardian email cannot be the same as your student login email ({currentUser?.email}).
+                Guardian email cannot be the same as your student login email (
+                {currentUser?.email}).
               </p>
             )}
           </div>
@@ -299,11 +337,17 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
               {/* Guardian Account Match Status Badge */}
               {isExistingGuardian ? (
                 <div className="p-3 rounded-xl bg-field-500/10 border border-field-500/20 text-field-700 dark:text-field-300 text-xs flex items-start gap-2">
-                  <CheckCircle2 size={16} className="text-field-500 shrink-0 mt-0.5" />
+                  <CheckCircle2
+                    size={16}
+                    className="text-field-500 shrink-0 mt-0.5"
+                  />
                   <div>
-                    <p className="font-semibold">Existing Guardian Account Found</p>
+                    <p className="font-semibold">
+                      Existing Guardian Account Found
+                    </p>
                     <p className="text-field-600 dark:text-field-400 text-[11px]">
-                      This player will be added to your parent's existing Guardian Portal. No new password needed!
+                      This player will be added to your parent's existing
+                      Guardian Portal. No new password needed!
                     </p>
                   </div>
                 </div>
@@ -313,7 +357,8 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
                   <div>
                     <p className="font-semibold">New Guardian Portal Account</p>
                     <p className="text-amber-700 dark:text-amber-400 text-[11px]">
-                      A new Guardian account will be created with the credentials below so your parent can log in.
+                      A new Guardian account will be created with the
+                      credentials below so your parent can log in.
                     </p>
                   </div>
                 </div>
@@ -322,7 +367,9 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
               {/* OTP Field */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="label text-xs font-semibold">6-Digit Verification Code (OTP) *</label>
+                  <label className="label text-xs font-semibold">
+                    6-Digit Verification Code (OTP) *
+                  </label>
                   {resendCountdown > 0 ? (
                     <span className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
                       <Clock size={11} /> Resend in {resendCountdown}s
@@ -348,7 +395,10 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
                     placeholder="Enter 6-digit code sent to guardian email"
                     className="input pl-9 tracking-widest text-center font-mono font-bold text-base sm:text-lg"
                   />
-                  <KeyRound size={15} className="absolute left-3 top-3 text-slate-400" />
+                  <KeyRound
+                    size={15}
+                    className="absolute left-3 top-3 text-slate-400"
+                  />
                 </div>
               </div>
 
@@ -357,7 +407,9 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
                 <div className="space-y-3 pt-2">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="label text-xs font-semibold">Guardian Full Name *</label>
+                      <label className="label text-xs font-semibold">
+                        Guardian Full Name *
+                      </label>
                       <div className="relative">
                         <input
                           type="text"
@@ -367,29 +419,39 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
                           placeholder="e.g. Maria Messi"
                           className="input pl-8 text-xs"
                         />
-                        <User size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
+                        <User
+                          size={14}
+                          className="absolute left-2.5 top-2.5 text-slate-400"
+                        />
                       </div>
                     </div>
 
                     <div>
-                      <label className="label text-xs font-semibold">Guardian Phone *</label>
+                      <label className="label text-xs font-semibold">
+                        Guardian Phone *
+                      </label>
                       <div className="relative">
                         <input
                           type="tel"
                           required
                           value={guardianPhone}
                           onChange={(e) => setGuardianPhone(e.target.value)}
-                          placeholder="+91 9876543210"
+                          placeholder={phonePlaceholder}
                           className="input pl-8 text-xs"
                         />
-                        <Phone size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
+                        <Phone
+                          size={14}
+                          className="absolute left-2.5 top-2.5 text-slate-400"
+                        />
                       </div>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="label text-xs font-semibold">Set Guardian Password *</label>
+                      <label className="label text-xs font-semibold">
+                        Set Guardian Password *
+                      </label>
                       <div className="relative">
                         <input
                           type="password"
@@ -400,12 +462,17 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
                           placeholder="Min 6 characters"
                           className="input pl-8 text-xs"
                         />
-                        <Lock size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
+                        <Lock
+                          size={14}
+                          className="absolute left-2.5 top-2.5 text-slate-400"
+                        />
                       </div>
                     </div>
 
                     <div>
-                      <label className="label text-xs font-semibold">Confirm Password *</label>
+                      <label className="label text-xs font-semibold">
+                        Confirm Password *
+                      </label>
                       <div className="relative">
                         <input
                           type="password"
@@ -415,7 +482,10 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
                           placeholder="Repeat password"
                           className="input pl-8 text-xs"
                         />
-                        <Shield size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
+                        <Shield
+                          size={14}
+                          className="absolute left-2.5 top-2.5 text-slate-400"
+                        />
                       </div>
                     </div>
                   </div>
@@ -442,7 +512,8 @@ export const AcceptSquadInvitationModal: React.FC<AcceptSquadInvitationModalProp
             >
               {isResponding ? (
                 <>
-                  <Loader2 size={14} className="animate-spin" /> Verifying & Enrolling…
+                  <Loader2 size={14} className="animate-spin" /> Verifying &
+                  Enrolling…
                 </>
               ) : otpSent ? (
                 <>

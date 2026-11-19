@@ -41,6 +41,7 @@ import {
   NoxStatusBadge,
 } from "../../components/portal-ui";
 import { ImageUploadField, Select } from "../../components/ui";
+import { usePhonePlaceholder } from "../../hooks/usePhonePlaceholder";
 import { NfcPlayerCardSection } from "./NfcPlayerCardSection";
 import { AcceptSquadInvitationModal } from "./AcceptSquadInvitationModal";
 import { formatCurrency } from "../../utils/currency";
@@ -49,6 +50,7 @@ import { useHighlightEffect } from "../../hooks/useEntityHighlight";
 const StudentDashboardPage: React.FC = () => {
   useHighlightEffect();
   const user = useSelector((s: RootState) => s.auth.user);
+  const { placeholder: phonePlaceholder } = usePhonePlaceholder();
   const {
     data,
     isLoading,
@@ -836,7 +838,7 @@ const StudentDashboardPage: React.FC = () => {
                               emergencyContactPhone: e.target.value,
                             }))
                           }
-                          placeholder="+91 98765 43210"
+                          placeholder={phonePlaceholder}
                           className="input text-xs w-full"
                         />
                       </div>

@@ -8,6 +8,8 @@ export interface AcademyPublicInfo {
     logo?: string;
     location?: string | { name?: string; address?: string };
     ageGroups?: string[];
+    currency?: string;
+    country?: string;
   };
   franchises: Array<{
     id: string;
