@@ -3,6 +3,7 @@ import { AcademyModel } from "../../../infrastructure/database/models/Academy.mo
 import { AcademySubscriptionModel } from "../../../infrastructure/database/models/AcademySubscription.model";
 import { StudentModel } from "../../../infrastructure/database/models/Student.model";
 import { SessionModel } from "../../../infrastructure/database/models/Session.model";
+import { TeamModel } from "../../../infrastructure/database/models/Team.model";
 import { NotFoundError, ConflictError } from "../../../shared/errors/AppError";
 import { CreateFranchiseDto, UpdateFranchiseDto } from "../../dtos/franchise.dto";
 
@@ -51,7 +52,7 @@ export class FranchiseUseCases {
       .sort({ createdAt: 1 });
 
     const franchiseIds = franchises.map((f) => f._id);
-    const [counts, sessions] = await Promise.all([
+    const [counts, sessions, teamCounts] = await Promise.all([
       StudentModel.aggregate([
         {
           $match: {
@@ -74,10 +75,30 @@ export class FranchiseUseCases {
         .select("franchiseId date startTime endTime status type category")
         .sort({ date: 1, startTime: 1 })
         .lean(),
+      TeamModel.aggregate([
+        {
+          $match: {
+            franchiseId: { $in: franchiseIds },
+            deletedAt: { $exists: false },
+          },
+        },
+        {
+          $group: {
+            _id: "$franchiseId",
+            count: { $sum: 1 },
+          },
+        },
+      ]),
     ]);
 
     const countMap = new Map<string, number>();
     const batchesMap = new Map<string, { ageGroup: string; count: number }[]>();
+    const teamCountMap = new Map<string, number>();
+
+    teamCounts.forEach((tc: any) => {
+      const fId = tc._id?.toString();
+      if (fId) teamCountMap.set(fId, tc.count);
+    });
 
     counts.forEach((c: any) => {
       const fId = c._id.franchiseId?.toString();
@@ -152,6 +173,8 @@ export class FranchiseUseCases {
         academyName: academy?.name,
         totalStudents: countMap.get(fId) ?? 0,
         totalSessions: sessionCountMap.get(fId) ?? 0,
+        totalTeams: teamCountMap.get(fId) ?? 0,
+        totalSquads: teamCountMap.get(fId) ?? 0,
         batches: batchesMap.get(fId) ?? [],
         nextSession: nextSessionMap.get(fId) ?? null,
       };
@@ -162,7 +185,7 @@ export class FranchiseUseCases {
     const franchise = await FranchiseModel.findById(id);
     if (!franchise) throw new NotFoundError("Franchise");
 
-    const [batchCounts, sessions] = await Promise.all([
+    const [batchCounts, sessions, totalTeams] = await Promise.all([
       StudentModel.aggregate([
         {
           $match: {
@@ -185,6 +208,10 @@ export class FranchiseUseCases {
         .select("date startTime endTime status type category")
         .sort({ date: 1, startTime: 1 })
         .lean(),
+      TeamModel.countDocuments({
+        franchiseId: franchise._id,
+        deletedAt: { $exists: false },
+      }),
     ]);
 
     const batches = batchCounts
@@ -225,6 +252,8 @@ export class FranchiseUseCases {
       sessionTimes,
       totalStudents,
       totalSessions: sessions.length,
+      totalTeams,
+      totalSquads: totalTeams,
       batches,
       nextSession: nextSession ? {
         date: nextSession.date,

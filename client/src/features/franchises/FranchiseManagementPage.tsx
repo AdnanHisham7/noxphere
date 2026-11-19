@@ -1,7 +1,7 @@
 // src/features/franchises/FranchiseManagementPage.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { clsx } from "clsx";
-import { Building2, Plus, Power, Trash2, ListChecks, X, Pencil, LayoutDashboard, Users, Calendar, CalendarDays, Clock, MapPin, Layers } from "lucide-react";
+import { Building2, Plus, Power, Trash2, ListChecks, X, Pencil, LayoutDashboard, Users, Calendar, CalendarDays, Clock, MapPin, Shield } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
@@ -11,6 +11,7 @@ import { RootState } from "../../store";
 import { useCurrentFranchiseId } from "../../hooks/useCurrentFranchiseId";
 import { useConfirm } from "../../hooks/useConfirm";
 import { academyApi } from "../../store/api/academyApi";
+import { useListTeamsQuery } from "../../store/api/teamsApi";
 import {
   useGetFranchisesQuery,
   useGetFranchiseByIdQuery,
@@ -62,6 +63,22 @@ const FranchiseManagementPage: React.FC = () => {
     activeAcademyId ? { academyId: activeAcademyId } : undefined,
     { skip: !activeAcademyId },
   );
+
+  const { data: allTeams = [] } = useListTeamsQuery(
+    { academyId: activeAcademyId ?? "" },
+    { skip: !activeAcademyId },
+  );
+
+  const squadCountByBranch = useMemo(() => {
+    const map = new Map<string, number>();
+    allTeams.forEach((t) => {
+      const fId = t.franchiseId || (t.franchise as any)?.id;
+      if (fId) {
+        map.set(fId, (map.get(fId) ?? 0) + 1);
+      }
+    });
+    return map;
+  }, [allTeams]);
 
   const { data: subStatus } = useGetAcademySubscriptionStatusQuery(activeAcademyId ?? "", {
     skip: !activeAcademyId,
@@ -210,7 +227,7 @@ const FranchiseManagementPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Core Metrics: Players & Batches */}
+                {/* Core Metrics: Players & Squads */}
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-pitch-800/60 border border-slate-100 dark:border-white/5">
                     <div className="flex items-center gap-1.5 text-3xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -223,11 +240,11 @@ const FranchiseManagementPage: React.FC = () => {
                   </div>
                   <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-pitch-800/60 border border-slate-100 dark:border-white/5">
                     <div className="flex items-center gap-1.5 text-3xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      <Layers size={12} className="text-sky-500 shrink-0" />
-                      <span>Active Batches</span>
+                      <Shield size={12} className="text-sky-500 shrink-0" />
+                      <span>Squads</span>
                     </div>
                     <p className="text-base font-display font-bold text-slate-900 dark:text-white mt-0.5 tabular-nums">
-                      {f.batches?.length || f.ageGroups?.length || 0}
+                      {squadCountByBranch.has(f.id) ? squadCountByBranch.get(f.id)! : (f.totalSquads ?? f.totalTeams ?? 0)}
                     </p>
                   </div>
                 </div>

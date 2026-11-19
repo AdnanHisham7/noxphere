@@ -20,6 +20,8 @@ export interface Franchise {
   sessionTimes?: { dayOfWeek: number; startTime: string; endTime: string }[];
   totalStudents?: number;
   totalSessions?: number;
+  totalTeams?: number;
+  totalSquads?: number;
   batches?: { ageGroup: string; count: number }[];
   nextSession?: { date: string; startTime: string; endTime: string; type: string; category?: string } | null;
   ageGroups: string[];
