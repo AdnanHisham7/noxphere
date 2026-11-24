@@ -105,9 +105,11 @@ export const academySubscriptionApi = baseApi.injectEndpoints({
       { status: string; isActive: boolean; subscription: any },
       {
         academyId: string;
-        studentCapacity: number;
-        staffCapacity: number;
-        billingInterval: BillingInterval;
+        studentCapacity?: number;
+        staffCapacity?: number;
+        extraStudents?: number;
+        extraStaff?: number;
+        billingInterval?: BillingInterval;
         durationDays?: number;
         paymentMethod: "cash" | "bank_transfer" | "cheque" | "other" | "waived";
         amountPaid?: number;
@@ -121,7 +123,7 @@ export const academySubscriptionApi = baseApi.injectEndpoints({
         body,
       }),
       transformResponse: (res: { data: { status: string; isActive: boolean; subscription: any } }) => res.data,
-      invalidatesTags: ["Academy"],
+      invalidatesTags: ["Academy", "Finance", "Dashboard"],
     }),
     getPlatformDefaultRate: builder.query<number, void>({
       query: () => "/academy-subscriptions/platform-rate",

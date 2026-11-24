@@ -7,10 +7,12 @@ import {
 } from "recharts";
 import {
   ArrowLeft, Shirt, CheckCircle2, CreditCard, Star,
-  School, MapPin,
+  School, MapPin, TrendingUp, Users, Shield, Clock,
 } from "lucide-react";
 import { StatCard, Skeleton, Avatar, EmptyState, Badge, Button } from "../../components/ui";
 import { academyApi } from "../../store/api/academyApi";
+import { academySubscriptionApi } from "../../store/api/academySubscriptionApi";
+import { ManualSubscriptionModal } from "./ManualSubscriptionModal";
 import { formatCurrency } from "../../utils/currency";
 import {
   useGetDashboardStatsQuery,
@@ -57,6 +59,10 @@ export const AcademyDashboardPage: React.FC = () => {
 
   const queryParams = { academyId: academyId ?? undefined };
   const skip = !academyId;
+
+  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
+  const { data: subStatus, isLoading: subStatusLoading, refetch: refetchSub } =
+    academySubscriptionApi.useGetAcademySubscriptionStatusQuery(academyId ?? "", { skip });
 
   const [attendanceDays, setAttendanceDays] = useState<number>(7);
 
@@ -145,6 +151,15 @@ export const AcademyDashboardPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <Button
             size="sm"
+            variant="primary"
+            className="font-bold bg-emerald-500 hover:bg-emerald-600 text-black border-none"
+            onClick={() => setIsSubModalOpen(true)}
+            icon={<TrendingUp size={14} />}
+          >
+            Top Up Slots / Offline Pay
+          </Button>
+          <Button
+            size="sm"
             variant="secondary"
             onClick={() => navigate("/academies")}
           >
@@ -152,6 +167,118 @@ export const AcademyDashboardPage: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* Subscription & Capacity Quota Banner */}
+      {subStatus && (
+        <div className="p-4 bg-pitch-900/80 rounded-2xl border border-white/10 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+              <TrendingUp size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  Subscription &amp; Capacity Quota
+                </span>
+                <span
+                  className={clsx(
+                    "text-3xs px-2 py-0.5 rounded-full font-bold uppercase",
+                    subStatus.isActive && !subStatus.isTrial
+                      ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/30"
+                      : subStatus.isTrial
+                      ? "bg-amber-400/10 text-amber-400 border border-amber-400/30"
+                      : "bg-rose-400/10 text-rose-400 border border-rose-400/30"
+                  )}
+                >
+                  {subStatus.isActive && !subStatus.isTrial
+                    ? "Active Paid License"
+                    : subStatus.isTrial
+                    ? `Trial (${subStatus.trialDaysRemaining ?? 0}d left)`
+                    : "Lapsed / Incomplete"}
+                </span>
+                {subStatus.currentPeriodEnd && (
+                  <span className="text-3xs text-slate-400 font-mono">
+                    Renews: {new Date(subStatus.currentPeriodEnd).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+              <p className="text-2xs text-slate-400 mt-0.5">
+                Currency: <strong className="text-slate-200">{subStatus.currency || academy?.currency || "INR"}</strong> · Rate: {subStatus.currencySymbol || "₹"}{subStatus.ratePerStudentPerDay}/player/day · Staff: {subStatus.currencySymbol || "₹"}{subStatus.staffRatePerStaffPerMonth}/staff/mo
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+            {/* Student Quota Progress */}
+            <div className="min-w-[140px] space-y-1">
+              <div className="flex items-center justify-between text-2xs font-mono">
+                <span className="text-slate-400 flex items-center gap-1">
+                  <Users size={11} className="text-volt-400" /> Students
+                </span>
+                <span className="text-white font-bold">
+                  {subStatus.activeStudentCount} / {subStatus.provisionedCapacity}
+                </span>
+              </div>
+              <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className={clsx(
+                    "h-full rounded-full transition-all",
+                    subStatus.provisionedCapacity > 0 &&
+                      (subStatus.activeStudentCount / subStatus.provisionedCapacity) >= 1
+                      ? "bg-rose-500"
+                      : (subStatus.activeStudentCount / subStatus.provisionedCapacity) >= 0.8
+                      ? "bg-amber-400"
+                      : "bg-emerald-400"
+                  )}
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      subStatus.provisionedCapacity > 0
+                        ? (subStatus.activeStudentCount / subStatus.provisionedCapacity) * 100
+                        : 0
+                    )}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Staff Quota Progress */}
+            <div className="min-w-[120px] space-y-1">
+              <div className="flex items-center justify-between text-2xs font-mono">
+                <span className="text-slate-400 flex items-center gap-1">
+                  <Shield size={11} className="text-cyan-400" /> Staff
+                </span>
+                <span className="text-white font-bold">
+                  {subStatus.activeStaffCount} / {subStatus.provisionedStaffCapacity}
+                </span>
+              </div>
+              <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-cyan-400 transition-all"
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      subStatus.provisionedStaffCapacity > 0
+                        ? (subStatus.activeStaffCount / subStatus.provisionedStaffCapacity) * 100
+                        : 0
+                    )}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            <Button
+              size="sm"
+              variant="secondary"
+              className="text-xs font-bold border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 shrink-0"
+              onClick={() => setIsSubModalOpen(true)}
+              icon={<TrendingUp size={13} />}
+            >
+              Top Up Slots
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* KPI Stats Row */}
       {statsLoading ? (
@@ -440,6 +567,14 @@ export const AcademyDashboardPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Offline Payment & Slot Top-Up Modal */}
+      <ManualSubscriptionModal
+        academy={academy ?? null}
+        isOpen={isSubModalOpen}
+        onClose={() => setIsSubModalOpen(false)}
+        onSuccess={() => refetchSub()}
+      />
     </div>
   );
 };
