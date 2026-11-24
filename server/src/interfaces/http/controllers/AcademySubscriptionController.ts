@@ -20,8 +20,10 @@ const UpgradeSchema = z.object({
 });
 
 const ManualProvisionSchema = z.object({
-  studentCapacity: z.number().int().min(1).default(50),
-  staffCapacity: z.number().int().min(0).default(5),
+  studentCapacity: z.number().int().min(1).optional(),
+  staffCapacity: z.number().int().min(0).optional(),
+  extraStudents: z.number().int().min(0).optional(),
+  extraStaff: z.number().int().min(0).optional(),
   billingInterval: z.enum(["month", "quarter", "half_year", "year"]).default("month"),
   durationDays: z.number().int().min(1).max(3650).optional(),
   paymentMethod: z.enum(["cash", "bank_transfer", "cheque", "other", "waived"]).default("bank_transfer"),

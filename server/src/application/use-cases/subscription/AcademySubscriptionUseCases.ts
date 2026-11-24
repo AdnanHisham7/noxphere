@@ -1255,9 +1255,11 @@ export class AcademySubscriptionUseCases {
   async manualProvisionSubscription(
     academyId: string,
     dto: {
-      studentCapacity: number;
-      staffCapacity: number;
-      billingInterval: BillingInterval;
+      studentCapacity?: number;
+      staffCapacity?: number;
+      extraStudents?: number;
+      extraStaff?: number;
+      billingInterval?: BillingInterval;
       durationDays?: number;
       paymentMethod: "cash" | "bank_transfer" | "cheque" | "other" | "waived";
       amountPaid?: number;
@@ -1274,45 +1276,201 @@ export class AcademySubscriptionUseCases {
     const currency = (academy.currency || "INR").toUpperCase();
     const rate = await this.getEffectiveRate(academyId);
     const staffRate = await this.getEffectiveStaffRate(academyId);
-    const interval = dto.billingInterval || "month";
-    const durationDays = dto.durationDays || DAYS_IN_PERIOD[interval] || 30;
+    const now = new Date();
 
     let subscription = await AcademySubscriptionModel.findOne({ academyId });
+
+    // Determine effective actionType if not provided
+    const hasActivePaidSub = Boolean(
+      subscription &&
+      subscription.status === "active" &&
+      subscription.currentPeriodEnd &&
+      new Date(subscription.currentPeriodEnd) > now &&
+      !subscription.isTrial
+    );
+
+    let actionType: "new" | "renewal" | "upgrade";
+    if (dto.actionType) {
+      actionType = dto.actionType;
+    } else if (hasActivePaidSub) {
+      // If active and capacity increases without explicit interval/duration change, it's an upgrade (top-up)
+      actionType = "upgrade";
+    } else if (subscription && subscription.currentPeriodEnd) {
+      actionType = "renewal";
+    } else {
+      actionType = "new";
+    }
+
+    const activeStudentCount = await this.countActiveStudents(academyId);
+    const activeStaffCount = await this.countActiveStaff(academyId);
+
+    // =========================================================================
+    // CASE 1: CAPACITY TOP-UP (Mid-Cycle Prorated Slot Upgrade)
+    // =========================================================================
+    if (actionType === "upgrade") {
+      if (!subscription || !hasActivePaidSub) {
+        throw new BadRequestError(
+          "Cannot top up slots on an expired, trialing, or non-existent subscription. Please purchase an initial license or renew first."
+        );
+      }
+
+      const baselineStudents = subscription.provisionedCapacity || 0;
+      const baselineStaff = subscription.provisionedStaffCapacity || 0;
+
+      let targetStudents: number;
+      let targetStaff: number;
+      let extraStudents: number;
+      let extraStaff: number;
+
+      if (dto.extraStudents !== undefined || dto.extraStaff !== undefined) {
+        extraStudents = Math.max(0, dto.extraStudents || 0);
+        extraStaff = Math.max(0, dto.extraStaff || 0);
+        targetStudents = baselineStudents + extraStudents;
+        targetStaff = baselineStaff + extraStaff;
+      } else {
+        targetStudents = dto.studentCapacity !== undefined ? Math.max(baselineStudents, dto.studentCapacity) : baselineStudents;
+        targetStaff = dto.staffCapacity !== undefined ? Math.max(baselineStaff, dto.staffCapacity) : baselineStaff;
+        extraStudents = Math.max(0, targetStudents - baselineStudents);
+        extraStaff = Math.max(0, targetStaff - baselineStaff);
+      }
+
+      if (extraStudents === 0 && extraStaff === 0) {
+        throw new BadRequestError("Choose a higher student or staff capacity to top up slots");
+      }
+
+      if (targetStudents < activeStudentCount) {
+        throw new BadRequestError(
+          `Cannot set student capacity to ${targetStudents} because the academy currently has ${activeStudentCount} active enrolled students.`
+        );
+      }
+      if (targetStaff < activeStaffCount) {
+        throw new BadRequestError(
+          `Cannot set staff capacity to ${targetStaff} because the academy currently has ${activeStaffCount} active staff members.`
+        );
+      }
+
+      const remainingDays = Math.max(
+        1,
+        Math.ceil((new Date(subscription.currentPeriodEnd!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      );
+
+      const studentProrated = rate * extraStudents * remainingDays;
+      const staffProrated = staffRate * extraStaff * (remainingDays / 30);
+      const calcAmount = Math.max(0, Math.round((studentProrated + staffProrated + Number.EPSILON) * 100) / 100);
+      const amountPaid = dto.amountPaid !== undefined && dto.amountPaid !== null ? dto.amountPaid : calcAmount;
+
+      const { rate: exchangeRateToInr, amountInInr } = await exchangeRateService.convertToInr(amountPaid, currency);
+
+      subscription.provisionedCapacity = targetStudents;
+      subscription.provisionedStaffCapacity = targetStaff;
+      subscription.ratePerStudentPerDay = rate;
+      subscription.staffRatePerStaffPerMonth = staffRate;
+      subscription.status = "active";
+      subscription.isTrial = false;
+      // CRITICAL: currentPeriodEnd is intentionally kept untouched so no unauthorized free period is granted
+
+      const defaultNote = `Offline Prorated Top-Up: +${extraStudents} students, +${extraStaff} staff (${remainingDays} days remaining)`;
+      const notes = dto.referenceNote?.trim() ? dto.referenceNote.trim() : defaultNote;
+
+      subscription.payments = subscription.payments || [];
+      subscription.payments.unshift({
+        orderId: `MANUAL-${Date.now()}`,
+        paymentId: `OFFLINE-${dto.paymentMethod.toUpperCase()}-${Date.now()}`,
+        amount: amountPaid,
+        currency,
+        exchangeRateToInr,
+        amountInInr,
+        status: "paid",
+        billingInterval: subscription.billingInterval,
+        studentCapacity: extraStudents,
+        staffCapacity: extraStaff,
+        type: "upgrade",
+        paidAt: now,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}`,
+        paymentMethod: dto.paymentMethod,
+        notes,
+      });
+
+      await subscription.save();
+      await AcademyModel.findByIdAndUpdate(academyId, { isTrial: false });
+
+      const symbol = geoLocationService.getCurrencySymbol(currency);
+      await notificationService.notifySuperAdmins({
+        type: "payment_received",
+        title: "Academy Capacity Top-Up (Offline Payment)",
+        body: `${academy.name} topped up capacity by +${extraStudents} students & +${extraStaff} staff (${symbol} ${amountPaid} ${currency} via ${dto.paymentMethod.replace("_", " ")}). Recorded by super admin.`,
+        metadata: { academyId, currency, amount: String(amountPaid) },
+      });
+
+      const managers = await UserModel.find({ academyId, role: "manager", isActive: true }).select("_id");
+      if (managers.length > 0) {
+        await notificationService.send({
+          userIds: managers.map((m) => m._id.toString()),
+          type: "payment_received",
+          title: "Capacity Top-Up Completed",
+          body: `Your offline payment of ${symbol} ${amountPaid} ${currency} has been recorded. Your capacity has been upgraded: +${extraStudents} student slots (Total: ${targetStudents}) and +${extraStaff} staff seats (Total: ${targetStaff}).`,
+          data: { academyId },
+        });
+      }
+
+      return {
+        status: "active",
+        isActive: true,
+        subscription: subscription.toJSON(),
+      };
+    }
+
+    // =========================================================================
+    // CASE 2 & 3: RENEWAL / EXTENSION OR INITIAL LICENSE
+    // =========================================================================
+    const interval: BillingInterval = dto.billingInterval || (subscription?.billingInterval as BillingInterval) || "month";
+    const durationDays = dto.durationDays || DAYS_IN_PERIOD[interval] || 30;
+
     if (!subscription) {
       subscription = new AcademySubscriptionModel({
         academyId,
         currency,
         ratePerStudentPerDay: rate,
         staffRatePerStaffPerMonth: staffRate,
-        provisionedCapacity: dto.studentCapacity,
-        provisionedStaffCapacity: dto.staffCapacity,
+        provisionedCapacity: dto.studentCapacity || 50,
+        provisionedStaffCapacity: dto.staffCapacity !== undefined ? dto.staffCapacity : 5,
         billingInterval: interval,
         status: "active",
         isTrial: false,
       });
     }
 
-    const now = new Date();
-    const isRenewal = Boolean(
-      dto.actionType === "renewal" ||
-      (subscription.currentPeriodEnd &&
-        new Date(subscription.currentPeriodEnd) > now &&
-        !subscription.isTrial)
-    );
+    const isRenewal = actionType === "renewal";
+    let targetStudents = dto.studentCapacity !== undefined ? dto.studentCapacity : (subscription.provisionedCapacity || 50);
+    let targetStaff = dto.staffCapacity !== undefined ? dto.staffCapacity : (subscription.provisionedStaffCapacity || 5);
+
+    if (targetStudents < activeStudentCount) {
+      throw new BadRequestError(
+        `Cannot select ${targetStudents} student slots because your academy currently has ${activeStudentCount} active enrolled students. Archive or drop out inactive players first before downsizing.`
+      );
+    }
+    if (targetStaff < activeStaffCount) {
+      throw new BadRequestError(
+        `Cannot select ${targetStaff} staff seats because your academy currently has ${activeStaffCount} active staff members.`
+      );
+    }
 
     let newPeriodEnd: Date;
-    if (isRenewal && subscription.currentPeriodEnd) {
+    if (isRenewal && subscription.currentPeriodEnd && new Date(subscription.currentPeriodEnd) > now && !subscription.isTrial) {
       newPeriodEnd = new Date(
         new Date(subscription.currentPeriodEnd).getTime() + durationDays * 24 * 60 * 60 * 1000
       );
+      // Protect existing capacity during remaining active term
+      targetStudents = Math.max(subscription.provisionedCapacity || 0, targetStudents);
+      targetStaff = Math.max(subscription.provisionedStaffCapacity || 0, targetStaff);
     } else {
       newPeriodEnd = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
     }
 
     const staffMonths = STAFF_MONTHS_IN_PERIOD[interval] ?? 1;
     const calcAmount =
-      rate * dto.studentCapacity * durationDays +
-      staffRate * dto.staffCapacity * staffMonths;
+      rate * targetStudents * durationDays +
+      staffRate * targetStaff * staffMonths;
     const amountPaid = dto.amountPaid !== undefined && dto.amountPaid !== null ? dto.amountPaid : calcAmount;
 
     const { rate: exchangeRateToInr, amountInInr } = await exchangeRateService.convertToInr(amountPaid, currency);
@@ -1321,8 +1479,8 @@ export class AcademySubscriptionUseCases {
     subscription.isTrial = false;
     subscription.currency = currency;
     subscription.billingInterval = interval;
-    subscription.provisionedCapacity = dto.studentCapacity;
-    subscription.provisionedStaffCapacity = dto.staffCapacity;
+    subscription.provisionedCapacity = targetStudents;
+    subscription.provisionedStaffCapacity = targetStaff;
     subscription.ratePerStudentPerDay = rate;
     subscription.staffRatePerStaffPerMonth = staffRate;
     subscription.currentPeriodEnd = newPeriodEnd;
@@ -1337,17 +1495,40 @@ export class AcademySubscriptionUseCases {
       amountInInr,
       status: "paid",
       billingInterval: interval,
-      studentCapacity: dto.studentCapacity,
-      staffCapacity: dto.staffCapacity,
-      type: dto.actionType === "new" ? "subscription" : (dto.actionType || (isRenewal ? "renewal" : "subscription")),
+      studentCapacity: targetStudents,
+      staffCapacity: targetStaff,
+      type: isRenewal ? "renewal" : "subscription",
       paidAt: now,
       receiptNumber: `REC-${Date.now().toString().slice(-6)}`,
       paymentMethod: dto.paymentMethod,
-      notes: dto.referenceNote?.trim() ? dto.referenceNote.trim() : undefined,
+      notes: dto.referenceNote?.trim()
+        ? dto.referenceNote.trim()
+        : isRenewal
+        ? `Offline plan renewal for ${interval} (${durationDays} days) via ${dto.paymentMethod.replace("_", " ")}`
+        : `Offline ${interval} plan subscription (${durationDays} days) via ${dto.paymentMethod.replace("_", " ")}`,
     });
 
     await subscription.save();
     await AcademyModel.findByIdAndUpdate(academyId, { isTrial: false });
+
+    const symbol = geoLocationService.getCurrencySymbol(currency);
+    await notificationService.notifySuperAdmins({
+      type: "payment_received",
+      title: isRenewal ? "Academy Subscription Renewal (Offline Payment)" : "Academy Subscription Initial License (Offline Payment)",
+      body: `${academy.name} recorded offline payment of ${symbol} ${amountPaid} ${currency} for their ${interval} plan (${targetStudents} students, ${targetStaff} staff).`,
+      metadata: { academyId, currency, amount: String(amountPaid) },
+    });
+
+    const managers = await UserModel.find({ academyId, role: "manager", isActive: true }).select("_id");
+    if (managers.length > 0) {
+      await notificationService.send({
+        userIds: managers.map((m) => m._id.toString()),
+        type: "payment_received",
+        title: isRenewal ? "Subscription Renewed" : "Subscription Activated",
+        body: `Your offline payment of ${symbol} ${amountPaid} ${currency} for the ${interval} plan (${targetStudents} students, ${targetStaff} staff) has been confirmed and activated until ${newPeriodEnd.toLocaleDateString()}.`,
+        data: { academyId },
+      });
+    }
 
     return {
       status: "active",

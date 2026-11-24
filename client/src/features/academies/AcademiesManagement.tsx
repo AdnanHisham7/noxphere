@@ -31,6 +31,7 @@ import { academySubscriptionApi } from "@/store/api/academySubscriptionApi";
 import { useConfirm } from "../../hooks/useConfirm";
 import { Academy, AcademyConfigPayload, CreateAcademyPayload } from "./types";
 import { getCurrencySymbol } from "../../utils/currency";
+import { ManualSubscriptionModal } from "./ManualSubscriptionModal";
 
 // Hooks
 const useGetAcademies = academyApi.useGetAcademiesQuery;
@@ -237,39 +238,6 @@ const AcademiesManagement: React.FC = () => {
 
   // Manual Subscription Provisioning state for existing academies
   const [manualSubModalAcademy, setManualSubModalAcademy] = useState<Academy | null>(null);
-  const [manualSubForm, setManualSubForm] = useState({
-    studentCapacity: 50,
-    staffCapacity: 5,
-    billingInterval: "month" as "month" | "quarter" | "half_year" | "year",
-    durationDays: 30,
-    paymentMethod: "bank_transfer" as "cash" | "bank_transfer" | "cheque" | "other" | "waived",
-    amountPaid: "",
-    referenceNote: "",
-    actionType: "subscription" as "subscription" | "renewal" | "upgrade",
-  });
-  const [manualProvisionSub, { isLoading: isProvisioningSub }] = useManualProvisionSubscription();
-
-  const handleManualSubSubmit = async () => {
-    if (!manualSubModalAcademy) return;
-    try {
-      await manualProvisionSub({
-        academyId: manualSubModalAcademy.id,
-        studentCapacity: Number(manualSubForm.studentCapacity),
-        staffCapacity: Number(manualSubForm.staffCapacity),
-        billingInterval: manualSubForm.billingInterval,
-        durationDays: manualSubForm.durationDays ? Number(manualSubForm.durationDays) : undefined,
-        paymentMethod: manualSubForm.paymentMethod,
-        amountPaid: manualSubForm.amountPaid !== "" ? Number(manualSubForm.amountPaid) : undefined,
-        referenceNote: manualSubForm.referenceNote || undefined,
-        actionType: manualSubForm.actionType === "subscription" ? "new" : manualSubForm.actionType,
-      }).unwrap();
-      toast.success(`Subscription provisioned successfully for ${manualSubModalAcademy.name}!`);
-      setManualSubModalAcademy(null);
-      refetch();
-    } catch (err: any) {
-      toast.error(err?.data?.message || "Failed to provision subscription");
-    }
-  };
 
   const handleAddSubmit = async () => {
     const parsedSkills = newAcademyForm.skillParameters
@@ -672,21 +640,9 @@ const AcademiesManagement: React.FC = () => {
                         <Clock size={14} />
                       </button>
                       <button
-                        onClick={() => {
-                          setManualSubModalAcademy(academy);
-                          setManualSubForm({
-                            studentCapacity: academy.trialCapacity || 50,
-                            staffCapacity: academy.trialStaffCapacity || 5,
-                            billingInterval: "month",
-                            durationDays: 30,
-                            paymentMethod: "bank_transfer",
-                            amountPaid: "",
-                            referenceNote: "",
-                            actionType: academy.isTrial ? "subscription" : "renewal",
-                          });
-                        }}
+                        onClick={() => setManualSubModalAcademy(academy)}
                         className="p-2 rounded border border-emerald-400/20 text-emerald-400 bg-emerald-400/5 hover:bg-emerald-400/15 transition-all"
-                        title="Record Offline Payment / Provision Subscription"
+                        title="Top Up Slots / Pay Offline / Provision Subscription"
                       >
                         <CreditCard size={14} />
                       </button>
@@ -802,22 +758,10 @@ const AcademiesManagement: React.FC = () => {
                   variant="secondary"
                   className="text-xs"
                   size="sm"
-                  onClick={() => {
-                    setManualSubModalAcademy(academy);
-                    setManualSubForm({
-                      studentCapacity: academy.trialCapacity || 50,
-                      staffCapacity: academy.trialStaffCapacity || 5,
-                      billingInterval: "month",
-                      durationDays: 30,
-                      paymentMethod: "bank_transfer",
-                      amountPaid: "",
-                      referenceNote: "",
-                      actionType: academy.isTrial ? "subscription" : "renewal",
-                    });
-                  }}
+                  onClick={() => setManualSubModalAcademy(academy)}
                   icon={<CreditCard size={14} className="text-emerald-400" />}
                 >
-                  Pay Offline
+                  Top Up / Offline Pay
                 </Button>
                 <Button
                   variant="secondary"
@@ -1672,168 +1616,13 @@ const AcademiesManagement: React.FC = () => {
         </Modal>
       )}
 
-      {/* Manual Subscription Provisioning Modal */}
-      {manualSubModalAcademy && (
-        <Modal
-          isOpen={Boolean(manualSubModalAcademy)}
-          onClose={() => setManualSubModalAcademy(null)}
-          title={`Offline Subscription Provisioning: ${manualSubModalAcademy.name}`}
-          size="md"
-        >
-          <div className="space-y-4">
-            {/* Academy & Currency Context */}
-            <div className="p-3 bg-pitch-900/80 rounded-lg border border-white/10 flex items-center justify-between">
-              <div>
-                <p className="text-2xs text-slate-400 font-mono">Operating Territory</p>
-                <p className="text-xs font-bold text-white flex items-center gap-1.5 mt-0.5">
-                  <Globe2 size={13} className="text-volt-400" />
-                  {manualSubModalAcademy.currency || "INR"} — {manualSubModalAcademy.country || "IN"}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xs text-slate-400 font-mono">Current Status</p>
-                <span
-                  className={clsx(
-                    "text-3xs px-2 py-0.5 rounded font-bold uppercase",
-                    manualSubModalAcademy.isTrial
-                      ? "bg-amber-400/10 text-amber-400 border border-amber-400/20"
-                      : "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20"
-                  )}
-                >
-                  {manualSubModalAcademy.isTrial ? "Free Trial" : "Active / Standard"}
-                </span>
-              </div>
-            </div>
-
-            {/* Action Type */}
-            <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">Provisioning Type</label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: "subscription", label: "Initial License" },
-                  { id: "renewal", label: "Renewal (Extend)" },
-                  { id: "upgrade", label: "Upgrade Capacity" },
-                ].map((act) => (
-                  <button
-                    key={act.id}
-                    type="button"
-                    onClick={() => setManualSubForm({ ...manualSubForm, actionType: act.id as any })}
-                    className={clsx(
-                      "py-2 px-1 text-center rounded-lg border text-xs font-bold transition-all",
-                      manualSubForm.actionType === act.id
-                        ? "border-emerald-400 bg-emerald-400/10 text-emerald-300"
-                        : "border-white/10 bg-pitch-900/40 text-slate-400 hover:border-white/20"
-                    )}
-                  >
-                    {act.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Capacities */}
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Student Capacity"
-                type="number"
-                min="1"
-                value={manualSubForm.studentCapacity}
-                onChange={(e) => setManualSubForm({ ...manualSubForm, studentCapacity: parseInt(e.target.value) || 50 })}
-                required
-              />
-              <Input
-                label="Staff Capacity"
-                type="number"
-                min="0"
-                value={manualSubForm.staffCapacity}
-                onChange={(e) => setManualSubForm({ ...manualSubForm, staffCapacity: parseInt(e.target.value) || 5 })}
-                required
-              />
-            </div>
-
-            {/* Billing Cycle, Duration & Method */}
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Select
-                  label="Billing Interval"
-                  value={manualSubForm.billingInterval}
-                  onChange={(e) => {
-                    const interval = e.target.value as any;
-                    const daysMap: Record<string, number> = { month: 30, quarter: 90, half_year: 180, year: 365 };
-                    setManualSubForm({
-                      ...manualSubForm,
-                      billingInterval: interval,
-                      durationDays: daysMap[interval] || 30,
-                    });
-                  }}
-                >
-                  <option value="month">Monthly</option>
-                  <option value="quarter">Quarterly</option>
-                  <option value="half_year">Half-Yearly</option>
-                  <option value="year">Annual</option>
-                </Select>
-              </div>
-
-              <Input
-                label="Duration (Days)"
-                type="number"
-                min="1"
-                value={manualSubForm.durationDays}
-                onChange={(e) => setManualSubForm({ ...manualSubForm, durationDays: parseInt(e.target.value) || 30 })}
-              />
-
-              <div>
-                <Select
-                  label="Payment Method"
-                  value={manualSubForm.paymentMethod}
-                  onChange={(e) => setManualSubForm({ ...manualSubForm, paymentMethod: e.target.value as any })}
-                >
-                  <option value="bank_transfer">Bank Wire / IBAN</option>
-                  <option value="cash">In-Hand Cash</option>
-                  <option value="cheque">Cheque</option>
-                  <option value="waived">Waived / Free Deal</option>
-                  <option value="other">Other Offline</option>
-                </Select>
-              </div>
-            </div>
-
-            {/* Amount & Reference */}
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label={`Amount Paid (${manualSubModalAcademy.currency || "INR"})`}
-                type="number"
-                placeholder="Auto-calculated if blank"
-                value={manualSubForm.amountPaid}
-                onChange={(e) => setManualSubForm({ ...manualSubForm, amountPaid: e.target.value })}
-              />
-              <Input
-                label="Reference / Invoice Note"
-                placeholder="e.g. Wire transfer ref #1234, cash receipt"
-                value={manualSubForm.referenceNote}
-                onChange={(e) => setManualSubForm({ ...manualSubForm, referenceNote: e.target.value })}
-              />
-            </div>
-
-            <div className="pt-3 border-t border-white/5 flex gap-3">
-              <Button
-                variant="primary"
-                className="flex-1 font-bold bg-emerald-500 hover:bg-emerald-600 text-black border-none"
-                onClick={handleManualSubSubmit}
-                loading={isProvisioningSub}
-                icon={<CheckCircle2 size={16} />}
-              >
-                Record Payment &amp; Activate License
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => setManualSubModalAcademy(null)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* Manual Subscription Provisioning & Slot Top-Up Modal */}
+      <ManualSubscriptionModal
+        academy={manualSubModalAcademy}
+        isOpen={Boolean(manualSubModalAcademy)}
+        onClose={() => setManualSubModalAcademy(null)}
+        onSuccess={() => refetch()}
+      />
       {ConfirmDialog}
     </div>
   );
