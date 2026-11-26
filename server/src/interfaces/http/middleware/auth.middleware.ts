@@ -8,12 +8,14 @@ import { geoLocationService } from '../../../infrastructure/services/GeoLocation
 import { AcademyModel } from '../../../infrastructure/database/models/Academy.model';
 import { FranchiseModel } from '../../../infrastructure/database/models/Franchise.model';
 import { StudentModel } from '../../../infrastructure/database/models/Student.model';
+import { UserModel } from '../../../infrastructure/database/models/User.model';
 
 export interface JwtPayload {
   sub: string;
   role: UserRole;
   franchiseId?: string;
   academyId?: string;
+  canAccessAllFranchises?: boolean;
   permissions: Record<string, boolean>;
 }
 
@@ -50,6 +52,15 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         if (franchise?.academyId) {
           academyId = franchise.academyId.toString();
           req.user.academyId = academyId;
+        }
+      } else if (req.user.role === 'coach') {
+        const coachDoc = await UserModel.findById(req.user.sub).select('academyId canAccessAllFranchises').lean();
+        if (coachDoc) {
+          if (!academyId && coachDoc.academyId) {
+            academyId = coachDoc.academyId.toString();
+            req.user.academyId = academyId;
+          }
+          req.user.canAccessAllFranchises = !!coachDoc.canAccessAllFranchises;
         }
       } else if (!academyId && (req.user.role === 'guardian' || req.user.role === 'student')) {
         const student = await StudentModel.findOne({

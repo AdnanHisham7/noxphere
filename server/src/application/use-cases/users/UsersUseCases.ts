@@ -157,6 +157,7 @@ export class UsersUseCases {
       fcmTokens: [],
       franchiseId,
       academyId,
+      canAccessAllFranchises: dto.canAccessAllFranchises ?? false,
     });
 
     // If a coach was created and belongs to an academy, automatically ensure an Employee record

@@ -243,13 +243,19 @@ const App: React.FC = () => (
                 <Route path="/coach/students/:id" element={<CoachStudentPanelPage />} />
               </Route>
 
+              {/* Manager + Operational Manager + Coach for Teams */}
+              <Route
+                element={<RoleProtectedRoute allowedRoles={["manager", "operational_manager", "coach"]} />}
+              >
+                <Route path="/teams" element={<TeamsPage />} />
+                <Route path="/teams/:id/manage" element={<TeamManagePage />} />
+              </Route>
+
               {/* Manager + Operational Manager */}
               <Route
                 element={<RoleProtectedRoute allowedRoles={["manager", "operational_manager"]} />}
               >
                 <Route path="/fees" element={<FeesPage />} />
-                <Route path="/teams" element={<TeamsPage />} />
-                <Route path="/teams/:id/manage" element={<TeamManagePage />} />
                 <Route path="/coaches" element={<CoachesManagementPage />} />
                 <Route path="/settings" element={<AcademySettingsPage />} />
               </Route>

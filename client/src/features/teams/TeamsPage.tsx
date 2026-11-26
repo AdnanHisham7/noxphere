@@ -269,8 +269,14 @@ const TeamsPage: React.FC = () => {
 
       {!showLoading && !isError && teams.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {teams.map((team) => (
-            <Card key={team.id} className="p-0 flex flex-col overflow-hidden">
+          {teams.map((team) => {
+            const isTeamCoach =
+              (team.coach as any)?._id?.toString() === user?.id ||
+              (team.coach as any)?.id?.toString() === user?.id ||
+              (team as any).coachId?.toString() === user?.id;
+            const canSchedule = canManage || isTeamCoach;
+            return (
+              <Card key={team.id} className="p-0 flex flex-col overflow-hidden">
               <div
                 className="h-14 w-full relative"
                 style={{
@@ -378,13 +384,15 @@ const TeamsPage: React.FC = () => {
                     >
                       View roster →
                     </button>
-                    <button
-                      onClick={() => setScheduleEventTeam(team)}
-                      className="text-xs flex items-center gap-1 text-volt-600 dark:text-volt-400 hover:text-volt-500 font-medium transition-colors"
-                      title="Schedule a match or squad training"
-                    >
-                      <CalendarDays size={12} /> Schedule
-                    </button>
+                    {canSchedule && (
+                      <button
+                        onClick={() => setScheduleEventTeam(team)}
+                        className="text-xs flex items-center gap-1 text-volt-600 dark:text-volt-400 hover:text-volt-500 font-medium transition-colors"
+                        title="Schedule a match or squad training"
+                      >
+                        <CalendarDays size={12} /> Schedule
+                      </button>
+                    )}
                     <button
                       onClick={() => setReportTeamId(team.id)}
                       className="text-xs flex items-center gap-1 text-emerald-500 hover:text-emerald-400 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors font-medium"
@@ -404,7 +412,8 @@ const TeamsPage: React.FC = () => {
                 </div>
               </div>
             </Card>
-          ))}
+          );
+        })}
         </div>
       )}
 

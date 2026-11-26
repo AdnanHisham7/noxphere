@@ -17,7 +17,7 @@ import {
   toggleMobileSidebar,
 } from "../../store/slices/uiSlice";
 import { Avatar } from "../ui";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import clsx from "clsx";
 import { RootState } from "../../store";
 import { useCurrentFranchiseId, isNoFranchiseSwitchPage } from "../../hooks/useCurrentFranchiseId";
@@ -268,6 +268,7 @@ const CoachFranchiseSwitcher: React.FC = () => {
   const isSchedulePage = location.pathname.startsWith("/schedule");
   const currentFranchiseId = useCurrentFranchiseId();
   const activeTeamId = useSelector((s: RootState) => s.ui.activeTeamId);
+  const { user } = useSelector((s: RootState) => s.auth);
   const [open, setOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
   useClickOutside(switcherRef, () => setOpen(false), open);
@@ -278,13 +279,26 @@ const CoachFranchiseSwitcher: React.FC = () => {
   );
   const { data: fetchedTeam } = useGetTeamByIdQuery(activeTeamId ?? "", { skip: !activeTeamId });
 
+  // A coach only sees their own assigned squads/teams in their topbar switcher
+  const myAssignedTeams = useMemo(() => {
+    return (teams ?? []).filter((t) => {
+      const cId = (t.coach as any)?._id?.toString() || (t.coach as any)?.id?.toString() || (t as any).coachId?.toString();
+      return cId === user?.id;
+    });
+  }, [teams, user?.id]);
+
   useEffect(() => {
     if (!franchises || franchises.length === 0) return;
+    if (user?.canAccessAllFranchises && currentFranchiseId === null) return;
     const stillValid = franchises.some((f) => f.id === currentFranchiseId);
     if (!stillValid) {
-      dispatch(setActiveFranchise(franchises[0].id));
+      if (user?.canAccessAllFranchises) {
+        // Leave currentFranchiseId as null if coach prefers All Branches
+      } else {
+        dispatch(setActiveFranchise(franchises[0].id));
+      }
     }
-  }, [franchises, currentFranchiseId, dispatch]);
+  }, [franchises, currentFranchiseId, user?.canAccessAllFranchises, dispatch]);
 
   // Clear active team if navigating away from schedule page
   useEffect(() => {
@@ -294,9 +308,9 @@ const CoachFranchiseSwitcher: React.FC = () => {
   }, [isSchedulePage, activeTeamId, dispatch]);
 
   const currentFranchise = franchises?.find((f) => f.id === currentFranchiseId);
-  const currentTeam = teams?.find((t) => t.id === activeTeamId) ?? fetchedTeam;
+  const currentTeam = myAssignedTeams?.find((t) => t.id === activeTeamId) ?? fetchedTeam;
 
-  if ((!franchises || franchises.length === 0) && (!teams || teams.length === 0)) {
+  if ((!franchises || franchises.length === 0) && (!myAssignedTeams || myAssignedTeams.length === 0)) {
     return (
       <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 border border-slate-200 text-slate-700 dark:bg-pitch-800 dark:border-white/10 dark:text-slate-300 rounded px-2.5 sm:px-3 py-1.5">
         <Building2 size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />
@@ -313,6 +327,9 @@ const CoachFranchiseSwitcher: React.FC = () => {
   if (activeTeamId) {
     buttonIcon = <Users size={13} className="text-volt-600 dark:text-volt-400 shrink-0" />;
     buttonLabel = currentTeam ? `${currentTeam.name} (${currentTeam.ageGroup})` : "Team Schedule";
+  } else if (currentFranchiseId === null && user?.canAccessAllFranchises) {
+    buttonIcon = <Globe size={13} className="text-cyan-400 shrink-0" />;
+    buttonLabel = "All Branches";
   }
 
   return (
@@ -330,6 +347,31 @@ const CoachFranchiseSwitcher: React.FC = () => {
 
       {open && (
         <div className="absolute left-0 top-11 w-64 max-h-[80vh] overflow-y-auto max-w-[85vw] card shadow-panel z-50 animate-slide-up py-1.5">
+          {user?.canAccessAllFranchises && (
+            <button
+              onClick={() => {
+                dispatch(clearActiveTeam());
+                dispatch(clearActiveFranchise());
+                if (isSchedulePage) {
+                  navigate("/schedule");
+                }
+                setOpen(false);
+              }}
+              className={clsx(
+                "w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-pitch-700/80 dark:hover:text-white dark:hover:bg-white/10 transition-colors",
+                !activeTeamId && currentFranchiseId === null
+                  ? "text-volt-600 dark:text-volt-400 font-semibold bg-slate-50 dark:bg-white/5"
+                  : "text-slate-700 dark:text-slate-300",
+              )}
+            >
+              <div className="flex items-center gap-1.5 truncate">
+                <Globe size={12} className="shrink-0 text-slate-400" />
+                <span className="truncate">All Branches</span>
+              </div>
+              {!activeTeamId && currentFranchiseId === null && <Check size={13} />}
+            </button>
+          )}
+
           {franchises && franchises.length > 0 && (
             <>
               <p className="px-3 py-1.5 section-title">Branches</p>
@@ -358,11 +400,11 @@ const CoachFranchiseSwitcher: React.FC = () => {
             </>
           )}
 
-          {isSchedulePage && teams && teams.length > 0 && (
+          {isSchedulePage && myAssignedTeams && myAssignedTeams.length > 0 && (
             <>
               <div className="border-t border-slate-200 dark:border-white/10 my-1" />
-              <p className="px-3 py-1.5 section-title">Teams / Squads</p>
-              {teams.map((t) => (
+              <p className="px-3 py-1.5 section-title">My Teams / Squads</p>
+              {myAssignedTeams.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => {

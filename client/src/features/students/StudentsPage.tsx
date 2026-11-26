@@ -245,6 +245,27 @@ const emptyMedical = {
 const StudentsPage: React.FC = () => {
   const dispatch = useDispatch();
   const franchiseId = useCurrentFranchiseId();
+  const academyId = useCurrentAcademyId();
+  const { user } = useSelector((s: RootState) => s.auth);
+  const canAccessAll =
+    user?.role === "manager" ||
+    user?.role === "operational_manager" ||
+    user?.role === "super_admin" ||
+    !!user?.canAccessAllFranchises;
+
+  const isCoach = user?.role === "coach";
+  const canManageSquad =
+    user?.role === "manager" ||
+    user?.role === "operational_manager" ||
+    user?.role === "super_admin" ||
+    !!user?.permissions?.canManageFranchises;
+
+  const { data: franchises } = useGetFranchisesQuery(
+    academyId ? { academyId, isActive: true } : undefined,
+    { skip: !academyId },
+  );
+  const currentFranchise = franchises?.find((f) => f.id === franchiseId);
+
   const [search, setSearch] = useState("");
   const [filterTeam, setFilterTeam] = useState("");
   const [filterAge, setFilterAge] = useState("");
@@ -255,15 +276,16 @@ const StudentsPage: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
 
   const { data: teams } = useListTeamsQuery(
-    { franchiseId: franchiseId ?? "" },
-    { skip: !franchiseId },
+    franchiseId ? { franchiseId } : { academyId: academyId ?? "" },
+    { skip: !franchiseId && (!canAccessAll || !academyId) },
   );
   const teamNameOf = (teamId?: string) =>
     teams?.find((t) => t.id === teamId)?.name ?? "Unassigned";
 
   const { data, isLoading, isError } = useGetStudentsQuery(
     {
-      franchiseId: franchiseId ?? "",
+      franchiseId: franchiseId || undefined,
+      academyId: !franchiseId ? (academyId ?? undefined) : undefined,
       search: search || undefined,
       teamId: filterTeam || undefined,
       ageGroup: filterAge || undefined,
@@ -271,7 +293,7 @@ const StudentsPage: React.FC = () => {
       selectionStatus: filterSelectionStatus || undefined,
       limit: 100,
     },
-    { skip: !franchiseId },
+    { skip: !franchiseId && (!canAccessAll || !academyId) },
   );
   const students = data?.items ?? [];
   const { data: consentStatus } = useGetFranchiseConsentStatusQuery(
@@ -283,18 +305,6 @@ const StudentsPage: React.FC = () => {
   const [deleteStudent] = useDeleteStudentMutation();
   const [restoreStudent, { isLoading: restoring }] = useRestoreStudentMutation();
   const { confirm, ConfirmDialog } = useConfirm();
-  const academyId = useCurrentAcademyId();
-  const { data: franchises } = useGetFranchisesQuery(
-    academyId ? { academyId, isActive: true } : undefined,
-    { skip: !academyId || !!franchiseId },
-  );
-  const { user } = useSelector((s: RootState) => s.auth);
-  const isCoach = user?.role === "coach";
-  const canManageSquad =
-    user?.role === "manager" ||
-    user?.role === "operational_manager" ||
-    user?.role === "super_admin" ||
-    !!user?.permissions?.canManageFranchises;
   const [subscriptionModalMode, setSubscriptionModalMode] = useState<
     "subscribe" | "upgrade" | null
   >(null);
@@ -423,7 +433,7 @@ const StudentsPage: React.FC = () => {
     }
   };
 
-  if (!franchiseId) {
+  if (!franchiseId && !canAccessAll) {
     return (
       <EmptyState
         icon={<Users size={28} />}
@@ -454,8 +464,8 @@ const StudentsPage: React.FC = () => {
       {/* Header */}
       <PageHeader
         eyebrow="Management"
-        title="Players"
-        subtitle={isLoading ? "Loading…" : `${data?.total ?? 0} players enrolled`}
+        title={currentFranchise ? `${currentFranchise.name} Players` : "All Academy Players"}
+        subtitle={isLoading ? "Loading…" : `${data?.total ?? 0} players enrolled${!franchiseId ? " across all branches" : ""}`}
         actions={
           canManageSquad ? (
             <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
@@ -559,7 +569,7 @@ const StudentsPage: React.FC = () => {
       {canManageSquad && activeTab === "requests" ? (
         <RegistrationRequestsTab
           academyId={academyId ?? ""}
-          franchiseId={franchiseId}
+          franchiseId={franchiseId ?? undefined}
           teams={teams ?? []}
           onApprovedStudent={() => {
             refetchRequests();
@@ -1133,7 +1143,7 @@ const StudentsPage: React.FC = () => {
       {/* Add Student Modal */}
       {canManageSquad && (
         <AddPlayerModal
-          franchiseId={franchiseId}
+          franchiseId={franchiseId ?? ""}
           teams={teams ?? []}
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
@@ -1216,7 +1226,7 @@ const StudentsPage: React.FC = () => {
         <InviteUnattachedStudentModal
           isOpen={showClaimModal}
           onClose={() => setShowClaimModal(false)}
-          franchiseId={franchiseId}
+          franchiseId={franchiseId ?? ""}
           teams={teams ?? []}
           onInvited={() => {
             refetchRequests();

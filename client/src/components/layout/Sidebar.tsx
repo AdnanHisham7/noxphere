@@ -127,6 +127,7 @@ const navConfig: Record<string, NavItem[]> = {
   coach: [
     { path: '/coach/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/students', label: 'Players', icon: Shirt },
+    { path: '/teams', label: 'Teams', icon: Shield },
     { path: '/schedule', label: 'Sessions', icon: CalendarClock },
     { path: '/complaints', label: 'Complaints', icon: MessageSquareWarning },
     { path: '/resources', label: 'Resources', icon: FolderOpen },

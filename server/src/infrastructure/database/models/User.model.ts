@@ -51,6 +51,7 @@ const UserSchema = new Schema<UserDocument>(
     fcmTokens: [{ type: String }],
     franchiseId: { type: Schema.Types.ObjectId, ref: "Franchise", index: true },
     academyId: { type: Schema.Types.ObjectId, ref: "Academy", index: true },
+    canAccessAllFranchises: { type: Boolean, default: false },
     weeklyAvailability: [
       {
         dayOfWeek: { type: Number, required: true },

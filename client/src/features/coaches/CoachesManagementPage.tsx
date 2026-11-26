@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { clsx } from "clsx";
-import { UserCog, Plus, KeyRound, Power, Search, Pencil, Clock, Trash2, Wallet } from "lucide-react";
+import { UserCog, Plus, KeyRound, Power, Search, Pencil, Clock, Trash2, Wallet, Globe } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { Button, Input, Badge, Avatar, Modal, Skeleton, EmptyState, PageHeader, Select } from "../../components/ui";
 import { useCurrentAcademyId } from "../../hooks/useCurrentAcademyId";
@@ -53,6 +53,7 @@ const CoachesManagementPage: React.FC = () => {
   }
 
   const [createCoach, { isLoading: creating }] = useCreateUserMutation();
+  const [updateUser] = useUpdateUserMutation();
   const [toggleActive] = useToggleUserActiveMutation();
   const [resetPassword, { isLoading: resetting }] = useResetUserPasswordMutation();
 
@@ -62,6 +63,16 @@ const CoachesManagementPage: React.FC = () => {
       toast.success(isActive ? "Coach deactivated" : "Coach activated");
     } catch {
       toast.error("Couldn't update coach — try again");
+    }
+  };
+
+  const handleToggleAllFranchises = async (coach: ManagedUser) => {
+    const nextVal = !coach.canAccessAllFranchises;
+    try {
+      await updateUser({ id: coach.id, data: { canAccessAllFranchises: nextVal } }).unwrap();
+      toast.success(nextVal ? `All branches access granted for ${coach.firstName}` : `All branches access restricted for ${coach.firstName}`);
+    } catch {
+      toast.error("Couldn't update coach access");
     }
   };
 
@@ -172,6 +183,22 @@ const CoachesManagementPage: React.FC = () => {
                   </div>
                 </div>
 
+                <div className="flex items-center justify-between text-xs py-1.5 px-2 rounded bg-white/[0.02] border border-white/5">
+                  <div className="flex items-center gap-1.5">
+                    <Globe size={12} className={clsx(c.canAccessAllFranchises ? "text-cyan-400" : "text-slate-400")} />
+                    <span className="text-slate-700 dark:text-slate-300 font-medium">All Branches Access:</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!c.canAccessAllFranchises}
+                      onChange={() => handleToggleAllFranchises(c)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-8 h-4 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-cyan-500"></div>
+                  </label>
+                </div>
+
                 <div className="flex items-center flex-wrap gap-2.5 sm:gap-3 pt-2 border-t border-white/5">
                   <button
                     onClick={() => setEditingCoach(c)}
@@ -258,6 +285,7 @@ const EditCoachModal: React.FC<{ coach: ManagedUser; franchises: any[]; onClose:
   const [phone, setPhone] = useState(coach.phone ?? "");
   const [franchiseId, setFranchiseId] = useState(coach.franchiseId ?? "");
   const [salaryAmount, setSalaryAmount] = useState(coach.salaryAmount !== undefined ? String(coach.salaryAmount) : "");
+  const [canAccessAllFranchises, setCanAccessAllFranchises] = useState(coach.canAccessAllFranchises ?? false);
 
   const handleSave = async () => {
     if (!firstName.trim() || !lastName.trim()) {
@@ -273,6 +301,7 @@ const EditCoachModal: React.FC<{ coach: ManagedUser; franchises: any[]; onClose:
           phone: phone.trim() || undefined,
           franchiseId: franchiseId,
           salaryAmount: salaryAmount ? Number(salaryAmount) : 0,
+          canAccessAllFranchises,
         },
       }).unwrap();
       toast.success("Coach details and salary updated");
@@ -310,6 +339,24 @@ const EditCoachModal: React.FC<{ coach: ManagedUser; franchises: any[]; onClose:
             ))}
           </Select>
         </div>
+        <div className="flex items-center justify-between p-2.5 rounded bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5">
+          <div className="flex items-center gap-2">
+            <Globe size={14} className={clsx(canAccessAllFranchises ? "text-cyan-400" : "text-slate-400")} />
+            <div>
+              <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">All Branches Access</p>
+              <p className="text-[10px] text-slate-500">Access students, teams, and sessions across all branches</p>
+            </div>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-3">
+            <input
+              type="checkbox"
+              checked={canAccessAllFranchises}
+              onChange={(e) => setCanAccessAllFranchises(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-8 h-4 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-cyan-500"></div>
+          </label>
+        </div>
         <div className="flex gap-3 pt-2">
           <Button loading={saving} onClick={handleSave} className="flex-1">Save changes</Button>
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
@@ -323,7 +370,7 @@ const CreateCoachModal: React.FC<{
   franchises: any[];
   onClose: () => void;
   creating: boolean;
-  onCreate: (body: { email: string; password: string; role: "coach"; firstName: string; lastName: string; phone: string; franchiseId?: string; salaryAmount?: number }) => void;
+  onCreate: (body: { email: string; password: string; role: "coach"; firstName: string; lastName: string; phone: string; franchiseId?: string; salaryAmount?: number; canAccessAllFranchises?: boolean }) => void;
 }> = ({ franchises, onClose, creating, onCreate }) => {
   const { currencySymbol } = useCurrency();
   const [firstName, setFirstName] = useState("");
@@ -333,6 +380,7 @@ const CreateCoachModal: React.FC<{
   const [phone, setPhone] = useState("");
   const [franchiseId, setFranchiseId] = useState("");
   const [salaryAmount, setSalaryAmount] = useState("");
+  const [canAccessAllFranchises, setCanAccessAllFranchises] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -349,6 +397,7 @@ const CreateCoachModal: React.FC<{
       phone: phone.trim(),
       franchiseId: franchiseId || undefined,
       salaryAmount: salaryAmount ? Number(salaryAmount) : undefined,
+      canAccessAllFranchises,
     });
   };
 
@@ -391,6 +440,25 @@ const CreateCoachModal: React.FC<{
               </option>
             ))}
           </Select>
+        </div>
+
+        <div className="sm:col-span-2 flex items-center justify-between p-2.5 rounded bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5">
+          <div className="flex items-center gap-2">
+            <Globe size={14} className={clsx(canAccessAllFranchises ? "text-cyan-400" : "text-slate-400")} />
+            <div>
+              <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">All Branches Access</p>
+              <p className="text-[10px] text-slate-500">Access students, teams, and sessions across all branches</p>
+            </div>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-3">
+            <input
+              type="checkbox"
+              checked={canAccessAllFranchises}
+              onChange={(e) => setCanAccessAllFranchises(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-8 h-4 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-cyan-500"></div>
+          </label>
         </div>
 
         <div className="sm:col-span-2 flex gap-3 pt-2">

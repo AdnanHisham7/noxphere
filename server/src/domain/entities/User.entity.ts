@@ -34,6 +34,7 @@ export interface UserEntity {
   fcmTokens: string[];
   franchiseId?: string;
   academyId?: string;
+  canAccessAllFranchises?: boolean;
   weeklyAvailability?: WeeklyAvailability[];
   customUnavailableDates?: string[];
   lastLoginAt?: Date;

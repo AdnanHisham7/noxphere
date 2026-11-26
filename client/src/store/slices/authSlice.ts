@@ -11,6 +11,7 @@ export interface AuthUser {
   avatar?: string;
   franchiseId?: string;
   academyId?: string;
+  canAccessAllFranchises?: boolean;
   permissions: Record<string, boolean>;
 }
 

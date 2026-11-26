@@ -232,7 +232,14 @@ export class ScheduleUseCases {
     if (dto.coachIds && dto.coachIds.length > 0 && !dto.coachId) {
       dto.coachId = dto.coachIds[0];
     }
-    if (requestingCoachId && dto.targetType === "category") {
+
+    let coachCanAccessAll = false;
+    if (requestingCoachId) {
+      const coach = await UserModel.findById(requestingCoachId).select("canAccessAllFranchises academyId").lean();
+      coachCanAccessAll = !!coach?.canAccessAllFranchises;
+    }
+
+    if (requestingCoachId && !coachCanAccessAll && dto.targetType === "category") {
       throw new ForbiddenError("Coaches can only schedule sessions for a team they are assigned to");
     }
 
@@ -256,7 +263,7 @@ export class ScheduleUseCases {
       if (team.academyId && !dto.academyId) {
         dto.academyId = team.academyId.toString();
       }
-      if (requestingCoachId && team.coachId?.toString() !== requestingCoachId) {
+      if (requestingCoachId && !coachCanAccessAll && team.coachId?.toString() !== requestingCoachId) {
         throw new ForbiddenError("You can only schedule sessions for a team assigned to you");
       }
     }

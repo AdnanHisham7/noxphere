@@ -20,6 +20,7 @@ export class MongoUserRepository implements IUserRepository {
       fcmTokens: doc.fcmTokens,
       franchiseId: doc.franchiseId?.toString(),
       academyId: doc.academyId?.toString(),
+      canAccessAllFranchises: doc.canAccessAllFranchises ?? false,
       weeklyAvailability: doc.weeklyAvailability?.map((wa) => ({
         dayOfWeek: wa.dayOfWeek,
         startTime: wa.startTime,
