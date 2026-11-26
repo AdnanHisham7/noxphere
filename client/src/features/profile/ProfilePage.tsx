@@ -875,8 +875,8 @@ export const ProfilePage: React.FC = () => {
                     <span>Admin Dashboard</span>
                     <ArrowRight size={13} />
                   </Link>
-                  <Link to="/students" className="btn-secondary text-xs py-2 px-3.5 flex items-center gap-1.5">
-                    <span>Squad Management</span>
+                  <Link to="/players" className="btn-secondary text-xs py-2 px-3.5 flex items-center gap-1.5">
+                    <span>Player Management</span>
                     <ArrowRight size={13} />
                   </Link>
                   <Link to="/fees" className="btn-secondary text-xs py-2 px-3.5 flex items-center gap-1.5">

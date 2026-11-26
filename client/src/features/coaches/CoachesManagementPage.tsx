@@ -344,7 +344,7 @@ const EditCoachModal: React.FC<{ coach: ManagedUser; franchises: any[]; onClose:
             <Globe size={14} className={clsx(canAccessAllFranchises ? "text-cyan-400" : "text-slate-400")} />
             <div>
               <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">All Branches Access</p>
-              <p className="text-[10px] text-slate-500">Access students, teams, and sessions across all branches</p>
+              <p className="text-[10px] text-slate-500">Access players, teams, and sessions across all branches</p>
             </div>
           </div>
           <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-3">
@@ -447,7 +447,7 @@ const CreateCoachModal: React.FC<{
             <Globe size={14} className={clsx(canAccessAllFranchises ? "text-cyan-400" : "text-slate-400")} />
             <div>
               <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">All Branches Access</p>
-              <p className="text-[10px] text-slate-500">Access students, teams, and sessions across all branches</p>
+              <p className="text-[10px] text-slate-500">Access players, teams, and sessions across all branches</p>
             </div>
           </div>
           <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-3">

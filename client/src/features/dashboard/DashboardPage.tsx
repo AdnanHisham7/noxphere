@@ -287,7 +287,7 @@ const DashboardPage: React.FC = () => {
             /* Single Franchise Stats Layout - 2 cards in one row on mobile */
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
               <StatCard
-                label="Total Students"
+                label="Total Players"
                 value={stats?.totalStudents ?? 0}
                 sublabel={`${stats?.pendingEnrollment ?? 0} pending enrollment`}
                 icon={<Shirt className="h-5 w-5" />}
@@ -680,7 +680,7 @@ const DashboardPage: React.FC = () => {
             <div className="flex items-center justify-between">
               <p className="section-title">Top Performers</p>
               <Link
-                to="/students"
+                to="/players"
                 className="text-xs text-volt-600 dark:text-volt-400 hover:underline"
               >
                 Full rankings →
@@ -788,7 +788,7 @@ const DashboardPage: React.FC = () => {
               {
                 label: "Register Player",
                 icon: UserPlus,
-                to: "/students",
+                to: "/players",
                 desc: "Add new athlete to squad",
                 badgeStyle:
                   "text-volt-500 dark:text-volt-400 bg-volt-400/10 border-volt-400/25",

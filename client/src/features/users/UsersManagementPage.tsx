@@ -30,7 +30,7 @@ const ROLE_LABEL: Record<UserRole, string> = {
   manager: "Manager",
   operational_manager: "Operational Manager",
   coach: "Coach",
-  student: "Student",
+  student: "Player",
   guardian: "Guardian",
 };
 

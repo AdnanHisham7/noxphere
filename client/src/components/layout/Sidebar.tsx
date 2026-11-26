@@ -70,7 +70,7 @@ interface NavItem {
 const EMPLOYEE_NAV: NavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/franchises', label: 'Branch', icon: Building2, requiredPermission: 'canManageFranchises' },
-  { path: '/students', label: 'Players', icon: Shirt, requiredPermission: 'canManageAttendance' },
+  { path: '/players', label: 'Players', icon: Shirt, requiredPermission: 'canManageAttendance' },
   { path: '/teams', label: 'Team', icon: Shield, requiredPermission: 'canManagePerformance' },
   { path: '/schedule', label: 'Sessions', icon: CalendarClock, requiredPermission: 'canManageSessions' },
   { path: '/coaches', label: 'Coaches', icon: UserCog, requiredPermission: 'canManageUsers' },
@@ -94,7 +94,7 @@ const navConfig: Record<string, NavItem[]> = {
   manager: [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/franchises', label: 'Branch', icon: Building2 },
-    { path: '/students', label: 'Players', icon: Shirt },
+    { path: '/players', label: 'Players', icon: Shirt },
     { path: '/teams', label: 'Team', icon: Shield },
     { path: '/schedule', label: 'Sessions', icon: CalendarClock },
     { path: '/coaches', label: 'Coaches', icon: UserCog },
@@ -111,7 +111,7 @@ const navConfig: Record<string, NavItem[]> = {
   operational_manager: [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/franchises', label: 'Branch', icon: Building2 },
-    { path: '/students', label: 'Players', icon: Shirt },
+    { path: '/players', label: 'Players', icon: Shirt },
     { path: '/teams', label: 'Team', icon: Shield },
     { path: '/schedule', label: 'Sessions', icon: CalendarClock },
     { path: '/coaches', label: 'Coaches', icon: UserCog },
@@ -126,7 +126,7 @@ const navConfig: Record<string, NavItem[]> = {
   ],
   coach: [
     { path: '/coach/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/students', label: 'Players', icon: Shirt },
+    { path: '/players', label: 'Players', icon: Shirt },
     { path: '/teams', label: 'Teams', icon: Shield },
     { path: '/schedule', label: 'Sessions', icon: CalendarClock },
     { path: '/complaints', label: 'Complaints', icon: MessageSquareWarning },

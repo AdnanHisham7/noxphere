@@ -127,8 +127,8 @@ const SubscriptionSuccessPage: React.FC = () => {
         )}
 
         <div className="flex items-center justify-center gap-3 pt-2">
-          <Button variant="secondary" onClick={() => navigate("/students")}>
-            Go to Squad
+          <Button variant="secondary" onClick={() => navigate("/players")}>
+            Go to Players
           </Button>
           <Button onClick={() => navigate("/dashboard")}>Go to Dashboard</Button>
         </div>

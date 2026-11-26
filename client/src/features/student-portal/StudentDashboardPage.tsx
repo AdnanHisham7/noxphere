@@ -242,7 +242,7 @@ const StudentDashboardPage: React.FC = () => {
   return (
     <div>
       <NoxPageHeader
-        eyebrow="Student portal"
+        eyebrow="Player portal"
         title={`Hey${user?.firstName ? `, ${user.firstName}` : ""}`}
         subtitle={
           isFreeAgent
@@ -366,8 +366,8 @@ const StudentDashboardPage: React.FC = () => {
 
       {isError && (
         <NoxEmptyState
-          title="No student record linked yet"
-          body="Once your academy links this account to your student profile, your dashboard will show up here."
+          title="No player record linked yet"
+          body="Once your academy links this account to your player profile, your dashboard will show up here."
         />
       )}
 

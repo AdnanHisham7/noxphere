@@ -55,7 +55,7 @@ export const SubscriptionGate: React.FC<{ children: React.ReactNode }> = ({ chil
           <div className="bg-volt-400/10 border-b border-volt-400/20 px-4 py-2 text-center text-xs flex items-center justify-center gap-2 text-volt-400 font-medium">
             <span className="w-2 h-2 rounded-full bg-volt-400 animate-pulse" />
             <span>
-              <strong>Free Trial Active:</strong> You have {status.trialDaysRemaining ?? 0} days remaining ({status.activeStudentCount}/{status.provisionedCapacity} students provisioned).
+              <strong>Free Trial Active:</strong> You have {status.trialDaysRemaining ?? 0} days remaining ({status.activeStudentCount}/{status.provisionedCapacity} players provisioned).
             </span>
             {isManagerLike && (
               <button

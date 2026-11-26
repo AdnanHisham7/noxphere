@@ -1,6 +1,6 @@
 // src/App.tsx
 import React, { Suspense, lazy } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { Provider, useSelector } from "react-redux";
 import { Toaster } from "react-hot-toast";
 import { store, RootState } from "./store";
@@ -164,6 +164,40 @@ const ProfileRouter: React.FC = () => {
   return <ProfilePage />;
 };
 
+const LegacyStudentRedirect: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={id ? `/players/${id}` : "/players"} replace />;
+};
+
+const LegacyStudentReportRedirect: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/players/${id}/report`} replace />;
+};
+
+const LegacyCoachStudentRedirect: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/coach/players/${id}`} replace />;
+};
+
+const PlayerParamRouter: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const user = useSelector((s: RootState) => s.auth.user);
+  const isMongoId = /^[0-9a-fA-F]{24}$/.test(id || "");
+  const isStaff = user && ["manager", "operational_manager", "coach"].includes(user.role);
+
+  if (isMongoId && isStaff) {
+    return (
+      <ProtectedRoute>
+        <MainLayout>
+          <StudentDetailPage />
+        </MainLayout>
+      </ProtectedRoute>
+    );
+  }
+
+  return <PublicPlayerPage />;
+};
+
 const App: React.FC = () => (
   <Provider store={store}>
     <BrowserRouter>
@@ -193,9 +227,11 @@ const App: React.FC = () => (
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup/student" element={<StudentSignupPage />} />
+          <Route path="/signup/player" element={<StudentSignupPage />} />
           <Route path="/register/academy/:academyId" element={<AcademyRegistrationPage />} />
           <Route path="/transfer-wall" element={<TransferWallPage />} />
-          <Route path="/players/:token" element={<PublicPlayerPage />} />
+          <Route path="/public/players/:token" element={<PublicPlayerPage />} />
+          <Route path="/players/:id" element={<PlayerParamRouter />} />
 
           {/* Authenticated */}
           <Route element={<ProtectedRoute />}>
@@ -210,7 +246,8 @@ const App: React.FC = () => (
             <Route path="/nfc-orders/cancelled" element={<NfcOrderCancelledPage />} />
             {/* Print-friendly, no app chrome by design (see StudentReportPage) —
                 also kept outside MainLayout for the same reason. */}
-            <Route path="/students/:id/report" element={<StudentReportPage />} />
+            <Route path="/players/:id/report" element={<StudentReportPage />} />
+            <Route path="/students/:id/report" element={<LegacyStudentReportRedirect />} />
             <Route path="/teams/:id/report" element={<TeamReportPage />} />
 
             <Route element={<MainLayout />}>
@@ -225,8 +262,9 @@ const App: React.FC = () => (
                   <RoleProtectedRoute allowedRoles={["manager", "operational_manager", "coach"]} />
                 }
               >
-                <Route path="/students" element={<StudentsPage />} />
-                <Route path="/students/:id" element={<StudentDetailPage />} />
+                <Route path="/players" element={<StudentsPage />} />
+                <Route path="/students" element={<Navigate to="/players" replace />} />
+                <Route path="/students/:id" element={<LegacyStudentRedirect />} />
 
                 <Route path="/selection" element={<SelectionPage />} />
                 <Route path="/schedule" element={<SchedulePage />} />
@@ -240,7 +278,8 @@ const App: React.FC = () => (
                 element={<RoleProtectedRoute allowedRoles={["coach"]} />}
               >
                 <Route path="/coach/dashboard" element={<CoachDashboardPage />} />
-                <Route path="/coach/students/:id" element={<CoachStudentPanelPage />} />
+                <Route path="/coach/players/:id" element={<CoachStudentPanelPage />} />
+                <Route path="/coach/students/:id" element={<LegacyCoachStudentRedirect />} />
               </Route>
 
               {/* Manager + Operational Manager + Coach for Teams */}
@@ -328,11 +367,14 @@ const App: React.FC = () => (
           <Route element={<ProtectedRoute />}>
             <Route element={<RoleProtectedRoute allowedRoles={["student"]} />}>
               <Route
-                element={<PortalLayout navItems={STUDENT_NAV_ITEMS} portalLabel="Student portal" />}
+                element={<PortalLayout navItems={STUDENT_NAV_ITEMS} portalLabel="Player portal" />}
               >
                 <Route path="/student/dashboard" element={<StudentDashboardPage />} />
                 <Route path="/student/progress" element={<StudentProgressPage />} />
                 <Route path="/student/profile" element={<ProfilePage />} />
+                <Route path="/player/dashboard" element={<Navigate to="/student/dashboard" replace />} />
+                <Route path="/player/progress" element={<Navigate to="/student/progress" replace />} />
+                <Route path="/player/profile" element={<Navigate to="/student/profile" replace />} />
               </Route>
             </Route>
           </Route>

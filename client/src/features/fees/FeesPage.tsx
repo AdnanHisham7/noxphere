@@ -886,7 +886,7 @@ const FeesPage: React.FC = () => {
             {format(metrics.pending)}
           </p>
           <span className="text-2xs text-slate-500">
-            {metrics.studentsWithDuesCount} student
+            {metrics.studentsWithDuesCount} player
             {metrics.studentsWithDuesCount === 1 ? "" : "s"} with dues
           </span>
         </div>
@@ -2450,7 +2450,7 @@ const VerifyPaymentModal: React.FC<{
 
   const proof = installment.verificationProof;
   const claimedAmount = proof?.claimedAmount ?? (installment.amount - installment.paidAmount);
-  const studentName = `${fee.studentId?.firstName || ""} ${fee.studentId?.lastName || ""}`.trim() || "Student";
+  const studentName = `${fee.studentId?.firstName || ""} ${fee.studentId?.lastName || ""}`.trim() || "Player";
 
   const handleApprove = async () => {
     try {

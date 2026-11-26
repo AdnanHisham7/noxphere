@@ -74,7 +74,7 @@ export const StudentSignupPage: React.FC = () => {
       return false;
     }
     if (!formData.email.trim()) {
-      toast.error("Student email is required for login");
+      toast.error("Player email is required for login");
       return false;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -390,7 +390,7 @@ export const StudentSignupPage: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="label">Student Email (Login ID) *</label>
+                      <label className="label">Player Email (Login ID) *</label>
                       <div className="relative">
                         <input
                           type="email"
@@ -600,7 +600,7 @@ export const StudentSignupPage: React.FC = () => {
                     </button>
                   </div>
                   <p className="text-2xs text-center text-slate-500 mt-2">
-                    By signing up, you agree to Noxphere's Terms of Service and Privacy Policy. A single account allows the student and guardian to manage progress collaboratively.
+                    By signing up, you agree to Noxphere's Terms of Service and Privacy Policy. A single account allows the player and guardian to manage progress collaboratively.
                   </p>
                 </div>
               )}

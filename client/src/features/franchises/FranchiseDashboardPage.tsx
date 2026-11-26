@@ -246,7 +246,7 @@ export const FranchiseDashboardPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           <StatCard
-            label="Total Students"
+            label="Total Players"
             value={stats?.totalStudents ?? 0}
             sublabel={`${stats?.pendingEnrollment ?? 0} pending enrollment`}
             icon={<Shirt className="h-5 w-5" />}
@@ -564,7 +564,7 @@ export const FranchiseDashboardPage: React.FC = () => {
                 </p>
               </div>
               <Link
-                to="/students"
+                to="/players"
                 className="text-xs text-volt-600 dark:text-volt-400 hover:underline font-semibold flex items-center gap-1"
               >
                 <span>Full roster</span>
@@ -636,7 +636,7 @@ export const FranchiseDashboardPage: React.FC = () => {
                             <span className="text-3xs text-slate-400 font-mono">/ 10.0</span>
                           </div>
                           <Link
-                            to={`/students/${bestPlayer.id}`}
+                            to={`/players/${bestPlayer.id}`}
                             className="text-xs text-volt-600 dark:text-volt-400 hover:underline font-semibold inline-flex items-center gap-0.5"
                           >
                             <span>Profile</span>
@@ -660,7 +660,7 @@ export const FranchiseDashboardPage: React.FC = () => {
                         return (
                           <Link
                             key={player.id}
-                            to={`/students/${player.id}`}
+                            to={`/players/${player.id}`}
                             className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 dark:bg-pitch-900/40 hover:bg-slate-100 dark:hover:bg-pitch-800/60 border border-slate-200/80 dark:border-white/5 transition-all group"
                           >
                             <span

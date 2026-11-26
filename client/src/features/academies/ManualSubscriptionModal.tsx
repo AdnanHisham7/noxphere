@@ -245,12 +245,12 @@ export const ManualSubscriptionModal: React.FC<ManualSubscriptionModalProps> = (
         }).unwrap();
 
         toast.success(
-          `Top-Up applied! Added +${extraStudents} student slots & +${extraStaff} staff seats for ${academy.name}.`
+          `Top-Up applied! Added +${extraStudents} player slots & +${extraStaff} staff seats for ${academy.name}.`
         );
       } else {
         if (renewalStudents < activeStudentCount) {
           toast.error(
-            `Cannot set ${renewalStudents} student slots because ${activeStudentCount} players are currently active.`
+            `Cannot set ${renewalStudents} player slots because ${activeStudentCount} players are currently active.`
           );
           return;
         }
@@ -458,7 +458,7 @@ export const ManualSubscriptionModal: React.FC<ManualSubscriptionModalProps> = (
                 </div>
 
                 <p className="text-2xs text-slate-400 pt-1 border-t border-white/5">
-                  New Total: <strong className="text-emerald-400">{topupTotalStudents}</strong> student slots
+                  New Total: <strong className="text-emerald-400">{topupTotalStudents}</strong> player slots
                 </p>
               </div>
 
@@ -519,7 +519,7 @@ export const ManualSubscriptionModal: React.FC<ManualSubscriptionModalProps> = (
               </div>
               <div className="flex items-center justify-between text-xs text-slate-300 font-mono">
                 <span>
-                  Students: +{extraStudents} × {currencySymbol}{rate}/day × {remainingDays} days
+                  Players: +{extraStudents} × {currencySymbol}{rate}/day × {remainingDays} days
                 </span>
                 <span className="font-bold text-white">{currencySymbol}{topupStudentCost.toFixed(2)}</span>
               </div>
@@ -571,7 +571,7 @@ export const ManualSubscriptionModal: React.FC<ManualSubscriptionModalProps> = (
                   required
                 />
                 <span className="text-3xs text-slate-400 mt-1 block">
-                  Active roster floor: {activeStudentCount} students
+                  Active roster floor: {activeStudentCount} players
                 </span>
               </div>
 

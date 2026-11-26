@@ -250,7 +250,7 @@ const TeamsPage: React.FC = () => {
           description={
             currentFranchise
               ? `Create a team under ${currentFranchise.name} to start building squads and assigning coaches and players.`
-              : "Create your first team to start assigning students and coaches."
+              : "Create your first team to start assigning players and coaches."
           }
           action={
             canManage ? (
@@ -367,7 +367,7 @@ const TeamsPage: React.FC = () => {
                 )}
                 <div className="mt-4 flex items-center justify-between flex-wrap gap-2">
                   <span className="text-xs text-slate-500 font-mono">
-                    {team.studentCount} students
+                    {team.studentCount} {team.studentCount === 1 ? "player" : "players"}
                   </span>
                   <div className="flex items-center flex-wrap gap-2 sm:gap-3">
                     {canManage && (

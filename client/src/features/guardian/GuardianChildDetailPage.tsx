@@ -172,7 +172,7 @@ const GuardianChildDetailPage: React.FC = () => {
 
       {profile && (
         <button
-          onClick={() => window.open(`/students/${studentId}/report`, "_blank")}
+          onClick={() => window.open(`/players/${studentId}/report`, "_blank")}
           className="inline-flex items-center gap-2 text-xs text-core-400 hover:underline mb-6"
         >
           <FileText size={13} />
