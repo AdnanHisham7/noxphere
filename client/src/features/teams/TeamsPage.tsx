@@ -270,11 +270,18 @@ const TeamsPage: React.FC = () => {
       {!showLoading && !isError && teams.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {teams.map((team) => {
-            const isTeamCoach =
-              (team.coach as any)?._id?.toString() === user?.id ||
-              (team.coach as any)?.id?.toString() === user?.id ||
-              (team as any).coachId?.toString() === user?.id;
+            const currentUserId = user?.id || (user as any)?._id;
+            const teamCoachId =
+              (team.coach as any)?._id?.toString() ||
+              (team.coach as any)?.id?.toString() ||
+              (team as any).coachId?.toString() ||
+              (typeof team.coach === "string" ? team.coach : "") ||
+              (typeof (team as any).coachId === "object"
+                ? ((team as any).coachId?._id?.toString() || (team as any).coachId?.id?.toString() || "")
+                : "");
+            const isTeamCoach = !!currentUserId && teamCoachId === currentUserId;
             const canSchedule = canManage || isTeamCoach;
+            const canManageTeam = canManage || isTeamCoach;
             return (
               <Card key={team.id} className="p-0 flex flex-col overflow-hidden">
               <div
@@ -400,7 +407,7 @@ const TeamsPage: React.FC = () => {
                     >
                       <FileSpreadsheet size={12} /> Report
                     </button>
-                    {canManage && (
+                    {canManageTeam && (
                       <button
                         onClick={() => navigate(`/teams/${team.id}/manage`)}
                         className="text-xs flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors"
@@ -595,12 +602,23 @@ export const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> 
 }) => {
   const { user } = useSelector((s: RootState) => s.auth);
   const currentAcademyId = useCurrentAcademyId();
+  const { data: team, isLoading: teamLoading } = useGetTeamByIdQuery(teamId);
+  const currentUserId = user?.id || (user as any)?._id;
+  const teamAny = team as any;
+  const teamCoachId =
+    teamAny?.coach?._id?.toString() ||
+    teamAny?.coach?.id?.toString() ||
+    teamAny?.coachId?.toString() ||
+    teamAny?.coachId?._id?.toString() ||
+    teamAny?.coachId?.id?.toString() ||
+    (typeof teamAny?.coach === "string" ? teamAny.coach : "");
+  const isTeamCoach = !!currentUserId && teamCoachId === currentUserId;
+
   const canManage =
     user?.role === "manager" ||
     user?.role === "operational_manager" ||
-    user?.role === "super_admin";
-
-  const { data: team, isLoading: teamLoading } = useGetTeamByIdQuery(teamId);
+    user?.role === "super_admin" ||
+    (user?.role === "coach" && isTeamCoach);
   const [addStudentToTeam] = useAddStudentToTeamMutation();
   const [removeStudentFromTeam] = useRemoveStudentFromTeamMutation();
   const { confirm, ConfirmDialog } = useConfirm();
