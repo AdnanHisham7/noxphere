@@ -21,6 +21,7 @@ export interface ManagedUser {
   franchiseId?: string;
   academyId?: string;
   salaryAmount?: number;
+  canAccessAllFranchises?: boolean;
   permissions: Record<string, boolean>;
   weeklyAvailability?: WeeklyAvailability[];
   customUnavailableDates?: string[];

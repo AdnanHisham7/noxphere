@@ -90,8 +90,8 @@ const ComplaintsInboxPage: React.FC = () => {
         }
         subtitle={
           isCoach
-            ? "Review complaints forwarded to you regarding your students, and submit your feedback."
-            : "Review complaints submitted by students or guardians, forward to coaches, and manage support tickets."
+            ? "Review complaints forwarded to you regarding your players, and submit your feedback."
+            : "Review complaints submitted by players or guardians, forward to coaches, and manage support tickets."
         }
         actions={
           !isCoach ? (
@@ -192,7 +192,7 @@ const ComplaintsInboxPage: React.FC = () => {
                         <>
                           <span>·</span>
                           <span className="font-mono px-1.5 py-0.5 rounded bg-core-400/10 text-core-400 font-semibold">
-                            Student: {c.studentName}
+                            Player: {c.studentName}
                           </span>
                         </>
                       )}

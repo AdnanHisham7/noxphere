@@ -1710,7 +1710,7 @@ export const ExpenseManagementPage: React.FC = () => {
               <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider font-display">
                 Student Fee Collections in Selected Period ({reportData?.feeInflows.length || 0} Transactions)
               </h3>
-              <p className="text-xs text-slate-500">Real-time payment records from enrolled students across installments</p>
+              <p className="text-xs text-slate-500">Real-time payment records from enrolled players across installments</p>
             </div>
 
             {(!reportData?.feeInflows || reportData.feeInflows.length === 0) ? (

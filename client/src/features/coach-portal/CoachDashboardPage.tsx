@@ -224,7 +224,7 @@ const CoachDashboardPage: React.FC = () => {
                 {data.roster.map((s) => (
                   <Link
                     key={s.id}
-                    to={`/coach/students/${s.id}`}
+                    to={`/coach/players/${s.id}`}
                     className="nox-card p-5 block hover:border-core-400/30 transition-colors"
                   >
                     <div className="flex items-center gap-3">

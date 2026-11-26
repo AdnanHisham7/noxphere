@@ -312,7 +312,7 @@ const StudentDetailPage: React.FC = () => {
     if (status === "dropped_out") {
       const ok = await confirm({
         title: "Mark player as Dropped Out",
-        message: `Mark ${student?.firstName ?? "this player"} as Dropped Out? This will move them to the Archived Players section and release 1 student slot immediately. Their full match, attendance, and fee history are preserved.`,
+        message: `Mark ${student?.firstName ?? "this player"} as Dropped Out? This will move them to the Archived Players section and release 1 player slot immediately. Their full match, attendance, and fee history are preserved.`,
         confirmLabel: "Confirm Drop Out",
         danger: true,
       });
@@ -412,7 +412,7 @@ const StudentDetailPage: React.FC = () => {
     if (!student) return;
     const ok = await confirm({
       title: "Restore player to branch",
-      message: `Restore ${student.firstName} ${student.lastName} back to active players? This will occupy 1 student capacity slot in your subscription plan.`,
+      message: `Restore ${student.firstName} ${student.lastName} back to active players? This will occupy 1 player capacity slot in your subscription plan.`,
       confirmLabel: "Restore Player",
     });
     if (!ok) return;
@@ -439,7 +439,7 @@ const StudentDetailPage: React.FC = () => {
     if (!student) return;
     const ok = await confirm({
       title: "Archive Player & Release Slot",
-      message: `Remove ${student.firstName} ${student.lastName} from the active branch players? This will release 1 student subscription slot immediately. The player's profile and historical stats are safely archived and can be restored anytime from the Archived tab.`,
+      message: `Remove ${student.firstName} ${student.lastName} from the active branch players? This will release 1 player subscription slot immediately. The player's profile and historical stats are safely archived and can be restored anytime from the Archived tab.`,
       confirmLabel: "Archive Player",
       danger: true,
     });
@@ -553,7 +553,7 @@ const StudentDetailPage: React.FC = () => {
     return list;
   }, [performances, sessionRatingFilter]);
 
-  if (!id) return <Navigate to="/students" replace />;
+  if (!id) return <Navigate to="/players" replace />;
 
   if (isLoading) {
     return (
@@ -572,7 +572,7 @@ const StudentDetailPage: React.FC = () => {
         description="This player may have been removed, or you don't have access."
         action={
           <Link
-            to="/students"
+            to="/players"
             className="inline-flex items-center gap-1.5 text-volt-400 hover:underline text-sm"
           >
             <ArrowLeft size={14} /> Back to Players
@@ -650,10 +650,10 @@ const StudentDetailPage: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
         <div className="flex items-center gap-2">
           <Link
-            to="/students"
+            to="/players"
             className="hover:text-volt-400 transition-colors"
           >
-            Squad
+            Players
           </Link>
           <span>›</span>
           {isArchived && (
@@ -3118,7 +3118,7 @@ const ReportSelectionModal: React.FC<{
   const handleGenerate = () => {
     onClose();
     window.open(
-      `/students/${studentId}/report?period=${selectedPeriod}`,
+      `/players/${studentId}/report?period=${selectedPeriod}`,
       "_blank",
     );
   };

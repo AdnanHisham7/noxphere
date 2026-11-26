@@ -14,6 +14,7 @@ export const CreateUserSchema = z.object({
   // is resolved automatically server-side. See UsersUseCases.createUser.
   academyId: z.string().optional(),
   salaryAmount: z.number().min(0).optional(),
+  canAccessAllFranchises: z.boolean().optional(),
 });
 
 export const UpdateUserSchema = z.object({
@@ -24,6 +25,7 @@ export const UpdateUserSchema = z.object({
   franchiseId: z.string().optional(),
   academyId: z.string().optional(),
   salaryAmount: z.number().min(0).optional(),
+  canAccessAllFranchises: z.boolean().optional(),
   permissions: z
     .object({
       canManageUsers: z.boolean().optional(),

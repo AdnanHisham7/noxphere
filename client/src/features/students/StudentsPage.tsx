@@ -245,6 +245,27 @@ const emptyMedical = {
 const StudentsPage: React.FC = () => {
   const dispatch = useDispatch();
   const franchiseId = useCurrentFranchiseId();
+  const academyId = useCurrentAcademyId();
+  const { user } = useSelector((s: RootState) => s.auth);
+  const canAccessAll =
+    user?.role === "manager" ||
+    user?.role === "operational_manager" ||
+    user?.role === "super_admin" ||
+    !!user?.canAccessAllFranchises;
+
+  const isCoach = user?.role === "coach";
+  const canManageSquad =
+    user?.role === "manager" ||
+    user?.role === "operational_manager" ||
+    user?.role === "super_admin" ||
+    !!user?.permissions?.canManageFranchises;
+
+  const { data: franchises } = useGetFranchisesQuery(
+    academyId ? { academyId, isActive: true } : undefined,
+    { skip: !academyId },
+  );
+  const currentFranchise = franchises?.find((f) => f.id === franchiseId);
+
   const [search, setSearch] = useState("");
   const [filterTeam, setFilterTeam] = useState("");
   const [filterAge, setFilterAge] = useState("");
@@ -255,15 +276,16 @@ const StudentsPage: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
 
   const { data: teams } = useListTeamsQuery(
-    { franchiseId: franchiseId ?? "" },
-    { skip: !franchiseId },
+    franchiseId ? { franchiseId } : { academyId: academyId ?? "" },
+    { skip: !franchiseId && (!canAccessAll || !academyId) },
   );
   const teamNameOf = (teamId?: string) =>
     teams?.find((t) => t.id === teamId)?.name ?? "Unassigned";
 
   const { data, isLoading, isError } = useGetStudentsQuery(
     {
-      franchiseId: franchiseId ?? "",
+      franchiseId: franchiseId || undefined,
+      academyId: !franchiseId ? (academyId ?? undefined) : undefined,
       search: search || undefined,
       teamId: filterTeam || undefined,
       ageGroup: filterAge || undefined,
@@ -271,7 +293,7 @@ const StudentsPage: React.FC = () => {
       selectionStatus: filterSelectionStatus || undefined,
       limit: 100,
     },
-    { skip: !franchiseId },
+    { skip: !franchiseId && (!canAccessAll || !academyId) },
   );
   const students = data?.items ?? [];
   const { data: consentStatus } = useGetFranchiseConsentStatusQuery(
@@ -283,18 +305,6 @@ const StudentsPage: React.FC = () => {
   const [deleteStudent] = useDeleteStudentMutation();
   const [restoreStudent, { isLoading: restoring }] = useRestoreStudentMutation();
   const { confirm, ConfirmDialog } = useConfirm();
-  const academyId = useCurrentAcademyId();
-  const { data: franchises } = useGetFranchisesQuery(
-    academyId ? { academyId, isActive: true } : undefined,
-    { skip: !academyId || !!franchiseId },
-  );
-  const { user } = useSelector((s: RootState) => s.auth);
-  const isCoach = user?.role === "coach";
-  const canManageSquad =
-    user?.role === "manager" ||
-    user?.role === "operational_manager" ||
-    user?.role === "super_admin" ||
-    !!user?.permissions?.canManageFranchises;
   const [subscriptionModalMode, setSubscriptionModalMode] = useState<
     "subscribe" | "upgrade" | null
   >(null);
@@ -391,7 +401,7 @@ const StudentsPage: React.FC = () => {
   const handleDelete = async (id: string, name: string) => {
     const ok = await confirm({
       title: "Remove player from roster",
-      message: `Remove ${name} from the active branch players? This will release 1 student subscription slot immediately. The player's profile and historical stats are safely archived and can be restored anytime from the Archived tab.`,
+      message: `Remove ${name} from the active branch players? This will release 1 player subscription slot immediately. The player's profile and historical stats are safely archived and can be restored anytime from the Archived tab.`,
       confirmLabel: "Archive Player",
       danger: true,
     });
@@ -407,7 +417,7 @@ const StudentsPage: React.FC = () => {
   const handleRestore = async (id: string, name: string) => {
     const ok = await confirm({
       title: "Restore player to branch",
-      message: `Restore ${name} back to active players? This will occupy 1 student capacity slot in your subscription plan.`,
+      message: `Restore ${name} back to active players? This will occupy 1 player capacity slot in your subscription plan.`,
       confirmLabel: "Restore Player",
     });
     if (!ok) return;
@@ -423,7 +433,7 @@ const StudentsPage: React.FC = () => {
     }
   };
 
-  if (!franchiseId) {
+  if (!franchiseId && !canAccessAll) {
     return (
       <EmptyState
         icon={<Users size={28} />}
@@ -454,8 +464,8 @@ const StudentsPage: React.FC = () => {
       {/* Header */}
       <PageHeader
         eyebrow="Management"
-        title="Players"
-        subtitle={isLoading ? "Loading…" : `${data?.total ?? 0} players enrolled`}
+        title={currentFranchise ? `${currentFranchise.name} Players` : "All Academy Players"}
+        subtitle={isLoading ? "Loading…" : `${data?.total ?? 0} players enrolled${!franchiseId ? " across all branches" : ""}`}
         actions={
           canManageSquad ? (
             <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
@@ -559,7 +569,7 @@ const StudentsPage: React.FC = () => {
       {canManageSquad && activeTab === "requests" ? (
         <RegistrationRequestsTab
           academyId={academyId ?? ""}
-          franchiseId={franchiseId}
+          franchiseId={franchiseId ?? undefined}
           teams={teams ?? []}
           onApprovedStudent={() => {
             refetchRequests();
@@ -624,7 +634,7 @@ const StudentsPage: React.FC = () => {
                       <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-pitch-800/50 transition-colors">
                         <td className="px-4 py-3">
                           <Link
-                            to={`/students/${student.id}`}
+                            to={`/players/${student.id}`}
                             className="flex items-center gap-3 group"
                           >
                             <Avatar
@@ -668,7 +678,7 @@ const StudentsPage: React.FC = () => {
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Link
-                              to={`/students/${student.id}`}
+                              to={`/players/${student.id}`}
                               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-pitch-800 transition-colors border border-slate-200 dark:border-white/10"
                               title="View full player profile and history"
                             >
@@ -891,7 +901,7 @@ const StudentsPage: React.FC = () => {
                   className="relative group/card"
                 >
                   <Link
-                    to={`/students/${student.id}`}
+                    to={`/players/${student.id}`}
                     className={clsx(
                       "block relative aspect-[2/3] [perspective:2000px] overflow-hidden rounded-3xl border group transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:shadow-none dark:hover:shadow-2xl",
                       student.status === "inactive"
@@ -1099,7 +1109,7 @@ const StudentsPage: React.FC = () => {
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-3">
                           <Link
-                            to={`/students/${student.id}`}
+                            to={`/players/${student.id}`}
                             className="text-xs font-semibold text-volt-600 dark:text-volt-400 hover:underline"
                           >
                             View →
@@ -1133,7 +1143,7 @@ const StudentsPage: React.FC = () => {
       {/* Add Student Modal */}
       {canManageSquad && (
         <AddPlayerModal
-          franchiseId={franchiseId}
+          franchiseId={franchiseId ?? ""}
           teams={teams ?? []}
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
@@ -1216,7 +1226,7 @@ const StudentsPage: React.FC = () => {
         <InviteUnattachedStudentModal
           isOpen={showClaimModal}
           onClose={() => setShowClaimModal(false)}
-          franchiseId={franchiseId}
+          franchiseId={franchiseId ?? ""}
           teams={teams ?? []}
           onInvited={() => {
             refetchRequests();

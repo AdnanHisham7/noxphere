@@ -3,9 +3,9 @@ import { useSelector } from "react-redux";
 import { Navigate, Outlet } from "react-router-dom";
 import { RootState } from "../../store";
 
-const ProtectedRoute: React.FC = () => {
+const ProtectedRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useSelector((s: RootState) => s.auth);
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+  return isAuthenticated ? <>{children ?? <Outlet />}</> : <Navigate to="/login" replace />;
 };
 
 export default ProtectedRoute;

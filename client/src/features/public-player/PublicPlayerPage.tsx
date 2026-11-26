@@ -49,7 +49,8 @@ const getCardScore = (rating?: number): number | null => {
 };
 
 export const PublicPlayerPage: React.FC = () => {
-  const { token } = useParams<{ token: string }>();
+  const { token: routeToken, id: routeId } = useParams<{ token?: string; id?: string }>();
+  const token = routeToken || routeId;
   const {
     data: player,
     isLoading,

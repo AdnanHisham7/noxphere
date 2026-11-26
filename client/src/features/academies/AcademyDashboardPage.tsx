@@ -213,7 +213,7 @@ export const AcademyDashboardPage: React.FC = () => {
             <div className="min-w-[140px] space-y-1">
               <div className="flex items-center justify-between text-2xs font-mono">
                 <span className="text-slate-400 flex items-center gap-1">
-                  <Users size={11} className="text-volt-400" /> Students
+                  <Users size={11} className="text-volt-400" /> Players
                 </span>
                 <span className="text-white font-bold">
                   {subStatus.activeStudentCount} / {subStatus.provisionedCapacity}
@@ -288,7 +288,7 @@ export const AcademyDashboardPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            label="Total Students"
+            label="Total Players"
             value={stats?.totalStudents ?? 0}
             sublabel={`${stats?.pendingEnrollment ?? 0} pending enrollment`}
             icon={<Shirt className="h-5 w-5" />}

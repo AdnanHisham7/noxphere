@@ -4,7 +4,7 @@ import type { PortalNavItem } from "../../components/layout/PortalLayout";
 
 export const COACH_NAV_ITEMS: PortalNavItem[] = [
   { to: "/coach/dashboard", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/students", label: "Squad", icon: Shirt },
+  { to: "/players", label: "Players", icon: Shirt },
   { to: "/selection", label: "Selection", icon: Target },
   { to: "/schedule", label: "Sessions", icon: CalendarClock },
   { to: "/resources", label: "Resources", icon: FolderOpen },

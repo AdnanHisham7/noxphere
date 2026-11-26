@@ -10,7 +10,7 @@ import { SubscriptionGate } from './SubscriptionGate';
 import { GeoRestrictionGate } from './GeoRestrictionGate';
 import { closeMobileSidebar } from '../../store/slices/uiSlice';
 
-export const MainLayout: React.FC = () => {
+export const MainLayout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const dispatch = useDispatch();
   const location = useLocation();
   const mainRef = useRef<HTMLElement>(null);
@@ -50,7 +50,7 @@ export const MainLayout: React.FC = () => {
           >
             <TopBar />
             <main ref={mainRef} className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-5 md:p-6">
-              <Outlet />
+              {children ?? <Outlet />}
             </main>
           </div>
         </div>

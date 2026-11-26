@@ -64,14 +64,14 @@ export function getNotificationTarget(
         return { url: `/schedule?highlight=${sessionId}`, entityId: sessionId };
       }
       if (studentId) {
-        return { url: `/coach/students/${studentId}`, entityId: studentId };
+        return { url: `/coach/players/${studentId}`, entityId: studentId };
       }
       return { url: "/schedule" };
     }
     // Manager / Operational Manager
     if (studentId) {
       return {
-        url: `/students/${studentId}?tab=attendance${sessionId ? `&highlight=${sessionId}` : ""}`,
+        url: `/players/${studentId}?tab=attendance${sessionId ? `&highlight=${sessionId}` : ""}`,
         entityId: sessionId || studentId,
         tab: "attendance",
       };
@@ -188,18 +188,18 @@ export function getNotificationTarget(
       };
     }
     if (userRole === "coach") {
-      if (studentId) return { url: `/coach/students/${studentId}`, entityId: studentId };
+      if (studentId) return { url: `/coach/players/${studentId}`, entityId: studentId };
       return { url: "/coach/dashboard" };
     }
     // Manager, Operational Manager
     if (studentId) {
       return {
-        url: `/students/${studentId}?tab=performance`,
+        url: `/players/${studentId}?tab=performance`,
         entityId: studentId,
         tab: "performance",
       };
     }
-    return { url: "/students" };
+    return { url: "/players" };
   }
 
   // 7. Registration requests / applications
@@ -207,7 +207,7 @@ export function getNotificationTarget(
     const requestId = data.requestId;
     if (userRole === "manager" || userRole === "operational_manager") {
       return {
-        url: requestId ? `/students?tab=requests&highlight=${requestId}` : "/students?tab=requests",
+        url: requestId ? `/players?tab=requests&highlight=${requestId}` : "/players?tab=requests",
         entityId: requestId,
         tab: "requests",
       };

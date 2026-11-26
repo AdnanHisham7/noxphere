@@ -240,7 +240,7 @@ export const SuperAdminDashboardView: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              {kpi.totalStudents} active student slots utilized out of {kpi.totalCapacity} provisioned slots across academies.
+              {kpi.totalStudents} active player slots utilized out of {kpi.totalCapacity} provisioned slots across academies.
             </p>
           </div>
         </div>
@@ -496,7 +496,7 @@ export const SuperAdminDashboardView: React.FC = () => {
         <div className="lg:col-span-2 card p-5 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="section-title">Top Academies by Student Capacity</p>
+              <p className="section-title">Top Academies by Player Capacity</p>
               <p className="text-xs text-slate-500 mt-0.5">
                 Highest player registrations and branch capacity satiation
               </p>

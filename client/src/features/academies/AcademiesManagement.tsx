@@ -489,7 +489,7 @@ const AcademiesManagement: React.FC = () => {
           accent="field"
         />
         <StatCard
-          label="Total Students"
+          label="Total Players"
           value={totalStudents}
           sublabel="Current enrollment"
           icon={<Trophy size={20} />}
@@ -1292,7 +1292,7 @@ const AcademiesManagement: React.FC = () => {
               <p className="section-title">Subscription Billing</p>
               <div className="grid grid-cols-2 gap-4">
                 <Input
-                  label={`Rate override (${getCurrencySymbol(selectedAcademy?.currency)}/student/day)`}
+                  label={`Rate override (${getCurrencySymbol(selectedAcademy?.currency)}/player/day)`}
                   type="number"
                   step="0.01"
                   value={configForm.subscriptionRateOverride ?? selectedAcademy.subscriptionRateOverride ?? ""}

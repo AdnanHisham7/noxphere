@@ -45,8 +45,9 @@ export class StudentController {
       } = req.query;
       // A coach only ever sees players on a team assigned to them (or
       // explicitly assigned to them directly), regardless of what else
-      // is requested.
-      const restrictToCoachId = req.user!.role === 'coach' ? req.user!.sub : undefined;
+      // is requested, unless they have academy-wide branch access granted.
+      const isCoach = req.user!.role === 'coach';
+      const restrictToCoachId = (isCoach && !req.user!.canAccessAllFranchises) ? req.user!.sub : undefined;
       const result = await this.studentUseCases.getStudents(
         franchiseId as string | undefined,
         { search, teamId, ageGroup, selectionStatus, status, isActive, deleted },

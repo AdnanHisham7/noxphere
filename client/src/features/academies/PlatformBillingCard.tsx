@@ -394,9 +394,9 @@ export const PlatformBillingCard: React.FC = () => {
                   onChange={(e) => setTrialCapacity(e.target.value)}
                   className="w-full font-mono font-bold"
                 />
-                <span className="text-xs text-slate-400 shrink-0 font-medium">Students</span>
+                <span className="text-xs text-slate-400 shrink-0 font-medium">Players</span>
               </div>
-              <p className="text-[10px] text-slate-500">Max students allowed during trial period</p>
+              <p className="text-[10px] text-slate-500">Max players allowed during trial period</p>
             </div>
 
             <div className="space-y-1.5">
@@ -586,7 +586,7 @@ export const PlatformBillingCard: React.FC = () => {
 
             <div className="space-y-3">
               <Input
-                label={`Student Rate (${editingCurrency.symbol}/student/day)`}
+                label={`Player Rate (${editingCurrency.symbol}/player/day)`}
                 type="number"
                 step="0.01"
                 min="0"

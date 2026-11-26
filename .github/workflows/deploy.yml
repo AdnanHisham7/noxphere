@@ -27,5 +27,5 @@ jobs:
             git pull origin main
             cd server
             npm install
-            npm run build
+            NODE_OPTIONS="--max-old-space-size=2048" npm run build
             pm2 reload noxphere-api --update-env

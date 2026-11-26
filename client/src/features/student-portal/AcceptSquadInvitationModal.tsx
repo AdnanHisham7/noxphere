@@ -110,7 +110,7 @@ export const AcceptSquadInvitationModal: React.FC<
 
     if (isSelfEmail) {
       toast.error(
-        "Guardian email cannot be the same as your student login email.",
+        "Guardian email cannot be the same as your player login email.",
       );
       return;
     }
@@ -325,7 +325,7 @@ export const AcceptSquadInvitationModal: React.FC<
             {isSelfEmail && (
               <p className="text-xs text-rose-500 flex items-center gap-1 mt-1">
                 <AlertCircle size={12} />
-                Guardian email cannot be the same as your student login email (
+                Guardian email cannot be the same as your player login email (
                 {currentUser?.email}).
               </p>
             )}

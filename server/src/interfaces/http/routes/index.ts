@@ -37,6 +37,7 @@ export const apiRouter = Router();
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/transfer-wall', transferRouter);
 apiRouter.use('/students', studentRouter);
+apiRouter.use('/players', studentRouter);
 apiRouter.use('/academies', academyRouter);
 apiRouter.use('/franchises', franchiseRouter);
 apiRouter.use('/guardian', guardianRouter);

@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import { Users } from "lucide-react";
 import { clsx } from "clsx";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store";
 import { Button, Modal, Input, Select } from "../../components/ui";
 import { useCreateSessionMutation } from "../../store/api/scheduleApi";
 import { academyApi } from "../../store/api/academyApi";
@@ -23,6 +25,9 @@ export const ScheduleTeamEventModal: React.FC<{
 
   const academyPitches = (academyData?.pitches || []).filter((p) => p.isActive !== false);
 
+  const { user } = useSelector((s: RootState) => s.auth);
+  const isCoach = user?.role === "coach";
+
   const availableSessionTypes = academyData?.sessionTypes && academyData.sessionTypes.length > 0
     ? academyData.sessionTypes.map((st) => ({ id: st.name.toLowerCase(), label: st.name }))
     : [
@@ -41,7 +46,9 @@ export const ScheduleTeamEventModal: React.FC<{
   const [startTime, setStartTime] = useState("16:00");
   const [endTime, setEndTime] = useState("17:30");
   const [selectedCoachId, setSelectedCoachId] = useState(
-    (team.coach as any)?._id || (team.coach as any)?.id || coaches[0]?.id || ""
+    isCoach
+      ? (user?.id || "")
+      : ((team.coach as any)?._id || (team.coach as any)?.id || coaches[0]?.id || "")
   );
   const [venueType, setVenueType] = useState<"pitch" | "branch" | "custom">("pitch");
   const [selectedPitchId, setSelectedPitchId] = useState(academyPitches[0]?.id || "");
@@ -55,7 +62,8 @@ export const ScheduleTeamEventModal: React.FC<{
     if (!date) return toast.error("Date is required");
     if (!startTime || !endTime) return toast.error("Start and end time are required");
     if (endTime <= startTime) return toast.error("End time must be after start time");
-    if (!selectedCoachId) return toast.error("Coach is required");
+    const finalCoachId = isCoach ? (user?.id || selectedCoachId) : selectedCoachId;
+    if (!finalCoachId) return toast.error("Coach is required");
 
     let location = "";
     let pitchId: string | undefined = undefined;
@@ -85,7 +93,7 @@ export const ScheduleTeamEventModal: React.FC<{
         teamId: team.id,
         academyId,
         franchiseId: franchiseIdToSave,
-        coachId: selectedCoachId,
+        coachId: finalCoachId,
         type,
         date,
         startTime,
@@ -220,19 +228,31 @@ export const ScheduleTeamEventModal: React.FC<{
         </div>
 
         {/* Coach */}
-        <Select
-          label="Assigned Lead Coach"
-          value={selectedCoachId}
-          onChange={(e) => setSelectedCoachId(e.target.value)}
-          required
-        >
-          <option value="">Select coach...</option>
-          {coaches.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.firstName} {c.lastName}
-            </option>
-          ))}
-        </Select>
+        {isCoach ? (
+          <div>
+            <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1">
+              Assigned Lead Coach
+            </label>
+            <div className="px-3 py-2 rounded-md bg-slate-50 dark:bg-pitch-800 border border-slate-200 dark:border-white/10 text-xs font-semibold text-slate-800 dark:text-white flex items-center gap-2 cursor-not-allowed select-none">
+              <span className="w-2 h-2 rounded-full bg-volt-400"></span>
+              {user ? `${user.firstName} ${user.lastName}` : "You"} (Assigned to you)
+            </div>
+          </div>
+        ) : (
+          <Select
+            label="Assigned Lead Coach"
+            value={selectedCoachId}
+            onChange={(e) => setSelectedCoachId(e.target.value)}
+            required
+          >
+            <option value="">Select coach...</option>
+            {coaches.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.firstName} {c.lastName}
+              </option>
+            ))}
+          </Select>
+        )}
 
         <Input
           label="Tactical Notes / Brief (optional)"

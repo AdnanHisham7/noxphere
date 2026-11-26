@@ -23,6 +23,15 @@ export class CoachPortalUseCases {
 
   private async getRosterFilter(coachUserId: string) {
     const coachObjectId = new mongoose.Types.ObjectId(coachUserId);
+    const coach = await UserModel.findById(coachUserId).select("canAccessAllFranchises academyId").lean();
+    if (coach?.canAccessAllFranchises && coach.academyId) {
+      const franchises = await FranchiseModel.find({ academyId: coach.academyId }).select("_id").lean();
+      const franchiseIds = franchises.map((f) => f._id);
+      return {
+        deletedAt: { $exists: false },
+        franchiseId: { $in: franchiseIds },
+      };
+    }
     const teams = await TeamModel.find({
       coachId: coachObjectId,
       deletedAt: { $exists: false },
@@ -58,6 +67,18 @@ export class CoachPortalUseCases {
    */
   async getMyFranchises(coachUserId: string) {
     const coachObjectId = new mongoose.Types.ObjectId(coachUserId);
+    const coach = await UserModel.findById(coachUserId).select("canAccessAllFranchises academyId").lean();
+    if (coach?.canAccessAllFranchises && coach.academyId) {
+      const franchises = await FranchiseModel.find({ academyId: coach.academyId, isActive: true })
+        .sort({ name: 1 })
+        .lean();
+      return franchises.map((f) => ({
+        id: f._id.toString(),
+        academyId: f.academyId.toString(),
+        name: f.name,
+      }));
+    }
+
     const coachSessionFilter = {
       $or: [
         { coachId: coachObjectId },

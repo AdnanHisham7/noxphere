@@ -392,21 +392,24 @@ export class StudentUseCases {
     // a team reassignment can never leave a coach seeing a stale roster.
     let allowedTeamIds: string[] | null = null;
     if (restrictToCoachId) {
-      const coachTeamQuery: any = {
-        coachId: restrictToCoachId,
-        deletedAt: { $exists: false },
-      };
-      if (franchiseId && franchiseId !== "all") {
-        coachTeamQuery.franchiseId = franchiseId;
-      } else if (academyId) {
-        const franchises = await FranchiseModel.find({ academyId }).select("_id").lean();
-        const franchiseIds = franchises.map((f) => f._id);
-        coachTeamQuery.franchiseId = { $in: franchiseIds };
+      const coach = await UserModel.findById(restrictToCoachId).select("canAccessAllFranchises academyId").lean();
+      if (!coach?.canAccessAllFranchises) {
+        const coachTeamQuery: any = {
+          coachId: restrictToCoachId,
+          deletedAt: { $exists: false },
+        };
+        if (franchiseId && franchiseId !== "all") {
+          coachTeamQuery.franchiseId = franchiseId;
+        } else if (academyId) {
+          const franchises = await FranchiseModel.find({ academyId }).select("_id").lean();
+          const franchiseIds = franchises.map((f) => f._id);
+          coachTeamQuery.franchiseId = { $in: franchiseIds };
+        }
+        const coachTeams = await TeamModel.find(coachTeamQuery)
+          .select("_id")
+          .lean();
+        allowedTeamIds = coachTeams.map((t) => t._id.toString());
       }
-      const coachTeams = await TeamModel.find(coachTeamQuery)
-        .select("_id")
-        .lean();
-      allowedTeamIds = coachTeams.map((t) => t._id.toString());
     }
 
     if (filters.teamId) {

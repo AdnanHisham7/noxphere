@@ -341,7 +341,7 @@ export const InviteUnattachedStudentModal: React.FC<InviteUnattachedStudentModal
             ) : students.length === 0 ? (
               <EmptyState
                 title="No free agent players found"
-                description="No unattached students match your current search criteria."
+                description="No unattached players match your current search criteria."
               />
             ) : (
               <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
@@ -435,7 +435,7 @@ export const InviteUnattachedStudentModal: React.FC<InviteUnattachedStudentModal
                   Send Squad Invitation to {selectedStudent.firstName} {selectedStudent.lastName}
                 </h4>
                 <p className="text-2xs text-slate-500">
-                  Player will receive this invitation in their Student Portal to accept or decline.
+                  Player will receive this invitation in their Player Portal to accept or decline.
                 </p>
               </div>
               <button

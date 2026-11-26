@@ -250,7 +250,7 @@ const TeamsPage: React.FC = () => {
           description={
             currentFranchise
               ? `Create a team under ${currentFranchise.name} to start building squads and assigning coaches and players.`
-              : "Create your first team to start assigning students and coaches."
+              : "Create your first team to start assigning players and coaches."
           }
           action={
             canManage ? (
@@ -269,8 +269,21 @@ const TeamsPage: React.FC = () => {
 
       {!showLoading && !isError && teams.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {teams.map((team) => (
-            <Card key={team.id} className="p-0 flex flex-col overflow-hidden">
+          {teams.map((team) => {
+            const currentUserId = user?.id || (user as any)?._id;
+            const teamCoachId =
+              (team.coach as any)?._id?.toString() ||
+              (team.coach as any)?.id?.toString() ||
+              (team as any).coachId?.toString() ||
+              (typeof team.coach === "string" ? team.coach : "") ||
+              (typeof (team as any).coachId === "object"
+                ? ((team as any).coachId?._id?.toString() || (team as any).coachId?.id?.toString() || "")
+                : "");
+            const isTeamCoach = !!currentUserId && teamCoachId === currentUserId;
+            const canSchedule = canManage || isTeamCoach;
+            const canManageTeam = canManage || isTeamCoach;
+            return (
+              <Card key={team.id} className="p-0 flex flex-col overflow-hidden">
               <div
                 className="h-14 w-full relative"
                 style={{
@@ -361,7 +374,7 @@ const TeamsPage: React.FC = () => {
                 )}
                 <div className="mt-4 flex items-center justify-between flex-wrap gap-2">
                   <span className="text-xs text-slate-500 font-mono">
-                    {team.studentCount} students
+                    {team.studentCount} {team.studentCount === 1 ? "player" : "players"}
                   </span>
                   <div className="flex items-center flex-wrap gap-2 sm:gap-3">
                     {canManage && (
@@ -378,13 +391,15 @@ const TeamsPage: React.FC = () => {
                     >
                       View roster →
                     </button>
-                    <button
-                      onClick={() => setScheduleEventTeam(team)}
-                      className="text-xs flex items-center gap-1 text-volt-600 dark:text-volt-400 hover:text-volt-500 font-medium transition-colors"
-                      title="Schedule a match or squad training"
-                    >
-                      <CalendarDays size={12} /> Schedule
-                    </button>
+                    {canSchedule && (
+                      <button
+                        onClick={() => setScheduleEventTeam(team)}
+                        className="text-xs flex items-center gap-1 text-volt-600 dark:text-volt-400 hover:text-volt-500 font-medium transition-colors"
+                        title="Schedule a match or squad training"
+                      >
+                        <CalendarDays size={12} /> Schedule
+                      </button>
+                    )}
                     <button
                       onClick={() => setReportTeamId(team.id)}
                       className="text-xs flex items-center gap-1 text-emerald-500 hover:text-emerald-400 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors font-medium"
@@ -392,7 +407,7 @@ const TeamsPage: React.FC = () => {
                     >
                       <FileSpreadsheet size={12} /> Report
                     </button>
-                    {canManage && (
+                    {canManageTeam && (
                       <button
                         onClick={() => navigate(`/teams/${team.id}/manage`)}
                         className="text-xs flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors"
@@ -404,7 +419,8 @@ const TeamsPage: React.FC = () => {
                 </div>
               </div>
             </Card>
-          ))}
+          );
+        })}
         </div>
       )}
 
@@ -586,12 +602,23 @@ export const TeamRosterModal: React.FC<{ teamId: string; onClose: () => void }> 
 }) => {
   const { user } = useSelector((s: RootState) => s.auth);
   const currentAcademyId = useCurrentAcademyId();
+  const { data: team, isLoading: teamLoading } = useGetTeamByIdQuery(teamId);
+  const currentUserId = user?.id || (user as any)?._id;
+  const teamAny = team as any;
+  const teamCoachId =
+    teamAny?.coach?._id?.toString() ||
+    teamAny?.coach?.id?.toString() ||
+    teamAny?.coachId?.toString() ||
+    teamAny?.coachId?._id?.toString() ||
+    teamAny?.coachId?.id?.toString() ||
+    (typeof teamAny?.coach === "string" ? teamAny.coach : "");
+  const isTeamCoach = !!currentUserId && teamCoachId === currentUserId;
+
   const canManage =
     user?.role === "manager" ||
     user?.role === "operational_manager" ||
-    user?.role === "super_admin";
-
-  const { data: team, isLoading: teamLoading } = useGetTeamByIdQuery(teamId);
+    user?.role === "super_admin" ||
+    (user?.role === "coach" && isTeamCoach);
   const [addStudentToTeam] = useAddStudentToTeamMutation();
   const [removeStudentFromTeam] = useRemoveStudentFromTeamMutation();
   const { confirm, ConfirmDialog } = useConfirm();

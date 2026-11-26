@@ -407,6 +407,7 @@ export class AuthUseCases {
       role: user.role,
       franchiseId: user.franchiseId,
       academyId: user.academyId,
+      canAccessAllFranchises: user.canAccessAllFranchises ?? false,
       permissions: user.permissions,
     };
 

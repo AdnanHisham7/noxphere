@@ -79,7 +79,7 @@ const StudentProgressPage: React.FC = () => {
   if (isFreeAgent) {
     return (
       <div className="space-y-6 animate-fade-in">
-        <NoxPageHeader eyebrow="Student portal" title="My progress" />
+        <NoxPageHeader eyebrow="Player portal" title="My progress" />
         <div className="nox-card p-8 text-center max-w-xl mx-auto space-y-4 border-amber-400/20 bg-amber-400/[0.02]">
           <div className="w-12 h-12 rounded-full bg-amber-400/10 text-amber-400 flex items-center justify-center mx-auto">
             <Compass size={24} />
@@ -116,7 +116,7 @@ const StudentProgressPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <NoxPageHeader eyebrow="Student portal" title="My progress" />
+      <NoxPageHeader eyebrow="Player portal" title="My progress" />
 
       {/* Enrolled Player Profile Header Banner */}
       {profile && (

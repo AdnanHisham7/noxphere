@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import { ScheduleUseCases } from "../../../application/use-cases/schedule/ScheduleUseCases";
 import { ResponseHandler } from "../../../shared/utils/ResponseHandler";
 import { BadRequestError, ForbiddenError } from "../../../shared/errors/AppError";
+import { UserModel } from "../../../infrastructure/database/models/User.model";
 import {
   CreateSessionSchema,
   UpdateSessionSchema,
@@ -24,6 +25,10 @@ export class ScheduleController {
    */
   private async assertCoachOwnsSession(req: Request, sessionId: string): Promise<void> {
     if (req.user!.role !== "coach") return;
+    if (req.user!.canAccessAllFranchises) return;
+    const coachUser = await UserModel.findById(req.user!.sub).select("canAccessAllFranchises").lean();
+    if (coachUser?.canAccessAllFranchises) return;
+
     const session = (await this.scheduleUseCases.getSessionById(sessionId)) as any;
     const userId = req.user!.sub;
     const coachIdsList = (session.coachIds || []).map((id: any) =>
@@ -52,9 +57,14 @@ export class ScheduleController {
           throw new BadRequestError("franchiseId, academyId or teamId is required");
         }
       }
-      // A coach only ever sees their own sessions — regardless of what
-      // (if anything) was passed in the coachId query param.
-      const coachId = req.user!.role === "coach" ? req.user!.sub : (req.query.coachId as string);
+      // A coach only ever sees their own sessions unless granted all-branch access
+      const isCoach = req.user!.role === "coach";
+      let canAccessAll = isCoach ? !!req.user!.canAccessAllFranchises : false;
+      if (isCoach && !canAccessAll) {
+        const coachUser = await UserModel.findById(req.user!.sub).select("canAccessAllFranchises").lean();
+        canAccessAll = !!coachUser?.canAccessAllFranchises;
+      }
+      const coachId = isCoach && !canAccessAll ? req.user!.sub : (req.query.coachId as string);
       const sessions = await this.scheduleUseCases.listSessions({
         franchiseId: franchiseId as string | undefined,
         academyId,
@@ -74,19 +84,26 @@ export class ScheduleController {
     try {
       const session = (await this.scheduleUseCases.getSessionById(req.params.id)) as any;
       if (req.user!.role === "coach") {
-        const userId = req.user!.sub;
-        const coachIdsList = (session.coachIds || []).map((id: any) =>
-          typeof id === "object" ? (id._id?.toString() || id.id?.toString() || id.toString()) : id.toString()
-        );
-        const coachIdStr = session.coachId
-          ? (typeof session.coachId === "object"
-              ? (session.coachId._id?.toString() || session.coachId.id?.toString() || session.coachId.toString())
-              : session.coachId.toString())
-          : undefined;
+        let canAccessAll = !!req.user!.canAccessAllFranchises;
+        if (!canAccessAll) {
+          const coachUser = await UserModel.findById(req.user!.sub).select("canAccessAllFranchises").lean();
+          canAccessAll = !!coachUser?.canAccessAllFranchises;
+        }
+        if (!canAccessAll) {
+          const userId = req.user!.sub;
+          const coachIdsList = (session.coachIds || []).map((id: any) =>
+            typeof id === "object" ? (id._id?.toString() || id.id?.toString() || id.toString()) : id.toString()
+          );
+          const coachIdStr = session.coachId
+            ? (typeof session.coachId === "object"
+                ? (session.coachId._id?.toString() || session.coachId.id?.toString() || session.coachId.toString())
+                : session.coachId.toString())
+            : undefined;
 
-        const isAssigned = coachIdsList.includes(userId) || coachIdStr === userId;
-        if (!isAssigned) {
-          throw new ForbiddenError("You can only view sessions assigned to you");
+          const isAssigned = coachIdsList.includes(userId) || coachIdStr === userId;
+          if (!isAssigned) {
+            throw new ForbiddenError("You can only view sessions assigned to you");
+          }
         }
       }
       ResponseHandler.success(res, session, "Session retrieved");
@@ -99,17 +116,19 @@ export class ScheduleController {
     try {
       const dto = CreateSessionSchema.parse(req.body);
       const isCoach = req.user!.role === "coach";
-      // A coach can never schedule a category-wide session — only a
-      // session for a team they're actually assigned to. The use-case
-      // enforces the team-ownership half of this; the target-type
-      // restriction is enforced here since it depends on nothing but role.
-      if (isCoach && dto.targetType === "category") {
+      let canAccessAll = isCoach ? !!req.user!.canAccessAllFranchises : false;
+      if (isCoach && !canAccessAll) {
+        const coachUser = await UserModel.findById(req.user!.sub).select("canAccessAllFranchises").lean();
+        canAccessAll = !!coachUser?.canAccessAllFranchises;
+      }
+      // A standard coach can only schedule a session for a team they're actually assigned to.
+      // If granted all-branch access, coaches can schedule category or team sessions across any branch.
+      if (isCoach && !canAccessAll && dto.targetType === "category") {
         throw new ForbiddenError("Coaches can only schedule sessions for a team they are assigned to");
       }
-      // A coach can never schedule a session under someone else's name —
-      // the logged-in coach is always the coach. A manager/super_admin
-      // must explicitly pick one.
-      const coachId = isCoach ? req.user!.sub : dto.coachId;
+      // A standard coach can never schedule a session under someone else's name —
+      // the logged-in coach is always the coach. With all branches access or as manager, pick one.
+      const coachId = (isCoach && !canAccessAll) ? req.user!.sub : (dto.coachId || req.user!.sub);
       if (!coachId) throw new BadRequestError("coachId is required");
       const session = await this.scheduleUseCases.createSession(
         { ...dto, coachId },
@@ -197,19 +216,26 @@ export class ScheduleController {
 
       const session = roster.session as any;
       if (req.user!.role === "coach") {
-        const userId = req.user!.sub;
-        const coachIdsList = (session.coachIds || []).map((id: any) =>
-          typeof id === "object" ? (id._id?.toString() || id.id?.toString() || id.toString()) : id.toString()
-        );
-        const coachIdStr = session.coachId
-          ? (typeof session.coachId === "object"
-              ? (session.coachId._id?.toString() || session.coachId.id?.toString() || session.coachId.toString())
-              : session.coachId.toString())
-          : undefined;
+        let canAccessAll = !!req.user!.canAccessAllFranchises;
+        if (!canAccessAll) {
+          const coachUser = await UserModel.findById(req.user!.sub).select("canAccessAllFranchises").lean();
+          canAccessAll = !!coachUser?.canAccessAllFranchises;
+        }
+        if (!canAccessAll) {
+          const userId = req.user!.sub;
+          const coachIdsList = (session.coachIds || []).map((id: any) =>
+            typeof id === "object" ? (id._id?.toString() || id.id?.toString() || id.toString()) : id.toString()
+          );
+          const coachIdStr = session.coachId
+            ? (typeof session.coachId === "object"
+                ? (session.coachId._id?.toString() || session.coachId.id?.toString() || session.coachId.toString())
+                : session.coachId.toString())
+            : undefined;
 
-        const isAssigned = coachIdsList.includes(userId) || coachIdStr === userId;
-        if (!isAssigned) {
-          throw new ForbiddenError("You can only view sessions assigned to you");
+          const isAssigned = coachIdsList.includes(userId) || coachIdStr === userId;
+          if (!isAssigned) {
+            throw new ForbiddenError("You can only view sessions assigned to you");
+          }
         }
       }
       ResponseHandler.success(res, roster, "Session roster retrieved");

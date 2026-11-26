@@ -19,9 +19,11 @@ import {
   AlertTriangle,
   X,
   CheckCircle2,
+  Check,
   UserCheck,
   ExternalLink,
   Navigation,
+  Shield,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { Button, Badge, Modal, Input, Skeleton, EmptyState, DocumentUploadField, PageHeader, Card, Select, getMapsLink } from "../../components/ui";
@@ -156,7 +158,7 @@ const SchedulePage: React.FC = () => {
   );
   const { data: fetchedTeam } = useGetTeamByIdQuery(effectiveTeamId ?? "", { skip: !effectiveTeamId });
   const activeTeam = (allTeams ?? []).find((t) => t.id === effectiveTeamId) ?? (fetchedTeam as any);
-  const teams = isCoach
+  const teams = isCoach && !user?.canAccessAllFranchises
     ? (allTeams ?? []).filter((t) => (t.coach?._id?.toString() || (t.coach as any)?.id?.toString()) === user?.id)
     : allTeams ?? [];
 
@@ -167,7 +169,7 @@ const SchedulePage: React.FC = () => {
   const categories = existingAgeCategories;
   const { data: coachesResult } = useGetUsersQuery(
     { roles: "coach", academyId: resolvedAcademyId ?? "", isActive: "true", limit: 100 },
-    { skip: !resolvedAcademyId || isCoach }
+    { skip: !resolvedAcademyId || (isCoach && !user?.canAccessAllFranchises) }
   );
   const coaches = coachesResult?.data ?? [];
 
@@ -766,7 +768,7 @@ const SchedulePage: React.FC = () => {
 
 const CreateSessionModal: React.FC<{
   franchiseId: string;
-  teams: { id: string; name: string; coach?: { _id: string; firstName: string; lastName: string } }[];
+  teams: { id: string; name: string; ageGroup?: string; coach?: { _id: string; firstName: string; lastName: string } }[];
   categories: string[];
   coaches: CoachAvailabilityFields[];
   isCoach: boolean;
@@ -788,7 +790,20 @@ const CreateSessionModal: React.FC<{
   );
   const activeTeams = franchiseId ? teams : (franchiseTeams ?? []);
 
-  const [targetType, setTargetType] = useState<"category" | "batch">("category");
+  const coachUserId = currentUser?.id || user?.id;
+  const selectableTeams = useMemo(() => {
+    if (!isCoach) return activeTeams;
+    return activeTeams.filter((t) => {
+      const cId = (t.coach as any)?._id?.toString() || (t.coach as any)?.id?.toString() || (t as any).coachId?.toString();
+      return cId === coachUserId;
+    });
+  }, [activeTeams, isCoach, coachUserId]);
+
+  const [targetType, setTargetType] = useState<"category" | "batch" | "team">(
+    isCoach && !user?.canAccessAllFranchises ? "team" : "category"
+  );
+  const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [opponent, setOpponent] = useState("");
   const [batchPlayerSearch, setBatchPlayerSearch] = useState("");
   const [categoriesState, setCategoriesState] = useState<string[]>([]);
   const [coachIds, setCoachIds] = useState<string[]>(isCoach ? [currentUser?.id ?? ""] : []);
@@ -875,6 +890,27 @@ const CreateSessionModal: React.FC<{
     );
   }, [studentsResult?.items]);
 
+  const selectedTeam = selectableTeams.find((t) => t.id === selectedTeamId);
+
+  useEffect(() => {
+    if (selectableTeams.length > 0) {
+      if (!selectedTeamId || !selectableTeams.some((t) => t.id === selectedTeamId)) {
+        setSelectedTeamId(selectableTeams[0].id);
+        if (!isCoach) {
+          const team = selectableTeams[0];
+          if (team?.coach) {
+            const cId = (team.coach as any)._id || (team.coach as any).id;
+            if (cId && !coachIds.includes(cId)) {
+              setCoachIds([cId]);
+            }
+          }
+        }
+      }
+    } else if (selectedTeamId) {
+      setSelectedTeamId("");
+    }
+  }, [selectableTeams, selectedTeamId, isCoach]);
+
   React.useEffect(() => {
     if (academyFranchises && academyFranchises.length > 0 && !selectedFranchiseId) {
       setSelectedFranchiseId(academyFranchises[0].id);
@@ -883,10 +919,12 @@ const CreateSessionModal: React.FC<{
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFranchiseId) return toast.error("Select a branch");
+    if (!selectedFranchiseId && targetType !== "team") return toast.error("Select a branch");
+    if (targetType === "team" && !selectedTeamId) return toast.error("Select a squad / team");
     if (targetType === "category" && categoriesState.length === 0) return toast.error("Select at least one category");
     if (targetType === "batch" && playerIds.length === 0) return toast.error("Select at least one player for the custom batch session");
-    if (coachIds.length === 0) return toast.error("Select at least one coach");
+    const finalCoachIds = isCoach ? [currentUser?.id || user?.id || coachIds[0]].filter(Boolean) : coachIds;
+    if (finalCoachIds.length === 0) return toast.error("Select at least one coach");
     if (selectedTypeOpt === "custom" && !customType.trim()) return toast.error("Enter custom session type");
     if (!location) return toast.error("Location is required");
 
@@ -897,14 +935,20 @@ const CreateSessionModal: React.FC<{
         ? academyPitches.find((p) => p.id === selectedPitchId)
         : academyPitches.find((p) => p.name.toLowerCase() === location.trim().toLowerCase());
 
+    const sessionNotes = [
+      finalType.toLowerCase() === "match" && opponent.trim() ? `Opponent: ${opponent.trim()}` : "",
+      notes.trim(),
+    ].filter(Boolean).join(" · ");
+
     onCreate({
       franchiseId: selectedFranchiseId || undefined,
       academyId: effectiveAcademyId || undefined,
       targetType,
+      teamId: targetType === "team" ? selectedTeamId : undefined,
       category: targetType === "category" ? categoriesState[0] : undefined,
       categories: targetType === "category" ? categoriesState : undefined,
-      coachId: coachIds[0],
-      coachIds,
+      coachId: finalCoachIds[0],
+      coachIds: finalCoachIds,
       type: finalType,
       date: isMultiDay ? startDate : date,
       startTime: isMultiDay ? dailyStartTime : startTime,
@@ -920,8 +964,8 @@ const CreateSessionModal: React.FC<{
       googleMapsUrl: matchingPitch?.googleMapsUrl,
       latitude: matchingPitch?.latitude,
       longitude: matchingPitch?.longitude,
-      notes: notes || undefined,
-      playerIds: playerIds.length > 0 ? playerIds : undefined,
+      notes: sessionNotes || undefined,
+      playerIds: targetType === "batch" && playerIds.length > 0 ? playerIds : undefined,
       documents: documents.length > 0 ? documents : undefined,
     });
   };
@@ -947,13 +991,13 @@ const CreateSessionModal: React.FC<{
         )}
 
         {/* Schedule Target Toggle */}
-        {!isCoach && (
+        {(!isCoach || user?.canAccessAllFranchises) ? (
           <div>
             <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1.5">
               Schedule Target
             </label>
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-900 p-1 rounded-lg border border-slate-200 dark:border-white/5 w-fit">
-              {(["category", "batch"] as const).map((t) => (
+              {(["category", "batch", "team"] as const).map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -963,16 +1007,102 @@ const CreateSessionModal: React.FC<{
                     targetType === t ? "bg-volt-400 text-pitch-900 font-extrabold shadow-sm" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   )}
                 >
-                  {t === "category" ? <Layers size={12} /> : <UserCheck size={12} />}
-                  {t === "category" ? "Age Categories" : "Custom Batch"}
+                  {t === "category" && <Layers size={12} />}
+                  {t === "batch" && <UserCheck size={12} />}
+                  {t === "team" && <Shield size={12} />}
+                  {t === "category" ? "Age Categories" : t === "batch" ? "Custom Batch" : "Squad / Team"}
                 </button>
               ))}
             </div>
           </div>
+        ) : (
+          <div>
+            <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+              Schedule Target
+            </label>
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-pitch-900 p-1 rounded-lg border border-slate-200 dark:border-white/5 w-fit">
+              <div className="px-3 py-1.5 rounded-md text-xs font-extrabold uppercase flex items-center gap-1.5 bg-volt-400 text-pitch-900 shadow-sm">
+                <Shield size={12} /> Squad / Team
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* Categories or Batch Selection */}
-        {targetType === "category" ? (
+        {/* Categories, Batch or Team Selection */}
+        {targetType === "team" ? (
+          <div className="space-y-3 border border-volt-500/30 bg-volt-400/[0.04] dark:border-volt-400/20 dark:bg-volt-400/[0.03] p-3 rounded-lg">
+            <div>
+              <label className="block text-2xs font-bold text-volt-600 dark:text-volt-400 uppercase tracking-wide mb-1">
+                Squad / Team
+              </label>
+              {selectableTeams.length === 0 ? (
+                <div className="p-3 rounded border border-amber-500/20 bg-amber-500/10 text-amber-500 text-xs">
+                  {isCoach ? "No squads currently assigned to you in this branch." : "No squads found in this branch/academy."}
+                </div>
+              ) : (
+                <Select
+                  value={selectedTeamId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setSelectedTeamId(id);
+                    if (!isCoach) {
+                      const team = selectableTeams.find((t) => t.id === id);
+                      if (team?.coach) {
+                        const cId = (team.coach as any)._id || (team.coach as any).id;
+                        if (cId && !coachIds.includes(cId)) {
+                          setCoachIds([cId]);
+                        }
+                      }
+                    }
+                  }}
+                >
+                  <option value="" disabled>Select Squad / Team</option>
+                  {selectableTeams.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} {t.ageGroup ? `(${t.ageGroup})` : ""}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </div>
+
+            {selectedTeam && (
+              <div className="flex items-center justify-between p-2 rounded bg-white/50 dark:bg-pitch-900/60 border border-slate-200 dark:border-white/5 text-xs">
+                <div className="flex items-center gap-2">
+                  <Shield size={15} className="text-volt-500 shrink-0" />
+                  <div>
+                    <span className="font-semibold text-slate-900 dark:text-white">{selectedTeam.name}</span>
+                    {selectedTeam.ageGroup && (
+                      <span className="ml-2 text-2xs px-1.5 py-0.5 rounded bg-volt-400/20 text-volt-600 dark:text-volt-300 font-bold">
+                        {selectedTeam.ageGroup}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {selectedTeam.coach && (
+                  <span className="text-2xs text-slate-500 dark:text-slate-400">
+                    Coach: {(selectedTeam.coach as any).firstName} {(selectedTeam.coach as any).lastName}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {selectedTypeOpt === "match" && (
+              <div>
+                <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1">
+                  Opponent Team / Club (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={opponent}
+                  onChange={(e) => setOpponent(e.target.value)}
+                  placeholder="e.g. Manchester Youth FC, Royal Strikers"
+                  className="w-full px-3 py-1.5 text-xs bg-white dark:bg-pitch-900 border border-slate-200 dark:border-white/10 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-volt-400"
+                />
+              </div>
+            )}
+          </div>
+        ) : targetType === "category" ? (
           <div>
             <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1">
               Age Categories (Select all that apply)
@@ -1103,7 +1233,25 @@ const CreateSessionModal: React.FC<{
         )}
 
         {/* Multiple Coaches Selection */}
-        {!isCoach && (
+        {isCoach ? (
+          <div>
+            <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1">
+              Assigned Coach
+            </label>
+            <div className="flex flex-wrap gap-1.5 mt-1 border border-slate-200 dark:border-white/10 rounded p-2 bg-slate-50 dark:bg-pitch-900">
+              <div
+                className="px-2.5 py-1 rounded text-[10px] font-extrabold border bg-volt-400 border-volt-400 text-pitch-900 shadow-sm flex items-center gap-1.5 cursor-not-allowed select-none"
+                title="Assigned to you (cannot be changed)"
+              >
+                <Check size={11} className="stroke-[3]" />
+                {currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : (user ? `${user.firstName} ${user.lastName}` : "You")}
+              </div>
+            </div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+              Sessions scheduled from your coach portal are automatically assigned to you.
+            </p>
+          </div>
+        ) : (
           <div>
             <label className="block text-2xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1">
               Assigned Coaches (Select all that apply)

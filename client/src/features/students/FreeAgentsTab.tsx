@@ -387,7 +387,7 @@ export const FreeAgentsTab: React.FC<FreeAgentsTabProps> = ({
                 const studentName =
                   typeof inv.studentId === "object" && inv.studentId
                     ? `${inv.studentId.firstName} ${inv.studentId.lastName}`
-                    : "Student";
+                    : "Player";
                 const teamName =
                   typeof inv.teamId === "object" && inv.teamId
                     ? inv.teamId.name
